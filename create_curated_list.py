@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""
+Create a curated list of forgotten Romanian words.
+
+Filters:
+1. Has meaningful description (not empty, not just model type)
+2. Proper Romanian words (not proper nouns, technical terms, compounds)
+3. Low frequency (< 0.60)
+4. Exclude very short words
+5. Focus on traditional Romanian vocabulary
+"""
+
+import sqlite3
+import csv
+import re
+
+DB_PATH = "data/processed/lexemes.db"
+OUTPUT_CSV = "data/processed/forgotten_words_curated.csv"
+
+def is_proper_noun(word):
+    """Check if word looks like a proper noun."""
+    # Starts with capital letter (except first letter of sentence)
+    return word[0].isupper() if word else False
+
+def is_romanian_word(word):
+    """Check if word looks like a traditional Romanian word."""
+    # Exclude Latin phrases, foreign words, technical terms
+    foreign_patterns = [
+        r'^[A-Z][a-z]+ [A-Z]',  # "El Alamein" pattern
+        r' ',  # Multi-word phrases (many are Latin/foreign)
+        r"^[a-z]+-[a-z]+'",  # Strange hyphenation
+    ]
+
+    for pattern in foreign_patterns:
+        if re.search(pattern, word):
+            return False
+
+    return True
+
+def has_meaningful_description(desc):
+    """Check if description has actual linguistic info."""
+    if not desc or desc.strip() == '':
+        return False
+
+    # Meaningful descriptions
+    meaningful_markers = [
+        'adj', 's.m', 's.f', 's.n', 'vb', 'adv', 'interj',
+        'înv', 'reg', 'pop', 'dial', 'arh',  # Archaic markers
+    ]
+
+    desc_lower = desc.lower()
+    return any(marker in desc_lower for marker in meaningful_markers)
+
+def create_curated_list(db_path, output_csv):
+    """Create curated forgotten words list."""
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    print("=" * 70)
+    print("Creating Curated Forgotten Words List")
+    print("=" * 70)
+    print()
+
+    # Query with better filters
+    cursor.execute("""
+        SELECT
+            form,
+            formNoAccent,
+            frequency,
+            description,
+            modelType,
+            notes
+        FROM Lexeme
+        WHERE frequency > 0.01
+          AND frequency < 0.60
+          AND LENGTH(form) > 3
+          AND description != ''
+          AND description IS NOT NULL
+        ORDER BY frequency ASC
+    """)
+
+    all_candidates = cursor.fetchall()
+    print(f"Initial candidates: {len(all_candidates):,}")
+
+    # Apply filters
+    curated = []
+    filtered_counts = {
+        'proper_noun': 0,
+        'foreign': 0,
+        'no_description': 0,
+        'kept': 0
+    }
+
+    for word_data in all_candidates:
+        form, form_no_accent, freq, desc, model_type, notes = word_data
+
+        # Filter proper nouns
+        if is_proper_noun(form):
+            filtered_counts['proper_noun'] += 1
+            continue
+
+        # Filter foreign/technical words
+        if not is_romanian_word(form):
+            filtered_counts['foreign'] += 1
+            continue
+
+        # Filter non-meaningful descriptions
+        if not has_meaningful_description(desc):
+            filtered_counts['no_description'] += 1
+            continue
+
+        curated.append(word_data)
+        filtered_counts['kept'] += 1
+
+    print()
+    print("FILTERING RESULTS")
+    print("-" * 70)
+    print(f"  Filtered (proper nouns):       {filtered_counts['proper_noun']:>8,}")
+    print(f"  Filtered (foreign/technical):  {filtered_counts['foreign']:>8,}")
+    print(f"  Filtered (no description):     {filtered_counts['no_description']:>8,}")
+    print(f"  ✅ Kept for final list:        {filtered_counts['kept']:>8,}")
+
+    # Categorize by frequency
+    categories = {
+        'very_rare': [],   # 0.01-0.30
+        'rare': [],        # 0.30-0.50
+        'uncommon': []     # 0.50-0.60
+    }
+
+    for word_data in curated:
+        freq = word_data[2]
+        if freq < 0.30:
+            categories['very_rare'].append(word_data)
+        elif freq < 0.50:
+            categories['rare'].append(word_data)
+        else:
+            categories['uncommon'].append(word_data)
+
+    print()
+    print("CATEGORIZATION")
+    print("-" * 70)
+    print(f"  Very rare (0.01-0.30):  {len(categories['very_rare']):>8,}")
+    print(f"  Rare (0.30-0.50):       {len(categories['rare']):>8,}")
+    print(f"  Uncommon (0.50-0.60):   {len(categories['uncommon']):>8,}")
+
+    # Show samples
+    print()
+    print("SAMPLE FORGOTTEN WORDS")
+    print("-" * 70)
+
+    for cat_name, cat_words in categories.items():
+        if not cat_words:
+            continue
+
+        print(f"\n{cat_name.upper().replace('_', ' ')} (first 15):")
+        for form, _, freq, desc, _, _ in cat_words[:15]:
+            print(f"  {form:.<30} {desc:.<20} freq={freq:.3f}")
+
+    # Export to CSV
+    print()
+    print("EXPORTING TO CSV")
+    print("-" * 70)
+    print(f"Output: {output_csv}")
+
+    with open(output_csv, 'w', encoding='utf-8', newline='') as f:
+        writer = csv.writer(f)
+
+        # Header
+        writer.writerow([
+            'word',
+            'word_no_accent',
+            'frequency',
+            'rarity_category',
+            'description',
+            'model_type',
+            'notes'
+        ])
+
+        # Write curated words
+        for word_data in curated:
+            form, form_no_accent, freq, desc, model_type, notes = word_data
+
+            # Determine category
+            if freq < 0.30:
+                category = 'very_rare'
+            elif freq < 0.50:
+                category = 'rare'
+            else:
+                category = 'uncommon'
+
+            writer.writerow([
+                form,
+                form_no_accent,
+                f"{freq:.4f}",
+                category,
+                desc,
+                model_type,
+                notes or ''
+            ])
+
+    print(f"✅ Exported {len(curated):,} curated forgotten words")
+
+    conn.close()
+
+    print()
+    print("=" * 70)
+    print("✅ CURATION COMPLETE")
+    print("=" * 70)
+    print()
+    print(f"Output file: {output_csv}")
+    print()
+    print("These are high-quality forgotten word candidates with:")
+    print("  - Meaningful linguistic descriptions")
+    print("  - Traditional Romanian vocabulary")
+    print("  - Low frequency in modern usage")
+    print()
+
+if __name__ == "__main__":
+    create_curated_list(DB_PATH, OUTPUT_CSV)

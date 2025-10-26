@@ -564,13 +564,11 @@ word,definition,rarity_score,last_common_decade,category,revival_potential
 
 ### C. External Resources
 
-- DEX Online API: https://dexonline.ro/api
+- DEX Online: https://wiki.dexonline.ro/wiki/Informa%C8%9Bii#Desc%C4%83rcare ; https://github.com/dexonline/dexonline/wiki/Database-Schema
 - Romanian WordNet: https://github.com/dumitrescustefan/RoWordNet
 - Romanian NLP Tools: https://github.com/nlp-unibuc
 - CoRoLa Corpus: http://corola.racai.ro
 
-
----
 
  
 ---
@@ -695,9 +693,8 @@ Historical Spelling:
 1. Start with OSCAR + Romanian Wikipedia
     - These are easiest to access and process
     - Good coverage of modern Romanian
-2. Use DEX Online API
-    - They have a public API
-    - Can filter by markers like "învechit" (archaic), "regional", "rar" (rare)
+2. Use DEX Online dump
+    - Can filter by markers like "învechit" (archaic), "regional", "rar" (rare) ?
 3. Initial Test
     - Remove wordfreq words from DEX
     - Check remaining words against OSCAR

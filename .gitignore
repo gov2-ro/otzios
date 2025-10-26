@@ -1,0 +1,20 @@
+data/*
+/tmp
+/data/*
+*.code-workspace
+*/_obsolete
+*/*.log
+*.log
+*/data/*
+_obsolete
+
+CLAUDE.md
+.vscode/*
+.claude/*
+.github/*
+.mcp.json
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
