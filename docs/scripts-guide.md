@@ -9,15 +9,24 @@ Complete documentation for all scripts in the Romanian Forgotten Words project.
 The project uses a multi-stage pipeline to identify forgotten Romanian words:
 
 ```
+Phase 1: Dictionary Analysis
 Raw MySQL Dump → Sample DB → SQLite Conversion → Analysis → Curated List
+
+Phase 2: Corpus Validation
+Wikipedia + OSCAR → Tokenization → Frequency Counting → Validation → Final List
 ```
 
-**Scripts execution order:**
+**Phase 1 Scripts (Dictionary Analysis):**
 1. `create_sample_db.py` - Create manageable sample (optional but recommended)
 2. `mysql_to_sqlite.py` - Convert to SQLite (alternative approach)
 3. `extract_lexemes.py` - Extract lexeme data to CSV/SQLite (recommended)
 4. `analyze_forgotten_words.py` - Generate initial analysis
 5. `create_curated_list.py` - Create final curated list
+
+**Phase 2 Scripts (Corpus Validation):**
+6. `download_wikipedia_ro.py` - Download Wikipedia Romanian dataset
+7. `process_corpus.py` - Count word occurrences in corpora ⭐
+8. `validate_forgotten_words.py` - Cross-reference and validate
 
 **Utility scripts:**
 - `explore_dex.py` - Database structure documentation (reference only)
@@ -332,13 +341,259 @@ jălitor,jalitor,0.0700,very_rare,adj./s.m.,,
 - When you need the highest quality forgotten words list
 - For publication, research, or presentation
 
-**This is the primary output of the MVP!**
+**This is the primary output of Phase 1!**
+
+---
+
+## Phase 2 Scripts Documentation
+
+### 7. `download_wikipedia_ro.py`
+
+**Purpose**: Download Romanian Wikipedia dataset from HuggingFace.
+
+**Input**: None (downloads from internet)
+
+**Output**:
+- Wikipedia Romanian dataset cached in `~/.cache/huggingface/datasets/`
+- Size: ~1.2-1.5 GB
+
+**Usage**:
+```bash
+source ~/devbox/envs/otzios/bin/activate
+python download_wikipedia_ro.py
+```
+
+**What it does**:
+1. Connects to HuggingFace datasets
+2. Downloads Wikipedia Romanian (20220301.ro snapshot)
+3. Caches dataset locally
+4. Shows sample article
+5. Reports dataset statistics
+
+**When to use**:
+- Before running `process_corpus.py`
+- First time setup for Phase 2
+- Optional: `process_corpus.py` can auto-download
+
+**Download time**: 5-15 minutes (depending on connection speed)
+
+**Storage**: ~1.5 GB in HuggingFace cache
+
+**Note**: This is optional - `process_corpus.py` will auto-download if needed.
+
+---
+
+### 8. `process_corpus.py` ⭐ **Phase 2 Main Script**
+
+**Purpose**: Count occurrences of forgotten words in Romanian text corpora.
+
+**Input**:
+- `data/processed/forgotten_words_curated.csv` (1,884 words from Phase 1)
+- Wikipedia Romanian dataset (HuggingFace)
+- OSCAR Romanian dataset (streaming from HuggingFace)
+
+**Output**:
+- `data/processed/corpus_frequencies.db` (SQLite database ~100 MB)
+- Progress logs and statistics
+
+**Usage**:
+```bash
+source ~/devbox/envs/otzios/bin/activate
+
+# Test mode: 1000 articles only (fast, for testing)
+python process_corpus.py --test
+
+# Sample mode: 50k Wikipedia + 50k OSCAR
+python process_corpus.py --sample
+
+# Full mode: All Wikipedia + 250k OSCAR (recommended)
+python process_corpus.py --full
+
+# Process only Wikipedia (skip OSCAR)
+python process_corpus.py --full --wikipedia-only
+
+# Process only OSCAR (skip Wikipedia)
+python process_corpus.py --full --oscar-only
+```
+
+**What it does**:
+1. **Loads forgotten words** from curated CSV (1,884 words)
+2. **Creates fast lookup set** for O(1) token checking
+3. **Streams Wikipedia Romanian**:
+   - Tokenizes each article
+   - Normalizes Romanian text (handles diacritics)
+   - Counts word occurrences
+   - Tracks document frequency
+4. **Streams OSCAR Romanian** (web corpus):
+   - Samples documents without full download
+   - Same tokenization and counting
+5. **Stores results** in SQLite database
+6. **Shows top results** and statistics
+
+**Processing modes**:
+
+| Mode | Wikipedia | OSCAR | Time | Purpose |
+|------|-----------|-------|------|---------|
+| `--test` | 1,000 articles | 1,000 docs | ~2-5 min | Quick test |
+| `--sample` | 50,000 articles | 50,000 docs | ~30 min | Representative sample |
+| `--full` | All (~500k) | 250,000 docs | ~2-3 hours | Complete analysis |
+
+**Performance**:
+- Wikipedia: ~100-200 articles/sec
+- OSCAR: ~50-100 docs/sec
+- Memory usage: <1 GB RAM
+- Storage: ~100 MB database + ~3-5 GB HuggingFace cache
+
+**Romanian text normalization**:
+```python
+# Handles:
+- Diacritics: preserves ă, â, î, ș, ț
+- Legacy diacritics: converts ş→ș, ţ→ț
+- Case: lowercase normalization
+- Unicode: NFC normalization
+- Tokenization: splits on whitespace/punctuation
+```
+
+**Database schema created**:
+```sql
+corpus_word_frequency (
+    word, corpus_name,
+    occurrence_count, document_count,
+    last_updated
+)
+
+processing_stats (
+    corpus_name, documents_processed,
+    tokens_processed, processing_time
+)
+```
+
+**Example output**:
+```
+Processing Wikipedia Romanian
+✅ Wikipedia processing complete!
+   Articles processed: 500,234
+   Total tokens: 245,823,156
+   Processing time: 2,521.3 seconds
+   Rate: 198.5 articles/sec
+
+Processing OSCAR Romanian (Streaming Sample)
+✅ OSCAR processing complete!
+   Documents processed: 250,000
+   Total tokens: 189,456,823
+   Processing time: 3,128.7 seconds
+   Rate: 79.9 docs/sec
+
+Top 20 Forgotten Words Found in Corpora:
+----------------------------------------------------------------
+Word                           Occurrences     Documents
+----------------------------------------------------------------
+celadon                                 234           156
+comptabil                               189           142
+contribuitor                            167           128
+...
+```
+
+**When to use**:
+- **After Phase 1** (after `create_curated_list.py`)
+- **Before validation** (before `validate_forgotten_words.py`)
+- Use `--test` first to verify everything works
+- Use `--full` for final results
+
+**Resume capability**: The script commits to database every 1000-5000 documents, so you can safely interrupt and resume.
+
+---
+
+### 9. `validate_forgotten_words.py`
+
+**Purpose**: Cross-reference DEX frequency with corpus frequency to validate forgotten words.
+
+**Input**:
+- `data/processed/lexemes.db` (DEX frequency data)
+- `data/processed/corpus_frequencies.db` (corpus counts from `process_corpus.py`)
+
+**Output**:
+- `data/processed/forgotten_words_validated.csv` ⭐ **FINAL VALIDATED LIST**
+- `data/processed/validation_report.txt` (detailed analysis)
+- `data/processed/false_positives.csv` (words to remove)
+
+**Usage**:
+```bash
+source ~/devbox/envs/otzios/bin/activate
+python validate_forgotten_words.py
+```
+
+**What it does**:
+1. **Loads DEX frequency data** for all candidate words
+2. **Loads corpus frequency data** from Wikipedia + OSCAR
+3. **Calculates frequency per million words** for normalization
+4. **Determines validation status** for each word:
+   - **confirmed_forgotten**: < 0.1 per million (very rare)
+   - **likely_forgotten**: < 1.0 per million (rare)
+   - **uncommon**: < 10.0 per million (somewhat rare)
+   - **questionable**: < 50.0 per million (not that rare)
+   - **false_positive**: >= 50.0 per million (actually common!)
+5. **Calculates confidence scores** (0-1 scale)
+6. **Generates validation report** with statistics
+7. **Exports validated list** and false positives
+
+**Validation logic**:
+```python
+# Factors considered:
+- DEX frequency (dictionary usage)
+- Corpus occurrences (real-world usage)
+- Document frequency (spread across texts)
+- Frequency per million words (normalized)
+
+# Confidence score (0-1):
+confidence = (
+    dex_score * 0.3 +       # Low DEX freq is good
+    corpus_score * 0.5 +     # Low corpus freq confirms it
+    doc_score * 0.2          # Appearing in few docs is better
+)
+```
+
+**Expected results** (estimates):
+
+From 1,884 candidates:
+- **Confirmed forgotten**: 800-1,000 words (< 0.1 per million)
+- **Likely forgotten**: 400-600 words (< 1.0 per million)
+- **Uncommon**: 200-300 words (< 10.0 per million)
+- **Questionable**: 100-200 words (need manual review)
+- **False positives**: 50-150 words (remove from list)
+
+**Total validated**: ~1,400-1,900 words
+
+**Output format (CSV)**:
+```csv
+word,dex_frequency,description,corpus_occurrences,corpus_documents,frequency_per_million,validation_status,confidence_score,wikipedia_count,oscar_count
+bucle,0.0300,adj.,0,0,0.000000,confirmed_forgotten,0.985,0,0
+jălitor,0.0700,adj./s.m.,1,1,0.002341,confirmed_forgotten,0.912,0,1
+griere,0.3000,s.m.,5,3,0.011701,likely_forgotten,0.805,2,3
+...
+```
+
+**Validation report includes**:
+- Corpus processing statistics
+- Validation category breakdown
+- Top 30 confirmed forgotten words (zero occurrences)
+- Top 20 false positives (actually common)
+- Confidence score distribution
+
+**When to use**:
+- **After `process_corpus.py`** completes
+- Final step of Phase 2
+- To generate the definitive validated list
+
+**Processing time**: 2-5 minutes
+
+**This produces the final, validated forgotten words list!**
 
 ---
 
 ## Complete Workflow
 
-### Quick Start (Recommended Path)
+### Phase 1: Dictionary Analysis (Recommended Path)
 
 ```bash
 # 1. Activate virtual environment
@@ -353,9 +608,32 @@ python extract_lexemes.py
 # 4. Generate analysis
 python analyze_forgotten_words.py
 
-# 5. Create curated list (FINAL OUTPUT)
+# 5. Create curated list
 python create_curated_list.py
 ```
+
+**Result**: `data/processed/forgotten_words_curated.csv` (1,884 candidates)
+
+### Phase 2: Corpus Validation (NEW!)
+
+```bash
+# Activate virtual environment
+source ~/devbox/envs/otzios/bin/activate
+
+# 1. (Optional) Download Wikipedia dataset ahead of time
+python download_wikipedia_ro.py
+
+# 2. Test processing with small sample (recommended first step)
+python process_corpus.py --test
+
+# 3. Run full corpus processing (2-3 hours)
+python process_corpus.py --full
+
+# 4. Validate forgotten words against corpus data
+python validate_forgotten_words.py
+```
+
+**Result**: `data/processed/forgotten_words_validated.csv` (~1,400-1,900 validated words)
 
 ### Full Database Path (Alternative)
 
@@ -389,17 +667,25 @@ python create_curated_list.py
 | `lexemes.db` | 26 MB | Lexeme SQLite database | `extract_lexemes.py` |
 | `forgotten_words_v1.csv` | Large | Raw unfiltered list (187k) | `analyze_forgotten_words.py` |
 | `statistics.txt` | Small | Summary statistics | `analyze_forgotten_words.py` |
-| `forgotten_words_curated.csv` | Small | **FINAL LIST** (1,884 words) ⭐ | `create_curated_list.py` |
+| `forgotten_words_curated.csv` | Small | Phase 1 output (1,884 candidates) | `create_curated_list.py` |
+| `corpus_frequencies.db` | ~100 MB | Corpus word frequencies | `process_corpus.py` |
+| `forgotten_words_validated.csv` | Small | **FINAL VALIDATED LIST** ⭐ | `validate_forgotten_words.py` |
+| `validation_report.txt` | Small | Validation analysis | `validate_forgotten_words.py` |
+| `false_positives.csv` | Small | Words to remove | `validate_forgotten_words.py` |
 
-### Key Output
+### Key Outputs
 
-**The primary output is**: `data/processed/forgotten_words_curated.csv`
-
-This contains 1,884 high-quality forgotten Romanian words with:
-- Low frequency scores (< 0.60)
-- Meaningful linguistic descriptions
-- Filtered to remove proper nouns and technical terms
+**Phase 1 Output**: `data/processed/forgotten_words_curated.csv`
+- 1,884 forgotten word candidates
+- Based on DEX frequency data only
+- Filtered for quality (no proper nouns, technical terms)
 - Categorized by rarity level
+
+**Phase 2 Output** (FINAL): `data/processed/forgotten_words_validated.csv`
+- ~1,400-1,900 validated forgotten words
+- Cross-referenced with modern Romanian corpora
+- Includes corpus frequency data and confidence scores
+- False positives removed
 
 ---
 

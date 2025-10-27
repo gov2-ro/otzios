@@ -2,7 +2,7 @@
 
 A computational linguistics tool to identify "forgotten" Romanian words - terms that exist in official dictionaries but have fallen out of modern usage.
 
-**Status**: ✅ MVP Complete - 1,884 high-quality forgotten words identified
+**Status**: 🚧 Phase 2 In Progress - Corpus Validation Ready
 
 ## What It Does
 
@@ -18,9 +18,12 @@ A computational linguistics tool to identify "forgotten" Romanian words - terms 
 ```bash
 # Activate virtual environment
 source ~/devbox/envs/otzios/bin/activate
+
+# Install required packages for Phase 2
+pip install datasets
 ```
 
-### Basic Usage
+### Phase 1: Dictionary Analysis
 
 ```bash
 # 1. Create sample database (reduces 1.2GB to 285MB)
@@ -36,13 +39,22 @@ python analyze_forgotten_words.py
 python create_curated_list.py
 ```
 
-### Output
+**Output**: `forgotten_words_curated.csv` (1,884 candidates)
 
-The main output is `data/processed/forgotten_words_curated.csv` containing:
-- **1,884 high-quality forgotten Romanian words**
-- Frequency scores (0.01-0.60 range)
-- Rarity categories (very_rare, rare, uncommon)
-- Linguistic descriptions (part of speech, markers)
+### Phase 2: Corpus Validation (NEW!)
+
+```bash
+# 1. Test with small sample (2-5 min)
+python process_corpus.py --test
+
+# 2. Process full corpora (2-3 hours)
+python process_corpus.py --full
+
+# 3. Validate words
+python validate_forgotten_words.py
+```
+
+**Output**: `forgotten_words_validated.csv` (~1,400-1,900 validated words)
 
 ## Project Structure
 
