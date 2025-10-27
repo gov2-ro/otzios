@@ -76,6 +76,7 @@ otios/
 - **[docs/romanian-forgotten-words-spec.md](docs/romanian-forgotten-words-spec.md)** - Technical specification
 - **[docs/results-summary.md](docs/results-summary.md)** - Analysis results and findings
 - **[docs/oțios.docx.md](docs/oțios.docx.md)** - Initial brainstorming document
+- more docs: PHASE2_COMPLETE.md; phase2-test-results.md; scripts-guide.md
 
 ## Sample Results
 
@@ -166,6 +167,11 @@ See [docs/phase2-test-results.md](docs/phase2-test-results.md) for details.
 - [ ] Crowdsourced validation platform
 - [ ] Word-of-the-day feature
 - [ ] Educational tools and quizzes
+
+### Further enhancements, marketing
+- tools: convert texts to archaic form - less used words. with a coeficient of uniqueness (bigger number, harder words)
+- filter out uninteresting words. Too domain specific: medicine, biology etc
+- one word a day game? quizz, guess what it means?
 
 ## Known Issues & Limitations
 
