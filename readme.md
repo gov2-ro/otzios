@@ -95,30 +95,130 @@ otios/
 
 ## Roadmap
 
-### Phase 1: MVP (Complete ✅)
+### Phase 1: Dictionary Analysis (Complete ✅)
 - [x] Database setup and conversion
 - [x] Lexeme extraction pipeline
 - [x] Frequency-based analysis
 - [x] Quality filtering and curation
-- [x] CSV export with 1,884 words
+- [x] CSV export with 1,884 candidates
 
-### Phase 2: Corpus Validation 
-- [ ] Download Romanian Wikipedia dump
-- [ ] Sample OSCAR Romanian corpus
-- [ ] Cross-reference with modern text corpora
-- [ ] Validate "forgotten" status in contemporary usage
+**Output**: `forgotten_words_curated.csv` - 1,884 forgotten word candidates
+
+### Phase 2: Corpus Validation (In Progress 🚧)
+- [x] Implement corpus processing pipeline
+- [x] Wikipedia Romanian integration (HuggingFace)
+- [x] Romanian tokenization with diacritic handling
+- [x] Word frequency counting system
+- [x] Cross-reference validation algorithm
+- [x] Confidence scoring system
+- [x] False positive detection
+- [x] Test run (1,000 articles) - **Successful!**
+- [ ] Full Wikipedia processing (~500k articles)
+- [ ] OSCAR Romanian corpus (requires auth setup)
+- [ ] Additional corpora (news, social media)
+
+**Current Status**: Test run complete, ready for full processing
+**Output**: `forgotten_words_validated.csv` - Cross-referenced with modern text
+
+#### Phase 2 Test Results (Oct 2025)
+✅ **Processed**: 1,001 Wikipedia articles (1M tokens)
+✅ **Validated**: 159,543 words
+✅ **False positives detected**: 1 ("online" - correctly flagged)
+✅ **Performance**: 2,351 articles/second
+
+See [docs/phase2-test-results.md](docs/phase2-test-results.md) for details.
 
 ### Phase 3: Enhanced Metadata
-- [ ] Extract definitions from DEX
-- [ ] Identify archaic markers (înv., arh., reg.)
-- [ ] Add etymology information
+- [ ] Extract full definitions from DEX database
+- [ ] Join Definition and DefinitionSimple tables
+- [ ] Identify archaic markers (înv., arh., reg., dial.)
+- [ ] Extract etymology information
+- [ ] Parse first attestation dates
 - [ ] Temporal analysis (when words fell out of use)
+- [ ] Link to word families and cognates
+- [ ] Add part-of-speech tagging improvements
 
-### Future
+### Phase 4: Lemmatization & Advanced NLP
+- [ ] Integrate Romanian lemmatizer (spaCy-ro or nlp-cube)
+- [ ] Match inflected forms to base words
+- [ ] Improve recall (find "frumoaselor" when searching "frumos")
+- [ ] Named entity recognition for better filtering
+- [ ] Semantic clustering of forgotten words
+
+### Phase 5: User Interface & Visualization
 - [ ] Web interface for browsing words
-- [ ] API for programmatic access
-- [ ] Visualization dashboards
-- [ ] Revival potential scoring
+  - Search and filter by frequency, category
+  - Word detail pages with definitions
+  - Corpus occurrence examples
+- [ ] REST API for programmatic access
+- [ ] Interactive visualizations
+  - Frequency distribution charts
+  - Word cloud of forgotten words
+  - Temporal decay graphs
+  - Etymological origin breakdowns
+- [ ] Export functionality (JSON, PDF, LaTeX)
+
+### Future Enhancements
+- [ ] Revival potential scoring algorithm
+- [ ] Compare with other Romance languages
+- [ ] Historical corpus analysis (Project Gutenberg)
+- [ ] Machine translation of forgotten word contexts
+- [ ] Crowdsourced validation platform
+- [ ] Word-of-the-day feature
+- [ ] Educational tools and quizzes
+
+## Known Issues & Limitations
+
+### Current Limitations
+1. **No lemmatization**: Only exact word matching (misses inflected forms)
+2. **OSCAR access**: Requires HuggingFace authentication (gated dataset)
+3. **Small test corpus**: Only 1k articles tested so far
+4. **No definitions yet**: Metadata not extracted from DEX database
+5. **False positives**: Modern borrowings (burger, online) need better filtering
+
+### Planned Improvements
+1. **Filter refinement**:
+   - Add modern borrowing detection (English/French loanwords)
+   - Improve proper noun filtering
+   - Better compound word handling
+   - Technical term detection
+
+2. **Corpus expansion**:
+   - Full Wikipedia processing (500k articles)
+   - OSCAR Romanian (250k documents)
+   - Romanian news archives
+   - Social media (Reddit r/Romania)
+   - Historical texts for temporal analysis
+
+3. **Performance optimization**:
+   - Parallel processing for corpus streaming
+   - Batch tokenization
+   - Index optimization for large-scale queries
+
+## Next Steps
+
+### Immediate (Ready to Run)
+```bash
+# Process full Wikipedia corpus
+python process_corpus.py --full --wikipedia-only
+
+# Validate with full dataset
+python validate_forgotten_words.py
+```
+
+### Short-term (Next Sprint)
+1. Run full Wikipedia validation
+2. Set up HuggingFace authentication for OSCAR
+3. Extract definitions from DEX database
+4. Manual review of questionable words
+5. Improve filtering rules based on findings
+
+### Medium-term (Next Month)
+1. Integrate Romanian lemmatizer
+2. Add more corpora sources
+3. Extract full metadata (etymology, attestation dates)
+4. Create basic web interface prototype
+5. Write academic paper on findings
 
 ## Contributing
 

@@ -140,7 +140,13 @@ def process_wikipedia(forgotten_words, conn, limit=None, verbose=True):
         return
 
     print("Loading Wikipedia dataset...")
-    dataset = load_dataset("wikipedia", "20220301.ro", split="train")
+    # Use the newer Wikimedia/wikipedia dataset
+    try:
+        dataset = load_dataset("wikimedia/wikipedia", "20231101.ro", split="train")
+    except Exception as e:
+        print(f"⚠️  Note: Using alternative Wikipedia loading method")
+        # Fallback: try legacy format or direct download
+        dataset = load_dataset("graelo/wikipedia", "20230901.ro", split="train")
 
     if limit:
         print(f"Processing first {limit:,} articles (test mode)")
@@ -239,12 +245,20 @@ def process_oscar_sample(forgotten_words, conn, sample_size=100000, verbose=True
     print()
 
     # Stream OSCAR dataset (don't download everything)
-    dataset = load_dataset(
-        "oscar-corpus/OSCAR-2301",
-        "ro",
-        split="train",
-        streaming=True  # Streaming mode - crucial for large datasets
-    )
+    try:
+        dataset = load_dataset(
+            "oscar-corpus/OSCAR-2301",
+            "ro",
+            split="train",
+            streaming=True  # Streaming mode - crucial for large datasets
+        )
+    except Exception as e:
+        print()
+        print(f"⚠️  OSCAR dataset unavailable: {str(e)[:100]}")
+        print("   OSCAR is a gated dataset - requires HuggingFace authentication")
+        print("   Skipping OSCAR processing")
+        print()
+        return
 
     cursor = conn.cursor()
     word_counts = defaultdict(int)

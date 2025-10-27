@@ -41,9 +41,10 @@ def download_wikipedia_romanian():
 
     try:
         # Load the dataset (will download and cache)
+        # Use newer Wikimedia Wikipedia dataset
         dataset = load_dataset(
-            "wikipedia",
-            "20220301.ro",  # Romanian Wikipedia from March 2022
+            "wikimedia/wikipedia",
+            "20231101.ro",  # Romanian Wikipedia from November 2023
             split="train"
         )
 
