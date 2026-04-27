@@ -19,14 +19,21 @@ The codebase is intentionally small: 9 standalone Python scripts at the repo
 root, one shell helper, no package structure, and a single third-party
 dependency (`datasets`).
 
+For the methodological critique that sits *above* this codebase — what the
+project is actually measuring, why Wikipedia alone isn't enough, what
+"forgotten" should mean — read `docs/conceptual-roadmap.md` first, then
+`docs/corpus-options.md` for the catalogue of larger, open Romanian corpora
+that should replace the current Wikipedia-only setup.
+
 ## Repo layout
 
 ```
 otzios/
 ├── readme.md                       # User-facing overview and roadmap
 ├── CLAUDE.md                       # This file
-├── PHASE2_COMPLETE.md              # Historical: Phase 2 completion notes
-├── docs/                           # Specs, plans, results
+├── docs/                           # Specs, plans, results, conceptual notes
+│   ├── conceptual-roadmap.md       # Methodological reframings (read first)
+│   ├── corpus-options.md           # Corpus catalog beyond Wikipedia
 │   ├── romanian-forgotten-words-spec.md
 │   ├── scripts-guide.md
 │   ├── results-summary.md
@@ -34,6 +41,7 @@ otzios/
 │   ├── dex-database-analysis.md
 │   ├── phase2-corpus-validation-plan.md
 │   ├── phase2-test-results.md
+│   ├── PHASE2_COMPLETE.md          # Historical: Phase 2 completion notes
 │   └── oțios.docx.md
 │
 ├── # Phase 1: dictionary pipeline
