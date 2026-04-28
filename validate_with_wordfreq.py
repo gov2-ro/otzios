@@ -99,15 +99,19 @@ def main() -> int:
         if not reader.fieldnames or 'word' not in reader.fieldnames:
             print(f'Input has no "word" column: {args.input}', file=sys.stderr)
             return 1
-        out_fields = list(reader.fieldnames) + [
-            'lemma', 'zipf_frequency', 'is_forgotten',
-        ]
+        # Move 'word' (DEX stress-marked form, e.g. bucl'e) to the end —
+        # word_no_accent is the clean lookup key used throughout.
+        other_fields = [f for f in reader.fieldnames if f != 'word']
+        out_fields = other_fields + ['lemma', 'zipf_frequency', 'is_forgotten', 'word']
         writer = csv.DictWriter(fout, fieldnames=out_fields)
         writer.writeheader()
 
         for row in reader:
             rows_in += 1
-            word = normalize_romanian(row.get('word', ''))
+            # Prefer word_no_accent: DEX's `form` field uses apostrophes for
+            # stress markers (e.g. bucl'e) that wordfreq won't recognize.
+            raw = row.get('word_no_accent') or row.get('word', '')
+            word = normalize_romanian(raw)
             if not word:
                 continue
             lemma = lemmatize_fn(word) if lemmatize_fn else word

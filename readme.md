@@ -43,20 +43,34 @@ python create_curated_list.py
 
 **Output**: `forgotten_words_curated.csv` (1,884 candidates)
 
-### Phase 2: Corpus Validation (NEW!)
+### Phase 2a: Quick frequency screen (wordfreq)
 
 ```bash
-# 1. Test with small sample (2-5 min)
-python process_corpus.py --test
-
-# 2. Process full corpora (2-3 hours)
-python process_corpus.py --full
-
-# 3. Validate words
-python validate_forgotten_words.py
+python validate_with_wordfreq.py
 ```
 
-**Output**: `forgotten_words_validated.csv` (~1,400-1,900 validated words)
+**Output**: `forgotten_words_validated_wordfreq.csv` — 1,868 candidates with Zipf < 3.0. Note: wordfreq's Romanian coverage is binary (a word is either in its top ~1,500 or returns 0.000), so treat this as a rough first pass, not a nuanced frequency measure.
+
+### Phase 2b: Corpus validation — diachronic (recommended)
+
+Uses Wikisource RO (historical literary baseline) and CulturaX RO (modern web) to compute actual per-corpus frequencies. Designed to find words that appear in 19th-century literature but are absent from modern text.
+
+```bash
+# Test run (500 docs, ~10s)
+python process_wikisource.py --test
+
+# Full run — best done on a VPS in the background
+nohup python process_wikisource.py > wikisource.log 2>&1 &
+
+# Resume if interrupted
+python process_wikisource.py --resume
+```
+
+**Output**: `corpus_frequencies.db` (`corpus_name = 'wikisource_ro'`). CulturaX support in progress.
+
+## Data notes
+
+**Apostrophes in the `word` column** — DEX Online encodes syllable stress using apostrophes (e.g. `bucl'e`, `băt'ârn`). These are not real Romanian words; the clean form is in `word_no_accent`. The validated output from `validate_with_wordfreq.py` uses `word_no_accent` for all lookups and moves the raw `word` column to the end of the CSV for reference.
 
 ## Project Structure
 
