@@ -8,6 +8,15 @@ what's available, why it matters, and what to swap in.
 Companion to `conceptual-roadmap.md` §3 (diachronic) and §5 (statistical
 power).
 
+> **Pragmatic shortcut.** For the project's stated goal — produce a list of
+> dictionary words not in common modern use — most of this catalog is
+> overkill. `wordfreq` already aggregates 8 corpora (Wikipedia, OpenSubtitles,
+> SUBTLEX, NewsCrawl, GlobalVoices, Google Books, OSCAR, Twitter) per
+> language and ships frequency tables for Romanian. Read
+> `docs/wordfreq-recipe.md` first; come back here only if its Zipf-3 floor
+> proves too coarse, or if you want to chase the more ambitious methodology
+> in `docs/methodology-v2.md`.
+
 ## Why diversify
 
 Wikipedia RO is **~80M tokens**, single-register (encyclopedic-formal),

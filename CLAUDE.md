@@ -231,6 +231,7 @@ Open items, ranked by impact-per-effort. Effort is XS/S/M/L (rough).
 
 | #   | Enhancement                                                              | Effort | Impact |
 | --- | ------------------------------------------------------------------------ | ------ | ------ |
+| 0   | Replace Phase 2 with `wordfreq` + `simplemma` lookup as the primary filter; demote custom corpus processing to a reranker for below-Zipf-3 candidates only. See `docs/wordfreq-recipe.md`. Sidesteps #1 and most of #6/#8/#9. | XS | High |
 | 1   | Fix the Phase 2 candidate-set mismatch (see "Known issues" #1)           | S      | High   |
 | 2   | Add `requirements.txt` (or `pyproject.toml` with PEP 621 metadata)       | XS     | Med    |
 | 3   | Pick one MySQL→SQLite path; archive `convert_to_sqlite.sh` + `mysql_to_sqlite.py` | S | Med |
