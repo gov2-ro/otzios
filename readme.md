@@ -1,5 +1,7 @@
 # Oțios - Romanian Forgotten Words Finder
 
+Vezi și: [initial specs](docs/oțios-init-specs.docx.md) / [live](https://docs.google.com/document/d/1FTMIONmSylQDaV4YxFprd8jyHxREXpcL/) (google doc) 
+
 A computational linguistics tool to identify "forgotten" Romanian words - terms that exist in official dictionaries but have fallen out of modern usage.
 
 **Status**: 🚧 Phase 2 In Progress - Corpus Validation Ready
@@ -96,6 +98,11 @@ otios/
 
 ## Roadmap
 
+### misc notes / tasks
+
+- [ ] fix mysql import - try a llm assisted import
+- [ ] create another sample db with max 3 inserts per table - for analytics
+
 ### Phase 1: Dictionary Analysis (Complete ✅)
 - [x] Database setup and conversion
 - [x] Lexeme extraction pipeline
@@ -167,6 +174,7 @@ See [docs/phase2-test-results.md](docs/phase2-test-results.md) for details.
 - [ ] Crowdsourced validation platform
 - [ ] Word-of-the-day feature
 - [ ] Educational tools and quizzes
+- [ ] Create a reverse, browse news and r/romania and find new words, used more than 3? times that are not in dictionary -> alternative dictionary
 
 ### Further enhancements, marketing
 - tools: convert texts to archaic form - less used words. with a coeficient of uniqueness (bigger number, harder words)
