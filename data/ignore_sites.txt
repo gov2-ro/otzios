@@ -1,0 +1,22 @@
+# Domains to exclude from Google search results.
+# One domain per line. Lines starting with # are ignored.
+# The script also has a DEFAULT_IGNORE_SITES list built in —
+# entries here are added on top of that list.
+#
+# Add any domain that keeps appearing in results but isn't real usage
+# (e.g. aggregator sites, word-game sites, translation engines, etc.)
+
+# --- Romanian dictionary / reference sites ---
+# (These are also in DEFAULT_IGNORE_SITES but listed here for visibility)
+# dexonline.ro
+# dictionar.ro
+# dictionare.ro
+# sinonime.ro
+# sinonim.ro
+# antonime.ro
+# definitii.ro
+# webdex.ro
+# dictionardeonline.com
+# conjugare.ro
+
+# --- Add custom exclusions below ---

@@ -1,5 +1,9 @@
 # **Oțios**
 
+[2025.11+](#2025.11+)
+
+[Initial / previous notes](#initial-/-previous-notes)
+
 [Roadmap](#roadmap)
 
 [Wikipedia stats](#wikipedia-stats)
@@ -8,7 +12,43 @@
 
 [wikipedia-word-frequency](#wikipedia-word-frequency)
 
-[Misc reference](#misc-reference)  
+[Misc reference](#misc-reference)
+
+# 2025.11+ {#2025.11+}
+
+[gh:pax/otzios](https://github.com/pax/otzios) 
+
+get lingvist, publish paper
+
+tools, quizzes, complică un text cu arhaisme/regionalisme 
+
+*skibidi*: Create a reverse, browse news and r/romania and find new words, used more than 3? times that are not in dictionary \-\> alternative dictionary
+
+Newsletter..choose frequency 
+
+Email, wa.. but somewhat randomly 
+
+Translator: make it weird
+
+make it international? –with language ambassadors
+
+publish package, reverse of wordfreq
+
+ex:
+
+- [https://anidescoala.ro/educatie/gramatica/stii-sa-scrii/otios/](https://anidescoala.ro/educatie/gramatica/stii-sa-scrii/otios/) ([web archive](https://web.archive.org/web/20240305052524/https://anidescoala.ro/educatie/gramatica/stii-sa-scrii/otios/))  
+- [Ce produc universitatile romanesti \- Contributors](https://www.contributors.ro/ce-produc-universitatile-romanesti/) ([web archive](https://web.archive.org/web/20210617224919/https://www.contributors.ro/ce-produc-universitatile-romanesti/))  
+- [https://www.tvr.ro/vedete/mirela-nagat-e-nevoie-sa-facem-front-comun-ca-sa-popularizam-valorile-sa-propunem-modele-sa-cream-inspira-ie\_52919.html](https://www.tvr.ro/vedete/mirela-nagat-e-nevoie-sa-facem-front-comun-ca-sa-popularizam-valorile-sa-propunem-modele-sa-cream-inspira-ie_52919.html) ([web archive](https://web.archive.org/web/20260116090921/https://www.tvr.ro/vedete/mirela-nagat-e-nevoie-sa-facem-front-comun-ca-sa-popularizam-valorile-sa-propunem-modele-sa-cream-inspira-ie_52919.html))  
+- [fb search: oțios](https://web.facebook.com/search/top?q=o%C8%9Bios&filters=eyJycF9hdXRob3I6MCI6IntcIm5hbWVcIjpcIm1lcmdlZF9wdWJsaWNfcG9zdHNcIixcImFyZ3NcIjpcIlwifSJ9)
+
+see also: [google](#google-search!)
+
+add project to perma.cc
+
+---
+
+# Initial / previous notes {#initial-/-previous-notes}
+
 caută cuvinte nefolosite 
 
 get cuvinte rare
@@ -19,7 +59,11 @@ din dexonline elimină vocabularul de bază
 
 listă de articole, last seen
 
-\<term\> \-sinonim \-dictionar \-definitie \-anagrame \-rimeaza
+### Google search\! {#google-search!}
+
+check with Google API \- note exceptions, articles with those terms – search for and link web archive version\! 
+
+\<term\> site:.ro \-sinonim \-dictionar \-definitie \-anagrame \-rimeaza
 
 \&lr=lang\_ro
 

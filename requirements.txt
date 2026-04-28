@@ -4,3 +4,6 @@ datasets
 # Pragmatic alternative — see docs/wordfreq-recipe.md
 wordfreq
 simplemma
+
+# Phase 3 web validation — see search_wild.py
+google-api-python-client
