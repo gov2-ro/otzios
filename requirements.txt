@@ -1,0 +1,6 @@
+# Phase 2 corpus pipeline (legacy)
+datasets
+
+# Pragmatic alternative — see docs/wordfreq-recipe.md
+wordfreq
+simplemma
