@@ -30,7 +30,7 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 Ranked by impact-per-effort. Effort: XS / S / M / L.
 
-- [ ] **#0 — [S, High] Full Wikisource + CulturaX corpus runs** — `process_wikisource.py` is written and tested (500 docs, 7s). Run full Wikisource on VPS (`nohup python process_wikisource.py > wikisource.log 2>&1 &`), then build an equivalent `process_culturax.py` for CulturaX RO. Once both are in `corpus_frequencies.db`, build the diachronic comparison (`log(freq_historical / freq_modern)`) in a new `validate_diachronic.py`. See `docs/corpus-options.md`.
+- [ ] **#0 — [S, High] Full Wikisource + CulturaX corpus runs** — `process_wikisource.py` done (14.3M tokens in DB). `process_culturax.py` written; needs full run on VPS (`nohup python process_culturax.py > culturax.log 2>&1 &`). `validate_diachronic.py` written — computes log2(hist_ppm / modern_ppm) per word, outputs `forgotten_words_diachronic.csv` with verdict (extinct/declining/stable/emerging). Meaningful results require both corpus runs to be complete. See `docs/corpus-options.md`.
 
 - [x] **#0 (old) — wordfreq as primary filter** — tried and found too coarse for Romanian: signal is binary (0.000 or ≥ 3.0, nothing in between). `validate_with_wordfreq.py` remains useful as a rough first pass but cannot replace corpus-based validation. Superseded by Wikisource/CulturaX approach above.
 
