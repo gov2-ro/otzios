@@ -17,14 +17,27 @@ Output: data/processed/corpus_frequencies.db (same schema as process_wikisource.
 """
 
 import argparse
+import gc
 import json
 import re
+import signal
 import sqlite3
+import sys
 import time
 import unicodedata
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
+
+_progress = {'docs_done': 0, 'skip': 0}
+
+def _handle_signal(sig, frame):
+    total = _progress['skip'] + _progress['docs_done']
+    print(f'\n[{datetime.now()}] Received signal {sig} — exiting at doc {total:,}', flush=True)
+    sys.exit(1)
+
+signal.signal(signal.SIGTERM, _handle_signal)
+signal.signal(signal.SIGHUP, _handle_signal)
 
 LEXEMES_DB   = Path('data/processed/lexemes.db')
 FREQ_DB      = Path('data/processed/corpus_frequencies.db')
@@ -105,14 +118,15 @@ def flush(conn: sqlite3.Connection, word_counts: dict, doc_counts: dict) -> None
     doc_counts.clear()
 
 
-def save_checkpoint(docs_done: int) -> None:
-    CHECKPOINT.write_text(json.dumps({'docs_processed': docs_done}))
+def save_checkpoint(docs_done: int, tokens_done: int) -> None:
+    CHECKPOINT.write_text(json.dumps({'docs_processed': docs_done, 'tokens_processed': tokens_done}))
 
 
-def load_checkpoint() -> int:
+def load_checkpoint() -> tuple[int, int]:
     if CHECKPOINT.exists():
-        return json.loads(CHECKPOINT.read_text()).get('docs_processed', 0)
-    return 0
+        data = json.loads(CHECKPOINT.read_text())
+        return data.get('docs_processed', 0), data.get('tokens_processed', 0)
+    return 0, 0
 
 
 def main() -> int:
@@ -123,7 +137,10 @@ def main() -> int:
     args = parser.parse_args()
 
     limit  = args.limit or (1000 if args.test else None)
-    skip   = load_checkpoint() if args.resume else 0
+    if args.resume:
+        skip, prev_tokens = load_checkpoint()
+    else:
+        skip, prev_tokens = 0, 0
 
     if args.resume and skip:
         print(f'Resuming from document {skip:,}')
@@ -153,56 +170,69 @@ def main() -> int:
     total_tokens = 0
     docs_done    = 0
     start        = time.time()
+    _progress['skip'] = skip
 
     mode = "test (1000 docs)" if args.test else (f"limit {limit:,} docs" if limit else "full")
     print(f'Processing {mode}...\n')
 
-    for idx, doc in enumerate(ds):
-        if skip and idx < skip:
-            if idx % 50000 == 0:
-                print(f'  Skipping {idx:,}/{skip:,}...', end='\r')
-            continue
+    if skip:
+        print(f'  Fast-forwarding past {skip:,} documents via ds.skip()...')
+        ds = ds.skip(skip)
+        gc.collect()
+        print(f'  Resuming at document {skip:,}\n')
 
-        if limit and docs_done >= limit:
-            break
+    try:
+        for doc in ds:
+            if limit and docs_done >= limit:
+                break
 
-        tokens = tokenize(doc.get('text', ''))
-        total_tokens += len(tokens)
+            tokens = tokenize(doc.get('text', ''))
+            total_tokens += len(tokens)
 
-        doc_words: set = set()
-        for tok in tokens:
-            if tok in dex_words:
-                word_counts[tok] += 1
-                doc_words.add(tok)
-        for w in doc_words:
-            doc_counts[w] += 1
+            doc_words: set = set()
+            for tok in tokens:
+                if tok in dex_words:
+                    word_counts[tok] += 1
+                    doc_words.add(tok)
+            for w in doc_words:
+                doc_counts[w] += 1
 
-        docs_done += 1
+            docs_done += 1
+            _progress['docs_done'] = docs_done
 
-        if docs_done % COMMIT_EVERY == 0:
-            flush(conn, word_counts, doc_counts)
-            save_checkpoint(skip + docs_done)
-            elapsed = time.time() - start
-            rate = docs_done / elapsed
-            print(f'  {docs_done:,} docs | {total_tokens:,} tokens | '
-                  f'{rate:.1f} docs/s | {len(word_counts)} dex matches')
+            if docs_done % COMMIT_EVERY == 0:
+                flush(conn, word_counts, doc_counts)
+                save_checkpoint(skip + docs_done, prev_tokens + total_tokens)
+                elapsed = time.time() - start
+                rate = docs_done / elapsed
+                print(f'  {docs_done:,} docs | {total_tokens:,} tokens | '
+                      f'{rate:.1f} docs/s', flush=True)
+    except Exception as e:
+        print(f'\n[{datetime.now()}] ERROR after {skip + docs_done:,} docs: {e}', flush=True)
+        import traceback
+        traceback.print_exc()
+        flush(conn, word_counts, doc_counts)
+        save_checkpoint(skip + docs_done, prev_tokens + total_tokens)
+        raise
 
     flush(conn, word_counts, doc_counts)
-    save_checkpoint(skip + docs_done)
+    save_checkpoint(skip + docs_done, prev_tokens + total_tokens)
 
     elapsed = time.time() - start
+    total_docs_all  = skip + docs_done
+    total_tokens_all = prev_tokens + total_tokens
     conn.execute("""
         INSERT INTO processing_stats
             (corpus_name, documents_processed, tokens_processed, unique_words_found,
              processing_time_seconds, completed_at, status)
         VALUES (?, ?, ?, ?, ?, ?, 'completed')
-    """, (CORPUS_NAME, docs_done, total_tokens,
+    """, (CORPUS_NAME, total_docs_all, total_tokens_all,
           conn.execute("SELECT COUNT(DISTINCT word) FROM corpus_word_frequency WHERE corpus_name=?",
                        (CORPUS_NAME,)).fetchone()[0],
           elapsed, datetime.now()))
     conn.commit()
 
-    print(f'\nDone: {docs_done:,} docs, {total_tokens:,} tokens in {elapsed:.0f}s ({elapsed/3600:.1f}h)')
+    print(f'\nDone: {total_docs_all:,} docs, {total_tokens_all:,} tokens in {elapsed:.0f}s ({elapsed/3600:.1f}h)')
     print(f'Results in {FREQ_DB}  (corpus_name = {CORPUS_NAME!r})')
 
     # Quick summary

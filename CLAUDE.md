@@ -14,10 +14,21 @@ Oțios identifies "forgotten" Romanian words: terms in DEX Online (the official 
 
 For the methodological critique (what "forgotten" should mean, corpus options): `docs/conceptual-roadmap.md` first, then `docs/corpus-options.md`.
 
+## Logs
+
+Long-running scripts are logged to `~/g2-dev/logs/`. PIDs are saved as `<script-name>.pid` in the same directory. Check there when verifying background job status.
+
 ## Environment setup
 
+The shared venv lives at `~/g2-dev/monitorulpreturilor/venv` — activate it before running any script:
+
 ```bash
-python -m venv .venv && source .venv/bin/activate
+source ~/g2-dev/monitorulpreturilor/venv/bin/activate
+```
+
+To set up from scratch:
+```bash
+python -m venv ~/g2-dev/monitorulpreturilor/venv && source ~/g2-dev/monitorulpreturilor/venv/bin/activate
 pip install -r requirements.txt
 ```
 
