@@ -6,4 +6,6 @@ wordfreq
 simplemma
 
 # Phase 3 web validation — see search_wild.py
+# ddgs is the default provider (no API key); google-api-python-client is used by --provider google
+ddgs
 google-api-python-client

@@ -48,12 +48,16 @@ pip install -r requirements.txt
 
 OSCAR-2301 is gated on HuggingFace — requires `huggingface-cli login` plus accepted terms. Without it, `process_corpus.py` silently skips OSCAR (`process_corpus.py:255-261`).
 
-`search_wild.py` (Phase 3) needs two env vars:
+`search_wild.py` (Phase 3) ships two pluggable providers selected via `--provider`:
+
+- `ddg` (default) — DuckDuckGo via the `ddgs` library. No API key. Noisy on rare archaic words (cross-language fuzzy matches), useful for prototyping.
+- `google` — Google Custom Search JSON API. Needs two env vars; cleaner results.
+
 ```bash
-export GOOGLE_API_KEY="AIza..."    # from Google Cloud Console → APIs & Services → Credentials
-export GOOGLE_CSE_ID="017576..."   # from programmablesearchengine.google.com (set "Search entire web")
+export GOOGLE_API_KEY="AIza..."    # Google Cloud Console → APIs & Services → Credentials
+export GOOGLE_CSE_ID="017576..."   # programmablesearchengine.google.com (set "Search entire web")
 ```
-Free tier: 100 queries/day. Use `--limit 100` and re-run daily; checkpoint handles resume automatically.
+Google free tier: 100 queries/day. Use `--limit 100` and re-run daily; checkpoint handles resume automatically.
 
 ## End-to-end pipeline
 
@@ -74,11 +78,14 @@ Output: `data/processed/forgotten_words_validated_wordfreq.csv` (adds `lemma`, `
 
 **Phase 3 — web validation:**
 ```bash
-# Requires GOOGLE_API_KEY and GOOGLE_CSE_ID env vars
-python search_wild.py --dry-run --limit 5   # preview queries, no API calls
-python search_wild.py --limit 100            # live; resumable; 100/day = free-tier quota
+# Default provider is DDG (no env vars needed) — good for prototyping
+python search_wild.py --dry-run --limit 5
+python search_wild.py --provider ddg --limit 50 --delay 3
+
+# Google CSE — cleaner results, needs env vars; 100/day free-tier quota
+python search_wild.py --provider google --limit 100
 ```
-Output: `data/processed/forgotten_words_web_validated.csv` (adds `google_total_results`, `in_wild`, `web_score`, `top_url`, `last_seen_approx`). `web_score` buckets: `truly_extinct` (0 results) / `nearly_extinct` (1–9) / `marginal` (10–99) / `alive_rare` (100+). See setup note below.
+Output: `data/processed/forgotten_words_web_validated.csv` (adds `total_results`, `in_wild`, `web_score`, `top_url`, `last_seen_approx`, `provider`). `web_score` buckets differ by provider — Google: 0 / <10 / <100 / 100+; DDG: 0 / <3 / <10 / 10+ (capped at 30).
 
 **Phase 2 — legacy path (has bugs, see BACKLOG):**
 ```bash
