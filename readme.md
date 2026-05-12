@@ -56,17 +56,22 @@ python validate_with_wordfreq.py
 Uses Wikisource RO (historical literary baseline) and CulturaX RO (modern web) to compute actual per-corpus frequencies. Designed to find words that appear in 19th-century literature but are absent from modern text.
 
 ```bash
-# Test run (500 docs, ~10s)
+# Wikisource — test run (500 docs, ~10s)
 python process_wikisource.py --test
 
-# Full run — best done on a VPS in the background
+# Wikisource — full run (best on a VPS)
 nohup python process_wikisource.py > wikisource.log 2>&1 &
+python process_wikisource.py --resume  # resume if interrupted
 
-# Resume if interrupted
-python process_wikisource.py --resume
+# CulturaX — full run (64 parquet shards, ~40M docs; auto-restarts on kill)
+VENV=~/g2-dev/monitorulpreturilor/venv/bin/python
+nohup bash -c "while true; do $VENV -u process_culturax.py --resume; [ \$? -eq 0 ] && break; sleep 15; done" \
+  >> ~/g2-dev/logs/culturax.log 2>&1 &
 ```
 
-**Output**: `corpus_frequencies.db` (`corpus_name = 'wikisource_ro'`). CulturaX support in progress.
+**Output**: `corpus_frequencies.db` with `corpus_name = 'wikisource_ro'` and `corpus_name = 'culturax_ro'`.
+
+Note: `process_culturax.py` reads the 64 parquet shards directly via `HfFileSystem` + `pyarrow` and checkpoints at file + row-group level. This avoids the `datasets` streaming `ds.skip()` cycling bug that triggers when the checkpoint offset exceeds the dataset size.
 
 ## Data notes
 
