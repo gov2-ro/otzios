@@ -78,13 +78,16 @@ Note: `process_culturax.py` reads the 64 parquet shards directly via `HfFileSyst
 
 ## Monitoring
 
-`health_check.py` and `audit.py` keep tabs on long-running corpus jobs. Run them manually or via cron (see CLAUDE.md for crontab lines).
+`health_check.py`, `audit.py`, and `status.py` keep tabs on long-running corpus jobs. Run them manually or via cron (see CLAUDE.md for crontab lines).
 
 ```bash
+python status.py                # at-a-glance summary — corpora, artifacts, loops, audit
 python health_check.py          # check liveness, stalls, log errors, completion
 python audit.py                 # snapshot run history + DB quality checks
 python health_check.py --dry-run  # print without alerting or writing state
 ```
+
+`status.py` is read-only — safe to run any time. `health_check.py` and `audit.py` write logs and may alert.
 
 Set `OTZIOS_ALERT_URL` (webhook) or `OTZIOS_ALERT_EMAIL` to receive push alerts.
 

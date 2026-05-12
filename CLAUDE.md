@@ -138,12 +138,13 @@ processing_stats(id, corpus_name, documents_processed, tokens_processed, ...)
 
 ## Monitoring
 
-Two scripts keep an eye on long-running corpus jobs:
+Three scripts keep an eye on long-running corpus jobs:
 
+- **`status.py`** — read-only, at-a-glance summary. Prints corpus run state, pipeline artifacts, loop liveness, and latest audit verdicts. Safe to run any time; never writes. First thing to run when checking on the project.
 - **`health_check.py`** — checks loop liveness, checkpoint staleness, log errors, and corpus completion. Alerts once per new problem (no spam on repeat cron fires). Run every 30 min via cron.
 - **`audit.py`** — snapshots run history to `data/logs/run_history.jsonl` and runs quality checks (cycling detection, token ratio sanity, word coverage). Run daily.
 
-Both support `--dry-run`. Alerting backends (set env vars before running or in crontab):
+`health_check.py` and `audit.py` support `--dry-run`. Alerting backends (set env vars before running or in crontab):
 ```bash
 export OTZIOS_ALERT_URL="https://ntfy.sh/your-topic"   # POST plain text — works with ntfy.sh, many webhooks
 export OTZIOS_ALERT_EMAIL="you@example.com"             # sends via system mail
