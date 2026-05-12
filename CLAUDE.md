@@ -16,7 +16,19 @@ For the methodological critique (what "forgotten" should mean, corpus options): 
 
 ## Logs
 
-Long-running scripts are logged to `~/g2-dev/logs/`. PIDs are saved as `<script-name>.pid` in the same directory. Check there when verifying background job status.
+Long-running scripts log to `data/logs/` inside the repo (gitignored by `data/*`). PIDs are saved as `<script-name>.pid` in the same directory.
+
+```
+data/logs/
+  culturax.log / culturax.pid
+  wikisource.log / wikisource.pid
+  health_check.log      # cron output from health_check.py
+  audit.log             # cron output from audit.py
+  alerts.log            # every alert ever fired
+  health_status.json    # alert dedup state
+  run_history.jsonl     # one JSON line per audit run per corpus
+  quality_YYYY-MM-DD.json
+```
 
 ## Environment setup
 
@@ -123,6 +135,36 @@ processing_stats(id, corpus_name, documents_processed, tokens_processed, ...)
 - **Database server** — SQLite is sufficient. No Postgres.
 - **Embeddings / heavy ML** — pipeline is deliberately frequency-based and cheap to re-run.
 - **PyPI packaging** — loose scripts are fine.
+
+## Monitoring
+
+Two scripts keep an eye on long-running corpus jobs:
+
+- **`health_check.py`** — checks loop liveness, checkpoint staleness, log errors, and corpus completion. Alerts once per new problem (no spam on repeat cron fires). Run every 30 min via cron.
+- **`audit.py`** — snapshots run history to `data/logs/run_history.jsonl` and runs quality checks (cycling detection, token ratio sanity, word coverage). Run daily.
+
+Both support `--dry-run`. Alerting backends (set env vars before running or in crontab):
+```bash
+export OTZIOS_ALERT_URL="https://ntfy.sh/your-topic"   # POST plain text — works with ntfy.sh, many webhooks
+export OTZIOS_ALERT_EMAIL="you@example.com"             # sends via system mail
+```
+
+Cron entries (install with `crontab -e`):
+```cron
+*/30 * * * * cd /home/pax/g2-dev/otzios && /home/pax/g2-dev/monitorulpreturilor/venv/bin/python health_check.py >> data/logs/health_check.log 2>&1
+0 2 * * *   cd /home/pax/g2-dev/otzios && /home/pax/g2-dev/monitorulpreturilor/venv/bin/python audit.py         >> data/logs/audit.log      2>&1
+```
+
+Update `VENV` to `.venv/bin/python` after the in-project venv migration.
+
+### Venv migration (deferred — after culturax finishes)
+
+```bash
+cd /home/pax/g2-dev/otzios
+python -m venv .venv
+source .venv/bin/activate && pip install -r requirements.txt
+# then update crontab VENV path and restart any loops
+```
 
 ## Process notes
 

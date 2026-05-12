@@ -60,18 +60,33 @@ Uses Wikisource RO (historical literary baseline) and CulturaX RO (modern web) t
 python process_wikisource.py --test
 
 # Wikisource — full run (best on a VPS)
-nohup python process_wikisource.py > wikisource.log 2>&1 &
-python process_wikisource.py --resume  # resume if interrupted
+mkdir -p data/logs
+nohup python process_wikisource.py --resume >> data/logs/wikisource.log 2>&1 &
+echo $! > data/logs/wikisource.pid
 
 # CulturaX — full run (64 parquet shards, ~40M docs; auto-restarts on kill)
 VENV=~/g2-dev/monitorulpreturilor/venv/bin/python
+mkdir -p data/logs
 nohup bash -c "while true; do $VENV -u process_culturax.py --resume; [ \$? -eq 0 ] && break; sleep 15; done" \
-  >> ~/g2-dev/logs/culturax.log 2>&1 &
+  >> data/logs/culturax.log 2>&1 &
+echo $! > data/logs/culturax.pid
 ```
 
 **Output**: `corpus_frequencies.db` with `corpus_name = 'wikisource_ro'` and `corpus_name = 'culturax_ro'`.
 
 Note: `process_culturax.py` reads the 64 parquet shards directly via `HfFileSystem` + `pyarrow` and checkpoints at file + row-group level. This avoids the `datasets` streaming `ds.skip()` cycling bug that triggers when the checkpoint offset exceeds the dataset size.
+
+## Monitoring
+
+`health_check.py` and `audit.py` keep tabs on long-running corpus jobs. Run them manually or via cron (see CLAUDE.md for crontab lines).
+
+```bash
+python health_check.py          # check liveness, stalls, log errors, completion
+python audit.py                 # snapshot run history + DB quality checks
+python health_check.py --dry-run  # print without alerting or writing state
+```
+
+Set `OTZIOS_ALERT_URL` (webhook) or `OTZIOS_ALERT_EMAIL` to receive push alerts.
 
 ## Data notes
 
