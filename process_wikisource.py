@@ -45,13 +45,20 @@ def tokenize(text: str) -> list[str]:
 def load_dex_words(lexemes_db: Path) -> set[str]:
     conn = sqlite3.connect(lexemes_db)
     c = conn.cursor()
+    # Accept words that have a POS description OR a word-class modelType prefix.
+    # Many canonical entries (e.g. "jurnalism", "ziar") have empty description
+    # but a valid modelType (N=noun, F=fem., A=adj., VT/VI=verb, etc.) — they
+    # must be included or their corpus occurrences are silently discarded.
     c.execute("""
         SELECT DISTINCT lower(formNoAccent)
         FROM Lexeme
-        WHERE frequency > 0.01
+        WHERE typeof(frequency) = 'real'
+          AND frequency > 0.01
           AND LENGTH(formNoAccent) > 2
-          AND description != ''
-          AND description IS NOT NULL
+          AND (
+            (description != '' AND description IS NOT NULL)
+            OR modelType IN ('A','F','M','N','VT','VI','IL','PT','P')
+          )
     """)
     words = {normalize(r[0]) for r in c.fetchall()}
     conn.close()

@@ -25,7 +25,7 @@ flowchart TD
         A["create_sample_db.py"] --> B[("dex-sample.sql")]
         B --> C["extract_lexemes.py"] --> D[("lexemes.db\n315k lexemes")]
         D --> E["analyze_forgotten_words.py"] --> F[("forgotten_words_v1.csv")]
-        F --> G["create_curated_list.py"] --> H[("forgotten_words_curated.csv\n1,884 candidates")]
+        F --> G["create_curated_list.py"] --> H[("forgotten_words_curated.csv\n~140k candidates")]
     end
 
     subgraph P2["Phase 2 · Corpus Validation"]
@@ -86,7 +86,7 @@ python analyze_forgotten_words.py
 python create_curated_list.py
 ```
 
-**Output**: `forgotten_words_curated.csv` (1,884 candidates)
+**Output**: `forgotten_words_curated.csv` (~140k candidates)
 
 ### Phase 2a: Quick frequency screen (wordfreq)
 
@@ -174,6 +174,8 @@ Set `OTZIOS_ALERT_URL` (webhook) or `OTZIOS_ALERT_EMAIL` to receive push alerts.
 
 All generated files live under `data/processed/`. Columns shared across files have the same meaning everywhere.
 
+**How the files relate:** `forgotten_words_curated.csv` is the *input* to corpus validation — it lists every word DEX considers non-core (frequency < 1.0) that passes basic form filters. It carries no information about actual usage; it is purely dictionary-derived. `forgotten_words_diachronic.csv` is the *output* of corpus validation — it takes every row from the curated list and adds measured frequencies from two corpora (historical Wikisource + modern CulturaX), plus a verdict. Think of curated as "candidates" and diachronic as "evidence".
+
 ### Shared columns
 
 | Column | Description |
@@ -181,15 +183,15 @@ All generated files live under `data/processed/`. Columns shared across files ha
 | `word` | Word form as it appears in DEX, including stress apostrophes (e.g. `bucl'e`). Use `word_no_accent` for lookups. |
 | `word_no_accent` | Clean form with apostrophes removed — the canonical key for all frequency lookups. |
 | `frequency` / `dex_frequency` | DEX frequency score, 0.0–1.0. **Lower = rarer.** `0.0` means the field was absent in DEX — treat it as missing data, not "rarest". |
-| `rarity_category` | Bin derived from `dex_frequency`: `very_rare` (< 0.30), `rare` (< 0.50), `uncommon` (≥ 0.50). |
+| `rarity_category` | Bin derived from `dex_frequency`: `very_rare` (< 0.30), `rare` (0.30–0.50), `uncommon` (0.50–0.60), `standard` (0.60–1.0). `standard` means DEX considers the word canonical but corpus evidence may disagree. |
 | `description` | Part-of-speech and register abbreviation from DEX (e.g. `s.n.` = neuter noun, `adj.` = adjective, `înv.` = archaic). |
 | `model_type` | DEX inflection model code (e.g. `I`, `A1`). Identifies the paradigm used for conjugation/declension. |
 
 ---
 
-### `forgotten_words_curated.csv` — Phase 1 output
+### `forgotten_words_curated.csv` — Phase 1 candidates (dictionary only)
 
-1,884 DEX candidates filtered by frequency, length, and curation heuristics.
+Every DEX entry with frequency < 1.0 that passes form filters (length, not a proper noun, has a word-class marker). No corpus evidence — these are *suspects*, not confirmed forgotten words. Currently ~140k rows.
 
 | Column | Description |
 |---|---|
@@ -197,9 +199,9 @@ All generated files live under `data/processed/`. Columns shared across files ha
 
 ---
 
-### `forgotten_words_diachronic.csv` — Phase 2b main output
+### `forgotten_words_diachronic.csv` — Phase 2b validated output (corpus evidence)
 
-One row per curated candidate, with per-corpus frequency measurements and a diachronic verdict.
+One row per candidate from `forgotten_words_curated.csv`, enriched with measured frequencies from both corpora and a verdict. This is the file to use for any downstream analysis — it tells you *whether* each word is actually missing from modern text, and by how much.
 
 | Column | Description |
 |---|---|
@@ -312,9 +314,9 @@ otios/
 - [x] Lexeme extraction pipeline
 - [x] Frequency-based analysis
 - [x] Quality filtering and curation
-- [x] CSV export with 1,884 candidates
+- [x] CSV export with ~140k candidates (cutoff raised to DEX freq < 1.0)
 
-**Output**: `forgotten_words_curated.csv` - 1,884 forgotten word candidates
+**Output**: `forgotten_words_curated.csv` — ~140k candidates (dictionary suspects, corpus validation is the real gate)
 
 ### Phase 2: Corpus Validation (In Progress 🚧)
 - [x] Implement corpus processing pipeline

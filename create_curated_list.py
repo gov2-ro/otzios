@@ -3,9 +3,9 @@
 Create a curated list of forgotten Romanian words.
 
 Filters:
-1. Has meaningful description (not empty, not just model type)
+1. Has meaningful description or a word-class model type
 2. Proper Romanian words (not proper nouns, technical terms, compounds)
-3. Low frequency (< 0.60)
+3. DEX frequency < 1.0 (excludes only the 14k core-vocabulary entries)
 4. Exclude very short words
 5. Focus on traditional Romanian vocabulary
 """
@@ -37,19 +37,21 @@ def is_romanian_word(word):
 
     return True
 
-def has_meaningful_description(desc):
-    """Check if description has actual linguistic info."""
-    if not desc or desc.strip() == '':
-        return False
+# Model type prefixes that unambiguously identify a word class in DEX
+_WORD_CLASS_TYPES = {'A', 'N', 'F', 'M', 'VT', 'VI', 'IL', 'PT', 'P'}
 
-    # Meaningful descriptions
-    meaningful_markers = [
-        'adj', 's.m', 's.f', 's.n', 'vb', 'adv', 'interj',
-        'înv', 'reg', 'pop', 'dial', 'arh',  # Archaic markers
-    ]
-
-    desc_lower = desc.lower()
-    return any(marker in desc_lower for marker in meaningful_markers)
+def has_meaningful_description(desc, model_type=''):
+    """Check if description or model type identifies a word class."""
+    if desc and desc.strip():
+        meaningful_markers = [
+            'adj', 's.m', 's.f', 's.n', 'vb', 'adv', 'interj',
+            'înv', 'reg', 'pop', 'dial', 'arh',
+        ]
+        if any(marker in desc.lower() for marker in meaningful_markers):
+            return True
+    # Fall back to model type when description is absent
+    prefix = re.match(r'^([A-Z]+)', model_type or '')
+    return bool(prefix and prefix.group(1) in _WORD_CLASS_TYPES)
 
 def create_curated_list(db_path, output_csv):
     """Create curated forgotten words list."""
@@ -72,11 +74,10 @@ def create_curated_list(db_path, output_csv):
             modelType,
             notes
         FROM Lexeme
-        WHERE frequency > 0.01
-          AND frequency < 0.60
+        WHERE typeof(frequency) = 'real'
+          AND frequency > 0.01
+          AND frequency < 1.0
           AND LENGTH(form) > 3
-          AND description != ''
-          AND description IS NOT NULL
         ORDER BY frequency ASC
     """)
 
@@ -106,7 +107,7 @@ def create_curated_list(db_path, output_csv):
             continue
 
         # Filter non-meaningful descriptions
-        if not has_meaningful_description(desc):
+        if not has_meaningful_description(desc, model_type):
             filtered_counts['no_description'] += 1
             continue
 
@@ -125,7 +126,8 @@ def create_curated_list(db_path, output_csv):
     categories = {
         'very_rare': [],   # 0.01-0.30
         'rare': [],        # 0.30-0.50
-        'uncommon': []     # 0.50-0.60
+        'uncommon': [],    # 0.50-0.60
+        'standard': [],    # 0.60-1.0  (DEX considers canonical but corpus may disagree)
     }
 
     for word_data in curated:
@@ -134,8 +136,10 @@ def create_curated_list(db_path, output_csv):
             categories['very_rare'].append(word_data)
         elif freq < 0.50:
             categories['rare'].append(word_data)
-        else:
+        elif freq < 0.60:
             categories['uncommon'].append(word_data)
+        else:
+            categories['standard'].append(word_data)
 
     print()
     print("CATEGORIZATION")
@@ -143,6 +147,7 @@ def create_curated_list(db_path, output_csv):
     print(f"  Very rare (0.01-0.30):  {len(categories['very_rare']):>8,}")
     print(f"  Rare (0.30-0.50):       {len(categories['rare']):>8,}")
     print(f"  Uncommon (0.50-0.60):   {len(categories['uncommon']):>8,}")
+    print(f"  Standard (0.60-1.0):    {len(categories['standard']):>8,}")
 
     # Show samples
     print()
@@ -186,8 +191,10 @@ def create_curated_list(db_path, output_csv):
                 category = 'very_rare'
             elif freq < 0.50:
                 category = 'rare'
-            else:
+            elif freq < 0.60:
                 category = 'uncommon'
+            else:
+                category = 'standard'
 
             writer.writerow([
                 form,
@@ -211,9 +218,9 @@ def create_curated_list(db_path, output_csv):
     print(f"Output file: {output_csv}")
     print()
     print("These are high-quality forgotten word candidates with:")
-    print("  - Meaningful linguistic descriptions")
+    print("  - Meaningful linguistic descriptions or word-class model types")
     print("  - Traditional Romanian vocabulary")
-    print("  - Low frequency in modern usage")
+    print("  - DEX frequency < 1.0 (corpus validation is the real gate)")
     print()
 
 if __name__ == "__main__":
