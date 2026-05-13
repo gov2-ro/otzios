@@ -170,6 +170,98 @@ Set `OTZIOS_ALERT_URL` (webhook) or `OTZIOS_ALERT_EMAIL` to receive push alerts.
 
 **Apostrophes in the `word` column** — DEX Online encodes syllable stress using apostrophes (e.g. `bucl'e`, `băt'ârn`). These are not real Romanian words; the clean form is in `word_no_accent`. The validated output from `validate_with_wordfreq.py` uses `word_no_accent` for all lookups and moves the raw `word` column to the end of the CSV for reference.
 
+## Output files
+
+All generated files live under `data/processed/`. Columns shared across files have the same meaning everywhere.
+
+### Shared columns
+
+| Column | Description |
+|---|---|
+| `word` | Word form as it appears in DEX, including stress apostrophes (e.g. `bucl'e`). Use `word_no_accent` for lookups. |
+| `word_no_accent` | Clean form with apostrophes removed — the canonical key for all frequency lookups. |
+| `frequency` / `dex_frequency` | DEX frequency score, 0.0–1.0. **Lower = rarer.** `0.0` means the field was absent in DEX — treat it as missing data, not "rarest". |
+| `rarity_category` | Bin derived from `dex_frequency`: `very_rare` (< 0.30), `rare` (< 0.50), `uncommon` (≥ 0.50). |
+| `description` | Part-of-speech and register abbreviation from DEX (e.g. `s.n.` = neuter noun, `adj.` = adjective, `înv.` = archaic). |
+| `model_type` | DEX inflection model code (e.g. `I`, `A1`). Identifies the paradigm used for conjugation/declension. |
+
+---
+
+### `forgotten_words_curated.csv` — Phase 1 output
+
+1,884 DEX candidates filtered by frequency, length, and curation heuristics.
+
+| Column | Description |
+|---|---|
+| `notes` | Raw notes from the DEX entry (register markers, usage labels, etc.). |
+
+---
+
+### `forgotten_words_diachronic.csv` — Phase 2b main output
+
+One row per curated candidate, with per-corpus frequency measurements and a diachronic verdict.
+
+| Column | Description |
+|---|---|
+| `hist_occurrences` | Raw occurrence count in the Wikisource RO corpus (historical literary baseline, ~14M tokens). |
+| `hist_documents` | Number of distinct Wikisource documents containing the word. |
+| `hist_ppm` | `hist_occurrences` normalised to **occurrences per million tokens** in Wikisource. |
+| `modern_occurrences` | Raw occurrence count in the CulturaX RO corpus (modern web text, ~17B tokens). |
+| `modern_documents` | Number of distinct CulturaX documents containing the word. |
+| `modern_ppm` | `modern_occurrences` normalised to **occurrences per million tokens** in CulturaX. |
+| `log_ratio` | `log₂((hist_ppm + S) / (modern_ppm + S))` where S = 0.1 per million (Laplace smoothing). **Positive = historically skewed; negative = more common today.** A value of 1.0 means the word is twice as frequent historically; −1.0 means twice as frequent now. |
+| `verdict` | Categorical summary — see table below. |
+
+**Verdict values:**
+
+| Verdict | Condition |
+|---|---|
+| `extinct` | `hist_ppm ≥ 1.0` and `modern_ppm < 0.1` — well-attested historically, nearly absent today. |
+| `declining` | `log_ratio ≥ 1.0` — at least 2× more frequent historically, but still has some modern presence. |
+| `historical_only` | `hist_ppm ≥ 0.1` and `modern_ppm < 0.1` — appears in old texts but not in modern corpus. |
+| `stable` | `|log_ratio| < 1.0` — similar frequency across both corpora. |
+| `modern_only` | `modern_ppm ≥ 0.1` and `hist_ppm < 0.1` — not in historical texts but present today (likely a newer word or false positive). |
+| `emerging` | `log_ratio ≤ −1.0` — at least 2× more frequent in modern corpus. |
+| `absent` | Both `hist_ppm < 0.1` and `modern_ppm < 0.1` — too rare to appear meaningfully in either corpus. |
+
+---
+
+### `diachronic_shortlist_for_web.csv` — Phase 2b → Phase 3 handoff
+
+The subset of diachronic results selected for web validation (verdicts `extinct`, `declining`, `historical_only`). Lighter schema — drops raw occurrence counts, adds `is_forgotten`.
+
+| Column | Description |
+|---|---|
+| `verdict`, `log_ratio`, `hist_ppm`, `modern_ppm` | Same as in `forgotten_words_diachronic.csv`. |
+| `is_forgotten` | `true` if the word meets the diachronic forgotten threshold (passed to `search_wild.py`). |
+
+---
+
+### `diachronic_shortlist_web_validated.csv` — Phase 3 output
+
+All columns from the shortlist, plus web search results from `search_wild.py`.
+
+| Column | Description |
+|---|---|
+| `total_results` | Approximate search result count returned by the provider for the word query. |
+| `in_wild` | `true` if the provider returned at least one result — word still appears somewhere on the Romanian web. |
+| `web_score` | Categorical bucket based on `total_results`. **DDG:** `0` / `alive_rare` (1–9) / `alive` (10–29) / `common` (30+). **Google:** `0` / `alive_rare` (1–9) / `alive` (10–99) / `common` (100+). |
+| `top_url` | URL of the top-ranked search result, if any. |
+| `last_seen_approx` | Best-effort approximate date the word was last seen on the web (parsed from result metadata; often empty). |
+| `provider` | Search backend used: `ddg` (DuckDuckGo, no API key) or `google` (Google Custom Search, needs env vars). |
+
+---
+
+### `forgotten_words_validated_wordfreq.csv` — Phase 2a output
+
+Quick frequency screen via the `wordfreq` library, without streaming any corpus.
+
+| Column | Description |
+|---|---|
+| `lemma` | Base form produced by `simplemma.lemmatize(word, lang='ro')`. This is what gets looked up in wordfreq. |
+| `zipf_frequency` | Zipf-scale frequency from wordfreq's Romanian model (roughly: 6 = very common, 3 = uncommon, 0 = not in wordfreq's list at all). **`0.0` does not mean "least common" — it means wordfreq has no signal for this word.** |
+| `is_forgotten` | `true` if `zipf_frequency < 3.0`. Note: wordfreq's Romanian coverage is sparse — most obscure words return 0.0, so this is a rough filter, not a precise frequency measure. |
+
 ## Project Structure
 
 ```
