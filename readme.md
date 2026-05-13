@@ -13,6 +13,51 @@ A computational linguistics tool to identify "forgotten" Romanian words - terms 
 - Identifies linguistic "dark matter" - words that exist in dictionaries but have fallen out of active use
 - Produces curated lists with rarity scores and linguistic metadata
 
+## Pipeline
+
+### End-to-end flow
+
+```mermaid
+flowchart TD
+    DEX[("DEX Online dump\n1.2 GB MySQL")]
+
+    subgraph P1["Phase 1 · Dictionary Analysis"]
+        A["create_sample_db.py"] --> B[("dex-sample.sql")]
+        B --> C["extract_lexemes.py"] --> D[("lexemes.db\n315k lexemes")]
+        D --> E["analyze_forgotten_words.py"] --> F[("forgotten_words_v1.csv")]
+        F --> G["create_curated_list.py"] --> H[("forgotten_words_curated.csv\n1,884 candidates")]
+    end
+
+    subgraph P2["Phase 2 · Corpus Validation"]
+        subgraph P2A["2a · wordfreq — fast, rough"]
+            WF["validate_with_wordfreq.py"] --> WF_OUT[("validated_wordfreq.csv")]
+        end
+        subgraph P2B["2b · Diachronic — recommended ✅"]
+            WS["process_wikisource.py\n(historical baseline)"]
+            CX["process_culturax.py\n(modern web)"]
+            WS & CX --> CORP[("corpus_frequencies.db")]
+            CORP --> DIA["validate_diachronic.py"]
+        end
+        subgraph P2C["2c · Legacy Wikipedia — ⚠️ P0 bug"]
+            DL["download_wikipedia_ro.py"] --> PC["process_corpus.py"] --> VFW["validate_forgotten_words.py"] --> LEG[("validated.csv")]
+        end
+    end
+
+    subgraph P3["Phase 3 · Web Validation"]
+        SW["search_wild.py\n--provider ddg | google"] --> WEB_OUT[("web_validated.csv\nweb_score · last_seen_approx")]
+    end
+
+    DEX --> A
+    H --> WF
+    H --> WS & CX
+    H --> DL
+    WF_OUT --> SW
+    DIA --> SW
+    LEG --> SW
+```
+
+> **Phase 2 paths are alternatives** — run 2a for a quick pass, 2b for the recommended diachronic analysis (historical vs modern corpora), or 2c only if reproducing earlier results (it has a known P0 bug).
+
 ## Quick Start
 
 ### Prerequisites
@@ -77,6 +122,36 @@ echo $! > data/logs/culturax.pid
 Note: `process_culturax.py` reads the 64 parquet shards directly via `HfFileSystem` + `pyarrow` and checkpoints at file + row-group level. This avoids the `datasets` streaming `ds.skip()` cycling bug that triggers when the checkpoint offset exceeds the dataset size.
 
 ## Monitoring
+
+```mermaid
+flowchart LR
+    subgraph JOBS["Long-running corpus jobs"]
+        J1["process_wikisource.py"]
+        J2["process_culturax.py"]
+    end
+
+    subgraph LOGS["data/logs/"]
+        L1["wikisource.log / .pid"]
+        L2["culturax.log / .pid"]
+        L3["run_history.jsonl"]
+        L4["health_status.json"]
+    end
+
+    subgraph MON["Monitoring scripts"]
+        ST["status.py\n(read-only · any time)"]
+        HC["health_check.py\n(cron · every 30 min)"]
+        AU["audit.py\n(cron · daily 02:00)"]
+    end
+
+    subgraph ALERT["Alert channels"]
+        AW["webhook\nOTZIOS_ALERT_URL"]
+        AE["email\nOTZIOS_ALERT_EMAIL"]
+    end
+
+    JOBS --> LOGS
+    LOGS --> ST & HC & AU
+    HC & AU --> AW & AE
+```
 
 `health_check.py`, `audit.py`, and `status.py` keep tabs on long-running corpus jobs. Run them manually or via cron (see CLAUDE.md for crontab lines).
 
