@@ -126,6 +126,35 @@ def load_corpus_freqs(conn: sqlite3.Connection,
     return {r[0]: (r[1], r[2]) for r in rows}
 
 
+def load_taxonomy(lexemes_db: Path) -> dict:
+    """Return {word_lower: {register, domain, etymology}} from Tag/ObjectTag/EntryLexeme tables.
+    Returns empty dict with a warning if tables are absent (run extract_taxonomy.py first)."""
+    conn = sqlite3.connect(lexemes_db)
+    try:
+        rows = conn.execute("""
+            SELECT lower(l.formNoAccent), t.parentId, t.value
+            FROM Lexeme l
+            JOIN EntryLexeme el ON el.lexemeId = l.id
+            JOIN ObjectTag ot ON ot.objectId = el.entryId
+            JOIN Tag t ON t.id = ot.tagId
+            WHERE t.parentId IN (1, 41, 42)
+        """).fetchall()
+    except sqlite3.OperationalError:
+        print("  [taxonomy] Tag tables not found — run extract_taxonomy.py to enable taxonomy columns")
+        return {}
+    finally:
+        conn.close()
+
+    parent_to_family = {1: 'etymology', 41: 'domain', 42: 'register'}
+    taxonomy: dict = {}
+    for word, parent_id, tag_value in rows:
+        entry = taxonomy.setdefault(word, {'register': set(), 'domain': set(), 'etymology': set()})
+        family = parent_to_family.get(parent_id)
+        if family:
+            entry[family].add(tag_value)
+    return taxonomy
+
+
 def verdict(hist_ppm: float, modern_ppm: float, log_ratio: float) -> str:
     if hist_ppm >= 1.0 and modern_ppm < 0.1:
         return 'extinct'
@@ -194,6 +223,10 @@ def main() -> int:
     modern_freqs = load_corpus_freqs(freq_conn, MODERN_CORPUS) if modern_tokens else {}
     freq_conn.close()
 
+    print('Loading DEX taxonomy...')
+    taxonomy = load_taxonomy(LEXEMES_DB)
+    print(f'  {len(taxonomy):,} words with taxonomy tags')
+
     # Restrict to candidates that appear in at least one corpus (unless --all-dex)
     if args.all_dex:
         universe = candidates.keys() | hist_freqs.keys() | modern_freqs.keys()
@@ -216,6 +249,7 @@ def main() -> int:
 
         log_ratio = math.log2((hist_ppm + S) / (modern_ppm + S))
 
+        tax = taxonomy.get(word, {})
         results.append({
             'word':             word,
             'dex_frequency':    f"{meta['dex_frequency']:.4f}",
@@ -229,6 +263,9 @@ def main() -> int:
             'modern_ppm':       f'{modern_ppm:.4f}',
             'log_ratio':        f'{log_ratio:.4f}',
             'verdict':          verdict(hist_ppm, modern_ppm, log_ratio),
+            'dex_register':     '|'.join(sorted(tax.get('register',  set()))),
+            'dex_domain':       '|'.join(sorted(tax.get('domain',    set()))),
+            'dex_etymology':    '|'.join(sorted(tax.get('etymology', set()))),
         })
 
     results.sort(key=lambda r: float(r['log_ratio']), reverse=True)
@@ -239,6 +276,7 @@ def main() -> int:
         'hist_occurrences', 'hist_documents', 'hist_ppm',
         'modern_occurrences', 'modern_documents', 'modern_ppm',
         'log_ratio', 'verdict',
+        'dex_register', 'dex_domain', 'dex_etymology',
     ]
     with args.output.open('w', encoding='utf-8', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fields)
