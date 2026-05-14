@@ -70,3 +70,35 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   Until re-run: `absent` verdict in `forgotten_words_diachronic.csv` conflates "truly unused" with "not tracked by old filter" — results for words with empty DEX description are unreliable.
 
 - [ ] **#14 — [S, Med] Re-evaluate `absent` words for web validation** — after the Phase 1 cutoff was raised to `< 1.0`, the diachronic output now has ~124k `absent` entries (no corpus signal in either Wikisource or CulturaX). Words like `oțios` land here: DEX-canonical but unattested in any corpus. A web validation pass on a filtered `absent` subset (e.g. DEX freq ≥ 0.70, model_type A/N/VT, no loanword markers) could surface genuinely forgotten words that never made it into digitised text.
+
+- [ ] **#16 — [M, High] Enrich output CSVs with DEX taxonomy tags** — The DEX SQL dump has a `Tag` table (~460 entries, hierarchical) linked to entries via `ObjectTag`. Three tag families are valuable:
+
+  - **Register** (`parentId=42`): `învechit`, popular, familiar, dialectal, livresc, poetic, argou, etc. A word already tagged `învechit` in DEX is direct editorial evidence of archaism — a gold-standard signal orthogonal to corpus frequency. Cross-referencing our `extinct` verdict with `dex_register=învechit` is the cleanest validation available.
+  - **Domain** (`parentId=41`): muzică, medicină, drept, sport, informatică, etc. (50+ specialisms). Lets users exclude technical jargon from results — a domain-specific term being rare in a general corpus is expected, not "forgotten".
+  - **Etymology** (`parentId=1`): grecism (tag 414), latinism (380), anglicism (320), turcism (300), slavonism (442), germanism (391), franțuzism (293), maghiarism (443), rusism (410), etc. Enables questions like: are Turkisms more likely to go extinct than Latinisms?
+
+  POS is partially in `Lexeme.description` and `modelType`, but Tag has finer-grained forms (`substantiv feminin invariabil`, `verb intranzitiv`) via `isPos=1` tags.
+
+  **Implementation sketch:**
+  1. Extend `extract_lexemes.py` to parse and load `Tag`, `ObjectTag`, `EntryLexeme` into `lexemes.db`.
+  2. Determine `objectType` integer values from sample rows in `ObjectTag` (likely 1=Entry, 2=Meaning).
+  3. Join: `Lexeme → EntryLexeme → Entry → ObjectTag → Tag`, group by parentId family.
+  4. Add columns to `forgotten_words_diachronic.csv`: `dex_register` (pipe-delimited), `dex_domain`, `dex_etymology`, `dex_pos_tag`.
+  5. Words with multiple senses may have conflicting tags — take the union; flag conflicts.
+
+- [ ] **#17 — [XS, Med] Flag words with no definition body** — Some DEX entries exist as a headword with POS and etymology but no actual meaning text (dexonline renders these as "[Fără definiție.]", e.g. *nombrilist*). In the `Meaning`/`DefinitionSimple` tables these have a null or empty `internalRep`. These words pass our Lexeme filter and appear in the candidate set, but their "forgotten" verdict rests purely on frequency with no semantic content to validate against. Two action items:
+
+  1. Count them: `SELECT COUNT(DISTINCT l.form) FROM Lexeme l JOIN EntryLexeme el ... JOIN Meaning m ... WHERE m.internalRep IS NULL OR m.internalRep = ''` — gives the scale of the problem.
+  2. Add a `has_definition` boolean column to `forgotten_words_diachronic.csv` (and the curated list) so they can be filtered out of final results or treated as a lower-confidence subcategory.
+
+  Note: these words may still be worth keeping — a word documented only as a borrowing with no translation is itself a sign of marginal integration into Romanian.
+
+- [ ] **#18 — [L, Med] Extract per-document metadata from corpora for temporal and domain signals** — Currently both corpus scripts discard document-level metadata and only keep aggregate word counts. Two signals worth extracting:
+
+  - **Temporal distribution (CulturaX)**: parquet files carry a `timestamp` field per document. Storing a year histogram per word (e.g. JSON column `year_dist` in `corpus_word_frequency`) would let us answer "when did this word last appear in web text" — a direct measure of *when* usage dropped off, richer than a single `modern_ppm` value. A word with 90% of hits before 2015 and nothing recent is differently forgotten than one that's uniformly rare.
+  - **Source domain (CulturaX)**: classify document URLs by type (news, forum, academic, government, blog). A word that survives only in Wikipedia or legal text but never in news or social content is a different kind of relic.
+  - **Historical period (Wikisource)**: documents have author/title/century metadata. Words clustering in 19th-century prose vs. spanning multiple centuries give a richer diachronic signal than raw `hist_ppm`.
+
+  **Practical approach** — full reprocessing is expensive. Better: after identifying `extinct`/`declining` words via the current pipeline, run a targeted second-pass scan over CulturaX parquet files for just those ~few thousand words, collecting date and URL metadata. Wikisource period attribution is cheap (12k docs) and could be a side-table join without reprocessing.
+
+  Schema sketch: add `year_dist` (JSON), `domain_dist` (JSON) to `corpus_word_frequency`, or a separate `word_temporal` table keyed on `(word, corpus_name, year)`.
