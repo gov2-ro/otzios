@@ -127,17 +127,17 @@ def load_corpus_freqs(conn: sqlite3.Connection,
 
 
 def load_taxonomy(lexemes_db: Path) -> dict:
-    """Return {word_lower: {register, domain, etymology}} from Tag/ObjectTag/EntryLexeme tables.
+    """Return {word_lower: {register, domain, etymology, pos}} from Tag/ObjectTag/EntryLexeme.
     Returns empty dict with a warning if tables are absent (run extract_taxonomy.py first)."""
     conn = sqlite3.connect(lexemes_db)
     try:
         rows = conn.execute("""
-            SELECT lower(l.formNoAccent), t.parentId, t.value
+            SELECT lower(l.formNoAccent), t.parentId, t.isPos, t.value
             FROM Lexeme l
             JOIN EntryLexeme el ON el.lexemeId = l.id
             JOIN ObjectTag ot ON ot.objectId = el.entryId
             JOIN Tag t ON t.id = ot.tagId
-            WHERE t.parentId IN (1, 41, 42)
+            WHERE t.parentId IN (1, 41, 42) OR t.isPos = 1
         """).fetchall()
     except sqlite3.OperationalError:
         print("  [taxonomy] Tag tables not found — run extract_taxonomy.py to enable taxonomy columns")
@@ -147,11 +147,14 @@ def load_taxonomy(lexemes_db: Path) -> dict:
 
     parent_to_family = {1: 'etymology', 41: 'domain', 42: 'register'}
     taxonomy: dict = {}
-    for word, parent_id, tag_value in rows:
-        entry = taxonomy.setdefault(word, {'register': set(), 'domain': set(), 'etymology': set()})
-        family = parent_to_family.get(parent_id)
-        if family:
-            entry[family].add(tag_value)
+    for word, parent_id, is_pos, tag_value in rows:
+        entry = taxonomy.setdefault(word, {'register': set(), 'domain': set(), 'etymology': set(), 'pos': set()})
+        if is_pos:
+            entry['pos'].add(tag_value)
+        else:
+            family = parent_to_family.get(parent_id)
+            if family:
+                entry[family].add(tag_value)
     return taxonomy
 
 
@@ -263,6 +266,7 @@ def main() -> int:
             'modern_ppm':       f'{modern_ppm:.4f}',
             'log_ratio':        f'{log_ratio:.4f}',
             'verdict':          verdict(hist_ppm, modern_ppm, log_ratio),
+            'dex_pos':          '|'.join(sorted(tax.get('pos',       set()))),
             'dex_register':     '|'.join(sorted(tax.get('register',  set()))),
             'dex_domain':       '|'.join(sorted(tax.get('domain',    set()))),
             'dex_etymology':    '|'.join(sorted(tax.get('etymology', set()))),
@@ -276,7 +280,7 @@ def main() -> int:
         'hist_occurrences', 'hist_documents', 'hist_ppm',
         'modern_occurrences', 'modern_documents', 'modern_ppm',
         'log_ratio', 'verdict',
-        'dex_register', 'dex_domain', 'dex_etymology',
+        'dex_pos', 'dex_register', 'dex_domain', 'dex_etymology',
     ]
     with args.output.open('w', encoding='utf-8', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fields)
