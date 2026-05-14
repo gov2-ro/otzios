@@ -96,6 +96,18 @@ python validate_with_wordfreq.py
 
 **Output**: `forgotten_words_validated_wordfreq.csv` — 1,868 candidates with Zipf < 3.0. Note: wordfreq's Romanian coverage is binary (a word is either in its top ~1,500 or returns 0.000), so treat this as a rough first pass, not a nuanced frequency measure.
 
+### Phase 1b: Taxonomy extraction (run once after Phase 1)
+
+Extracts `Tag`, `ObjectTag`, and `EntryLexeme` tables from the DEX dump into `lexemes.db`, enabling register/domain/etymology/POS columns in the diachronic output.
+
+```bash
+# Sample dump (fast, ~5% coverage)
+python extract_taxonomy.py
+
+# Full dump (recommended — ~990k ObjectTag rows, full coverage)
+python extract_taxonomy.py --sql data/dictionaries/dex-database.sql
+```
+
 ### Phase 2b: Corpus validation — diachronic (recommended)
 
 Uses Wikisource RO (historical literary baseline) and CulturaX RO (modern web) to compute actual per-corpus frequencies. Designed to find words that appear in 19th-century literature but are absent from modern text.
@@ -221,6 +233,10 @@ One row per candidate from `forgotten_words_curated.csv`, enriched with measured
 | `modern_ppm` | `modern_occurrences` normalised to **occurrences per million tokens** in CulturaX. |
 | `log_ratio` | `log₂((hist_ppm + S) / (modern_ppm + S))` where S = 0.1 per million (Laplace smoothing). **Positive = historically skewed; negative = more common today.** A value of 1.0 means the word is twice as frequent historically; −1.0 means twice as frequent now. |
 | `verdict` | Categorical summary — see table below. |
+| `dex_pos` | Full part-of-speech label from DEX Tag taxonomy (e.g. `substantiv neutru`, `adjectiv`, `verb`). Pipe-delimited if multiple. Empty until `extract_taxonomy.py` is run against the full dump. |
+| `dex_register` | Stylistic register tags from DEX (e.g. `învechit`, `popular`, `dialectal`, `livresc`). Pipe-delimited. A word tagged `învechit` in DEX is direct editorial evidence of archaism, independent of corpus signal. |
+| `dex_domain` | Subject domain tags (e.g. `muzică`, `chimie`, `medicină`, `drept`). Pipe-delimited. Useful for filtering out technical jargon. |
+| `dex_etymology` | Etymology/origin tags (e.g. `grecism`, `latinism`, `anglicism`, `turcism`, `slavonism`). Pipe-delimited. |
 
 **Verdict values:**
 
@@ -353,12 +369,13 @@ See [docs/phase2-test-results.md](docs/phase2-test-results.md) for details.
 ### Phase 3: Enhanced Metadata
 - [ ] Extract full definitions from DEX database
 - [ ] Join Definition and DefinitionSimple tables
-- [ ] Identify archaic markers (înv., arh., reg., dial.)
-- [ ] Extract etymology information
+- [x] Identify archaic markers (înv., arh., reg., dial.) — `dex_register` column via Tag taxonomy
+- [x] Extract etymology information — `dex_etymology` column (grecism, latinism, turcism…)
+- [x] Add part-of-speech tagging — `dex_pos` column (substantiv neutru, adjectiv, verb…)
+- [ ] Flag words with no definition body ("Fără definiție." entries like *nombrilist*)
 - [ ] Parse first attestation dates
 - [ ] Temporal analysis (when words fell out of use)
 - [ ] Link to word families and cognates
-- [ ] Add part-of-speech tagging improvements
 
 ### Phase 4: Lemmatization & Advanced NLP
 - [ ] Integrate Romanian lemmatizer (spaCy-ro or nlp-cube)
