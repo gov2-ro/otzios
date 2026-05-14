@@ -4,7 +4,7 @@ Vezi și: [initial specs](docs/oțios-init-specs.docx.md) / [live](https://docs
 
 A computational linguistics tool to identify "forgotten" Romanian words - terms that exist in official dictionaries but have fallen out of modern usage.
 
-**Status**: 🚧 Phase 2 In Progress - Corpus Validation Ready
+**Status**: 🔍 Phase 3 Ready — shortlist generated, web validation next
 
 ## What It Does
 
@@ -26,48 +26,55 @@ flowchart TD
         B --> C["extract_lexemes.py"] --> D[("lexemes.db\n315k lexemes")]
         D --> E["analyze_forgotten_words.py"] --> F[("forgotten_words_v1.csv")]
         F --> G["create_curated_list.py"] --> H[("forgotten_words_curated.csv\n~140k candidates")]
+        D --> TAX["extract_taxonomy.py\n(run once)"] --> D
     end
 
     subgraph P2["Phase 2 · Corpus Validation"]
         subgraph P2A["2a · wordfreq — fast, rough"]
-            WF["validate_with_wordfreq.py"] --> WF_OUT[("validated_wordfreq.csv")]
+            WF["validate_with_wordfreq.py"] --> WF_OUT[("validated_wordfreq.csv\n1,868 rows")]
         end
         subgraph P2B["2b · Diachronic — recommended ✅"]
-            WS["process_wikisource.py\n(historical baseline)"]
-            CX["process_culturax.py\n(modern web)"]
+            WS["process_wikisource.py\n(historical · 14M tokens)"]
+            CX["process_culturax.py\n(modern web · 17B tokens)"]
             WS & CX --> CORP[("corpus_frequencies.db")]
-            CORP --> DIA["validate_diachronic.py"]
+            CORP --> DIA["validate_diachronic.py"] --> DIA_OUT[("forgotten_words_diachronic.csv\n130k rows · 4 taxonomy cols")]
         end
         subgraph P2C["2c · Legacy Wikipedia — ⚠️ P0 bug"]
             DL["download_wikipedia_ro.py"] --> PC["process_corpus.py"] --> VFW["validate_forgotten_words.py"] --> LEG[("validated.csv")]
         end
     end
 
+    subgraph P25["Phase 2.5 · Shortlist"]
+        SL["make_shortlist.py"] --> SL_OUT[("forgotten_words_shortlist.csv\n16,879 rows · 2 tiers")]
+    end
+
     subgraph P3["Phase 3 · Web Validation"]
-        SW["search_wild.py\n--provider ddg | google"] --> WEB_OUT[("web_validated.csv\nweb_score · last_seen_approx")]
+        SW["search_wild.py\n--provider ddg | google"] --> WEB_OUT[("forgotten_words_web_validated.csv\nweb_score · last_seen_approx")]
     end
 
     DEX --> A
     H --> WF
     H --> WS & CX
     H --> DL
-    WF_OUT --> SW
-    DIA --> SW
+    D -.->|"taxonomy tags\n(dex_pos, register,\ndomain, etymology)"| DIA
+    DIA_OUT --> SL
+    WF_OUT --> SL
+    SL_OUT --> SW
     LEG --> SW
 ```
 
-> **Phase 2 paths are alternatives** — run 2a for a quick pass, 2b for the recommended diachronic analysis (historical vs modern corpora), or 2c only if reproducing earlier results (it has a known P0 bug).
+> **Phase 2 paths are alternatives** — run 2a for a quick pass, 2b for the recommended diachronic analysis (historical vs modern corpora), or 2c only if reproducing earlier results (it has a known P0 bug). `make_shortlist.py` (Phase 2.5) filters the 130k diachronic rows down to the ~17k most defensible forgotten words before web validation.
 
 ## Quick Start
 
 ### Prerequisites
 
 ```bash
-# Activate virtual environment
-source ~/devbox/envs/otzios/bin/activate
+# Activate virtual environment (adjust path to your venv)
+source ~/devbox/envs/240826/bin/activate
 
-# Install required packages for Phase 2
-pip install datasets
+# Install all dependencies
+pip install -r requirements.txt
 ```
 
 ### Phase 1: Dictionary Analysis
@@ -141,6 +148,36 @@ echo $! > data/logs/culturax.pid
 
 Note: `process_culturax.py` reads the 64 parquet shards directly via `HfFileSystem` + `pyarrow` and checkpoints at file + row-group level. This avoids the `datasets` streaming `ds.skip()` cycling bug that triggers when the checkpoint offset exceeds the dataset size.
 
+### Phase 2b continued: diachronic comparison + shortlist
+
+```bash
+# Compare historical vs modern frequencies, add taxonomy columns
+python validate_diachronic.py
+# Output: forgotten_words_diachronic.csv (130k rows)
+
+# Filter down to the most defensible forgotten words
+python make_shortlist.py --stats   # preview counts by tier
+python make_shortlist.py           # write forgotten_words_shortlist.csv (~17k rows)
+```
+
+### Phase 3: Web validation
+
+```bash
+# Dry run first
+python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
+    --provider ddg --limit 5 --dry-run
+
+# DDG triage (no API key, good for first pass)
+python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
+    --provider ddg --limit 200 --delay 2
+
+# Google CSE (cleaner results, needs env vars, 100/day free tier)
+export GOOGLE_API_KEY="AIza..."
+export GOOGLE_CSE_ID="017576..."
+python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
+    --provider google --limit 100
+```
+
 ## Monitoring
 
 ```mermaid
@@ -194,7 +231,17 @@ Set `OTZIOS_ALERT_URL` (webhook) or `OTZIOS_ALERT_EMAIL` to receive push alerts.
 
 All generated files live under `data/processed/`. Columns shared across files have the same meaning everywhere.
 
-**How the files relate:** `forgotten_words_curated.csv` is the *input* to corpus validation — it lists every word DEX considers non-core (frequency < 1.0) that passes basic form filters. It carries no information about actual usage; it is purely dictionary-derived. `forgotten_words_diachronic.csv` is the *output* of corpus validation — it takes every row from the curated list and adds measured frequencies from two corpora (historical Wikisource + modern CulturaX), plus a verdict. Think of curated as "candidates" and diachronic as "evidence".
+**How the files relate:**
+
+```
+forgotten_words_curated.csv    — 140k dictionary suspects (no corpus signal)
+        ↓ validate_diachronic.py
+forgotten_words_diachronic.csv — 130k rows with corpus frequencies + taxonomy
+        ↓ make_shortlist.py
+forgotten_words_shortlist.csv  — ~17k most defensible forgotten words (2 tiers)
+        ↓ search_wild.py
+forgotten_words_web_validated.csv — shortlist + real-world web presence
+```
 
 ### Shared columns
 
@@ -252,18 +299,24 @@ One row per candidate from `forgotten_words_curated.csv`, enriched with measured
 
 ---
 
-### `diachronic_shortlist_for_web.csv` — Phase 2b → Phase 3 handoff
+### `forgotten_words_shortlist.csv` — Phase 2.5 filtered shortlist
 
-The subset of diachronic results selected for web validation (verdicts `extinct`, `declining`, `historical_only`). Lighter schema — drops raw occurrence counts, adds `is_forgotten`.
+Generated by `make_shortlist.py` from the diachronic CSV. Two selection tiers, both with domain-tag and POS exclusions applied:
 
-| Column | Description |
-|---|---|
-| `verdict`, `log_ratio`, `hist_ppm`, `modern_ppm` | Same as in `forgotten_words_diachronic.csv`. |
-| `is_forgotten` | `true` if the word meets the diachronic forgotten threshold (passed to `search_wild.py`). |
+| Tier | `confidence_tier` value | Count | Criterion |
+|---|---|---|---|
+| A | `corpus_extinct` | ~1,137 | `verdict=extinct`, `hist_ppm > 0` |
+| A | `corpus_declining` | ~5,668 | `verdict=declining`, `hist_ppm > 0` |
+| A | `corpus_historical_only` | ~8,793 | `verdict=historical_only`, `hist_ppm > 0` |
+| B | `dex_invechit_absent` | ~1,281 | `verdict=absent` + `dex_register=învechit` |
+
+Tier B words have two independent signals of archaism: DEX editors explicitly tagged them as archaic, *and* they never appear in either corpus. Tier A words have corpus signal; Tier B words are "dark matter" — known archaic but unattested in digitised text.
+
+All rows carry `is_forgotten = true` (required by `search_wild.py`). Columns are a subset of the diachronic CSV plus `confidence_tier`.
 
 ---
 
-### `diachronic_shortlist_web_validated.csv` — Phase 3 output
+### `forgotten_words_web_validated.csv` — Phase 3 output
 
 All columns from the shortlist, plus web search results from `search_wild.py`.
 
@@ -312,12 +365,25 @@ otios/
 
 ## Sample Results
 
-| Word | Type | Frequency | Category |
-|------|------|-----------|----------|
-| **bucle** | adj. | 0.030 | very_rare |
-| **jălitor** | adj./s.m. | 0.070 | very_rare |
-| **griere** | s.m. | 0.300 | rare |
-| **celadon** | s.n. | 0.500 | uncommon |
+Top extinct words from the diachronic analysis (high historical frequency, near-zero modern):
+
+| Word | Meaning | DEX freq | log₂ ratio | Register | Etymology |
+|------|---------|----------|-----------|----------|-----------|
+| **tibișir** | type of muslin fabric | 0.82 | 8.53 | — | franțuzism |
+| **ghiftui** | to stuff oneself | 0.94 | 7.44 | — | franțuzism |
+| **coșcodan** | monkey (archaic) | 0.77 | 7.15 | — | — |
+| **bolboacă** | clay cooking pot | 0.94 | 6.65 | învechit | — |
+| **stacan** | type of goblet | 0.90 | 7.04 | — | — |
+| **ietac** | private chamber | 0.91 | 4.19 | învechit | — |
+
+DEX-tagged archaic words with no corpus signal at all (Tier B — "dark matter"):
+
+| Word | Meaning | DEX freq | Register |
+|------|---------|----------|----------|
+| **vece** | outhouse (from Ger. *Wasserklose*) | 0.99 | învechit |
+| **alenă** | breath, exhalation | 0.97 | învechit |
+| **hurducăi** | to jolt, to shake about | 0.95 | învechit |
+| **pripoană** | tethering stake | 0.95 | învechit |
 
 ## Data Sources
 
@@ -342,29 +408,14 @@ otios/
 
 **Output**: `forgotten_words_curated.csv` — ~140k candidates (dictionary suspects, corpus validation is the real gate)
 
-### Phase 2: Corpus Validation (In Progress 🚧)
-- [x] Implement corpus processing pipeline
-- [x] Wikipedia Romanian integration (HuggingFace)
-- [x] Romanian tokenization with diacritic handling
-- [x] Word frequency counting system
-- [x] Cross-reference validation algorithm
-- [x] Confidence scoring system
-- [x] False positive detection
-- [x] Test run (1,000 articles) - **Successful!**
-- [ ] Full Wikipedia processing (~500k articles)
-- [ ] OSCAR Romanian corpus (requires auth setup)
-- [ ] Additional corpora (news, social media)
+### Phase 2: Corpus Validation (Complete ✅)
+- [x] Wikisource RO corpus — 12,921 docs, 14.3M tokens (historical baseline)
+- [x] CulturaX RO corpus — 40.3M docs, 17.0B tokens (modern web)
+- [x] Diachronic comparison: log₂(hist_ppm / modern_ppm) per word
+- [x] Taxonomy enrichment: `dex_pos`, `dex_register`, `dex_domain`, `dex_etymology`
+- [x] Shortlist generation: 16,879 words across 4 confidence tiers
 
-**Current Status**: Test run complete, ready for full processing
-**Output**: `forgotten_words_validated.csv` - Cross-referenced with modern text
-
-#### Phase 2 Test Results (Oct 2025)
-✅ **Processed**: 1,001 Wikipedia articles (1M tokens)
-✅ **Validated**: 159,543 words
-✅ **False positives detected**: 1 ("online" - correctly flagged)
-✅ **Performance**: 2,351 articles/second
-
-See [docs/phase2-test-results.md](docs/phase2-test-results.md) for details.
+**Output**: `forgotten_words_diachronic.csv` (130k rows) → `forgotten_words_shortlist.csv` (17k rows)
 
 ### Phase 3: Enhanced Metadata
 - [ ] Extract full definitions from DEX database
@@ -384,18 +435,19 @@ See [docs/phase2-test-results.md](docs/phase2-test-results.md) for details.
 - [ ] Named entity recognition for better filtering
 - [ ] Semantic clustering of forgotten words
 
+### Phase 3: Web Validation (Next 🔍)
+- [ ] DDG triage pass on shortlist (~17k words, no quota)
+- [ ] Google CSE pass on high-confidence subset (100/day free tier)
+- [ ] Cross-reference: corpus verdict vs web presence
+
 ### Phase 5: User Interface & Visualization
-- [ ] Web interface for browsing words
-  - Search and filter by frequency, category
-  - Word detail pages with definitions
-  - Corpus occurrence examples
+- [ ] Exploratory UI for browsing the shortlist (filter by tier, POS, etymology, domain)
+- [ ] Word detail view: diachronic chart, DEX definition, web hits
 - [ ] REST API for programmatic access
 - [ ] Interactive visualizations
-  - Frequency distribution charts
-  - Word cloud of forgotten words
-  - Temporal decay graphs
-  - Etymological origin breakdowns
-- [ ] Export functionality (JSON, PDF, LaTeX)
+  - Frequency decay curves (hist_ppm vs modern_ppm scatter)
+  - Etymological breakdown of extinct words
+  - Word cloud weighted by log_ratio
 
 ### Future Enhancements
 - [ ] Revival potential scoring algorithm
@@ -414,56 +466,25 @@ See [docs/phase2-test-results.md](docs/phase2-test-results.md) for details.
 
 ## Known Issues & Limitations
 
-### Current Limitations
-1. **No lemmatization**: Only exact word matching (misses inflected forms)
-2. **OSCAR access**: Requires HuggingFace authentication (gated dataset)
-3. **Small test corpus**: Only 1k articles tested so far
-4. **No definitions yet**: Metadata not extracted from DEX database
-5. **False positives**: Modern borrowings (burger, online) need better filtering
-
-### Planned Improvements
-1. **Filter refinement**:
-   - Add modern borrowing detection (English/French loanwords)
-   - Improve proper noun filtering
-   - Better compound word handling
-   - Technical term detection
-
-2. **Corpus expansion**:
-   - Full Wikipedia processing (500k articles)
-   - OSCAR Romanian (250k documents)
-   - Romanian news archives
-   - Social media (Reddit r/Romania)
-   - Historical texts for temporal analysis
-
-3. **Performance optimization**:
-   - Parallel processing for corpus streaming
-   - Batch tokenization
-   - Index optimization for large-scale queries
+1. **No lemmatization** — `buclele` doesn't match `bucle` in the corpus. Inflected forms are invisible. Adding `simplemma` would significantly improve recall (backlog #6).
+2. **POS tag noise** — some words get wrong POS tags due to the ObjectTag join occasionally pulling tags from adjacent dictionary entries. Supplementary metadata only; doesn't affect core analysis.
+3. **Sparse etymology -ism tags** — many words store "limba franceză" not "franțuzism" in DEX. Both are captured but the vocabulary is inconsistent across DEX editors.
+4. **`absent` verdict ambiguity** — 83k words with no corpus signal conflate "truly unused" with "only appears in inflected forms not tracked". Lemmatization (#6) would reduce this category significantly.
 
 ## Next Steps
 
-### Immediate (Ready to Run)
 ```bash
-# Process full Wikipedia corpus
-python process_corpus.py --full --wikipedia-only
+# Web validation — DDG triage on full shortlist
+python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
+    --provider ddg --limit 500 --delay 2
 
-# Validate with full dataset
-python validate_forgotten_words.py
+# Or just the highest-confidence tier first
+python make_shortlist.py --limit 1137   # corpus_extinct only
+python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
+    --provider ddg --delay 2
 ```
 
-### Short-term (Next Sprint)
-1. Run full Wikipedia validation
-2. Set up HuggingFace authentication for OSCAR
-3. Extract definitions from DEX database
-4. Manual review of questionable words
-5. Improve filtering rules based on findings
-
-### Medium-term (Next Month)
-1. Integrate Romanian lemmatizer
-2. Add more corpora sources
-3. Extract full metadata (etymology, attestation dates)
-4. Create basic web interface prototype
-5. Write academic paper on findings
+See `docs/BACKLOG.md` for the full list of open items.
 
 ## Contributing
 
