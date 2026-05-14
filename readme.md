@@ -109,10 +109,18 @@ mkdir -p data/logs
 nohup python process_wikisource.py --resume >> data/logs/wikisource.log 2>&1 &
 echo $! > data/logs/wikisource.pid
 
-# CulturaX — full run (64 parquet shards, ~40M docs; auto-restarts on kill)
+# CulturaX — full run (64 parquet shards, ~40M docs; auto-restarts on network errors)
+# Interactive (watch it run):
+while true; do
+    python -u process_culturax.py --resume
+    [ $? -eq 0 ] && break
+    echo "[$(date)] restarting in 15s..." && sleep 15
+done
+
+# Background (logs to file):
 VENV=~/g2-dev/monitorulpreturilor/venv/bin/python
 mkdir -p data/logs
-nohup bash -c "while true; do $VENV -u process_culturax.py --resume; [ \$? -eq 0 ] && break; sleep 15; done" \
+nohup bash -c "while true; do $VENV -u process_culturax.py --resume; [ \$? -eq 0 ] && break; echo \"[\$(date)] restarting in 15s...\"; sleep 15; done" \
   >> data/logs/culturax.log 2>&1 &
 echo $! > data/logs/culturax.pid
 ```

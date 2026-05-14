@@ -265,7 +265,16 @@ def process_file(
                 save_checkpoint(cp)
                 return session_docs, session_tokens, True
 
-            texts = pf.read_row_group(g).column('text').to_pylist()
+            try:
+                texts = pf.read_row_group(g).column('text').to_pylist()
+            except Exception as exc:
+                flush(conn, word_counts, doc_counts)
+                cp['current_file_rows_done']   = start_row + session_docs
+                cp['current_file_tokens_done'] = tokens_base + session_tokens
+                save_checkpoint(cp)
+                print(f'  [{fname}] network error at group {g}: {exc}', flush=True)
+                print(f'  checkpoint saved at {start_row + session_docs:,} rows — restart with --resume', flush=True)
+                return session_docs, session_tokens, True
             if g == start_group and skip_in_group:
                 texts = texts[skip_in_group:]
 
