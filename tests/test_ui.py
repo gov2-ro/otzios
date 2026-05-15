@@ -345,6 +345,8 @@ def test_word_detail_shows_definition(dbs, client):
     assert b'dexonline.ro' in resp.data
 
 
-def test_word_detail_no_definition_hides_block(client):
+def test_word_detail_no_definition_still_shows_dex_link(client):
     resp = client.get('/word/acătării')
-    assert b'definition-block' not in resp.data
+    assert b'definition-block' in resp.data
+    assert b'dexonline.ro' in resp.data
+    assert 'Vânzătoare de acătări.'.encode('utf-8') not in resp.data
