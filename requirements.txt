@@ -9,3 +9,6 @@ simplemma
 # ddgs is the default provider (no API key); google-api-python-client is used by --provider google
 ddgs
 google-api-python-client
+
+# Research UI
+flask
