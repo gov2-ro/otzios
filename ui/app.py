@@ -10,6 +10,7 @@ app = Flask(__name__)
 SHORTLIST_PATH = Path('data/processed/forgotten_words_shortlist.csv')
 WEB_PATH = Path('data/processed/diachronic_shortlist_web_validated.csv')
 RESEARCH_DB_PATH = Path('data/research.db')
+DEFINITIONS_DB_PATH = Path('data/processed/definitions.db')
 
 _words_db: sqlite3.Connection | None = None
 _research_db: sqlite3.Connection | None = None
@@ -37,7 +38,11 @@ def _bool(v: str) -> int | None:
     return None
 
 
-def load_words(shortlist_path: Path, web_path: Path) -> sqlite3.Connection:
+def load_words(
+    shortlist_path: Path,
+    web_path: Path,
+    definitions_path: Path | None = None,
+) -> sqlite3.Connection:
     conn = sqlite3.connect(':memory:', check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("""
@@ -59,7 +64,8 @@ def load_words(shortlist_path: Path, web_path: Path) -> sqlite3.Connection:
             web_score        TEXT,
             top_url          TEXT,
             last_seen_approx TEXT,
-            provider         TEXT
+            provider         TEXT,
+            definition       TEXT
         )
     """)
 
@@ -106,6 +112,13 @@ def load_words(shortlist_path: Path, web_path: Path) -> sqlite3.Connection:
                     ),
                 )
 
+    defs_path = definitions_path if definitions_path is not None else DEFINITIONS_DB_PATH
+    if defs_path.exists():
+        dconn = sqlite3.connect(str(defs_path))
+        for word, definition in dconn.execute('SELECT word, definition FROM definitions'):
+            conn.execute('UPDATE words SET definition=? WHERE word=?', (definition, word))
+        dconn.close()
+
     conn.commit()
     return conn
 
@@ -132,11 +145,13 @@ def init_app(
     shortlist_path: Path | None = None,
     web_path: Path | None = None,
     research_path: Path | None = None,
+    definitions_path: Path | None = None,
 ) -> None:
     global _words_db, _research_db
     _words_db = load_words(
         shortlist_path or SHORTLIST_PATH,
         web_path or WEB_PATH,
+        definitions_path or DEFINITIONS_DB_PATH,
     )
     _research_db = open_research_db(research_path or RESEARCH_DB_PATH)
 

@@ -61,7 +61,7 @@ def dbs(tmp_path):
     research = tmp_path / 'research.db'
     make_shortlist(shortlist, [WORD_A, WORD_B])
     make_web(web, [WEB_A])
-    words_db = ui_app.load_words(shortlist, web)
+    words_db = ui_app.load_words(shortlist, web, tmp_path / 'no_defs.db')
     res_db = ui_app.open_research_db(research)
     yield words_db, res_db
     words_db.close()
@@ -226,3 +226,39 @@ def test_tag_remove(client):
     ).fetchone()
     tags = [t for t in (row['tags'] or '').split(',') if t.strip()]
     assert 'înv.' not in tags
+
+
+def test_load_words_loads_definitions(tmp_path):
+    shortlist = tmp_path / 'shortlist.csv'
+    web = tmp_path / 'web.csv'
+    make_shortlist(shortlist, [WORD_A, WORD_B])
+    make_web(web, [])
+
+    defs_db = tmp_path / 'defs.db'
+    dconn = sqlite3.connect(str(defs_db))
+    dconn.execute('CREATE TABLE definitions (word TEXT PRIMARY KEY, definition TEXT NOT NULL)')
+    dconn.execute("INSERT INTO definitions VALUES ('acătării', 'Vânzătoare de acătări.')")
+    dconn.commit()
+    dconn.close()
+
+    words_db = ui_app.load_words(shortlist, web, defs_db)
+    row = words_db.execute(
+        "SELECT definition FROM words WHERE word='acătării'"
+    ).fetchone()
+    assert row['definition'] == 'Vânzătoare de acătări.'
+    row2 = words_db.execute(
+        "SELECT definition FROM words WHERE word='adăsta'"
+    ).fetchone()
+    assert row2['definition'] is None
+    words_db.close()
+
+
+def test_load_words_no_definitions_db(tmp_path):
+    shortlist = tmp_path / 'shortlist.csv'
+    web = tmp_path / 'web.csv'
+    make_shortlist(shortlist, [WORD_A, WORD_B])
+    make_web(web, [])
+    words_db = ui_app.load_words(shortlist, web, tmp_path / 'nonexistent.db')
+    row = words_db.execute("SELECT definition FROM words WHERE word='acătării'").fetchone()
+    assert row['definition'] is None
+    words_db.close()
