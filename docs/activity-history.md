@@ -4,6 +4,33 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-15 — UI enhancements: definitions, sort by scarcity, shortcuts popup
+
+Built three additive features on top of the Flask+HTMX research UI:
+
+- **Word definitions** — `extract_definitions.py` streams the 1.2 GB DEX MySQL dump, joins Lexeme → EntryLexeme → EntryDefinition → DefinitionSimple to map every inflected form (not just headwords) to its entry's primary definition, and writes `data/processed/definitions.db`. `load_words()` in `ui/app.py` now loads definitions at startup. The detail panel shows a DEX block with the definition text and a link to dexonline.ro.
+- **Sort by scarcity** — `/search` accepts a `sort` param (`declined`, `rare`, `dex_freq`) resolved through a safe allowlist dict (`SORT_OPTIONS`) so no user string is ever interpolated into SQL. A sort `<select>` in the filter bar uses the same HTMX pattern as the existing verdict/tier dropdowns.
+- **Shortcuts popup** — pressing `?` opens a modal overlay listing all keyboard shortcuts; Esc or click-outside closes it.
+
+Initial extraction hit only 26% coverage (DefinitionSimple.lexicon stores headwords only). Rewrote to join through EntryLexeme — coverage jumped to 83,609 definitions across 315,279 lexemes streamed.
+
+---
+
+## 2026-05-15 — Research UI: Flask+HTMX word explorer
+
+Built a keyboard-driven local web app (`ui/app.py`) for exploring the forgotten-words shortlist:
+
+- Two-column layout: word list (left) + detail panel (right), no page reloads
+- Search with 200ms debounce, verdict/tier/bookmarked filters, pagination (50/page)
+- Word detail: metadata table, corpus scores, web-validation results, bookmark toggle, notes, tag pills
+- Bookmarks/notes/tags persisted to `data/research.db` (SQLite, survives restarts)
+- Keyboard shortcuts: `/` focus search, `j`/`k` navigate, `b` bookmark, `n` note, `gg`/`G` jump
+- Full test suite (`tests/test_ui.py`) covering all routes and HTMX fragment responses
+
+Stack: Flask 3.0.3, HTMX 2.0.4, Jinja2, SQLite (in-memory words + file-backed bookmarks).
+
+---
+
 ## 2026-05-15 — DEX taxonomy enrichment: extract_taxonomy.py + diachronic CSV new columns
 
 Confirmed CulturaX run completed cleanly (40.3M docs / 17.0B tokens / 120,345 unique words, duration 15m 10s). `forgotten_words_diachronic.csv` needed a re-run since it was generated before CulturaX finished; `validate_diachronic.py` now also emits four new taxonomy columns.
