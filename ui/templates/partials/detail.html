@@ -42,7 +42,7 @@
   <label for="note-input">note (Enter to save)</label>
   <textarea id="note-input" name="note"
             hx-post="/note/{{ w.word | urlencode }}"
-            hx-trigger="keydown[key=='Enter'] consume"
+            hx-trigger="keydown[key=='Enter'] prevent"
             hx-target="#note-status"
             hx-swap="innerHTML">{{ w.note }}</textarea>
   <div id="note-status"></div>
