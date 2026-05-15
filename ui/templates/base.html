@@ -177,6 +177,7 @@
         <tr><td colspan="2" class="shortcuts-group">Actions</td></tr>
         <tr><td><kbd>b</kbd></td><td>Toggle bookmark</td></tr>
         <tr><td><kbd>n</kbd></td><td>Focus note field</td></tr>
+        <tr><td><kbd>o</kbd></td><td>Open in dexonline.ro</td></tr>
         <tr><td><kbd>?</kbd></td><td>Show / hide this popup</td></tr>
       </table>
     </div>
@@ -264,6 +265,11 @@
       if (e.key === 'n') {
         const note = document.getElementById('note-input');
         if (note) { e.preventDefault(); note.focus(); }
+        return;
+      }
+      if (e.key === 'o') {
+        const link = document.querySelector('#detail-panel .dex-link');
+        if (link) { e.preventDefault(); window.open(link.href, '_blank', 'noopener'); }
         return;
       }
     });
