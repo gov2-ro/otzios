@@ -99,3 +99,21 @@ def test_open_research_db_creates_table(dbs):
     ).fetchall()
     names = [t['name'] for t in tables]
     assert 'bookmarks' in names
+
+
+@pytest.fixture()
+def client(dbs):
+    words_db, res_db = dbs
+    ui_app._words_db = words_db
+    ui_app._research_db = res_db
+    ui_app.app.config['TESTING'] = True
+    with ui_app.app.test_client() as c:
+        yield c
+
+
+def test_index_returns_200(client):
+    resp = client.get('/')
+    assert resp.status_code == 200
+    assert b'Search' in resp.data
+    assert b'word-list' in resp.data
+    assert b'detail-panel' in resp.data

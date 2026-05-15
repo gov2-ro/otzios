@@ -145,6 +145,15 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+@app.route('/')
+def index():
+    total = _words_db.execute('SELECT COUNT(*) FROM words').fetchone()[0]
+    bcount = _research_db.execute(
+        'SELECT COUNT(*) FROM bookmarks WHERE bookmarked=1'
+    ).fetchone()[0]
+    return render_template('base.html', total=total, bookmark_count=bcount)
+
+
 if __name__ == '__main__':
     init_app()
     app.run(debug=True, port=5000)
