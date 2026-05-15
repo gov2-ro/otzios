@@ -179,6 +179,7 @@ def search():
     q = request.args.get('q', '').strip()
     verdict = request.args.get('verdict', '').strip()
     tier = request.args.get('tier', '').strip()
+    has_def = request.args.get('has_def', '').strip()
     bookmarked_only = request.args.get('bookmarked', '') == '1'
     sort = request.args.get('sort', '').strip()
     page = max(1, int(request.args.get('page', 1) or 1))
@@ -195,6 +196,10 @@ def search():
     if tier:
         conditions.append('confidence_tier = ?')
         params.append(tier)
+    if has_def == '1':
+        conditions.append('definition IS NOT NULL')
+    elif has_def == '0':
+        conditions.append('definition IS NULL')
 
     where = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
     order_by = SORT_OPTIONS.get(sort, 'word ASC')

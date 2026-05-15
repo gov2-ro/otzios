@@ -122,6 +122,15 @@
       <option value="dex_archaic">dex archaic</option>
       <option value="dex_absent">dex absent</option>
     </select>
+    <select name="has_def"
+            hx-get="/search"
+            hx-trigger="change"
+            hx-target="#word-list"
+            hx-include="#filter-form">
+      <option value="">all definitions</option>
+      <option value="1">has definition</option>
+      <option value="0">no definition</option>
+    </select>
     <select name="sort"
             hx-get="/search"
             hx-trigger="change"
