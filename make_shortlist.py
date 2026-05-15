@@ -56,10 +56,9 @@ def pos_excluded(dex_pos: str) -> bool:
 
 def classify(row: dict) -> str | None:
     verdict = row['verdict']
-    has_domain = bool(row['dex_domain'])
     bad_pos = pos_excluded(row['dex_pos'])
 
-    if has_domain or bad_pos:
+    if bad_pos:
         return None
 
     if verdict in TIER_A_VERDICTS and float(row['hist_ppm']) > 0:
@@ -88,15 +87,12 @@ def main() -> int:
 
     # Classify every row
     selected: list[dict] = []
-    excluded_domain = 0
     excluded_pos = 0
 
     for row in rows:
         tier = classify(row)
         if tier is None:
-            if row['dex_domain']:
-                excluded_domain += 1
-            elif pos_excluded(row['dex_pos']):
+            if pos_excluded(row['dex_pos']):
                 excluded_pos += 1
             continue
         out = {f: row.get(f, '') for f in OUT_FIELDS}
@@ -123,7 +119,6 @@ def main() -> int:
         print(f'  {tier:<28} {tier_counts[tier]:>6,}')
     print(f'  {"—"*35}')
     print(f'  {"Total":<28} {len(selected):>6,}')
-    print(f'  Excluded (domain tag)        {excluded_domain:>6,}')
     print(f'  Excluded (POS)               {excluded_pos:>6,}')
 
     if args.stats:

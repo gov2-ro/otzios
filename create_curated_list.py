@@ -17,6 +17,53 @@ import re
 DB_PATH = "data/processed/lexemes.db"
 OUTPUT_CSV = "data/processed/forgotten_words_curated.csv"
 
+_REGISTER_PARENT  = 42
+_DOMAIN_PARENT    = 41
+_ETYMOLOGY_PARENT = 1
+_REGION_PARENT    = 17  # children: Banat, Moldova, Transilvania, etc.
+
+
+def fetch_all_tags(conn, lexeme_ids):
+    """Bulk-fetch Tag values for a list of lexeme IDs.
+
+    Queries both join paths (objectType=2 direct, objectType=3 via entry) and
+    returns {lexeme_id: {'register': str, 'domain': str, 'etymology': str}}
+    where each value is a sorted semicolon-separated list of tag labels.
+    """
+    if not lexeme_ids:
+        return {}
+    placeholders = ','.join('?' * len(lexeme_ids))
+    raw = []
+    # Direct path: ObjectTag.objectId = Lexeme.id
+    raw.extend(conn.execute(f"""
+        SELECT ot.objectId, t.value, t.parentId
+        FROM ObjectTag ot JOIN Tag t ON t.id = ot.tagId
+        WHERE ot.objectType = 2 AND ot.objectId IN ({placeholders})
+    """, lexeme_ids).fetchall())
+    # Entry path: ObjectTag.objectId = EntryLexeme.entryId
+    raw.extend(conn.execute(f"""
+        SELECT el.lexemeId, t.value, t.parentId
+        FROM EntryLexeme el
+        JOIN ObjectTag ot ON ot.objectId = el.entryId AND ot.objectType = 3
+        JOIN Tag t ON t.id = ot.tagId
+        WHERE el.lexemeId IN ({placeholders})
+    """, lexeme_ids).fetchall())
+
+    buckets = {}
+    for lid, value, parent_id in raw:
+        entry = buckets.setdefault(int(lid), {'register': set(), 'domain': set(), 'etymology': set()})
+        if parent_id in (_REGISTER_PARENT, _REGION_PARENT):
+            entry['register'].add(value)
+        elif parent_id == _DOMAIN_PARENT:
+            entry['domain'].add(value)
+        elif parent_id == _ETYMOLOGY_PARENT:
+            entry['etymology'].add(value)
+
+    return {
+        lid: {cat: '; '.join(sorted(vals)) for cat, vals in cats.items()}
+        for lid, cats in buckets.items()
+    }
+
 def is_proper_noun(word):
     """Check if word looks like a proper noun."""
     # Starts with capital letter (except first letter of sentence)
@@ -67,6 +114,7 @@ def create_curated_list(db_path, output_csv):
     # Query with better filters
     cursor.execute("""
         SELECT
+            id,
             form,
             formNoAccent,
             frequency,
@@ -94,7 +142,7 @@ def create_curated_list(db_path, output_csv):
     }
 
     for word_data in all_candidates:
-        form, form_no_accent, freq, desc, model_type, notes = word_data
+        lexeme_id, form, form_no_accent, freq, desc, model_type, notes = word_data
 
         # Filter proper nouns
         if is_proper_noun(form):
@@ -122,6 +170,15 @@ def create_curated_list(db_path, output_csv):
     print(f"  Filtered (no description):     {filtered_counts['no_description']:>8,}")
     print(f"  ✅ Kept for final list:        {filtered_counts['kept']:>8,}")
 
+    # Bulk-fetch taxonomy tags for all curated words
+    print()
+    print("FETCHING DEX TAXONOMY TAGS")
+    print("-" * 70)
+    curated_ids = [row[0] for row in curated]
+    tag_map = fetch_all_tags(conn, curated_ids)
+    tagged_count = sum(1 for lid in curated_ids if lid in tag_map)
+    print(f"  Words with at least one tag: {tagged_count:,} / {len(curated):,}")
+
     # Categorize by frequency
     categories = {
         'very_rare': [],   # 0.01-0.30
@@ -131,7 +188,7 @@ def create_curated_list(db_path, output_csv):
     }
 
     for word_data in curated:
-        freq = word_data[2]
+        freq = word_data[3]
         if freq < 0.30:
             categories['very_rare'].append(word_data)
         elif freq < 0.50:
@@ -159,7 +216,7 @@ def create_curated_list(db_path, output_csv):
             continue
 
         print(f"\n{cat_name.upper().replace('_', ' ')} (first 15):")
-        for form, _, freq, desc, _, _ in cat_words[:15]:
+        for _, form, _, freq, desc, _, _ in cat_words[:15]:
             print(f"  {form:.<30} {desc:.<20} freq={freq:.3f}")
 
     # Export to CSV
@@ -179,12 +236,15 @@ def create_curated_list(db_path, output_csv):
             'rarity_category',
             'description',
             'model_type',
-            'notes'
+            'notes',
+            'dex_register',
+            'dex_domain',
+            'dex_etymology',
         ])
 
         # Write curated words
         for word_data in curated:
-            form, form_no_accent, freq, desc, model_type, notes = word_data
+            lexeme_id, form, form_no_accent, freq, desc, model_type, notes = word_data
 
             # Determine category
             if freq < 0.30:
@@ -196,6 +256,7 @@ def create_curated_list(db_path, output_csv):
             else:
                 category = 'standard'
 
+            tags = tag_map.get(lexeme_id, {})
             writer.writerow([
                 form,
                 form_no_accent,
@@ -203,7 +264,10 @@ def create_curated_list(db_path, output_csv):
                 category,
                 desc,
                 model_type,
-                notes or ''
+                notes or '',
+                tags.get('register', ''),
+                tags.get('domain', ''),
+                tags.get('etymology', ''),
             ])
 
     print(f"✅ Exported {len(curated):,} curated forgotten words")

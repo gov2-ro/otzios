@@ -4,6 +4,52 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-16 — Rich UI redesign: tag filters, chip sidebar, light theme
+
+Complete UI overhaul in three passes:
+
+**Pass 1 — Granular tag filters + wider sidebar**: replaced all four `<select>` dropdowns with
+always-visible pill tags (checkboxes). Filter bar now has 3 rows: search/utilities, verdict+tier,
+register+domain+etymology. `app.py` gained `_distinct_split()` for frequency-ordered tag values,
+multi-select `getlist()` for verdict/tier (OR within group), and `LIKE`-based filtering for
+pipe-separated columns. Sidebar widened to 50%, word list changed to `flex-wrap` chip layout.
+`PAGE_SIZE` raised from 50 to 150.
+
+**Pass 2 — Domain-tagged words in shortlist**: `make_shortlist.py` previously excluded all
+`dex_domain`-tagged words (technical jargon heuristic). Removed that exclusion — 514 domain-tagged
+words now appear in the shortlist; UI filter dropdowns allow excluding them post-hoc.
+
+**Pass 3 — Light theme**: Switched from dark (#1a1a1a) to warm parchment light theme. Typography:
+`Lora` serif for headings/labels/definitions; `JetBrains Mono` for word chips and data. Verdict
+colors adapted to light (burgundy extinct, amber declining, navy historical, violet absent) with
+pill active states, chip left-border tints, selected chip verdict-background highlights. Status bar
+shows keyboard shortcuts as inline `<kbd>` elements. `detail.html` updated with verdict badge
+classes and inline tag pills for register/domain/etymology values.
+
+**Pass 4 — Intersection filtering + POS + richer chips**: Switched all filter inputs from
+checkboxes (OR-within-group) to radios (single-select-per-group, AND-across-groups). Click an
+active pill again to deselect — JS captures the pre-click state on the label's `mousedown`
+(inputs are `display:none` so don't see the mousedown themselves) and clears + fires a form-level
+`change` so HTMX requests fresh results. Added a POS filter row with 8 abbreviated linguistic
+categories (`s.f.`, `s.n.`, `s.m.`, `adj.`, `vb.`, `adv.`, `part.`, `interj.`) using LIKE matching
+against the pipe-padded `dex_pos` column. Default sort changed from `word ASC` to
+`COALESCE(modern_ppm, -1) ASC` — rarest-first ordering, with corpus-absent words at the top.
+Word chips now surface more metadata inline: `dex_frequency` as a tabular-nums secondary number,
+and a red italic `înv` marker for words tagged `învechit`.
+
+## 2026-05-16 — Tag enrichment in curated list (backlog #16)
+
+Investigated how `data-bs-content` abbreviation popovers on dexonline.ro map to the dump:
+values come from `Abbreviation.internalRep` via `#abbrev#` markup in `Definition.internalRep`.
+Separately, `Tag`/`ObjectTag`/`EntryLexeme` were already present in `lexemes.db` but unused.
+
+Added `fetch_all_tags()` to `create_curated_list.py` — bulk-fetches taxonomy tags via two join
+paths (objectType=2 direct, objectType=3 via entry) and writes three new columns to
+`forgotten_words_curated.csv`: `dex_register`, `dex_domain`, `dex_etymology`. Coverage:
+7,642 register tags, 3,405 domain tags, 35,120 etymology tags across 140,308 curated words.
+Columns flow through `validate_with_wordfreq.py` automatically. Marked #16 done;
+added #20 (metadata navigator with statistics view and CLI browse commands).
+
 ## 2026-05-15 — UI enhancements: definitions, sort by scarcity, shortcuts popup
 
 Built three additive features on top of the Flask+HTMX research UI:

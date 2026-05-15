@@ -160,13 +160,39 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-PAGE_SIZE = 50
+PAGE_SIZE = 150
 
 SORT_OPTIONS = {
-    'declined': 'log_ratio ASC NULLS LAST',
-    'rare':     'modern_ppm ASC NULLS LAST',
+    'rare':     'COALESCE(modern_ppm, -1) ASC',   # default — absent words first, then rarest
+    'declined': 'log_ratio DESC NULLS LAST',
     'dex_freq': 'dex_frequency ASC NULLS LAST',
+    'alpha':    'word ASC',
 }
+
+POS_OPTIONS = [
+    ('substantiv feminin',  's.f.'),
+    ('substantiv neutru',   's.n.'),
+    ('substantiv masculin', 's.m.'),
+    ('adjectiv',            'adj.'),
+    ('verb',                'vb.'),
+    ('adverb',              'adv.'),
+    ('participiu',          'part.'),
+    ('interjecție',         'interj.'),
+]
+
+
+def _distinct_split(column: str, sep: str = '|', limit: int | None = None) -> list[str]:
+    from collections import Counter
+    rows = _words_db.execute(
+        f'SELECT {column} FROM words WHERE {column} IS NOT NULL'
+    ).fetchall()
+    counts: Counter = Counter()
+    for (v,) in rows:
+        for part in v.split(sep):
+            p = part.strip()
+            if p:
+                counts[p] += 1
+    return [v for v, _ in counts.most_common(limit)]
 
 
 def _bookmarks_map() -> dict[str, dict]:
@@ -174,15 +200,24 @@ def _bookmarks_map() -> dict[str, dict]:
     return {r['word']: dict(r) for r in rows}
 
 
+def _like_any(col: str, vals: list[str]):
+    or_parts = [f"('|'||{col}||'|' LIKE ?)" for _ in vals]
+    return '(' + ' OR '.join(or_parts) + ')', [f'%|{v}|%' for v in vals]
+
+
 @app.route('/search')
 def search():
-    q = request.args.get('q', '').strip()
-    verdict = request.args.get('verdict', '').strip()
-    tier = request.args.get('tier', '').strip()
-    has_def = request.args.get('has_def', '').strip()
+    q               = request.args.get('q', '').strip()
+    verdict         = request.args.get('verdict', '').strip()
+    tier            = request.args.get('tier', '').strip()
+    register        = request.args.get('register', '').strip()
+    domain          = request.args.get('domain', '').strip()
+    etym            = request.args.get('etymology', '').strip()
+    pos             = request.args.get('pos', '').strip()
+    has_def         = request.args.get('has_def', '').strip()
     bookmarked_only = request.args.get('bookmarked', '') == '1'
-    sort = request.args.get('sort', '').strip()
-    page = max(1, int(request.args.get('page', 1) or 1))
+    sort            = request.args.get('sort', '').strip()
+    page   = max(1, int(request.args.get('page', 1) or 1))
     offset = (page - 1) * PAGE_SIZE
 
     conditions: list[str] = []
@@ -196,13 +231,19 @@ def search():
     if tier:
         conditions.append('confidence_tier = ?')
         params.append(tier)
+    # pipe-separated columns: match the selected value anywhere in the field
+    for col, val in [('dex_register', register), ('dex_domain', domain),
+                     ('dex_etymology', etym), ('dex_pos', pos)]:
+        if val:
+            conditions.append(f"('|'||{col}||'|' LIKE ?)")
+            params.append(f'%|{val}|%')
     if has_def == '1':
         conditions.append('definition IS NOT NULL')
     elif has_def == '0':
         conditions.append('definition IS NULL')
 
     where = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
-    order_by = SORT_OPTIONS.get(sort, 'word ASC')
+    order_by = SORT_OPTIONS.get(sort, SORT_OPTIONS['rare'])
     bmap = _bookmarks_map()
 
     all_rows = _words_db.execute(
@@ -233,11 +274,16 @@ def search():
 
 @app.route('/')
 def index():
-    total = _words_db.execute('SELECT COUNT(*) FROM words').fetchone()[0]
-    bcount = _research_db.execute(
-        'SELECT COUNT(*) FROM bookmarks WHERE bookmarked=1'
-    ).fetchone()[0]
-    return render_template('base.html', total=total, bookmark_count=bcount)
+    total  = _words_db.execute('SELECT COUNT(*) FROM words').fetchone()[0]
+    bcount = _research_db.execute('SELECT COUNT(*) FROM bookmarks WHERE bookmarked=1').fetchone()[0]
+    return render_template('base.html',
+        total=total,
+        bookmark_count=bcount,
+        pos_options          = POS_OPTIONS,
+        distinct_registers   = _distinct_split('dex_register',   limit=10),
+        distinct_domains     = _distinct_split('dex_domain',     limit=15),
+        distinct_etymologies = _distinct_split('dex_etymology',  limit=12),
+    )
 
 
 @app.route('/word/<word>')

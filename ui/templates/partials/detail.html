@@ -1,32 +1,51 @@
 <h2>{{ w.word }}</h2>
 
-<table class="detail-table">
-  <tr><th>verdict</th><td><span class="verdict-badge verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}">{{ w.verdict or '—' }}</span></td></tr>
+<table class="detail-table" style="margin-bottom:10px">
+  <tr>
+    <th>verdict</th>
+    <td>
+      <span class="verdict-badge vb-{{ (w.verdict or 'unknown') | replace(' ','_') }}">
+        {{ w.verdict or '—' }}
+      </span>
+    </td>
+  </tr>
   <tr><th>tier</th><td>{{ w.confidence_tier or '—' }}</td></tr>
   <tr><th>POS</th><td>{{ w.dex_pos or '—' }}</td></tr>
-  <tr><th>register</th><td>{{ w.dex_register or '—' }}</td></tr>
-  <tr><th>domain</th><td>{{ w.dex_domain or '—' }}</td></tr>
-  <tr><th>etymology</th><td>{{ w.dex_etymology or '—' }}</td></tr>
+  {% if w.dex_register %}
+  <tr>
+    <th>register</th>
+    <td>{% for r in w.dex_register.split('|') if r.strip() %}<span class="detail-tag">{{ r.strip() }}</span>{% endfor %}</td>
+  </tr>
+  {% endif %}
+  {% if w.dex_domain %}
+  <tr>
+    <th>domain</th>
+    <td>{% for d in w.dex_domain.split('|') if d.strip() %}<span class="detail-tag">{{ d.strip() }}</span>{% endfor %}</td>
+  </tr>
+  {% endif %}
+  {% if w.dex_etymology %}
+  <tr>
+    <th>etymology</th>
+    <td>{% for e in w.dex_etymology.split('|') if e.strip() %}<span class="detail-tag">{{ e.strip() }}</span>{% endfor %}</td>
+  </tr>
+  {% endif %}
 </table>
 
-<hr>
 <div class="definition-block">
   <div class="definition-label">DEX</div>
   {% if w.definition %}
   <div class="definition-text">{{ w.definition }}</div>
   {% endif %}
-  <a class="dex-link"
-     href="https://dexonline.ro/definitie/{{ w.word | urlencode }}"
-     target="_blank" rel="noopener">↗ dexonline.ro</a>
+  <a class="dex-link" href="https://dexonline.ro/definitie/{{ w.word | urlencode }}" target="_blank" rel="noopener">↗ dexonline.ro</a>
 </div>
 
 <hr>
 
 <table class="detail-table">
-  <tr><th>hist_ppm</th><td>{{ "%.2f" | format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</td></tr>
-  <tr><th>modern_ppm</th><td>{{ "%.2f" | format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</td></tr>
-  <tr><th>log_ratio</th><td>{{ "%.2f" | format(w.log_ratio) if w.log_ratio is not none else '—' }}</td></tr>
-  <tr><th>dex_freq</th><td>{{ "%.3f" | format(w.dex_frequency) if w.dex_frequency is not none else '—' }}</td></tr>
+  <tr><th>hist ppm</th><td>{{ "%.2f"|format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</td></tr>
+  <tr><th>modern ppm</th><td>{{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</td></tr>
+  <tr><th>log ratio</th><td>{{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</td></tr>
+  <tr><th>DEX freq</th><td>{{ "%.3f"|format(w.dex_frequency) if w.dex_frequency is not none else '—' }}</td></tr>
 </table>
 
 {% if w.provider %}
@@ -35,7 +54,7 @@
   <tr><th>web</th><td>{% if w.in_wild %}✓ found{% else %}✗ not found{% endif %} ({{ w.provider }})</td></tr>
   <tr><th>results</th><td>{{ w.total_results }}</td></tr>
   {% if w.last_seen_approx %}<tr><th>last seen</th><td>{{ w.last_seen_approx }}</td></tr>{% endif %}
-  {% if w.top_url %}<tr><th>top URL</th><td><a href="{{ w.top_url }}" target="_blank" rel="noopener">{{ w.top_url[:60] }}{% if w.top_url|length > 60 %}…{% endif %}</a></td></tr>{% endif %}
+  {% if w.top_url %}<tr><th>top URL</th><td><a href="{{ w.top_url }}" target="_blank" rel="noopener">{{ w.top_url[:55] }}{% if w.top_url|length > 55 %}…{% endif %}</a></td></tr>{% endif %}
 </table>
 {% endif %}
 
@@ -50,7 +69,7 @@
 </div>
 
 <div class="note-section">
-  <label for="note-input">note (Enter to save)</label>
+  <label for="note-input">note — Enter to save</label>
   <textarea id="note-input" name="note"
             hx-post="/note/{{ w.word | urlencode }}"
             hx-trigger="keydown[key=='Enter'] prevent"

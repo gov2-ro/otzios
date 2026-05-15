@@ -1,8 +1,9 @@
-<div class="word-row{% if w.bookmarked %} bookmarked{% endif %}"
+<div class="word-row verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}{% if w.bookmarked %} bookmarked{% endif %}"
      hx-get="/word/{{ w.word | urlencode }}"
      hx-target="#detail-panel"
      hx-swap="innerHTML">
   <span class="word-text">{{ w.word }}</span>
-  <span class="verdict-badge verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}">{{ w.verdict or '—' }}</span>
+  {% if w.dex_register and 'învechit' in w.dex_register %}<span class="chip-meta inv">înv</span>{% endif %}
+  {% if w.dex_frequency is not none %}<span class="chip-freq">{{ "%.2f"|format(w.dex_frequency) }}</span>{% endif %}
   {% if w.bookmarked %}<span class="star">★</span>{% endif %}
 </div>

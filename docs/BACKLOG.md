@@ -71,20 +71,13 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **#14 — [S, Med] Re-evaluate `absent` words for web validation** — after the Phase 1 cutoff was raised to `< 1.0`, the diachronic output now has ~124k `absent` entries (no corpus signal in either Wikisource or CulturaX). Words like `oțios` land here: DEX-canonical but unattested in any corpus. A web validation pass on a filtered `absent` subset (e.g. DEX freq ≥ 0.70, model_type A/N/VT, no loanword markers) could surface genuinely forgotten words that never made it into digitised text.
 
-- [ ] **#16 — [M, High] Enrich output CSVs with DEX taxonomy tags** — The DEX SQL dump has a `Tag` table (~460 entries, hierarchical) linked to entries via `ObjectTag`. Three tag families are valuable:
+- [x] **#16 — [M, High] Enrich output CSVs with DEX taxonomy tags** — Done. `Tag` (410 rows), `ObjectTag` (461 k rows), and `EntryLexeme` were already in `lexemes.db`. `create_curated_list.py` now bulk-fetches tags via both join paths (objectType=2 direct, objectType=3 via entry) and writes three new columns to `forgotten_words_curated.csv`:
 
-  - **Register** (`parentId=42`): `învechit`, popular, familiar, dialectal, livresc, poetic, argou, etc. A word already tagged `învechit` in DEX is direct editorial evidence of archaism — a gold-standard signal orthogonal to corpus frequency. Cross-referencing our `extinct` verdict with `dex_register=învechit` is the cleanest validation available.
-  - **Domain** (`parentId=41`): muzică, medicină, drept, sport, informatică, etc. (50+ specialisms). Lets users exclude technical jargon from results — a domain-specific term being rare in a general corpus is expected, not "forgotten".
-  - **Etymology** (`parentId=1`): grecism (tag 414), latinism (380), anglicism (320), turcism (300), slavonism (442), germanism (391), franțuzism (293), maghiarism (443), rusism (410), etc. Enables questions like: are Turkisms more likely to go extinct than Latinisms?
+  - **`dex_register`** (parentId=42 + 17): `învechit`, dialectal, popular, arhaizant, livresc, regional sub-tags (Banat, Moldova, Transilvania…) — 7,642 words covered
+  - **`dex_domain`** (parentId=41): botanică, medicină, informatică, chimie, etc. — 3,405 words covered
+  - **`dex_etymology`** (parentId=1): limba maghiară, germanism, slavonism, franțuzism, etc. — 35,120 words covered
 
-  POS is partially in `Lexeme.description` and `modelType`, but Tag has finer-grained forms (`substantiv feminin invariabil`, `verb intranzitiv`) via `isPos=1` tags.
-
-  **Implementation sketch:**
-  1. Extend `extract_lexemes.py` to parse and load `Tag`, `ObjectTag`, `EntryLexeme` into `lexemes.db`.
-  2. Determine `objectType` integer values from sample rows in `ObjectTag` (likely 1=Entry, 2=Meaning).
-  3. Join: `Lexeme → EntryLexeme → Entry → ObjectTag → Tag`, group by parentId family.
-  4. Add columns to `forgotten_words_diachronic.csv`: `dex_register` (pipe-delimited), `dex_domain`, `dex_etymology`, `dex_pos_tag`.
-  5. Words with multiple senses may have conflicting tags — take the union; flag conflicts.
+  Columns flow through `validate_with_wordfreq.py` automatically (DictReader/DictWriter preserves extra fields).
 
 - [ ] **#17 — [XS, Med] Flag words with no definition body** — Some DEX entries exist as a headword with POS and etymology but no actual meaning text (dexonline renders these as "[Fără definiție.]", e.g. *nombrilist*). In the `Meaning`/`DefinitionSimple` tables these have a null or empty `internalRep`. These words pass our Lexeme filter and appear in the candidate set, but their "forgotten" verdict rests purely on frequency with no semantic content to validate against. Two action items:
 
@@ -112,6 +105,24 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - **Has definition toggle** — filter to only words with a local definition (definition IS NOT NULL) to avoid clicking through words where the only option is the dexonline link.
 
   Implementation: each filter is a `<select>` using the same HTMX pattern as the existing verdict/tier dropdowns; `/search` adds a WHERE clause from a safe allowlist. Distinct values for the dropdowns can be computed once at startup from the in-memory `words` table and passed to the template via `g` or a route argument.
+
+- [ ] **#20 — [L, Med] Metadata navigator** — Dedicated tool for browsing the word list by taxonomy and computing metadata statistics. Complements #19 (web UI filters) with deeper analytical access.
+
+  **Statistics view** — aggregate counts and cross-tabulations across the three tag families:
+  - Words per register tag (`înv.`: N, `dialectal`: N, …) and per domain tag
+  - Etymology breakdown (how many words per source language; which languages contribute most to the "extinct" vs "stable" pools)
+  - Co-occurrence matrix: e.g. "how many maghiarisms are also dialectal?", "what fraction of botanică terms are `înv.`?"
+  - Frequency distribution (histogram of DEX `frequency` values) within each tag bucket
+
+  **Browse view** — filter and page the curated/diachronic CSV by any combination of tags, with optional sort by verdict or frequency.
+
+  **Implementation sketch** — standalone `browse_metadata.py` reading from any enriched CSV:
+  ```
+  python browse_metadata.py stats                    # aggregate counts table
+  python browse_metadata.py list --register=înv.    # words with that register tag
+  python browse_metadata.py cross register etymology # co-occurrence matrix
+  ```
+  Input: any CSV with `dex_register`, `dex_domain`, `dex_etymology` columns (output of `create_curated_list.py` or `validate_diachronic.py`). See also #19 for web UI filter dropdowns using the same columns.
 
 ## Misc
 
