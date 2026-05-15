@@ -74,6 +74,21 @@
     /* HTMX loading indicator */
     .htmx-indicator { opacity: 0; transition: opacity 200ms; }
     .htmx-request .htmx-indicator { opacity: 1; }
+
+    .definition-block { background:#1f1f1f; border-left:2px solid #3a3a3a; padding:10px 14px; margin-bottom:12px; border-radius:2px; }
+    .definition-label { color:#666; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+    .definition-text { color:#c0c0c0; line-height:1.6; font-size:13px; }
+    .dex-link { color:#4a8fd4; font-size:11px; text-decoration:none; display:inline-block; margin-top:8px; }
+
+    #shortcuts-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:100; }
+    #shortcuts-modal { background:#1e1e1e; border:1px solid #333; border-radius:4px; padding:20px 28px; min-width:360px; box-shadow:0 8px 32px rgba(0,0,0,0.6); }
+    .shortcuts-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; color:#e0e0e0; font-size:14px; font-weight:bold; }
+    .shortcuts-esc { color:#555; font-size:12px; font-weight:normal; }
+    .shortcuts-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .shortcuts-table td { padding:2px 0; color:#ccc; }
+    .shortcuts-table td:first-child { padding-right:16px; white-space:nowrap; }
+    .shortcuts-group { padding:8px 0 4px; color:#666; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; }
+    kbd { background:#2a2a2a; border:1px solid #444; border-radius:3px; padding:1px 5px; color:#e0e0e0; font-family:monospace; font-size:11px; }
   </style>
 </head>
 <body>
@@ -107,6 +122,16 @@
       <option value="dex_archaic">dex archaic</option>
       <option value="dex_absent">dex absent</option>
     </select>
+    <select name="sort"
+            hx-get="/search"
+            hx-trigger="change"
+            hx-target="#word-list"
+            hx-include="#filter-form">
+      <option value="">↕ alphabetical</option>
+      <option value="declined">↓ most declined</option>
+      <option value="rare">↓ rarest modern</option>
+      <option value="dex_freq">↓ DEX frequency</option>
+    </select>
     <label class="bookmark-filter">
       <input type="checkbox" name="bookmarked" value="1"
              hx-get="/search"
@@ -135,6 +160,28 @@
     {{ total }} words · {{ bookmark_count }} bookmarked · j/k navigate · / search · b bookmark · n note
   </div>
 
+  <div id="shortcuts-overlay" style="display:none">
+    <div id="shortcuts-modal">
+      <div class="shortcuts-header">
+        <span>Keyboard shortcuts</span>
+        <span class="shortcuts-esc">Esc to close</span>
+      </div>
+      <table class="shortcuts-table">
+        <tr><td colspan="2" class="shortcuts-group">Navigation</td></tr>
+        <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous word</td></tr>
+        <tr><td><kbd>g</kbd><kbd>g</kbd></td><td>Jump to top</td></tr>
+        <tr><td><kbd>G</kbd></td><td>Jump to bottom</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Search</td></tr>
+        <tr><td><kbd>/</kbd></td><td>Focus search</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Blur / close popup</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Actions</td></tr>
+        <tr><td><kbd>b</kbd></td><td>Toggle bookmark</td></tr>
+        <tr><td><kbd>n</kbd></td><td>Focus note field</td></tr>
+        <tr><td><kbd>?</kbd></td><td>Show / hide this popup</td></tr>
+      </table>
+    </div>
+  </div>
+
   <script>
     let selectedIdx = -1;
     let gPressed = false;
@@ -156,14 +203,29 @@
       }
     }
 
+    function showShortcuts() {
+      document.getElementById('shortcuts-overlay').style.display = 'flex';
+    }
+    function hideShortcuts() {
+      document.getElementById('shortcuts-overlay').style.display = 'none';
+    }
+
     document.addEventListener('keydown', function(e) {
       const tag = document.activeElement.tagName;
       const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 
+      // ? works everywhere — before inInput check
+      if (e.key === '?') { e.preventDefault(); showShortcuts(); return; }
+
       if (inInput) {
-        if (e.key === 'Escape') { document.activeElement.blur(); }
+        if (e.key === 'Escape') {
+          hideShortcuts();
+          document.activeElement.blur();
+        }
         return;
       }
+
+      if (e.key === 'Escape') { hideShortcuts(); return; }
 
       if (e.key === '/') {
         e.preventDefault();
@@ -210,6 +272,10 @@
       if (e.detail.target.id === 'word-list') {
         selectedIdx = -1;
       }
+    });
+
+    document.getElementById('shortcuts-overlay').addEventListener('click', function(e) {
+      if (e.target === this) hideShortcuts();
     });
   </script>
 </body>

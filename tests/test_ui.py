@@ -320,3 +320,14 @@ def test_search_sort_invalid_falls_back_to_alpha(client3):
     assert resp.status_code == 200
     html = resp.data.decode('utf-8')
     assert html.index('acătării') < html.index('adăsta')
+
+
+def test_base_has_sort_select(client):
+    resp = client.get('/')
+    assert b'name="sort"' in resp.data
+
+
+def test_base_has_shortcuts_overlay(client):
+    resp = client.get('/')
+    assert b'shortcuts-overlay' in resp.data
+    assert b'showShortcuts' in resp.data
