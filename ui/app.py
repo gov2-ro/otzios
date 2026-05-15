@@ -145,6 +145,64 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+PAGE_SIZE = 50
+
+
+def _bookmarks_map() -> dict[str, dict]:
+    rows = _research_db.execute('SELECT * FROM bookmarks').fetchall()
+    return {r['word']: dict(r) for r in rows}
+
+
+@app.route('/search')
+def search():
+    q = request.args.get('q', '').strip()
+    verdict = request.args.get('verdict', '').strip()
+    tier = request.args.get('tier', '').strip()
+    bookmarked_only = request.args.get('bookmarked', '') == '1'
+    page = max(1, int(request.args.get('page', 1) or 1))
+    offset = (page - 1) * PAGE_SIZE
+
+    conditions: list[str] = []
+    params: list = []
+    if q:
+        conditions.append('word LIKE ?')
+        params.append(f'%{q}%')
+    if verdict:
+        conditions.append('verdict = ?')
+        params.append(verdict)
+    if tier:
+        conditions.append('confidence_tier = ?')
+        params.append(tier)
+
+    where = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
+    bmap = _bookmarks_map()
+
+    all_rows = _words_db.execute(
+        f'SELECT * FROM words {where} ORDER BY word', params
+    ).fetchall()
+
+    if bookmarked_only:
+        all_rows = [r for r in all_rows if bmap.get(r['word'], {}).get('bookmarked')]
+
+    total = len(all_rows)
+    page_rows = all_rows[offset: offset + PAGE_SIZE]
+
+    words = []
+    for r in page_rows:
+        d = dict(r)
+        bm = bmap.get(r['word'], {})
+        d['bookmarked'] = bool(bm.get('bookmarked'))
+        words.append(d)
+
+    return render_template(
+        'partials/word_list.html',
+        words=words,
+        total=total,
+        page=page,
+        page_size=PAGE_SIZE,
+    )
+
+
 @app.route('/')
 def index():
     total = _words_db.execute('SELECT COUNT(*) FROM words').fetchone()[0]

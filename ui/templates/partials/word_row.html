@@ -1,0 +1,8 @@
+<div class="word-row{% if w.bookmarked %} bookmarked{% endif %}"
+     hx-get="/word/{{ w.word | urlencode }}"
+     hx-target="#detail-panel"
+     hx-swap="innerHTML">
+  <span class="word-text">{{ w.word }}</span>
+  <span class="verdict-badge verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}">{{ w.verdict or '—' }}</span>
+  {% if w.bookmarked %}<span class="star">★</span>{% endif %}
+</div>

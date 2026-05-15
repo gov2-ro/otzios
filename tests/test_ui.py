@@ -117,3 +117,29 @@ def test_index_returns_200(client):
     assert b'Search' in resp.data
     assert b'word-list' in resp.data
     assert b'detail-panel' in resp.data
+
+
+def test_search_returns_all_words(client):
+    resp = client.get('/search')
+    assert resp.status_code == 200
+    assert 'acătării'.encode('utf-8') in resp.data
+    assert 'adăsta'.encode('utf-8') in resp.data
+
+
+def test_search_filters_by_query(client):
+    resp = client.get('/search?q=acăt')
+    assert 'acătării'.encode('utf-8') in resp.data
+    assert 'adăsta'.encode('utf-8') not in resp.data
+
+
+def test_search_filters_by_verdict(client):
+    resp = client.get('/search?verdict=extinct')
+    assert 'acătării'.encode('utf-8') in resp.data
+    assert 'adăsta'.encode('utf-8') not in resp.data
+
+
+def test_search_filters_by_bookmarked(client):
+    client.post('/bookmark/acătării')
+    resp = client.get('/search?bookmarked=1')
+    assert 'acătării'.encode('utf-8') in resp.data
+    assert 'adăsta'.encode('utf-8') not in resp.data
