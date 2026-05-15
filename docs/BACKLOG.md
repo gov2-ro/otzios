@@ -102,3 +102,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   **Practical approach** — full reprocessing is expensive. Better: after identifying `extinct`/`declining` words via the current pipeline, run a targeted second-pass scan over CulturaX parquet files for just those ~few thousand words, collecting date and URL metadata. Wikisource period attribution is cheap (12k docs) and could be a side-table join without reprocessing.
 
   Schema sketch: add `year_dist` (JSON), `domain_dist` (JSON) to `corpus_word_frequency`, or a separate `word_temporal` table keyed on `(word, corpus_name, year)`.
+
+
+## Misc
+
+- [ ] see [260515 notes - missing oțios.md](260515 notes - missing oțios.md)

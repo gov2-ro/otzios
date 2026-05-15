@@ -1,0 +1,85 @@
+<h2>UI Enhancements — Layout Preview</h2>
+<p class="subtitle">Three changes: definition in detail panel · sort dropdown in filter bar · ? shortcuts popup</p>
+
+<div class="section">
+  <h3>1 — Filter bar (sort added)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Filter bar</div>
+    <div class="mockup-body" style="background:#111;padding:8px 12px;display:flex;gap:8px;align-items:center;font-family:monospace;font-size:13px;flex-wrap:wrap;">
+      <input class="mock-input" style="flex:1;min-width:120px;background:#222;border:1px solid #444;color:#e0e0e0;padding:4px 8px;font-family:monospace;" placeholder="/ to search...">
+      <select style="background:#222;border:1px solid #444;color:#e0e0e0;padding:4px 6px;font-family:monospace;font-size:13px;"><option>all verdicts</option><option>extinct</option><option>declining</option></select>
+      <select style="background:#222;border:1px solid #444;color:#e0e0e0;padding:4px 6px;font-family:monospace;font-size:13px;"><option>all tiers</option><option>corpus extinct</option></select>
+      <select style="background:#3a2800;border:1px solid #ffb840;color:#ffb840;padding:4px 6px;font-family:monospace;font-size:13px;">
+        <option>↕ alphabetical</option>
+        <option>↓ most declined</option>
+        <option>↓ rarest modern</option>
+        <option>↓ DEX frequency</option>
+      </select>
+      <label style="color:#aaa;font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox"> ☆ bookmarked</label>
+    </div>
+  </div>
+  <p style="color:#888;font-size:12px;margin-top:6px;">Sort dropdown highlighted in amber — sits between tier and bookmark filters.</p>
+</div>
+
+<div class="section">
+  <h3>2 — Detail panel (definition added)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Detail panel — acătării</div>
+    <div class="mockup-body" style="background:#1a1a1a;padding:20px;font-family:monospace;font-size:13px;color:#d0d0d0;max-height:320px;overflow-y:auto;">
+      <h2 style="font-size:1.3em;margin-bottom:14px;color:#e0e0e0;">acătării</h2>
+
+      <table style="width:100%;border-collapse:collapse;margin-bottom:4px;">
+        <tr><th style="text-align:right;padding:3px 12px 3px 0;color:#666;width:110px;font-weight:normal;">verdict</th><td><span style="font-size:11px;padding:1px 5px;border-radius:3px;background:#5c1a1a;color:#ff9090;">extinct</span></td></tr>
+        <tr><th style="text-align:right;padding:3px 12px 3px 0;color:#666;width:110px;font-weight:normal;">POS</th><td>s.f.</td></tr>
+        <tr><th style="text-align:right;padding:3px 12px 3px 0;color:#666;width:110px;font-weight:normal;">register</th><td>înv.</td></tr>
+        <tr><th style="text-align:right;padding:3px 12px 3px 0;color:#666;width:110px;font-weight:normal;">etymology</th><td>slavă</td></tr>
+      </table>
+
+      <hr style="border:none;border-top:1px solid #2a2a2a;margin:12px 0;">
+
+      <div style="background:#1f1f1f;border-left:2px solid #3a3a3a;padding:10px 14px;margin-bottom:12px;border-radius:2px;">
+        <div style="color:#666;font-size:11px;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">DEX definition</div>
+        <div style="color:#c0c0c0;line-height:1.6;font-size:13px;">
+          Vânzătoare de acătări; negustoreasă de mărfuri mărunte. ◊ <span style="color:#888;">Expr.</span> A umbla cu acătării = a umbla cu mărfuri mici de vânzare.
+        </div>
+        <div style="margin-top:8px;"><a href="#" style="color:#4a8fd4;font-size:11px;text-decoration:none;">↗ dexonline.ro</a></div>
+      </div>
+
+      <table style="width:100%;border-collapse:collapse;margin-bottom:4px;">
+        <tr><th style="text-align:right;padding:3px 12px 3px 0;color:#666;width:110px;font-weight:normal;">hist_ppm</th><td>12.40</td></tr>
+        <tr><th style="text-align:right;padding:3px 12px 3px 0;color:#666;width:110px;font-weight:normal;">modern_ppm</th><td>0.00</td></tr>
+        <tr><th style="text-align:right;padding:3px 12px 3px 0;color:#666;width:110px;font-weight:normal;">log_ratio</th><td>-5.20</td></tr>
+      </table>
+    </div>
+  </div>
+  <p style="color:#888;font-size:12px;margin-top:6px;">Definition appears as a left-bordered block between metadata and corpus scores. DEX Online link alongside.</p>
+</div>
+
+<div class="section">
+  <h3>3 — Shortcuts popup (? key)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Overlay — triggered by pressing ?</div>
+    <div class="mockup-body" style="background:#111;padding:0;position:relative;min-height:260px;display:flex;align-items:center;justify-content:center;">
+      <div style="background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:20px 28px;min-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:monospace;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <span style="color:#e0e0e0;font-size:14px;font-weight:bold;">Keyboard shortcuts</span>
+          <span style="color:#555;font-size:12px;">Esc to close</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <tr><td style="padding:4px 0;color:#888;">Navigation</td><td></td></tr>
+          <tr><td style="padding:2px 16px 2px 0;"><kbd style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:1px 5px;color:#e0e0e0;">j</kbd> / <kbd style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:1px 5px;color:#e0e0e0;">k</kbd></td><td style="color:#ccc;">Next / previous word</td></tr>
+          <tr><td style="padding:2px 16px 2px 0;"><kbd style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:1px 5px;color:#e0e0e0;">g</kbd><kbd style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:1px 5px;color:#e0e0e0;">g</kbd></td><td style="color:#ccc;">Jump to top</td></tr>
+          <tr><td style="padding:2px 16px 2px 0;"><kbd style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:1px 5px;color:#e0e0e0;">G</kbd></td><td style="color:#ccc;">Jump to bottom</td></tr>
+          <tr><td style="padding:8px 0 4px;color:#888;">Search</td><td></td></tr>
+          <tr><td style="padding:2px 16px 2px 0;"><kbd style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:1px 5px;color:#e0e0e0;">/</kbd></td><td style="color:#ccc;">Focus search</td></tr>
+          <tr><td style="padding:2px 16px 2px 0;"><kbd style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:1px 5px;color:#e0e0e0;">Esc</kbd></td><td style="color:#ccc;">Blur / close popup</td></tr>
+          <tr><td style="padding:8px 0 4px;color:#888;">Actions</td><td></td></tr>
+          <tr><td style="padding:2px 16px 2px 0;"><kbd style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:1px 5px;color:#e0e0e0;">b</kbd></td><td style="color:#ccc;">Toggle bookmark</td></tr>
+          <tr><td style="padding:2px 16px 2px 0;"><kbd style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:1px 5px;color:#e0e0e0;">n</kbd></td><td style="color:#ccc;">Focus note field</td></tr>
+          <tr><td style="padding:2px 16px 2px 0;"><kbd style="background:#2a2a2a;border:1px solid #444;border-radius:3px;padding:1px 5px;color:#e0e0e0;">?</kbd></td><td style="color:#ccc;">Show / hide this popup</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <p style="color:#888;font-size:12px;margin-top:6px;">Centered modal with dark backdrop. Esc or ? again to close. Click outside also closes.</p>
+</div>
