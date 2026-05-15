@@ -1,0 +1,15 @@
+<div id="tags-row">
+  {% for tag in tags %}
+  <span class="tag">{{ tag }}
+    <button hx-delete="/tag/{{ word | urlencode }}/{{ tag | urlencode }}"
+            hx-target="#tags-row"
+            hx-swap="outerHTML">×</button>
+  </span>
+  {% endfor %}
+  <input id="tag-input" type="text" name="tag" placeholder="add tag…"
+         hx-post="/tag/{{ word | urlencode }}"
+         hx-trigger="keydown[key=='Enter'] consume"
+         hx-target="#tags-row"
+         hx-swap="outerHTML"
+         hx-include="#tag-input">
+</div>

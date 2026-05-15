@@ -143,3 +143,86 @@ def test_search_filters_by_bookmarked(client):
     resp = client.get('/search?bookmarked=1')
     assert 'acătării'.encode('utf-8') in resp.data
     assert 'adăsta'.encode('utf-8') not in resp.data
+
+
+def test_word_detail_returns_fragment(client):
+    resp = client.get('/word/acătării')
+    assert resp.status_code == 200
+    assert 'acătării'.encode('utf-8') in resp.data
+    assert b'extinct' in resp.data
+    assert b's.f.' in resp.data
+
+
+def test_word_detail_missing_returns_404(client):
+    resp = client.get('/word/nonexistent')
+    assert resp.status_code == 404
+
+
+def test_bookmark_toggle_on(client):
+    resp = client.post('/bookmark/acătării')
+    assert resp.status_code == 200
+    assert '★'.encode('utf-8') in resp.data
+    row = ui_app._research_db.execute(
+        "SELECT bookmarked FROM bookmarks WHERE word='acătării'"
+    ).fetchone()
+    assert row['bookmarked'] == 1
+
+
+def test_bookmark_toggle_off(client):
+    client.post('/bookmark/acătării')
+    resp = client.post('/bookmark/acătării')
+    assert '☆'.encode('utf-8') in resp.data
+    row = ui_app._research_db.execute(
+        "SELECT bookmarked FROM bookmarks WHERE word='acătării'"
+    ).fetchone()
+    assert row['bookmarked'] == 0
+
+
+def test_bookmark_missing_word_returns_404(client):
+    resp = client.post('/bookmark/doesnotexist')
+    assert resp.status_code == 404
+
+
+def test_note_save(client):
+    resp = client.post('/note/acătării', data={'note': 'interesting archaic form'})
+    assert resp.status_code == 200
+    assert b'saved' in resp.data
+    row = ui_app._research_db.execute(
+        "SELECT note FROM bookmarks WHERE word='acătării'"
+    ).fetchone()
+    assert row['note'] == 'interesting archaic form'
+
+
+def test_note_save_missing_word_returns_404(client):
+    resp = client.post('/note/nonexistent', data={'note': 'x'})
+    assert resp.status_code == 404
+
+
+def test_tag_add(client):
+    resp = client.post('/tag/acătării', data={'tag': 'înv.'})
+    assert resp.status_code == 200
+    assert 'înv.'.encode('utf-8') in resp.data
+    resp2 = client.get('/word/acătării')
+    assert 'înv.'.encode('utf-8') in resp2.data
+
+
+def test_tag_add_duplicate_ignored(client):
+    client.post('/tag/acătării', data={'tag': 'înv.'})
+    client.post('/tag/acătării', data={'tag': 'înv.'})
+    row = ui_app._research_db.execute(
+        "SELECT tags FROM bookmarks WHERE word='acătării'"
+    ).fetchone()
+    tags = [t for t in row['tags'].split(',') if t.strip()]
+    assert tags.count('înv.') == 1
+
+
+def test_tag_remove(client):
+    client.post('/tag/acătării', data={'tag': 'înv.'})
+    resp = client.delete('/tag/acătării/înv.')
+    assert resp.status_code == 200
+    assert 'înv.'.encode('utf-8') not in resp.data
+    row = ui_app._research_db.execute(
+        "SELECT tags FROM bookmarks WHERE word='acătării'"
+    ).fetchone()
+    tags = [t for t in (row['tags'] or '').split(',') if t.strip()]
+    assert 'înv.' not in tags

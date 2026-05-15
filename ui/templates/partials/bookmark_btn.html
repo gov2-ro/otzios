@@ -1,0 +1,6 @@
+<button id="bookmark-btn"
+        hx-post="/bookmark/{{ word | urlencode }}"
+        hx-target="#bookmark-btn"
+        hx-swap="outerHTML">
+  {% if bookmarked %}★ bookmarked{% else %}☆ bookmark{% endif %}
+</button>

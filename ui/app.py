@@ -212,6 +212,135 @@ def index():
     return render_template('base.html', total=total, bookmark_count=bcount)
 
 
+@app.route('/word/<word>')
+def word_detail(word: str):
+    row = _words_db.execute(
+        'SELECT * FROM words WHERE word = ?', (word,)
+    ).fetchone()
+    if row is None:
+        return 'Not found', 404
+    bm = _research_db.execute(
+        'SELECT * FROM bookmarks WHERE word = ?', (word,)
+    ).fetchone()
+    w = dict(row)
+    w['bookmarked'] = bool(bm and bm['bookmarked'])
+    w['note'] = (bm and bm['note']) or ''
+    w['tags'] = [t.strip() for t in ((bm and bm['tags']) or '').split(',') if t.strip()]
+    return render_template('partials/detail.html', w=w)
+
+
+@app.route('/bookmark/<word>', methods=['POST'])
+def bookmark(word: str):
+    exists = _words_db.execute(
+        'SELECT 1 FROM words WHERE word = ?', (word,)
+    ).fetchone()
+    if not exists:
+        return 'Not found', 404
+
+    current = _research_db.execute(
+        'SELECT bookmarked FROM bookmarks WHERE word = ?', (word,)
+    ).fetchone()
+    new_val = 0 if (current and current['bookmarked']) else 1
+    now = _now()
+
+    if current is None:
+        _research_db.execute(
+            'INSERT INTO bookmarks (word, bookmarked, created_at, updated_at) VALUES (?,?,?,?)',
+            (word, new_val, now, now),
+        )
+    else:
+        _research_db.execute(
+            'UPDATE bookmarks SET bookmarked=?, updated_at=? WHERE word=?',
+            (new_val, now, word),
+        )
+    _research_db.commit()
+
+    return render_template(
+        'partials/bookmark_btn.html',
+        word=word,
+        bookmarked=bool(new_val),
+    )
+
+
+@app.route('/note/<word>', methods=['POST'])
+def save_note(word: str):
+    exists = _words_db.execute(
+        'SELECT 1 FROM words WHERE word = ?', (word,)
+    ).fetchone()
+    if not exists:
+        return 'Not found', 404
+
+    note = request.form.get('note', '')
+    now = _now()
+    current = _research_db.execute(
+        'SELECT 1 FROM bookmarks WHERE word = ?', (word,)
+    ).fetchone()
+
+    if current is None:
+        _research_db.execute(
+            'INSERT INTO bookmarks (word, note, created_at, updated_at) VALUES (?,?,?,?)',
+            (word, note, now, now),
+        )
+    else:
+        _research_db.execute(
+            'UPDATE bookmarks SET note=?, updated_at=? WHERE word=?',
+            (note, now, word),
+        )
+    _research_db.commit()
+    return render_template('partials/note_status.html')
+
+
+def _get_tags(word: str) -> list[str]:
+    row = _research_db.execute(
+        'SELECT tags FROM bookmarks WHERE word = ?', (word,)
+    ).fetchone()
+    if not row or not row['tags']:
+        return []
+    return [t.strip() for t in row['tags'].split(',') if t.strip()]
+
+
+def _set_tags(word: str, tags: list[str]) -> None:
+    now = _now()
+    current = _research_db.execute(
+        'SELECT 1 FROM bookmarks WHERE word = ?', (word,)
+    ).fetchone()
+    tag_str = ','.join(tags)
+    if current is None:
+        _research_db.execute(
+            'INSERT INTO bookmarks (word, tags, created_at, updated_at) VALUES (?,?,?,?)',
+            (word, tag_str, now, now),
+        )
+    else:
+        _research_db.execute(
+            'UPDATE bookmarks SET tags=?, updated_at=? WHERE word=?',
+            (tag_str, now, word),
+        )
+    _research_db.commit()
+
+
+@app.route('/tag/<word>', methods=['POST'])
+def add_tag(word: str):
+    if not _words_db.execute('SELECT 1 FROM words WHERE word=?', (word,)).fetchone():
+        return 'Not found', 404
+    tag = request.form.get('tag', '').strip()
+    if not tag:
+        return 'Bad request', 400
+    tags = _get_tags(word)
+    if tag not in tags:
+        tags.append(tag)
+    _set_tags(word, tags)
+    return render_template('partials/tags_row.html', word=word, tags=tags)
+
+
+@app.route('/tag/<word>/<tag>', methods=['DELETE'])
+def remove_tag(word: str, tag: str):
+    if not _words_db.execute('SELECT 1 FROM words WHERE word=?', (word,)).fetchone():
+        return 'Not found', 404
+    tags = [t for t in _get_tags(word) if t != tag]
+    _set_tags(word, tags)
+    return render_template('partials/tags_row.html', word=word, tags=tags)
+
+
 if __name__ == '__main__':
     init_app()
     app.run(debug=True, port=5000)

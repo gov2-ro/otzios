@@ -1,0 +1,49 @@
+<h2>{{ w.word }}</h2>
+
+<table class="detail-table">
+  <tr><th>verdict</th><td><span class="verdict-badge verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}">{{ w.verdict or '—' }}</span></td></tr>
+  <tr><th>tier</th><td>{{ w.confidence_tier or '—' }}</td></tr>
+  <tr><th>POS</th><td>{{ w.dex_pos or '—' }}</td></tr>
+  <tr><th>register</th><td>{{ w.dex_register or '—' }}</td></tr>
+  <tr><th>domain</th><td>{{ w.dex_domain or '—' }}</td></tr>
+  <tr><th>etymology</th><td>{{ w.dex_etymology or '—' }}</td></tr>
+</table>
+
+<hr>
+
+<table class="detail-table">
+  <tr><th>hist_ppm</th><td>{{ "%.2f" | format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</td></tr>
+  <tr><th>modern_ppm</th><td>{{ "%.2f" | format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</td></tr>
+  <tr><th>log_ratio</th><td>{{ "%.2f" | format(w.log_ratio) if w.log_ratio is not none else '—' }}</td></tr>
+  <tr><th>dex_freq</th><td>{{ "%.3f" | format(w.dex_frequency) if w.dex_frequency is not none else '—' }}</td></tr>
+</table>
+
+{% if w.provider %}
+<hr>
+<table class="detail-table">
+  <tr><th>web</th><td>{% if w.in_wild %}✓ found{% else %}✗ not found{% endif %} ({{ w.provider }})</td></tr>
+  <tr><th>results</th><td>{{ w.total_results }}</td></tr>
+  {% if w.last_seen_approx %}<tr><th>last seen</th><td>{{ w.last_seen_approx }}</td></tr>{% endif %}
+  {% if w.top_url %}<tr><th>top URL</th><td><a href="{{ w.top_url }}" target="_blank" rel="noopener">{{ w.top_url[:60] }}{% if w.top_url|length > 60 %}…{% endif %}</a></td></tr>{% endif %}
+</table>
+{% endif %}
+
+<hr>
+
+<div class="actions">
+  {% set word = w.word %}
+  {% set bookmarked = w.bookmarked %}
+  {% include 'partials/bookmark_btn.html' %}
+  {% set tags = w.tags %}
+  {% include 'partials/tags_row.html' %}
+</div>
+
+<div class="note-section">
+  <label for="note-input">note (Enter to save)</label>
+  <textarea id="note-input" name="note"
+            hx-post="/note/{{ w.word | urlencode }}"
+            hx-trigger="keydown[key=='Enter'] consume"
+            hx-target="#note-status"
+            hx-swap="innerHTML">{{ w.note }}</textarea>
+  <div id="note-status"></div>
+</div>
