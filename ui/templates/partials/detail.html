@@ -9,6 +9,17 @@
   <tr><th>etymology</th><td>{{ w.dex_etymology or '—' }}</td></tr>
 </table>
 
+{% if w.definition %}
+<hr>
+<div class="definition-block">
+  <div class="definition-label">DEX</div>
+  <div class="definition-text">{{ w.definition }}</div>
+  <a class="dex-link"
+     href="https://dexonline.ro/definitie/{{ w.word | urlencode }}"
+     target="_blank" rel="noopener">↗ dexonline.ro</a>
+</div>
+{% endif %}
+
 <hr>
 
 <table class="detail-table">

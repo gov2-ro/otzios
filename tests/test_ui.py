@@ -331,3 +331,20 @@ def test_base_has_shortcuts_overlay(client):
     resp = client.get('/')
     assert b'shortcuts-overlay' in resp.data
     assert b'showShortcuts' in resp.data
+
+
+def test_word_detail_shows_definition(dbs, client):
+    # dbs and client share the same words_db (pytest fixture dedup)
+    words_db, _ = dbs
+    words_db.execute(
+        "UPDATE words SET definition='Vânzătoare de acătări.' WHERE word='acătării'"
+    )
+    words_db.commit()
+    resp = client.get('/word/acătării')
+    assert 'Vânzătoare de acătări.'.encode('utf-8') in resp.data
+    assert b'dexonline.ro' in resp.data
+
+
+def test_word_detail_no_definition_hides_block(client):
+    resp = client.get('/word/acătării')
+    assert b'definition-block' not in resp.data
