@@ -15,6 +15,28 @@ _words_db: sqlite3.Connection | None = None
 _research_db: sqlite3.Connection | None = None
 
 
+def _float(v: str) -> float | None:
+    try:
+        return float(v) if v not in ('', None) else None
+    except ValueError:
+        return None
+
+
+def _int(v: str) -> int | None:
+    try:
+        return int(v) if v not in ('', None) else None
+    except ValueError:
+        return None
+
+
+def _bool(v: str) -> int | None:
+    if v in ('true', 'True', '1'):
+        return 1
+    if v in ('false', 'False', '0'):
+        return 0
+    return None
+
+
 def load_words(shortlist_path: Path, web_path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(':memory:', check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -34,24 +56,12 @@ def load_words(shortlist_path: Path, web_path: Path) -> sqlite3.Connection:
             is_forgotten     INTEGER,
             total_results    INTEGER,
             in_wild          INTEGER,
-            web_score        INTEGER,
+            web_score        TEXT,
             top_url          TEXT,
             last_seen_approx TEXT,
             provider         TEXT
         )
     """)
-
-    def _float(v: str) -> float | None:
-        try:
-            return float(v) if v not in ('', None) else None
-        except ValueError:
-            return None
-
-    def _int(v: str) -> int | None:
-        try:
-            return int(v) if v not in ('', None) else None
-        except ValueError:
-            return None
 
     with open(shortlist_path, newline='', encoding='utf-8') as f:
         for row in csv.DictReader(f):
@@ -73,7 +83,7 @@ def load_words(shortlist_path: Path, web_path: Path) -> sqlite3.Connection:
                     row.get('dex_register') or None,
                     row.get('dex_domain') or None,
                     row.get('dex_etymology') or None,
-                    _int(row.get('is_forgotten', '')),
+                    _bool(row.get('is_forgotten', '')),
                 ),
             )
 
@@ -87,8 +97,8 @@ def load_words(shortlist_path: Path, web_path: Path) -> sqlite3.Connection:
                        WHERE word=?""",
                     (
                         _int(row.get('total_results', '')),
-                        _int(row.get('in_wild', '')),
-                        _int(row.get('web_score', '')),
+                        _bool(row.get('in_wild', '')),
+                        row.get('web_score') or None,
                         row.get('top_url') or None,
                         row.get('last_seen_approx') or None,
                         row.get('provider') or None,

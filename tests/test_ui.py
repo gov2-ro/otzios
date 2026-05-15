@@ -48,8 +48,9 @@ WORD_B = {
     'dex_domain': '', 'dex_etymology': '', 'is_forgotten': '1',
 }
 WEB_A = {
-    'word': 'acătării', 'total_results': '0', 'in_wild': '0',
-    'web_score': '0', 'top_url': '', 'last_seen_approx': '', 'provider': 'google',
+    'word': 'acătării', 'total_results': '12', 'in_wild': 'true',
+    'web_score': 'alive_rare', 'top_url': 'https://example.com',
+    'last_seen_approx': '', 'provider': 'ddg',
 }
 
 
@@ -62,7 +63,9 @@ def dbs(tmp_path):
     make_web(web, [WEB_A])
     words_db = ui_app.load_words(shortlist, web)
     res_db = ui_app.open_research_db(research)
-    return words_db, res_db
+    yield words_db, res_db
+    words_db.close()
+    res_db.close()
 
 
 def test_load_words_count(dbs):
@@ -74,10 +77,11 @@ def test_load_words_count(dbs):
 def test_load_words_web_merge(dbs):
     words_db, _ = dbs
     row = words_db.execute(
-        "SELECT provider, in_wild FROM words WHERE word = 'acătării'"
+        "SELECT provider, in_wild, web_score FROM words WHERE word = 'acătării'"
     ).fetchone()
-    assert row['provider'] == 'google'
-    assert row['in_wild'] == 0
+    assert row['provider'] == 'ddg'
+    assert row['in_wild'] == 1
+    assert row['web_score'] == 'alive_rare'
 
 
 def test_load_words_no_web_data(dbs):
