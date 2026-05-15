@@ -47,6 +47,12 @@ WORD_B = {
     'modern_ppm': '0.1', 'dex_pos': 'vb.', 'dex_register': '',
     'dex_domain': '', 'dex_etymology': '', 'is_forgotten': '1',
 }
+WORD_C = {
+    'word': 'afurca', 'dex_frequency': '0.05', 'verdict': 'extinct',
+    'confidence_tier': 'corpus_extinct', 'log_ratio': '-8.0', 'hist_ppm': '5.0',
+    'modern_ppm': '0.0', 'dex_pos': 'vb.', 'dex_register': '',
+    'dex_domain': '', 'dex_etymology': '', 'is_forgotten': '1',
+}
 WEB_A = {
     'word': 'acătării', 'total_results': '12', 'in_wild': 'true',
     'web_score': 'alive_rare', 'top_url': 'https://example.com',
@@ -262,3 +268,55 @@ def test_load_words_no_definitions_db(tmp_path):
     row = words_db.execute("SELECT definition FROM words WHERE word='acătării'").fetchone()
     assert row['definition'] is None
     words_db.close()
+
+
+@pytest.fixture()
+def client3(tmp_path):
+    shortlist = tmp_path / 'shortlist.csv'
+    web = tmp_path / 'web.csv'
+    research = tmp_path / 'research.db'
+    # WORD_A: log_ratio=-5.2, modern_ppm=0.0, dex_frequency=0.1
+    # WORD_B: log_ratio=-3.1, modern_ppm=0.1, dex_frequency=0.2
+    # WORD_C: log_ratio=-8.0, modern_ppm=0.0, dex_frequency=0.05
+    make_shortlist(shortlist, [WORD_A, WORD_B, WORD_C])
+    make_web(web, [])
+    words_db = ui_app.load_words(shortlist, web, tmp_path / 'no_defs.db')
+    res_db = ui_app.open_research_db(research)
+    ui_app._words_db = words_db
+    ui_app._research_db = res_db
+    ui_app.app.config['TESTING'] = True
+    with ui_app.app.test_client() as c:
+        yield c
+    words_db.close()
+    res_db.close()
+
+
+def test_search_default_sort_is_alpha(client3):
+    resp = client3.get('/search')
+    assert resp.status_code == 200
+    html = resp.data.decode('utf-8')
+    assert html.index('acătării') < html.index('adăsta') < html.index('afurca')
+
+
+def test_search_sort_declined(client3):
+    # WORD_C log_ratio=-8.0 (most declined DESC), then WORD_A -5.2, then WORD_B -3.1
+    resp = client3.get('/search?sort=declined')
+    assert resp.status_code == 200
+    html = resp.data.decode('utf-8')
+    assert html.index('afurca') < html.index('acătării') < html.index('adăsta')
+
+
+def test_search_sort_rare(client3):
+    # WORD_A modern_ppm=0.0, WORD_C modern_ppm=0.0, WORD_B modern_ppm=0.1
+    # ASC: 0.0 words first — adăsta (0.1) should come last
+    resp = client3.get('/search?sort=rare')
+    assert resp.status_code == 200
+    html = resp.data.decode('utf-8')
+    assert html.index('adăsta') > html.index('acătării')
+
+
+def test_search_sort_invalid_falls_back_to_alpha(client3):
+    resp = client3.get('/search?sort=DROP+TABLE+words')
+    assert resp.status_code == 200
+    html = resp.data.decode('utf-8')
+    assert html.index('acătării') < html.index('adăsta')

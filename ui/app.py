@@ -162,6 +162,12 @@ def _now() -> str:
 
 PAGE_SIZE = 50
 
+SORT_OPTIONS = {
+    'declined': 'log_ratio ASC NULLS LAST',
+    'rare':     'modern_ppm ASC NULLS LAST',
+    'dex_freq': 'dex_frequency ASC NULLS LAST',
+}
+
 
 def _bookmarks_map() -> dict[str, dict]:
     rows = _research_db.execute('SELECT * FROM bookmarks').fetchall()
@@ -174,6 +180,7 @@ def search():
     verdict = request.args.get('verdict', '').strip()
     tier = request.args.get('tier', '').strip()
     bookmarked_only = request.args.get('bookmarked', '') == '1'
+    sort = request.args.get('sort', '').strip()
     page = max(1, int(request.args.get('page', 1) or 1))
     offset = (page - 1) * PAGE_SIZE
 
@@ -190,10 +197,11 @@ def search():
         params.append(tier)
 
     where = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
+    order_by = SORT_OPTIONS.get(sort, 'word ASC')
     bmap = _bookmarks_map()
 
     all_rows = _words_db.execute(
-        f'SELECT * FROM words {where} ORDER BY word', params
+        f'SELECT * FROM words {where} ORDER BY {order_by}', params
     ).fetchall()
 
     if bookmarked_only:
