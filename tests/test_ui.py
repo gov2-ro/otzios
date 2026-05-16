@@ -426,3 +426,13 @@ def test_search_word_row_has_data_attributes(client):
     assert 'data-verdict="extinct"' in body
     assert 'data-pos="s.f."' in body
     assert 'data-freq="10"' in body
+
+
+def test_base_has_sliding_panel_css(client):
+    resp = client.get('/')
+    body = resp.data.decode('utf-8')
+    assert 'panel-open' in body
+    assert 'translateX' in body
+    # word-list-container must not claim 50% width in CSS
+    # (we check the new 100% isn't the old 50% split)
+    assert 'width: 50%' not in body
