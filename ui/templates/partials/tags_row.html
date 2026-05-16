@@ -1,5 +1,19 @@
+{% set quick_names = quick_tags | map(attribute=0) | list %}
 <div id="tags-row">
-  {% for tag in tags %}
+  <div class="quick-tags">
+    {% for tag, key in quick_tags %}
+    <button type="button"
+            class="qt-btn{% if tag in tags %} active{% endif %}"
+            data-qtkey="{{ key }}"
+            title="{{ tag }} ({{ key }})"
+            hx-post="/tag/{{ word | urlencode }}/toggle/{{ tag | urlencode }}"
+            hx-target="#tags-row"
+            hx-swap="outerHTML">
+      <span class="qt-key">{{ key }}</span>{{ tag }}
+    </button>
+    {% endfor %}
+  </div>
+  {% for tag in tags if tag not in quick_names %}
   <span class="tag">{{ tag }}
     <button hx-delete="/tag/{{ word | urlencode }}/{{ tag | urlencode }}"
             hx-target="#tags-row"
@@ -7,6 +21,8 @@
   </span>
   {% endfor %}
   <input id="tag-input" type="text" name="tag" placeholder="add tag…"
+         list="tag-suggestions"
+         autocomplete="off"
          hx-post="/tag/{{ word | urlencode }}"
          hx-trigger="keydown[key=='Enter'] consume"
          hx-target="#tags-row"

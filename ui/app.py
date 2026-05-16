@@ -169,6 +169,15 @@ SORT_OPTIONS = {
     'alpha':    'word ASC',
 }
 
+QUICK_TAGS = [
+    ('ignore', 'i'),
+    ('boring', 'B'),
+    ('funny',  'f'),
+    ('remove', 'x'),
+]
+QUICK_TAG_NAMES = {t for t, _ in QUICK_TAGS}
+
+
 POS_OPTIONS = [
     ('substantiv feminin',  's.f.'),
     ('substantiv neutru',   's.n.'),
@@ -272,6 +281,19 @@ def search():
     )
 
 
+def _all_used_tags() -> list[str]:
+    rows = _research_db.execute(
+        "SELECT tags FROM bookmarks WHERE tags IS NOT NULL AND tags != ''"
+    ).fetchall()
+    seen: set[str] = set()
+    for r in rows:
+        for t in (r['tags'] or '').split(','):
+            t = t.strip()
+            if t and t not in QUICK_TAG_NAMES:
+                seen.add(t)
+    return sorted(seen)
+
+
 @app.route('/')
 def index():
     total  = _words_db.execute('SELECT COUNT(*) FROM words').fetchone()[0]
@@ -283,6 +305,8 @@ def index():
         distinct_registers   = _distinct_split('dex_register',   limit=10),
         distinct_domains     = _distinct_split('dex_domain',     limit=15),
         distinct_etymologies = _distinct_split('dex_etymology',  limit=12),
+        tag_suggestions      = _all_used_tags(),
+        quick_tags           = QUICK_TAGS,
     )
 
 
@@ -300,7 +324,7 @@ def word_detail(word: str):
     w['bookmarked'] = bool(bm and bm['bookmarked'])
     w['note'] = (bm and bm['note']) or ''
     w['tags'] = [t.strip() for t in ((bm and bm['tags']) or '').split(',') if t.strip()]
-    return render_template('partials/detail.html', w=w)
+    return render_template('partials/detail.html', w=w, quick_tags=QUICK_TAGS)
 
 
 @app.route('/bookmark/<word>', methods=['POST'])
@@ -392,6 +416,12 @@ def _set_tags(word: str, tags: list[str]) -> None:
     _research_db.commit()
 
 
+def _render_tags_row(word: str, tags: list[str]):
+    return render_template(
+        'partials/tags_row.html', word=word, tags=tags, quick_tags=QUICK_TAGS
+    )
+
+
 @app.route('/tag/<word>', methods=['POST'])
 def add_tag(word: str):
     if not _words_db.execute('SELECT 1 FROM words WHERE word=?', (word,)).fetchone():
@@ -403,7 +433,7 @@ def add_tag(word: str):
     if tag not in tags:
         tags.append(tag)
     _set_tags(word, tags)
-    return render_template('partials/tags_row.html', word=word, tags=tags)
+    return _render_tags_row(word, tags)
 
 
 @app.route('/tag/<word>/<tag>', methods=['DELETE'])
@@ -412,7 +442,28 @@ def remove_tag(word: str, tag: str):
         return 'Not found', 404
     tags = [t for t in _get_tags(word) if t != tag]
     _set_tags(word, tags)
-    return render_template('partials/tags_row.html', word=word, tags=tags)
+    return _render_tags_row(word, tags)
+
+
+@app.route('/tag/<word>/toggle/<tag>', methods=['POST'])
+def toggle_tag(word: str, tag: str):
+    if not _words_db.execute('SELECT 1 FROM words WHERE word=?', (word,)).fetchone():
+        return 'Not found', 404
+    tag = tag.strip()
+    if not tag:
+        return 'Bad request', 400
+    tags = _get_tags(word)
+    if tag in tags:
+        tags = [t for t in tags if t != tag]
+    else:
+        tags.append(tag)
+    _set_tags(word, tags)
+    return _render_tags_row(word, tags)
+
+
+@app.route('/tags/suggest')
+def tags_suggest():
+    return render_template('partials/tag_options.html', options=_all_used_tags())
 
 
 if __name__ == '__main__':
