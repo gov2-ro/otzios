@@ -124,6 +124,22 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   ```
   Input: any CSV with `dex_register`, `dex_domain`, `dex_etymology` columns (output of `create_curated_list.py` or `validate_diachronic.py`). See also #19 for web UI filter dropdowns using the same columns.
 
+- [ ] **#22 — [S, Med] Hybrid word-marking UX: reserved one-key tags + tag autocomplete** — research UI today supports bookmark (`b`) + free-form tags via the detail-panel input. Add (a) a reserved set of single-keystroke "verdict" tags so the common cases are zero-friction, and (b) `<datalist>` autocomplete on the free-form tag input from the union of tags used so far.
+
+  - Reserved keys: `i` = ignore, `B` = boring (Shift+B avoids collision with `b` bookmark), `f` = funny, `x` = remove. Each toggles its tag on the current word via a new `POST /tag/<word>/toggle/<tag>` endpoint that returns the refreshed `tags_row` partial (idempotent: re-pressing the key removes the tag).
+  - Reserved tags render as a dedicated row of toggle buttons at the top of `#tags-row` (visible state + clickable for mouse users) and are filtered out of the regular tag-pill list to avoid duplication. Treated as ordinary tags in storage — same `bookmarks.tags` column.
+  - `t` focuses the free-form tag input. Input is bound to `<datalist id="tag-suggestions">` populated server-side from `/tags/suggest` (distinct tags across all bookmarks). Stale until reload acceptable for v1.
+  - Update shortcuts modal + status bar with the new bindings.
+
+- [ ] **#21 — [M, Med] Factor in dictionary coverage (how many dictionaries list a term)** — DEX Online aggregates entries from multiple source dictionaries (DEX '98, DEX '09, MDA, NODEX, DLRLC, Scriban, Șăineanu, etc.). A word appearing in only one source — especially an older or specialised one — is a different kind of rare than one that appears in every modern dictionary. Add a per-word `dict_count` (and optionally `dict_sources` list) column derived from the `Definition.sourceId` → `Source` join in `lexemes.db`, then surface it in the curated/diachronic CSVs and as a filter/sort in the research UI (#19). Likely useful as an additional axis in the "forgotten" verdict: low corpus frequency + low dictionary coverage = stronger signal than low corpus frequency alone.
+
 ## Misc
 
+- [ ] **definitions.db has severe word→definition misalignment** — `abac` (abacus) is paired with a bacteremia definition; `vânzător` gets a paranasal osteoma definition; `acătarii` has no entry at all despite dexonline showing one. The DB has 83,609 rows so the content is present, but the word↔text association is broken. Likely cause: the extraction script joins on a row offset or integer key that doesn't stably map across tables (e.g. `Lexeme.id` vs `Meaning.entryId` vs `Entry.id` — a multi-hop join gone wrong). Fix: re-examine the extraction query against the DEX MySQL schema; spot-check 10–20 words against dexonline.ro to confirm the join path. Related: the existing `drăngălău` note below.
+
+- [ ] **domain taxonomy contains compound nodes with semicolons** — some DEX `dex_domain` values are compound strings from the source taxonomy: `'mineralogie; minerit'`, `'cinema; cinematografie'`, `'fonetică; fonologie'`, `'farmacie; farmacologie'`. These are stored and filtered as single pipe-delimited tokens (which is correct for exact-match filtering), but the UI dropdown shows the full compound string. Two open questions: (1) should the filter split on `;` to allow filtering by `mineralogie` alone? (2) are these compound nodes semantically intentional in DEX, or are they artifacts of how the tag hierarchy was imported? Check the `Tag` table: if `'mineralogie; minerit'` is a single row with that literal name, it's intentional; if it's two rows joined somewhere, the extraction is concatenating them incorrectly.
+
+- [ ] definitions have some bugs, `drăngălău` has the `constituent structural al oțelurilor călite și revenite` definition but on the web it doesn't have it https://dexonline.ro/definitie/dr%C3%A2ng%C4%83l%C4%83u/definitii
+
 - [ ] see [260515 notes - missing oțios.md](260515 notes - missing oțios.md)
+
