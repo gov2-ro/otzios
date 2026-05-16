@@ -626,6 +626,32 @@
       font-size: 11px;
     }
 
+    /* ── Detail meta row (verdict + tier + POS inline) ── */
+    .detail-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    /* ── Corpus stats row (hist / modern / ratio / dex inline) ── */
+    .detail-stats-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .stat-label {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 11px;
+      color: var(--text-3);
+      margin-right: 2px;
+    }
+
     /* ── Panel close button ── */
     .panel-close {
       position: absolute;

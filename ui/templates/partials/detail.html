@@ -1,17 +1,12 @@
 <button class="panel-close" onclick="closePanel()">✕</button>
 <h2>{{ w.word }}</h2>
 
+<div class="detail-meta-row" style="margin-bottom:10px">
+  <span class="verdict-badge vb-{{ (w.verdict or 'unknown') | replace(' ','_') }}">{{ w.verdict or '—' }}</span>
+  {% if w.confidence_tier %}<span class="detail-tag">{{ w.confidence_tier }}</span>{% endif %}
+  {% if w.dex_pos %}<span class="detail-tag">{{ w.dex_pos.split('|')[0] }}</span>{% endif %}
+</div>
 <table class="detail-table" style="margin-bottom:10px">
-  <tr>
-    <th>verdict</th>
-    <td>
-      <span class="verdict-badge vb-{{ (w.verdict or 'unknown') | replace(' ','_') }}">
-        {{ w.verdict or '—' }}
-      </span>
-    </td>
-  </tr>
-  <tr><th>tier</th><td>{{ w.confidence_tier or '—' }}</td></tr>
-  <tr><th>POS</th><td>{{ w.dex_pos or '—' }}</td></tr>
   {% if w.dex_register %}
   <tr>
     <th>register</th>
@@ -42,12 +37,12 @@
 
 <hr>
 
-<table class="detail-table">
-  <tr><th>hist ppm</th><td>{{ "%.2f"|format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</td></tr>
-  <tr><th>modern ppm</th><td>{{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</td></tr>
-  <tr><th>log ratio</th><td>{{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</td></tr>
-  <tr><th>DEX freq</th><td>{{ "%.3f"|format(w.dex_frequency) if w.dex_frequency is not none else '—' }}</td></tr>
-</table>
+<div class="detail-stats-row">
+  <span><span class="stat-label">hist</span> {{ "%.2f"|format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</span>
+  <span><span class="stat-label">modern</span> {{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</span>
+  <span><span class="stat-label">ratio</span> {{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</span>
+  <span><span class="stat-label">dex</span> {{ "%.3f"|format(w.dex_frequency) if w.dex_frequency is not none else '—' }}</span>
+</div>
 
 {% if w.provider %}
 <hr>
