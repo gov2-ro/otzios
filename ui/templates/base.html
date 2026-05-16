@@ -643,6 +643,58 @@
     }
     .panel-close:hover { color: var(--text); background: #f0ece5; }
 
+    /* ── Hover info box ── */
+    #hover-box {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 260px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.10);
+      padding: 12px 14px;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 120ms ease, transform 120ms ease;
+      z-index: 4;
+    }
+    #hover-box.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #hb-word {
+      font-family: var(--serif);
+      font-size: 1.4em;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      line-height: 1.1;
+    }
+    #hb-verdict-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    #hb-meta {
+      font-size: 12px;
+      color: var(--text-3);
+      font-family: var(--mono);
+    }
+    #hb-def {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 12px;
+      color: var(--text-2);
+      line-height: 1.5;
+      -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+      mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+      max-height: 60px;
+      overflow: hidden;
+    }
+
     /* scrollbar */
     #word-list-container::-webkit-scrollbar { width: 6px; }
     #word-list-container::-webkit-scrollbar-track { background: transparent; }
@@ -748,6 +800,14 @@
   </form>
 
   <div id="app">
+    <div id="hover-box">
+      <div id="hb-word"></div>
+      <div id="hb-verdict-row">
+        <span id="hb-verdict" class="verdict-badge"></span>
+        <span id="hb-meta"></span>
+      </div>
+      <div id="hb-def"></div>
+    </div>
     <div id="word-list-container">
       <div id="word-list"
            hx-get="/search"
@@ -883,6 +943,44 @@
     document.getElementById('shortcuts-overlay').addEventListener('click', function(e) {
       if (e.target === this) hideShortcuts();
     });
+
+    // Hover info box — event delegation on document, no per-row listeners needed
+    (function() {
+      var box    = document.getElementById('hover-box');
+      var hbWord = document.getElementById('hb-word');
+      var hbVerd = document.getElementById('hb-verdict');
+      var hbMeta = document.getElementById('hb-meta');
+      var hbDef  = document.getElementById('hb-def');
+      var panel  = document.getElementById('detail-panel');
+
+      document.addEventListener('mouseover', function(e) {
+        var row = e.target.closest('.word-row');
+        if (!row || panel.classList.contains('panel-open')) return;
+        var verdict = row.dataset.verdict || 'unknown';
+        hbWord.textContent = row.querySelector('.word-text').textContent;
+        hbVerd.textContent = verdict;
+        hbVerd.className = 'verdict-badge vb-' + verdict.replace(/ /g, '_');
+        var parts = [];
+        if (row.dataset.pos)  parts.push(row.dataset.pos);
+        if (row.dataset.freq) parts.push('dex ' + row.dataset.freq);
+        hbMeta.textContent = parts.join(' · ');
+        if (row.dataset.def) {
+          hbDef.textContent = row.dataset.def;
+          hbDef.style.display = '';
+        } else {
+          hbDef.style.display = 'none';
+        }
+        box.classList.add('visible');
+      });
+
+      document.addEventListener('mouseout', function(e) {
+        var row = e.target.closest('.word-row');
+        if (!row) return;
+        var to = e.relatedTarget;
+        if (to && row.contains(to)) return;
+        box.classList.remove('visible');
+      });
+    })();
   </script>
 </body>
 </html>

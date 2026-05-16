@@ -447,3 +447,11 @@ def test_base_has_close_panel_js(client):
     resp = client.get('/')
     body = resp.data.decode('utf-8')
     assert 'closePanel' in body
+
+
+def test_base_has_hover_box(client):
+    resp = client.get('/')
+    body = resp.data.decode('utf-8')
+    assert 'id="hover-box"' in body
+    assert 'id="hb-word"' in body
+    assert 'id="hb-def"' in body
