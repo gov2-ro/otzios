@@ -234,6 +234,73 @@ def test_tag_remove(client):
     assert 'înv.' not in tags
 
 
+def test_tag_toggle_adds_then_removes(client):
+    resp1 = client.post('/tag/acătării/toggle/boring')
+    assert resp1.status_code == 200
+    row = ui_app._research_db.execute(
+        "SELECT tags FROM bookmarks WHERE word='acătării'"
+    ).fetchone()
+    assert 'boring' in (row['tags'] or '').split(',')
+
+    resp2 = client.post('/tag/acătării/toggle/boring')
+    assert resp2.status_code == 200
+    row = ui_app._research_db.execute(
+        "SELECT tags FROM bookmarks WHERE word='acătării'"
+    ).fetchone()
+    assert 'boring' not in (row['tags'] or '').split(',')
+
+
+def test_tag_toggle_missing_word_returns_404(client):
+    resp = client.post('/tag/doesnotexist/toggle/ignore')
+    assert resp.status_code == 404
+
+
+def test_tag_toggle_response_renders_quick_tag_active(client):
+    resp = client.post('/tag/acătării/toggle/funny')
+    assert resp.status_code == 200
+    body = resp.data.decode('utf-8')
+    assert 'qt-btn' in body
+    # active class should appear on the funny button after toggle
+    assert 'qt-btn active' in body or 'active' in body
+    # funny is a quick tag so should NOT appear in the free-tag pill list
+    assert body.count('<span class="tag">') == 0
+
+
+def test_quick_tags_filtered_from_free_tag_pills(client):
+    # add a quick tag and a free tag
+    client.post('/tag/acătării/toggle/ignore')
+    client.post('/tag/acătării', data={'tag': 'archaic'})
+    resp = client.get('/word/acătării')
+    body = resp.data.decode('utf-8')
+    # free tag appears as a removable pill
+    assert '<span class="tag">archaic' in body
+    # quick tag does NOT appear as a removable pill (only as quick-tag button)
+    assert '<span class="tag">ignore' not in body
+
+
+def test_tags_suggest_returns_distinct_free_tags(client):
+    client.post('/tag/acătării', data={'tag': 'archaic'})
+    client.post('/tag/adăsta', data={'tag': 'archaic'})
+    client.post('/tag/adăsta', data={'tag': 'beautiful'})
+    client.post('/tag/acătării/toggle/boring')  # quick tag — should be filtered out
+    resp = client.get('/tags/suggest')
+    assert resp.status_code == 200
+    body = resp.data.decode('utf-8')
+    assert body.count('<option value="archaic">') == 1
+    assert '<option value="beautiful">' in body
+    assert 'boring' not in body
+
+
+def test_index_includes_datalist_and_quick_tags(client):
+    resp = client.get('/')
+    assert resp.status_code == 200
+    body = resp.data.decode('utf-8')
+    assert 'id="tag-suggestions"' in body
+    # all four quick-tag keys should appear in the shortcuts modal
+    for key in ('i', 'B', 'f', 'x', 't'):
+        assert f'<kbd>{key}</kbd>' in body
+
+
 def test_load_words_loads_definitions(tmp_path):
     shortlist = tmp_path / 'shortlist.csv'
     web = tmp_path / 'web.csv'
@@ -350,3 +417,12 @@ def test_word_detail_no_definition_still_shows_dex_link(client):
     assert b'definition-block' in resp.data
     assert b'dexonline.ro' in resp.data
     assert 'Vânzătoare de acătări.'.encode('utf-8') not in resp.data
+
+
+def test_search_word_row_has_data_attributes(client):
+    resp = client.get('/search')
+    body = resp.data.decode('utf-8')
+    # WORD_A: verdict=extinct, dex_pos=s.f., dex_frequency=0.1 → freq=10
+    assert 'data-verdict="extinct"' in body
+    assert 'data-pos="s.f."' in body
+    assert 'data-freq="10"' in body
