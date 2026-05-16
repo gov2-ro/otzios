@@ -436,3 +436,14 @@ def test_base_has_sliding_panel_css(client):
     # word-list-container must not claim 50% width in CSS
     # (we check the new 100% isn't the old 50% split)
     assert 'width: 50%' not in body
+
+
+def test_word_detail_has_close_button(client):
+    resp = client.get('/word/acătării')
+    assert b'panel-close' in resp.data
+
+
+def test_base_has_close_panel_js(client):
+    resp = client.get('/')
+    body = resp.data.decode('utf-8')
+    assert 'closePanel' in body

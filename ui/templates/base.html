@@ -626,6 +626,23 @@
       font-size: 11px;
     }
 
+    /* ── Panel close button ── */
+    .panel-close {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: none;
+      border: none;
+      font-size: 16px;
+      color: var(--text-3);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: var(--radius);
+      line-height: 1;
+      transition: color .1s, background .1s;
+    }
+    .panel-close:hover { color: var(--text); background: #f0ece5; }
+
     /* scrollbar */
     #word-list-container::-webkit-scrollbar { width: 6px; }
     #word-list-container::-webkit-scrollbar-track { background: transparent; }
@@ -826,13 +843,14 @@
 
     function showShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'flex'; }
     function hideShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'none'; }
+    function closePanel() { document.getElementById('detail-panel').classList.remove('panel-open'); }
 
     document.addEventListener('keydown', function(e) {
       const tag = document.activeElement.tagName;
       const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
       if (e.key === '?') { e.preventDefault(); showShortcuts(); return; }
       if (inInput) { if (e.key === 'Escape') { hideShortcuts(); document.activeElement.blur(); } return; }
-      if (e.key === 'Escape') { hideShortcuts(); return; }
+      if (e.key === 'Escape') { hideShortcuts(); closePanel(); return; }
       if (e.key === '/') { e.preventDefault(); document.getElementById('search').focus(); return; }
       if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); selectRow(selectedIdx + 1); gPressed = false; return; }
       if (e.key === 'k' || e.key === 'ArrowUp')   { e.preventDefault(); selectRow(selectedIdx - 1); gPressed = false; return; }
@@ -855,6 +873,11 @@
 
     document.body.addEventListener('htmx:afterSwap', function(e) {
       if (e.detail.target.id === 'word-list') selectedIdx = -1;
+      if (e.detail.target.id === 'detail-panel') {
+        e.detail.target.classList.add('panel-open');
+        var hb = document.getElementById('hover-box');
+        if (hb) hb.classList.remove('visible');
+      }
     });
 
     document.getElementById('shortcuts-overlay').addEventListener('click', function(e) {
