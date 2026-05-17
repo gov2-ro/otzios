@@ -54,19 +54,18 @@ def pos_excluded(dex_pos: str) -> bool:
     return bool(tags & EXCLUDED_POS)
 
 
-def classify(row: dict) -> str | None:
-    verdict = row['verdict']
-    bad_pos = pos_excluded(row['dex_pos'])
-
-    if bad_pos:
+def classify(row: dict, exclude_etym: frozenset = frozenset()) -> str | None:
+    if pos_excluded(row['dex_pos']):
         return None
-
+    if exclude_etym:
+        etym_tags = {t.strip() for t in (row.get('dex_etymology') or '').split('|') if t.strip()}
+        if etym_tags & exclude_etym:
+            return None
+    verdict = row['verdict']
     if verdict in TIER_A_VERDICTS and float(row['hist_ppm']) > 0:
         return f'corpus_{verdict}'
-
-    if verdict == 'absent' and 'învechit' in row['dex_register'].split('|'):
+    if verdict == 'absent' and 'învechit' in (row.get('dex_register') or '').split('|'):
         return 'dex_invechit_absent'
-
     return None
 
 
@@ -76,7 +75,15 @@ def main() -> int:
     parser.add_argument('--output', type=Path, default=OUTPUT_CSV)
     parser.add_argument('--limit',  type=int,  default=None, help='Cap total output rows')
     parser.add_argument('--stats',  action='store_true', help='Print stats only, do not write')
+    parser.add_argument(
+        '--exclude-etymology', default='', metavar='TAGS',
+        help='Comma-separated etymology tags to exclude. E.g. anglicism,franțuzism',
+    )
     args = parser.parse_args()
+
+    exclude_etym = frozenset(
+        t.strip() for t in args.exclude_etymology.split(',') if t.strip()
+    )
 
     if not args.input.exists():
         print(f'Missing: {args.input}  — run validate_diachronic.py first.')
@@ -88,12 +95,17 @@ def main() -> int:
     # Classify every row
     selected: list[dict] = []
     excluded_pos = 0
+    excluded_etym = 0
 
     for row in rows:
-        tier = classify(row)
+        tier = classify(row, exclude_etym)
         if tier is None:
             if pos_excluded(row['dex_pos']):
                 excluded_pos += 1
+            elif exclude_etym:
+                etym_tags = {t.strip() for t in (row.get('dex_etymology') or '').split('|') if t.strip()}
+                if etym_tags & exclude_etym:
+                    excluded_etym += 1
             continue
         out = {f: row.get(f, '') for f in OUT_FIELDS}
         out['confidence_tier'] = tier
@@ -120,6 +132,8 @@ def main() -> int:
     print(f'  {"—"*35}')
     print(f'  {"Total":<28} {len(selected):>6,}')
     print(f'  Excluded (POS)               {excluded_pos:>6,}')
+    if exclude_etym:
+        print(f'  Excluded (etymology)         {excluded_etym:>6,}')
 
     if args.stats:
         return 0

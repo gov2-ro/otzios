@@ -53,3 +53,59 @@ def test_has_definition_passes_through_to_output(tmp_path):
     rows = list(csv.DictReader(out.open(encoding='utf-8')))
     assert len(rows) == 1
     assert rows[0]['has_definition'] == '1'
+
+
+ANGLICISM_ROW = {
+    **BASE_ROW,
+    'word': 'sendviș',
+    'dex_etymology': 'anglicism',
+    'has_definition': '0',
+}
+
+ABSENT_ROW = {
+    **BASE_ROW,
+    'word': 'lăut',
+    'verdict': 'absent',
+    'hist_ppm': '0.0',
+    'dex_register': 'învechit',
+    'dex_etymology': '',
+    'has_definition': '1',
+}
+
+
+def test_classify_excludes_matching_etymology():
+    row = {**ANGLICISM_ROW}
+    result = ms.classify(row, exclude_etym=frozenset({'anglicism'}))
+    assert result is None
+
+
+def test_classify_keeps_non_matching_etymology():
+    row = {**BASE_ROW}  # dex_etymology='slavă'
+    result = ms.classify(row, exclude_etym=frozenset({'anglicism'}))
+    assert result is not None
+
+
+def test_classify_empty_exclude_set_unchanged():
+    row = {**ANGLICISM_ROW}
+    result = ms.classify(row, exclude_etym=frozenset())
+    # anglicism word with extinct verdict and hist_ppm>0 → should be classified
+    assert result == 'corpus_extinct'
+
+
+def test_exclude_etymology_cli_filters_output(tmp_path):
+    inp = tmp_path / 'diachronic.csv'
+    out = tmp_path / 'shortlist.csv'
+    make_diachronic_csv(inp, [BASE_ROW, ANGLICISM_ROW])
+
+    sys.argv = [
+        'make_shortlist.py',
+        '--input', str(inp),
+        '--output', str(out),
+        '--exclude-etymology', 'anglicism',
+    ]
+    ms.main()
+
+    rows = list(csv.DictReader(out.open(encoding='utf-8')))
+    words = [r['word'] for r in rows]
+    assert 'ajutoriu' in words
+    assert 'sendviș' not in words
