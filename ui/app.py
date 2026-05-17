@@ -232,6 +232,7 @@ def search():
     pos             = request.args.get('pos', '').strip()
     has_def         = request.args.get('has_def', '').strip()
     bookmarked_only = request.args.get('bookmarked', '') == '1'
+    exclude_etym    = request.args.getlist('exclude_etym')
     sort            = request.args.get('sort', '').strip()
     page   = max(1, int(request.args.get('page', 1) or 1))
     offset = (page - 1) * PAGE_SIZE
@@ -253,6 +254,9 @@ def search():
         if val:
             conditions.append(f"('|'||{col}||'|' LIKE ?)")
             params.append(f'%|{val}|%')
+    for val in exclude_etym:
+        conditions.append("NOT ('|'||COALESCE(dex_etymology,'')||'|' LIKE ?)")
+        params.append(f'%|{val}|%')
     if has_def == '1':
         conditions.append('definition IS NOT NULL')
     elif has_def == '0':

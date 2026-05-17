@@ -472,3 +472,17 @@ def test_base_has_hover_box(client):
     assert 'id="hover-box"' in body
     assert 'id="hb-word"' in body
     assert 'id="hb-def"' in body
+
+
+def test_search_exclude_etymology_hides_matching_word(client):
+    resp = client.get('/search?exclude_etym=slav%C4%83')
+    body = resp.data.decode('utf-8')
+    assert 'acătării'.encode('utf-8') not in resp.data
+    assert 'adăsta'.encode('utf-8') in resp.data
+
+
+def test_search_exclude_etymology_multiple_values(client):
+    # exclude both slavă and nonexistent — words with empty etymology (adăsta) should survive
+    resp = client.get('/search?exclude_etym=slav%C4%83&exclude_etym=nonexistent')
+    assert 'acătării'.encode('utf-8') not in resp.data
+    assert 'adăsta'.encode('utf-8') in resp.data
