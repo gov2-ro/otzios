@@ -96,6 +96,12 @@ def extract(sql_path: Path, out_path: Path) -> int:
     # definition_id → text
     def_text: dict[str, str] = {}
 
+    # Debug: track definition text statistics
+    empty_text_count = 0
+    null_text_count = 0
+    valid_text_count = 0
+    definitions_seen = 0
+
     prefixes = {t: f"INSERT INTO `{t}` VALUES " for t in _TARGET}
 
     print("Streaming dump (this takes a few minutes)…")
@@ -139,25 +145,63 @@ def extract(sql_path: Path, out_path: Path) -> int:
                                 entry_def[eid] = (did, rank)
 
                     elif table == 'DefinitionSimple':
-                        # cols: id(0), definition(1)
-                        if len(row) >= 2 and row[0] and row[1]:
-                            def_text.setdefault(row[0], row[1])
+                        # cols: id(0), definition(1), lexicon(2), createDate(3), modDate(4), millShown(5), millGuessed(6)
+                        if len(row) >= 2 and row[0]:
+                            definitions_seen += 1
+                            def_id = row[0]
+                            text = row[1]
+                            if text is None:
+                                null_text_count += 1
+                            elif isinstance(text, str) and text.strip() == '':
+                                empty_text_count += 1
+                            else:
+                                valid_text_count += 1
+                                def_text.setdefault(def_id, text)
                 break  # only one table prefix matches per line
 
     print(f"Joining {len(lex_form):,} lexemes…")
     seen: dict[str, str] = {}
+
+    # Debug counters
+    skipped_no_entry = 0
+    skipped_no_defn = 0
+    skipped_no_text = 0
+    skipped_dup = 0
+
     for lid, form in lex_form.items():
-        if not form or form in seen:
+        if not form:
             continue
+        if form in seen:
+            skipped_dup += 1
+            continue
+
         entry = lex_entry.get(lid)
         if not entry:
+            skipped_no_entry += 1
             continue
+
         defn = entry_def.get(entry[0])
         if not defn:
+            skipped_no_defn += 1
             continue
+
         text = def_text.get(defn[0])
         if text:
             seen[form] = text
+        else:
+            skipped_no_text += 1
+
+    print(f"\nDefinitionSimple table analysis:")
+    print(f"  ✓ Definitions loaded with valid text: {valid_text_count:,}")
+    print(f"  ✗ Definitions with NULL text: {null_text_count:,}")
+    print(f"  ✗ Definitions with empty text: {empty_text_count:,}")
+
+    print(f"\nJoin results:")
+    print(f"  ✓ Definitions created: {len(seen):,}")
+    print(f"  ✗ Lexeme has no entry link: {skipped_no_entry:,}")
+    print(f"  ✗ Entry has no definition link: {skipped_no_defn:,}")
+    print(f"  ✗ Definition has no text: {skipped_no_text:,}")
+    print(f"  ✗ Duplicate forms: {skipped_dup:,}")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(out_path))
