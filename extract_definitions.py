@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """
-Extract first definition per Lexeme form from DEX MySQL dump.
+Extract one definition per headword from DEX MySQL dump.
 
-Joins Lexeme → EntryLexeme → EntryDefinition → DefinitionSimple so that
-every word form in the shortlist (including inflected forms like plurals and
-case endings) maps to its entry's primary definition, not just headwords.
+The DEX dump's `DefinitionSimple` table has columns
+(id, definition, lexicon, createDate, modDate, millShown, millGuessed).
+Despite the field name, `lexicon` is the *headword* the definition belongs
+to — not a dictionary source. We use it directly as the join key.
+
+A previous version of this script joined Lexeme → EntryLexeme →
+EntryDefinition → DefinitionSimple. That chain produced systematically
+misaligned pairings (e.g. `abate` matched to a definition of `abatiză`)
+because Entry records group multiple related-but-distinct words and the
+"primary" rank-1 definition for an Entry is not necessarily about its
+primary Lexeme. The lexicon column avoids the chain entirely.
 
 Streams line by line — never loads the full 1.2 GB into memory.
 Output: data/processed/definitions.db
@@ -16,7 +24,7 @@ from pathlib import Path
 SQL_PATH = Path('data/dictionaries/dex-database.sql')
 OUT_PATH = Path('data/processed/definitions.db')
 
-_TARGET = frozenset({'Lexeme', 'EntryLexeme', 'EntryDefinition', 'DefinitionSimple'})
+_PREFIX = 'INSERT INTO `DefinitionSimple` VALUES '
 
 
 def _parse_values(values_str: str) -> list[list]:
@@ -71,137 +79,49 @@ def _clean(v: str) -> str | None:
     return None if v == 'NULL' else v
 
 
-def _rank(v) -> int:
-    try:
-        return int(v)
-    except (TypeError, ValueError):
-        return 0
-
-
 def extract(sql_path: Path, out_path: Path) -> int:
-    """Join Lexeme → EntryLexeme → EntryDefinition → DefinitionSimple.
+    """Read DefinitionSimple, keep the first definition per headword.
 
-    For each Lexeme.formNoAccent, follows the chain to its entry's primary
-    definition (lowest definitionRank). When a lexeme belongs to multiple
-    entries, the entry with the lowest entryRank is used.
+    Rows arrive in id order; `setdefault` therefore keeps the lowest-id
+    definition for each headword, which serves as a stable proxy for the
+    "primary" definition.
 
     Returns number of words written.
     """
-    # lexeme_id → formNoAccent
-    lex_form: dict[str, str] = {}
-    # lexeme_id → (entry_id, entryRank)  — keep lowest entryRank per lexeme
-    lex_entry: dict[str, tuple[str, int]] = {}
-    # entry_id → (definition_id, definitionRank)  — keep lowest definitionRank
-    entry_def: dict[str, tuple[str, int]] = {}
-    # definition_id → text
-    def_text: dict[str, str] = {}
+    seen: dict[str, str] = {}
+    rows_total = 0
+    rows_skipped_empty = 0
 
-    # Debug: track definition text statistics
-    empty_text_count = 0
-    null_text_count = 0
-    valid_text_count = 0
-    definitions_seen = 0
-
-    prefixes = {t: f"INSERT INTO `{t}` VALUES " for t in _TARGET}
-
-    print("Streaming dump (this takes a few minutes)…")
+    print("Streaming dump (this takes a minute)…")
     line_count = 0
     with open(sql_path, encoding='utf-8', errors='replace') as f:
         for line in f:
             line_count += 1
             if line_count % 200_000 == 0:
-                print(f"  {line_count:,} lines — "
-                      f"lexemes:{len(lex_form):,}  "
-                      f"lex→entry:{len(lex_entry):,}  "
-                      f"entry→def:{len(entry_def):,}  "
-                      f"defs:{len(def_text):,}")
+                print(f"  {line_count:,} lines — headwords:{len(seen):,}")
 
-            line = line.rstrip('\n')
-            for table, prefix in prefixes.items():
-                if not line.startswith(prefix):
+            if not line.startswith(_PREFIX):
+                continue
+
+            values_str = line[len(_PREFIX):].rstrip('\n')
+            if values_str.endswith(';'):
+                values_str = values_str[:-1]
+
+            for row in _parse_values(values_str):
+                # cols: id(0), definition(1), lexicon=headword(2), ...
+                if len(row) < 3:
                     continue
-                values_str = line[len(prefix):]
-                if values_str.endswith(';'):
-                    values_str = values_str[:-1]
+                rows_total += 1
+                headword = row[2]
+                text = row[1]
+                if not headword or not text or not text.strip():
+                    rows_skipped_empty += 1
+                    continue
+                seen.setdefault(headword, text)
 
-                for row in _parse_values(values_str):
-                    if table == 'Lexeme':
-                        # cols: id(0), form(1), formNoAccent(2)
-                        if len(row) >= 3 and row[0] and row[2]:
-                            lex_form[row[0]] = row[2]
-
-                    elif table == 'EntryLexeme':
-                        # cols: id(0), entryId(1), lexemeId(2), entryRank(3)
-                        if len(row) >= 4 and row[1] and row[2]:
-                            lid, eid, rank = row[2], row[1], _rank(row[3])
-                            if lid not in lex_entry or rank < lex_entry[lid][1]:
-                                lex_entry[lid] = (eid, rank)
-
-                    elif table == 'EntryDefinition':
-                        # cols: id(0), entryId(1), definitionId(2), entryRank(3), definitionRank(4)
-                        if len(row) >= 5 and row[1] and row[2]:
-                            eid, did, rank = row[1], row[2], _rank(row[4])
-                            if eid not in entry_def or rank < entry_def[eid][1]:
-                                entry_def[eid] = (did, rank)
-
-                    elif table == 'DefinitionSimple':
-                        # cols: id(0), definition(1), lexicon(2), createDate(3), modDate(4), millShown(5), millGuessed(6)
-                        if len(row) >= 2 and row[0]:
-                            definitions_seen += 1
-                            def_id = row[0]
-                            text = row[1]
-                            if text is None:
-                                null_text_count += 1
-                            elif isinstance(text, str) and text.strip() == '':
-                                empty_text_count += 1
-                            else:
-                                valid_text_count += 1
-                                def_text.setdefault(def_id, text)
-                break  # only one table prefix matches per line
-
-    print(f"Joining {len(lex_form):,} lexemes…")
-    seen: dict[str, str] = {}
-
-    # Debug counters
-    skipped_no_entry = 0
-    skipped_no_defn = 0
-    skipped_no_text = 0
-    skipped_dup = 0
-
-    for lid, form in lex_form.items():
-        if not form:
-            continue
-        if form in seen:
-            skipped_dup += 1
-            continue
-
-        entry = lex_entry.get(lid)
-        if not entry:
-            skipped_no_entry += 1
-            continue
-
-        defn = entry_def.get(entry[0])
-        if not defn:
-            skipped_no_defn += 1
-            continue
-
-        text = def_text.get(defn[0])
-        if text:
-            seen[form] = text
-        else:
-            skipped_no_text += 1
-
-    print(f"\nDefinitionSimple table analysis:")
-    print(f"  ✓ Definitions loaded with valid text: {valid_text_count:,}")
-    print(f"  ✗ Definitions with NULL text: {null_text_count:,}")
-    print(f"  ✗ Definitions with empty text: {empty_text_count:,}")
-
-    print(f"\nJoin results:")
-    print(f"  ✓ Definitions created: {len(seen):,}")
-    print(f"  ✗ Lexeme has no entry link: {skipped_no_entry:,}")
-    print(f"  ✗ Entry has no definition link: {skipped_no_defn:,}")
-    print(f"  ✗ Definition has no text: {skipped_no_text:,}")
-    print(f"  ✗ Duplicate forms: {skipped_dup:,}")
+    print(f"\nDefinitionSimple rows scanned: {rows_total:,}")
+    print(f"  ✗ skipped (empty headword or text): {rows_skipped_empty:,}")
+    print(f"  ✓ unique headwords kept: {len(seen):,}")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(out_path))
