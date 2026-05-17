@@ -1,4 +1,4 @@
-<div class="word-row verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}{% if w.bookmarked %} bookmarked{% endif %}"
+<div class="word-row verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}{% if w.word | length >= 12 %} word-wide{% endif %}{% if w.bookmarked %} bookmarked{% endif %}"
      data-verdict="{{ w.verdict or 'unknown' }}"
      data-pos="{{ (w.dex_pos or '').split('|')[0] }}"
      data-freq="{{ (w.dex_frequency * 100) | round | int if w.dex_frequency is not none else '' }}"

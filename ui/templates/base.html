@@ -271,12 +271,13 @@
       background: var(--bg);
     }
     #word-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1px 4px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 3px;
       padding: 12px 14px 14px;
-      align-content: flex-start;
+      align-items: start;
     }
+    .word-wide { grid-column: span 2; }
 
     /* Word chips — borderless, color = verdict, very compact */
     .word-row {
