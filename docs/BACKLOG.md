@@ -24,6 +24,8 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 - [ ] **Confidence-score weights are unjustified** (`validate_forgotten_words.py:215`) — `dex×0.3 + corpus×0.5 + doc×0.2` was chosen ad hoc. Treat output as ordinal, not absolute.
 
+- [ ] **Metadata mapping ambiguity** (`validate_diachronic.py:134-141`, `load_taxonomy()`) — The JOIN between Lexeme → EntryLexeme → ObjectTag still exhibits ambiguity despite the objectType=3 filter. A single Lexeme can have multiple EntryLexeme records (different senses), and we join to ALL matching ObjectTags. This can cause a word to inherit domain/register/etymology tags from unrelated senses. Example: `zbroatec` (quick/unstable adjective) may inherit "medicină" from a medical homonym. The objectType=3 filter prevents cross-type contamination but not cross-sense contamination within the same objectType. Fix requires identifying the correct sense (via entry rank or meaning ID) before fetching tags, or accepting that some words will have mixed-sense metadata and filtering them out downstream.
+
 ---
 
 ## Enhancements
