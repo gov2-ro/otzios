@@ -12,3 +12,8 @@ google-api-python-client
 
 # Research UI
 flask
+
+# Definition scraping — see scrape_definitions.py
+requests
+beautifulsoup4
+lxml

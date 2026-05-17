@@ -87,6 +87,19 @@ python search_wild.py --provider google --limit 100
 ```
 Output: `data/processed/forgotten_words_web_validated.csv` (adds `total_results`, `in_wild`, `web_score`, `top_url`, `last_seen_approx`, `provider`). `web_score` buckets differ by provider — Google: 0 / <10 / <100 / 100+; DDG: 0 / <3 / <10 / 10+ (capped at 30).
 
+**Filling definition gaps — `scrape_definitions.py`:**
+
+`extract_definitions.py` recovers ~4.6k of the 17.4k shortlist words from the DEX MySQL dump (the dump's `DefinitionSimple` table is the source of truth — its `lexicon` column is the headword, not a dictionary identifier). The remaining ~12.8k shortlist words have no entry there and must be scraped from dexonline.ro.
+
+```bash
+python scrape_definitions.py --dry-run --limit 5         # smoke test, no HTTP
+python scrape_definitions.py --limit 20 --delay 3.0      # small live run
+python scrape_definitions.py --delay 3.0 --merge         # full run, ~5–7 hrs at 3s/req
+python scrape_definitions.py --merge-only                # just upsert checkpoint into db
+```
+
+Output: `data/processed/scraped_definitions.csv` (columns: `word, definition, source_url, scraped_at, status`). `status ∈ {ok, not_found, error}`. With `--merge`, ok rows are `INSERT OR REPLACE`'d into `data/processed/definitions.db`. Resume is automatic: re-running skips words already in the checkpoint or in the definitions DB. Ctrl+C is safe — each row is flushed immediately. Be polite to dexonline.ro (community-run): keep `--delay ≥ 3`.
+
 **Phase 2 — legacy path (has bugs, see BACKLOG):**
 ```bash
 python download_wikipedia_ro.py          # interactive y/N prompt
