@@ -13,35 +13,36 @@
   </div>
 </div>
 
-<div class="fp-def">
-  {% if w.definition %}
-  <div class="definition-text" style="font-size:11.5px;line-height:1.5;">{{ w.definition }}</div>
-  {% else %}
-  <span style="color:var(--text-3);font-family:var(--serif);font-style:italic;font-size:11px;">no definition</span>
-  {% endif %}
-  <a class="dex-link" style="font-size:10px;margin-top:4px;" href="https://dexonline.ro/definitie/{{ w.word | urlencode }}" target="_blank" rel="noopener">↗ dexonline.ro</a>
-</div>
+<div class="fp-right">
+  <div class="fp-def">
+    {% if w.definition %}
+    <div class="definition-text" style="font-size:11.5px;line-height:1.5;">{{ w.definition }}</div>
+    {% else %}
+    <span style="color:var(--text-3);font-family:var(--serif);font-style:italic;font-size:11px;">no definition</span>
+    {% endif %}
+    <a class="dex-link" style="font-size:10px;margin-top:3px;" href="https://dexonline.ro/definitie/{{ w.word | urlencode }}" target="_blank" rel="noopener">↗ dexonline.ro</a>
+  </div>
 
-<div class="fp-actions">
-  <div class="fp-stats">
-    <span><em>hist</em>{{ "%.2f"|format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</span>
-    <span><em>mod</em>{{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</span>
-    <span><em>ratio</em>{{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</span>
-    <span><em>dex</em>{{ "%.3f"|format(w.dex_frequency) if w.dex_frequency is not none else '—' }}</span>
-  </div>
-  <div class="fp-btns">
-    {% set word = w.word %}
-    {% set bookmarked = w.bookmarked %}
-    {% include 'partials/bookmark_btn.html' %}
-    {% set tags = w.tags %}
-    {% include 'partials/tags_row.html' %}
-  </div>
-  <div class="fp-inputs">
-    <textarea id="note-input" name="note" placeholder="note…"
-              hx-post="/note/{{ w.word | urlencode }}"
-              hx-trigger="keydown[key=='Enter'] prevent"
-              hx-target="#note-status"
-              hx-swap="innerHTML">{{ w.note }}</textarea>
-    <div id="note-status" style="display:none;"></div>
+  <div class="fp-actions">
+    <div class="fp-stats">
+      <span><em>hist</em>{{ "%.2f"|format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</span>
+      <span><em>mod</em>{{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</span>
+      <span><em>ratio</em>{{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</span>
+    </div>
+    <div class="fp-btns">
+      {% set word = w.word %}
+      {% set bookmarked = w.bookmarked %}
+      {% include 'partials/bookmark_btn.html' %}
+      {% set tags = w.tags %}
+      {% include 'partials/tags_row.html' %}
+    </div>
+    <div class="fp-note">
+      <textarea id="note-input" name="note" placeholder="note…"
+                hx-post="/note/{{ w.word | urlencode }}"
+                hx-trigger="keydown[key=='Enter'] prevent"
+                hx-target="#note-status"
+                hx-swap="innerHTML">{{ w.note }}</textarea>
+      <div id="note-status" style="display:none;"></div>
+    </div>
   </div>
 </div>
