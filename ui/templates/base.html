@@ -246,6 +246,15 @@
       box-shadow: 0 0 0 1px #d97706;
     }
 
+    /* Exclusion pill — red when checked (opposite of include) */
+    .pill-excl:has(input:checked) {
+      background: #fff1f0;
+      color: #9a1313;
+      font-weight: 700;
+      border-color: #f87171;
+      box-shadow: 0 0 0 1px #f87171;
+    }
+
     /* Loading indicator */
     .htmx-indicator { opacity: 0; transition: opacity .2s; color: var(--text-3); font-size: 11px; }
     .htmx-request .htmx-indicator { opacity: 1; }
@@ -839,6 +848,17 @@
       {% for e in distinct_etymologies %}
       <label class="pill">
         <input type="radio" name="etymology" value="{{ e }}"> {{ e | replace('limba ', '') }}
+      </label>
+      {% endfor %}
+    </div>
+
+    <!-- Row 6: exclude etymologies (multi-select, red = excluded) -->
+    <div class="filter-row">
+      <span class="flabel">exclude</span>
+      {% for e in distinct_etymologies %}
+      <label class="pill pill-excl">
+        <input type="checkbox" name="exclude_etym" value="{{ e }}">
+        {{ e | replace('limba ', '') }}
       </label>
       {% endfor %}
     </div>

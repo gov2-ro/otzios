@@ -485,3 +485,16 @@ def test_search_exclude_etymology_multiple_values(client):
     resp = client.get('/search?exclude_etym=slav%C4%83&exclude_etym=nonexistent')
     assert 'acătării'.encode('utf-8') not in resp.data
     assert 'adăsta'.encode('utf-8') in resp.data
+
+
+def test_base_has_exclude_etymology_row(client):
+    resp = client.get('/')
+    body = resp.data.decode('utf-8')
+    assert 'name="exclude_etym"' in body
+    assert 'pill-excl' in body
+
+
+def test_base_exclude_row_has_red_active_css(client):
+    resp = client.get('/')
+    body = resp.data.decode('utf-8')
+    assert '.pill-excl:has(input:checked)' in body
