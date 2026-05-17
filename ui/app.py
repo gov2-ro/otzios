@@ -198,7 +198,10 @@ POS_OPTIONS = [
 ]
 
 
-def _distinct_split(column: str, sep: str = '|', limit: int | None = None) -> list[str]:
+_ETYM_JUNK = {'vezi', 'cf.', 'după', 'după unii', 'probabil', 'cuvânt', 'necunoscută'}
+
+
+def _distinct_split(column: str, sep: str = '|', limit: int | None = None, exclude: set | None = None) -> list[str]:
     from collections import Counter
     rows = _words_db.execute(
         f'SELECT {column} FROM words WHERE {column} IS NOT NULL'
@@ -207,7 +210,7 @@ def _distinct_split(column: str, sep: str = '|', limit: int | None = None) -> li
     for (v,) in rows:
         for part in v.split(sep):
             p = part.strip()
-            if p:
+            if p and (exclude is None or p not in exclude):
                 counts[p] += 1
     return [v for v, _ in counts.most_common(limit)]
 
@@ -233,7 +236,6 @@ def search():
     pos             = request.args.get('pos', '').strip()
     has_def         = request.args.get('has_def', '').strip()
     bookmarked_only = request.args.get('bookmarked', '') == '1'
-    exclude_etym    = request.args.getlist('exclude_etym')
     sort            = request.args.get('sort', '').strip()
     page   = max(1, int(request.args.get('page', 1) or 1))
     offset = (page - 1) * PAGE_SIZE
@@ -255,9 +257,6 @@ def search():
         if val:
             conditions.append(f"('|'||{col}||'|' LIKE ?)")
             params.append(f'%|{val}|%')
-    for val in exclude_etym:
-        conditions.append("NOT ('|'||COALESCE(dex_etymology,'')||'|' LIKE ?)")
-        params.append(f'%|{val}|%')
     if has_def == '1':
         conditions.append('definition IS NOT NULL')
     elif has_def == '0':
@@ -321,9 +320,9 @@ def index():
         total=total,
         bookmark_count=bcount,
         pos_options          = POS_OPTIONS,
-        distinct_registers   = _distinct_split('dex_register',   limit=10),
-        distinct_domains     = _distinct_split('dex_domain',     limit=15),
-        distinct_etymologies = _distinct_split('dex_etymology',  limit=12),
+        distinct_registers   = _distinct_split('dex_register'),
+        distinct_domains     = _distinct_split('dex_domain'),
+        distinct_etymologies = _distinct_split('dex_etymology', exclude=_ETYM_JUNK),
         tag_suggestions      = _all_used_tags(),
         quick_tags           = QUICK_TAGS,
     )
