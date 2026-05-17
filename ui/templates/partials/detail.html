@@ -8,6 +8,7 @@
   <div class="fp-chips">
     {% if w.dex_pos %}<span class="detail-tag">{{ w.dex_pos.split('|')[0] }}</span>{% endif %}
     {% if w.dex_register %}{% for r in w.dex_register.split('|') if r.strip() %}<span class="detail-tag">{{ r.strip() }}</span>{% endfor %}{% endif %}
+    {% if w.dex_domain %}{% for d in w.dex_domain.split('|') if d.strip() %}<span class="detail-tag" style="opacity:.8;">{{ d.strip() }}</span>{% endfor %}{% endif %}
     {% if w.dex_etymology %}{% for e in w.dex_etymology.split('|') if e.strip() %}<span class="detail-tag" style="opacity:.7;">{{ e.strip() | replace('limba ','') }}</span>{% endfor %}{% endif %}
     {% if w.confidence_tier %}<span class="detail-tag" style="opacity:.55;font-size:9px;">{{ w.confidence_tier }}</span>{% endif %}
   </div>

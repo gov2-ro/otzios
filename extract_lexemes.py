@@ -120,9 +120,10 @@ def create_sqlite_from_csv(csv_file, db_file):
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
 
-    # Create Lexeme table
+    # Create Lexeme table (drop first so re-runs are idempotent)
+    cursor.execute('DROP TABLE IF EXISTS Lexeme')
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Lexeme (
+        CREATE TABLE Lexeme (
             id INTEGER PRIMARY KEY,
             form TEXT NOT NULL,
             formNoAccent TEXT,
@@ -155,7 +156,11 @@ def create_sqlite_from_csv(csv_file, db_file):
         next(reader)  # Skip header
 
         count = 0
+        skipped = 0
         for row in reader:
+            if len(row) != 23:
+                skipped += 1
+                continue
             cursor.execute('''
                 INSERT INTO Lexeme VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ''', row)
@@ -164,6 +169,8 @@ def create_sqlite_from_csv(csv_file, db_file):
             if count % 10000 == 0:
                 print(f"  Loaded {count} records...")
                 conn.commit()
+        if skipped:
+            print(f"  Skipped {skipped} malformed rows (apostrophe in form field)")
 
     conn.commit()
 
@@ -189,11 +196,16 @@ def create_sqlite_from_csv(csv_file, db_file):
     print(f"\n✅ Database saved to: {db_file}")
 
 if __name__ == "__main__":
-    import sys
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument('--sql', default='data/dictionaries/dex-database.sql')
+    p.add_argument('--csv', default='data/processed/lexemes.csv')
+    p.add_argument('--db',  default='data/processed/lexemes.db')
+    args = p.parse_args()
 
-    input_sql = "data/dictionaries/dex-database-sample.sql"
-    output_csv = "data/processed/lexemes.csv"
-    output_db = "data/processed/lexemes.db"
+    input_sql  = args.sql
+    output_csv = args.csv
+    output_db  = args.db
 
     print("=" * 60)
     print("DEX Lexeme Extractor")
