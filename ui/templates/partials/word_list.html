@@ -1,3 +1,4 @@
+{% if page == 1 %}<span id="status-word-count" hx-swap-oob="true">{{ total }} words</span>{% endif %}
 {% for w in words %}
   {% include 'partials/word_row.html' %}
 {% endfor %}
