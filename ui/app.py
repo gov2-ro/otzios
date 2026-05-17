@@ -69,6 +69,11 @@ def load_words(
         )
     """)
 
+    def _normalize_separators(val: str | None) -> str | None:
+        if not val:
+            return None
+        return val.replace('; ', '|').replace(';', '|')
+
     with open(shortlist_path, newline='', encoding='utf-8') as f:
         for row in csv.DictReader(f):
             conn.execute(
@@ -85,10 +90,10 @@ def load_words(
                     _float(row.get('log_ratio', '')),
                     _float(row.get('hist_ppm', '')),
                     _float(row.get('modern_ppm', '')),
-                    row.get('dex_pos') or None,
-                    row.get('dex_register') or None,
-                    row.get('dex_domain') or None,
-                    row.get('dex_etymology') or None,
+                    _normalize_separators(row.get('dex_pos')),
+                    _normalize_separators(row.get('dex_register')),
+                    _normalize_separators(row.get('dex_domain')),
+                    _normalize_separators(row.get('dex_etymology')),
                     _bool(row.get('is_forgotten', '')),
                 ),
             )
