@@ -166,7 +166,7 @@
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: border-color .15s, color .15s, box-shadow .15s;
+      transition: border-color .15s, background .15s, color .15s, box-shadow .15s;
     }
     .tax-select:focus {
       outline: none;
@@ -943,19 +943,19 @@
     <!-- Row 3: taxonomy selects -->
     <div class="filter-row">
       <span class="flabel">filter</span>
-      <select name="register" class="tax-select">
+      <select name="register" class="tax-select" aria-label="Filter by register">
         <option value="">register: any</option>
         {% for r in distinct_registers %}
         <option value="{{ r }}">{{ r }}</option>
         {% endfor %}
       </select>
-      <select name="domain" class="tax-select">
+      <select name="domain" class="tax-select" aria-label="Filter by domain">
         <option value="">domain: any</option>
         {% for d in distinct_domains %}
         <option value="{{ d }}">{{ d }}</option>
         {% endfor %}
       </select>
-      <select name="etymology" class="tax-select">
+      <select name="etymology" class="tax-select" aria-label="Filter by etymology">
         <option value="">etymology: any</option>
         {% for e in distinct_etymologies %}
         <option value="{{ e }}">{{ e | replace('limba ', '') }}</option>
@@ -1184,6 +1184,7 @@
     document.querySelectorAll('.tax-select').forEach(function(sel) {
       function update() { sel.classList.toggle('active', sel.value !== ''); }
       sel.addEventListener('change', update);
+      sel.form && sel.form.addEventListener('reset', update);
       update();
     });
   </script>
