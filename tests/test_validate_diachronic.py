@@ -33,3 +33,12 @@ def test_load_definition_words_returns_words_with_content(tmp_path):
 def test_load_definition_words_missing_db_returns_empty(tmp_path):
     result = vd._load_definition_words(tmp_path / 'nonexistent.db')
     assert result == set()
+
+
+def test_load_definition_words_normalizes_keys(tmp_path):
+    db = tmp_path / 'defs.db'
+    make_defs_db(db, [
+        ('Câşlegi', 'definiție test'),   # cedilla-ş, uppercase
+    ])
+    result = vd._load_definition_words(db)
+    assert 'câșlegi' in result   # normalized: lowercase + comma-ș

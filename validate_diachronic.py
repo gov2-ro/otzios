@@ -50,7 +50,7 @@ def _load_definition_words(db_path: Path) -> set[str]:
         "SELECT word FROM definitions WHERE definition IS NOT NULL AND definition != ''"
     ).fetchall()
     conn.close()
-    return {r[0] for r in rows}
+    return {normalize(r[0]) for r in rows}
 
 HIST_CORPUS   = 'wikisource_ro'
 MODERN_CORPUS = 'culturax_ro'
