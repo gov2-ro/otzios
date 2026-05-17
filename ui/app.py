@@ -2,6 +2,7 @@ import csv
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlencode
 
 from flask import Flask, render_template, request
 
@@ -167,7 +168,7 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-PAGE_SIZE = 150
+PAGE_SIZE = 250
 
 SORT_OPTIONS = {
     'rare':     'COALESCE(modern_ppm, -1) ASC',   # default — absent words first, then rarest
@@ -283,12 +284,19 @@ def search():
         d['bookmarked'] = bool(bm.get('bookmarked'))
         words.append(d)
 
+    next_page_url = None
+    if page * PAGE_SIZE < total:
+        args = dict(request.args)
+        args['page'] = str(page + 1)
+        next_page_url = '/search?' + urlencode(args, doseq=True)
+
     return render_template(
         'partials/word_list.html',
         words=words,
         total=total,
         page=page,
         page_size=PAGE_SIZE,
+        next_page_url=next_page_url,
     )
 
 
