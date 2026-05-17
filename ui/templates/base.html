@@ -154,6 +154,33 @@
     .sort-select:hover { background: #f4f1eb; color: var(--text); }
     .sort-select:active { transform: scale(0.98); }
 
+    /* Taxonomy filter selects */
+    .tax-select {
+      height: var(--chip-h);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-2);
+      padding: 0 6px;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, box-shadow .15s;
+    }
+    .tax-select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(26,86,219,.15);
+    }
+    .tax-select:hover { background: #f4f1eb; color: var(--text); }
+    .tax-select.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 700;
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
     /* Generic filter pill — borderless, condensed, text-driven */
     .pill {
       display: inline-flex;
@@ -244,15 +271,6 @@
       font-weight: 700;
       border-color: #d97706;
       box-shadow: 0 0 0 1px #d97706;
-    }
-
-    /* Exclusion pill — red when checked (opposite of include) */
-    .pill-excl:has(input:checked) {
-      background: #fff1f0;
-      color: #9a1313;
-      font-weight: 700;
-      border-color: #f87171;
-      box-shadow: 0 0 0 1px #f87171;
     }
 
     /* Loading indicator */
@@ -922,45 +940,27 @@
       {% endfor %}
     </div>
 
-    <!-- Row 3: register -->
+    <!-- Row 3: taxonomy selects -->
     <div class="filter-row">
-      <span class="flabel">register</span>
-      {% for r in distinct_registers %}
-      <label class="pill">
-        <input type="radio" name="register" value="{{ r }}"> {{ r }}
-      </label>
-      {% endfor %}
-    </div>
-
-    <!-- Row 4: domain -->
-    <div class="filter-row">
-      <span class="flabel">domain</span>
-      {% for d in distinct_domains %}
-      <label class="pill">
-        <input type="radio" name="domain" value="{{ d }}"> {{ d }}
-      </label>
-      {% endfor %}
-    </div>
-
-    <!-- Row 5: etymology -->
-    <div class="filter-row">
-      <span class="flabel">etymology</span>
-      {% for e in distinct_etymologies %}
-      <label class="pill">
-        <input type="radio" name="etymology" value="{{ e }}"> {{ e | replace('limba ', '') }}
-      </label>
-      {% endfor %}
-    </div>
-
-    <!-- Row 6: exclude etymologies (multi-select, red = excluded) -->
-    <div class="filter-row">
-      <span class="flabel">exclude</span>
-      {% for e in distinct_etymologies %}
-      <label class="pill pill-excl">
-        <input type="checkbox" name="exclude_etym" value="{{ e }}">
-        {{ e | replace('limba ', '') }}
-      </label>
-      {% endfor %}
+      <span class="flabel">filter</span>
+      <select name="register" class="tax-select">
+        <option value="">register: any</option>
+        {% for r in distinct_registers %}
+        <option value="{{ r }}">{{ r }}</option>
+        {% endfor %}
+      </select>
+      <select name="domain" class="tax-select">
+        <option value="">domain: any</option>
+        {% for d in distinct_domains %}
+        <option value="{{ d }}">{{ d }}</option>
+        {% endfor %}
+      </select>
+      <select name="etymology" class="tax-select">
+        <option value="">etymology: any</option>
+        {% for e in distinct_etymologies %}
+        <option value="{{ e }}">{{ e | replace('limba ', '') }}</option>
+        {% endfor %}
+      </select>
     </div>
 
   </form>
@@ -1179,6 +1179,13 @@
         box.classList.remove('visible');
       });
     })();
+
+    // Highlight tax-select when a non-"any" value is active
+    document.querySelectorAll('.tax-select').forEach(function(sel) {
+      function update() { sel.classList.toggle('active', sel.value !== ''); }
+      sel.addEventListener('change', update);
+      update();
+    });
   </script>
 </body>
 </html>
