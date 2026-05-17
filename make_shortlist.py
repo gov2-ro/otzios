@@ -98,14 +98,13 @@ def main() -> int:
     excluded_etym = 0
 
     for row in rows:
+        tier_unfiltered = classify(row, frozenset()) if exclude_etym else None
         tier = classify(row, exclude_etym)
         if tier is None:
             if pos_excluded(row['dex_pos']):
                 excluded_pos += 1
-            elif exclude_etym:
-                etym_tags = {t.strip() for t in (row.get('dex_etymology') or '').split('|') if t.strip()}
-                if etym_tags & exclude_etym:
-                    excluded_etym += 1
+            elif tier_unfiltered is not None:
+                excluded_etym += 1
             continue
         out = {f: row.get(f, '') for f in OUT_FIELDS}
         out['confidence_tier'] = tier

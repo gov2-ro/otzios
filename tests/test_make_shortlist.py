@@ -92,6 +92,16 @@ def test_classify_empty_exclude_set_unchanged():
     assert result == 'corpus_extinct'
 
 
+def test_classify_excludes_tier_b_word_with_matching_etymology():
+    # ABSENT_ROW: verdict=absent, dex_register=învechit → would be dex_invechit_absent
+    row = {**ABSENT_ROW, 'dex_etymology': 'turcism'}
+    result = ms.classify(row, exclude_etym=frozenset({'turcism'}))
+    assert result is None
+    # Without the filter it would have been selected
+    unfiltered = ms.classify(row, exclude_etym=frozenset())
+    assert unfiltered == 'dex_invechit_absent'
+
+
 def test_exclude_etymology_cli_filters_output(tmp_path):
     inp = tmp_path / 'diachronic.csv'
     out = tmp_path / 'shortlist.csv'
