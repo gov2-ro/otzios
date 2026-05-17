@@ -1,26 +1,25 @@
 <button class="fp-close" onclick="closePanel()">✕</button>
 
 <div class="fp-word">
-  <h2>{{ w.word }}</h2>
-  <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;">
-    <span class="verdict-badge vb-{{ (w.verdict or 'unknown') | replace(' ','_') }}">{{ w.verdict or '—' }}</span>
+  <div class="fp-title">
+    <h2>{{ w.word }}</h2>
+    <span class="verdict-badge vb-{{ (w.verdict or 'unknown') | replace(' ','_') }}" style="font-size:9px;padding:1px 6px;flex-shrink:0;">{{ w.verdict or '—' }}</span>
+  </div>
+  <div class="fp-chips">
     {% if w.dex_pos %}<span class="detail-tag">{{ w.dex_pos.split('|')[0] }}</span>{% endif %}
     {% if w.dex_register %}{% for r in w.dex_register.split('|') if r.strip() %}<span class="detail-tag">{{ r.strip() }}</span>{% endfor %}{% endif %}
+    {% if w.dex_etymology %}{% for e in w.dex_etymology.split('|') if e.strip() %}<span class="detail-tag" style="opacity:.7;">{{ e.strip() | replace('limba ','') }}</span>{% endfor %}{% endif %}
+    {% if w.confidence_tier %}<span class="detail-tag" style="opacity:.55;font-size:9px;">{{ w.confidence_tier }}</span>{% endif %}
   </div>
-  {% if w.dex_etymology %}
-  <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:1px;">
-    {% for e in w.dex_etymology.split('|') if e.strip() %}<span class="detail-tag" style="opacity:.75;">{{ e.strip() | replace('limba ','') }}</span>{% endfor %}
-  </div>
-  {% endif %}
 </div>
 
 <div class="fp-def">
   {% if w.definition %}
-  <div class="definition-text" style="font-size:12px;line-height:1.55;">{{ w.definition }}</div>
+  <div class="definition-text" style="font-size:11.5px;line-height:1.5;">{{ w.definition }}</div>
   {% else %}
-  <span style="color:var(--text-3);font-family:var(--serif);font-style:italic;font-size:12px;">no definition</span>
+  <span style="color:var(--text-3);font-family:var(--serif);font-style:italic;font-size:11px;">no definition</span>
   {% endif %}
-  <a class="dex-link" href="https://dexonline.ro/definitie/{{ w.word | urlencode }}" target="_blank" rel="noopener">↗ dexonline.ro</a>
+  <a class="dex-link" style="font-size:10px;margin-top:4px;" href="https://dexonline.ro/definitie/{{ w.word | urlencode }}" target="_blank" rel="noopener">↗ dexonline.ro</a>
 </div>
 
 <div class="fp-actions">
@@ -28,21 +27,21 @@
     <span><em>hist</em>{{ "%.2f"|format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</span>
     <span><em>mod</em>{{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</span>
     <span><em>ratio</em>{{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</span>
+    <span><em>dex</em>{{ "%.3f"|format(w.dex_frequency) if w.dex_frequency is not none else '—' }}</span>
   </div>
-  <div class="actions" style="margin:0;">
+  <div class="fp-btns">
     {% set word = w.word %}
     {% set bookmarked = w.bookmarked %}
     {% include 'partials/bookmark_btn.html' %}
     {% set tags = w.tags %}
     {% include 'partials/tags_row.html' %}
   </div>
-  <div class="note-section" style="margin:0;">
-    <textarea id="note-input" name="note" placeholder="note — Enter to save"
-              style="width:100%;height:38px;resize:none;font-size:11px;padding:4px 6px;"
+  <div class="fp-inputs">
+    <textarea id="note-input" name="note" placeholder="note…"
               hx-post="/note/{{ w.word | urlencode }}"
               hx-trigger="keydown[key=='Enter'] prevent"
               hx-target="#note-status"
               hx-swap="innerHTML">{{ w.note }}</textarea>
-    <div id="note-status" style="font-size:10px;color:var(--text-3);height:12px;"></div>
+    <div id="note-status" style="display:none;"></div>
   </div>
 </div>
