@@ -152,6 +152,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] see [260515 notes - missing oțios.md](260515 notes - missing oțios.md)
 
+- [ ] **[Upstream] Report DefinitionSimple truncation to dexonline developers** — both the old dump (`dex-database-1.sql`, 1.2 GB, Oct 2025) and the new dump (`dex-database.sql`, 1.5 GB, May 2026) contain only **61,041 rows** in `DefinitionSimple`, while `EntryDefinition` references **1,379,043** definition IDs — a 94.8% gap of dangling references. This means ~12.8k of our ~17.4k shortlist words have no extractable definition from the dump and must be scraped from dexonline.ro instead. The issue is not a bug in our extraction: `DefinitionSimple.lexicon` correctly identifies headwords; the referenced definition records simply are not present. Worth filing a bug or opening a discussion on the dexonline GitHub/forum so future dump consumers don't hit the same wall. Include: table row counts, the orphaned-reference count, and the impact (scraping as workaround).
+
 ## Misc
 
 - [ ] track synonyms. count synonyms
