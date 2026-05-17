@@ -135,7 +135,7 @@ def load_taxonomy(lexemes_db: Path) -> dict:
             SELECT lower(l.formNoAccent), t.parentId, t.isPos, t.value
             FROM Lexeme l
             JOIN EntryLexeme el ON el.lexemeId = l.id
-            JOIN ObjectTag ot ON ot.objectId = el.entryId AND ot.objectType = 2
+            JOIN ObjectTag ot ON ot.objectId = el.entryId AND ot.objectType = 3
             JOIN Tag t ON t.id = ot.tagId
             WHERE t.parentId IN (1, 41, 42) OR t.isPos = 1
         """).fetchall()
