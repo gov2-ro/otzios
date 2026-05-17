@@ -359,25 +359,78 @@
     .word-row[data-selected] .chip-meta,
     .word-row[data-selected] .chip-freq { color: inherit; opacity: .75; }
 
-    /* ── Detail panel — fixed-width overlay, slides in from right ── */
+    /* ── Detail panel — compact footer drawer, slides up ── */
     #detail-panel {
-      position: absolute;
-      right: 0;
-      top: 0;
-      height: 100%;
-      width: 420px;
-      overflow-y: auto;
-      padding: 16px 20px;
+      flex-shrink: 0;
+      height: 0;
+      overflow: hidden;
       background: var(--surface);
-      border-left: 1px solid var(--border);
-      box-shadow: -4px 0 20px rgba(0,0,0,.10);
-      transform: translateX(110%);
-      transition: transform 200ms ease-out;
-      z-index: 5;
+      border-top: 2px solid var(--border);
+      box-shadow: 0 -3px 16px rgba(0,0,0,.08);
+      transition: height 180ms ease-out;
+      display: flex;
+      align-items: stretch;
     }
-    #detail-panel.panel-open {
-      transform: translateX(0);
+    #detail-panel.panel-open { height: 160px; position: relative; }
+
+    /* Inner footer layout */
+    .fp-word {
+      flex: 0 0 180px;
+      padding: 10px 14px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      overflow: hidden;
     }
+    .fp-word h2 {
+      font-family: var(--serif);
+      font-size: 1.45em;
+      font-weight: 600;
+      margin: 0;
+      line-height: 1.05;
+      letter-spacing: -.02em;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .fp-def {
+      flex: 1 1 auto;
+      padding: 10px 14px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      min-width: 0;
+    }
+    .fp-actions {
+      flex: 0 0 220px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      overflow: hidden;
+    }
+    .fp-stats {
+      display: flex;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--text-3);
+      font-family: var(--mono);
+    }
+    .fp-stats em { font-style: normal; color: var(--text-3); opacity: .7; margin-right: 2px; }
+    .fp-close {
+      position: absolute;
+      right: 8px;
+      top: 6px;
+      background: none;
+      border: none;
+      color: var(--text-3);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 2px 4px;
+    }
+    .fp-close:hover { color: var(--text); }
 
     .placeholder {
       color: var(--text-3);
@@ -891,15 +944,14 @@
         <span class="htmx-indicator">loading…</span>
       </div>
     </div>
-    <div id="detail-panel">
-      <p class="placeholder">Select a word to see details.</p>
-    </div>
   </div>
+
+  <div id="detail-panel"></div>
 
   <div id="status-bar">
     <span id="status-word-count">{{ total }} words</span> · {{ bookmark_count }} bookmarked
     <span>
-      <kbd>j</kbd><kbd>k</kbd> navigate &nbsp;
+      <kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>l</kbd> navigate &nbsp;
       <kbd>/</kbd> search &nbsp;
       <kbd>b</kbd> bookmark &nbsp;
       <kbd>i</kbd>/<kbd>B</kbd>/<kbd>f</kbd>/<kbd>x</kbd> mark &nbsp;
@@ -922,7 +974,7 @@
       </div>
       <table class="shortcuts-table">
         <tr><td colspan="2" class="shortcuts-group">Navigation</td></tr>
-        <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous word</td></tr>
+        <tr><td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>l</kbd></td><td>Navigate grid (↓ ↑ ← →)</td></tr>
         <tr><td><kbd>g</kbd><kbd>g</kbd></td><td>Jump to top</td></tr>
         <tr><td><kbd>G</kbd></td><td>Jump to bottom</td></tr>
         <tr><td colspan="2" class="shortcuts-group">Search</td></tr>
@@ -976,6 +1028,37 @@
       if (r) { r.setAttribute('data-selected', ''); r.scrollIntoView({block:'nearest'}); r.click(); }
     }
 
+    function navigateSpatial(direction) {
+      const all = rows();
+      if (!all.length) return;
+      if (selectedIdx < 0) { selectRow(0); return; }
+      const cur = all[selectedIdx].getBoundingClientRect();
+      const curMX = (cur.left + cur.right) / 2;
+      let best = { idx: -1, score: Infinity };
+      all.forEach(function(el, idx) {
+        if (idx === selectedIdx) return;
+        const r = el.getBoundingClientRect();
+        const mx = (r.left + r.right) / 2;
+        const sameRow = Math.abs(r.top - cur.top) < cur.height * 0.6;
+        let score;
+        if (direction === 'left') {
+          if (!sameRow || r.right > cur.left + 1) return;
+          score = cur.left - r.right;
+        } else if (direction === 'right') {
+          if (!sameRow || r.left < cur.right - 1) return;
+          score = r.left - cur.right;
+        } else if (direction === 'up') {
+          if (r.bottom > cur.top + 1) return;
+          score = (cur.top - r.bottom) * 10 + Math.abs(mx - curMX);
+        } else {
+          if (r.top < cur.bottom - 1) return;
+          score = (r.top - cur.bottom) * 10 + Math.abs(mx - curMX);
+        }
+        if (score < best.score) best = { idx: idx, score: score };
+      });
+      if (best.idx >= 0) selectRow(best.idx);
+    }
+
     function showShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'flex'; }
     function hideShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'none'; }
     function closePanel() { document.getElementById('detail-panel').classList.remove('panel-open'); }
@@ -987,8 +1070,10 @@
       if (inInput) { if (e.key === 'Escape') { hideShortcuts(); document.activeElement.blur(); } return; }
       if (e.key === 'Escape') { hideShortcuts(); closePanel(); return; }
       if (e.key === '/') { e.preventDefault(); document.getElementById('search').focus(); return; }
-      if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); selectRow(selectedIdx + 1); gPressed = false; return; }
-      if (e.key === 'k' || e.key === 'ArrowUp')   { e.preventDefault(); selectRow(selectedIdx - 1); gPressed = false; return; }
+      if (e.key === 'j' || e.key === 'ArrowDown')  { e.preventDefault(); navigateSpatial('down');  gPressed = false; return; }
+      if (e.key === 'k' || e.key === 'ArrowUp')    { e.preventDefault(); navigateSpatial('up');    gPressed = false; return; }
+      if (e.key === 'h' || e.key === 'ArrowLeft')  { e.preventDefault(); navigateSpatial('left');  gPressed = false; return; }
+      if (e.key === 'l' || e.key === 'ArrowRight') { e.preventDefault(); navigateSpatial('right'); gPressed = false; return; }
       if (e.key === 'G') { e.preventDefault(); selectRow(rows().length - 1); gPressed = false; return; }
       if (e.key === 'g') {
         if (gPressed) { selectRow(0); gPressed = false; }

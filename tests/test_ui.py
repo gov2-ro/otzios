@@ -435,7 +435,6 @@ def test_word_detail_shows_definition(dbs, client):
 
 def test_word_detail_no_definition_still_shows_dex_link(client):
     resp = client.get('/word/acătării')
-    assert b'definition-block' in resp.data
     assert b'dexonline.ro' in resp.data
     assert 'Vânzătoare de acătări.'.encode('utf-8') not in resp.data
 
@@ -449,19 +448,17 @@ def test_search_word_row_has_data_attributes(client):
     assert 'data-freq="10"' in body
 
 
-def test_base_has_sliding_panel_css(client):
+def test_base_has_footer_panel_css(client):
     resp = client.get('/')
     body = resp.data.decode('utf-8')
     assert 'panel-open' in body
-    assert 'translateX' in body
-    # word-list-container must not claim 50% width in CSS
-    # (we check the new 100% isn't the old 50% split)
+    assert 'fp-word' in body
     assert 'width: 50%' not in body
 
 
 def test_word_detail_has_close_button(client):
     resp = client.get('/word/acătării')
-    assert b'panel-close' in resp.data
+    assert b'fp-close' in resp.data
 
 
 def test_base_has_close_panel_js(client):

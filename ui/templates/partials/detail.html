@@ -1,75 +1,48 @@
-<button class="panel-close" onclick="closePanel()">✕</button>
-<h2>{{ w.word }}</h2>
+<button class="fp-close" onclick="closePanel()">✕</button>
 
-<div class="detail-meta-row" style="margin-bottom:10px">
-  <span class="verdict-badge vb-{{ (w.verdict or 'unknown') | replace(' ','_') }}">{{ w.verdict or '—' }}</span>
-  {% if w.confidence_tier %}<span class="detail-tag">{{ w.confidence_tier }}</span>{% endif %}
-  {% if w.dex_pos %}<span class="detail-tag">{{ w.dex_pos.split('|')[0] }}</span>{% endif %}
-</div>
-<table class="detail-table" style="margin-bottom:10px">
-  {% if w.dex_register %}
-  <tr>
-    <th>register</th>
-    <td>{% for r in w.dex_register.split('|') if r.strip() %}<span class="detail-tag">{{ r.strip() }}</span>{% endfor %}</td>
-  </tr>
-  {% endif %}
-  {% if w.dex_domain %}
-  <tr>
-    <th>domain</th>
-    <td>{% for d in w.dex_domain.split('|') if d.strip() %}<span class="detail-tag">{{ d.strip() }}</span>{% endfor %}</td>
-  </tr>
-  {% endif %}
+<div class="fp-word">
+  <h2>{{ w.word }}</h2>
+  <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;">
+    <span class="verdict-badge vb-{{ (w.verdict or 'unknown') | replace(' ','_') }}">{{ w.verdict or '—' }}</span>
+    {% if w.dex_pos %}<span class="detail-tag">{{ w.dex_pos.split('|')[0] }}</span>{% endif %}
+    {% if w.dex_register %}{% for r in w.dex_register.split('|') if r.strip() %}<span class="detail-tag">{{ r.strip() }}</span>{% endfor %}{% endif %}
+  </div>
   {% if w.dex_etymology %}
-  <tr>
-    <th>etymology</th>
-    <td>{% for e in w.dex_etymology.split('|') if e.strip() %}<span class="detail-tag">{{ e.strip() }}</span>{% endfor %}</td>
-  </tr>
+  <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:1px;">
+    {% for e in w.dex_etymology.split('|') if e.strip() %}<span class="detail-tag" style="opacity:.75;">{{ e.strip() | replace('limba ','') }}</span>{% endfor %}
+  </div>
   {% endif %}
-</table>
+</div>
 
-<div class="definition-block">
-  <div class="definition-label">DEX</div>
+<div class="fp-def">
   {% if w.definition %}
-  <div class="definition-text">{{ w.definition }}</div>
+  <div class="definition-text" style="font-size:12px;line-height:1.55;">{{ w.definition }}</div>
+  {% else %}
+  <span style="color:var(--text-3);font-family:var(--serif);font-style:italic;font-size:12px;">no definition</span>
   {% endif %}
   <a class="dex-link" href="https://dexonline.ro/definitie/{{ w.word | urlencode }}" target="_blank" rel="noopener">↗ dexonline.ro</a>
 </div>
 
-<hr>
-
-<div class="detail-stats-row">
-  <span><span class="stat-label">hist</span> {{ "%.2f"|format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</span>
-  <span><span class="stat-label">modern</span> {{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</span>
-  <span><span class="stat-label">ratio</span> {{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</span>
-  <span><span class="stat-label">dex</span> {{ "%.3f"|format(w.dex_frequency) if w.dex_frequency is not none else '—' }}</span>
-</div>
-
-{% if w.provider %}
-<hr>
-<table class="detail-table">
-  <tr><th>web</th><td>{% if w.in_wild %}✓ found{% else %}✗ not found{% endif %} ({{ w.provider }})</td></tr>
-  <tr><th>results</th><td>{{ w.total_results }}</td></tr>
-  {% if w.last_seen_approx %}<tr><th>last seen</th><td>{{ w.last_seen_approx }}</td></tr>{% endif %}
-  {% if w.top_url %}<tr><th>top URL</th><td><a href="{{ w.top_url }}" target="_blank" rel="noopener">{{ w.top_url[:55] }}{% if w.top_url|length > 55 %}…{% endif %}</a></td></tr>{% endif %}
-</table>
-{% endif %}
-
-<hr>
-
-<div class="actions">
-  {% set word = w.word %}
-  {% set bookmarked = w.bookmarked %}
-  {% include 'partials/bookmark_btn.html' %}
-  {% set tags = w.tags %}
-  {% include 'partials/tags_row.html' %}
-</div>
-
-<div class="note-section">
-  <label for="note-input">note — Enter to save</label>
-  <textarea id="note-input" name="note"
-            hx-post="/note/{{ w.word | urlencode }}"
-            hx-trigger="keydown[key=='Enter'] prevent"
-            hx-target="#note-status"
-            hx-swap="innerHTML">{{ w.note }}</textarea>
-  <div id="note-status"></div>
+<div class="fp-actions">
+  <div class="fp-stats">
+    <span><em>hist</em>{{ "%.2f"|format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</span>
+    <span><em>mod</em>{{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</span>
+    <span><em>ratio</em>{{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</span>
+  </div>
+  <div class="actions" style="margin:0;">
+    {% set word = w.word %}
+    {% set bookmarked = w.bookmarked %}
+    {% include 'partials/bookmark_btn.html' %}
+    {% set tags = w.tags %}
+    {% include 'partials/tags_row.html' %}
+  </div>
+  <div class="note-section" style="margin:0;">
+    <textarea id="note-input" name="note" placeholder="note — Enter to save"
+              style="width:100%;height:38px;resize:none;font-size:11px;padding:4px 6px;"
+              hx-post="/note/{{ w.word | urlencode }}"
+              hx-trigger="keydown[key=='Enter'] prevent"
+              hx-target="#note-status"
+              hx-swap="innerHTML">{{ w.note }}</textarea>
+    <div id="note-status" style="font-size:10px;color:var(--text-3);height:12px;"></div>
+  </div>
 </div>
