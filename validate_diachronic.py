@@ -35,10 +35,22 @@ import sqlite3
 import unicodedata
 from pathlib import Path
 
-LEXEMES_DB  = Path('data/processed/lexemes.db')
-FREQ_DB     = Path('data/processed/corpus_frequencies.db')
-CURATED_CSV = Path('data/processed/forgotten_words_curated.csv')
-OUTPUT_CSV  = Path('data/processed/forgotten_words_diachronic.csv')
+LEXEMES_DB    = Path('data/processed/lexemes.db')
+FREQ_DB       = Path('data/processed/corpus_frequencies.db')
+CURATED_CSV   = Path('data/processed/forgotten_words_curated.csv')
+OUTPUT_CSV    = Path('data/processed/forgotten_words_diachronic.csv')
+DEFINITIONS_DB = Path('data/processed/definitions.db')
+
+
+def _load_definition_words(db_path: Path) -> set[str]:
+    if not db_path.exists():
+        return set()
+    conn = sqlite3.connect(str(db_path))
+    rows = conn.execute(
+        "SELECT word FROM definitions WHERE definition IS NOT NULL AND definition != ''"
+    ).fetchall()
+    conn.close()
+    return {r[0] for r in rows}
 
 HIST_CORPUS   = 'wikisource_ro'
 MODERN_CORPUS = 'culturax_ro'
@@ -230,6 +242,10 @@ def main() -> int:
     taxonomy = load_taxonomy(LEXEMES_DB)
     print(f'  {len(taxonomy):,} words with taxonomy tags')
 
+    print('Loading definition index...')
+    def_words = _load_definition_words(DEFINITIONS_DB)
+    print(f'  {len(def_words):,} words with definitions')
+
     # Restrict to candidates that appear in at least one corpus (unless --all-dex)
     if args.all_dex:
         universe = candidates.keys() | hist_freqs.keys() | modern_freqs.keys()
@@ -270,6 +286,7 @@ def main() -> int:
             'dex_register':     '|'.join(sorted(tax.get('register',  set()))),
             'dex_domain':       '|'.join(sorted(tax.get('domain',    set()))),
             'dex_etymology':    '|'.join(sorted(tax.get('etymology', set()))),
+            'has_definition':   1 if word in def_words else 0,
         })
 
     results.sort(key=lambda r: float(r['log_ratio']), reverse=True)
@@ -281,6 +298,7 @@ def main() -> int:
         'modern_occurrences', 'modern_documents', 'modern_ppm',
         'log_ratio', 'verdict',
         'dex_pos', 'dex_register', 'dex_domain', 'dex_etymology',
+        'has_definition',
     ]
     with args.output.open('w', encoding='utf-8', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fields)
