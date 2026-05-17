@@ -375,19 +375,23 @@ def client3(tmp_path):
     res_db.close()
 
 
-def test_search_default_sort_is_alpha(client3):
+def test_search_default_sort_is_rare(client3):
+    # Default sort is 'rare' (COALESCE(modern_ppm, -1) ASC): absent/rarest words first.
+    # WORD_A acătării (0.0) and WORD_C afurca (0.0) come before WORD_B adăsta (0.1).
     resp = client3.get('/search')
     assert resp.status_code == 200
     html = resp.data.decode('utf-8')
-    assert html.index('acătării') < html.index('adăsta') < html.index('afurca')
+    assert html.index('adăsta') > html.index('acătării')
+    assert html.index('adăsta') > html.index('afurca')
 
 
 def test_search_sort_declined(client3):
-    # WORD_C log_ratio=-8.0 (most declined DESC), then WORD_A -5.2, then WORD_B -3.1
+    # 'declined' sort = log_ratio DESC NULLS LAST: highest log_ratio first.
+    # WORD_B adăsta (-3.1) > WORD_A acătării (-5.2) > WORD_C afurca (-8.0).
     resp = client3.get('/search?sort=declined')
     assert resp.status_code == 200
     html = resp.data.decode('utf-8')
-    assert html.index('afurca') < html.index('acătării') < html.index('adăsta')
+    assert html.index('adăsta') < html.index('acătării') < html.index('afurca')
 
 
 def test_search_sort_rare(client3):
