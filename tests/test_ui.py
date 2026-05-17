@@ -476,7 +476,6 @@ def test_base_has_hover_box(client):
 
 def test_search_exclude_etymology_hides_matching_word(client):
     resp = client.get('/search?exclude_etym=slav%C4%83')
-    body = resp.data.decode('utf-8')
     assert 'acătării'.encode('utf-8') not in resp.data
     assert 'adăsta'.encode('utf-8') in resp.data
 
