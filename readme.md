@@ -4,7 +4,7 @@ Vezi și: [initial specs](docs/oțios-init-specs.docx.md) / [live](https://docs
 
 A computational linguistics tool to identify "forgotten" Romanian words - terms that exist in official dictionaries but have fallen out of modern usage.
 
-**Status**: 🔍 Phase 3 Ready — shortlist generated, web validation next
+**Status**: 📚 Definitions + 🔍 Phase 3 — shortlist generated, definitions complete, web validation next
 
 ## What It Does
 
@@ -159,6 +159,29 @@ python validate_diachronic.py
 python make_shortlist.py --stats   # preview counts by tier
 python make_shortlist.py           # write forgotten_words_shortlist.csv (~17k rows)
 ```
+
+### Phase 2.5: Fill definition gaps from dexonline.ro
+
+The DEX MySQL dump's `DefinitionSimple` table only covers ~4.6k of the 17.4k shortlist words. `scrape_definitions.py` fills the remaining gaps by extracting the synthesis (definition) from dexonline.ro for each missing word.
+
+```bash
+# Smoke test (5 words, no HTTP)
+python scrape_definitions.py --dry-run --limit 5
+
+# Small live run (test the scraper)
+python scrape_definitions.py --limit 20 --delay 3.0
+
+# Full run (all missing words, ~5–7 hours at 3s/request)
+python scrape_definitions.py --delay 3.0 --merge
+
+# Resume an interrupted run
+python scrape_definitions.py --delay 3.0 --merge      # automatically skips already-scraped
+
+# Just upsert checkpoint into DB (if scraping completed but merge wasn't run)
+python scrape_definitions.py --merge-only
+```
+
+**Output**: `data/processed/scraped_definitions.csv` (checkpoint with columns: `word, definition, source_url, scraped_at, status`). With `--merge`, all `status=ok` rows are upserted into `definitions.db` immediately. Resume is safe — each row is flushed instantly; Ctrl+C stops cleanly.
 
 ### Phase 3: Web validation
 
