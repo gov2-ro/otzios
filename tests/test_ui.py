@@ -12,6 +12,7 @@ SHORTLIST_COLS = [
     'word', 'dex_frequency', 'verdict', 'confidence_tier',
     'log_ratio', 'hist_ppm', 'modern_ppm', 'dex_pos',
     'dex_register', 'dex_domain', 'dex_etymology', 'is_forgotten',
+    'has_definition',
 ]
 WEB_COLS = [
     'word', 'total_results', 'in_wild', 'web_score',
@@ -40,18 +41,21 @@ WORD_A = {
     'confidence_tier': 'A', 'log_ratio': '-5.2', 'hist_ppm': '12.4',
     'modern_ppm': '0.0', 'dex_pos': 's.f.', 'dex_register': 'înv.',
     'dex_domain': '', 'dex_etymology': 'slavă', 'is_forgotten': '1',
+    'has_definition': '1',
 }
 WORD_B = {
     'word': 'adăsta', 'dex_frequency': '0.2', 'verdict': 'declining',
     'confidence_tier': 'A', 'log_ratio': '-3.1', 'hist_ppm': '8.0',
     'modern_ppm': '0.1', 'dex_pos': 'vb.', 'dex_register': '',
     'dex_domain': '', 'dex_etymology': '', 'is_forgotten': '1',
+    'has_definition': '0',
 }
 WORD_C = {
     'word': 'afurca', 'dex_frequency': '0.05', 'verdict': 'extinct',
     'confidence_tier': 'corpus_extinct', 'log_ratio': '-8.0', 'hist_ppm': '5.0',
     'modern_ppm': '0.0', 'dex_pos': 'vb.', 'dex_register': '',
     'dex_domain': '', 'dex_etymology': '', 'is_forgotten': '1',
+    'has_definition': '1',
 }
 WEB_A = {
     'word': 'acătării', 'total_results': '12', 'in_wild': 'true',
@@ -96,6 +100,19 @@ def test_load_words_no_web_data(dbs):
         "SELECT provider FROM words WHERE word = 'adăsta'"
     ).fetchone()
     assert row['provider'] is None
+
+
+def test_load_words_has_definition_column(dbs):
+    words_db, _ = dbs
+    row_a = words_db.execute(
+        "SELECT has_definition FROM words WHERE word='acătării'"
+    ).fetchone()
+    assert row_a['has_definition'] == 1
+
+    row_b = words_db.execute(
+        "SELECT has_definition FROM words WHERE word='adăsta'"
+    ).fetchone()
+    assert row_b['has_definition'] == 0
 
 
 def test_open_research_db_creates_table(dbs):
