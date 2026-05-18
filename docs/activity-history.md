@@ -4,6 +4,19 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-19 — Marks filter + annotation overlay + UI refinements
+
+Unified annotation filtering and word-chip decoration in the research UI.
+
+- **`marks` dropdown.** Replaced the `show_removed` pill + `bookmarked` checkbox with a single `<select name="marks">`. Options: `all words` (default), `unmarked only`, `marked only`, `☆ bookmarked`, `has note`, and one entry per quick-tag. Backend: new `_is_marked()` helper; flat filter chain handles each variant. Default changed from `unmarked` → `all`.
+- **Emoji overlay on word chips.** Each chip now shows a compact emoji badge (`ann-overlay`) assembled by a Jinja2 namespace accumulator: per-tag emoji from `QUICK_TAG_EMOJIS`, `📝` if has note, `⭐` if bookmarked. `w.tags` list (from `bmap`) replaces the old `has_tags` bool.
+- **Suppress active-filter emoji.** In `bookmarked` mode the `⭐` is hidden on every chip (it's redundant — the filter already guarantees they're all bookmarked). Same for `📝` in `noted` mode and the relevant tag emoji in `tag:X` mode. Implemented via `suppress_emoji` template var and `| default('')` guard.
+- **`.flabel` inverted.** Filter labels now render as dark pills (`color: var(--bg); background: var(--text-2)`) so they read as labels, not body text.
+- **Metodologie footer link.** Status bar now includes an `<a href="/metodologie">` link. Template moved from `ui/metodologie.html` → `ui/templates/metodologie.html` (Flask template resolution fix).
+- **BACKLOG.** Added #19 (overlay overflow for 4+ emoji), #20 (stale overlay after in-panel mutations — needs htmx OOB swap).
+
+---
+
 ## 2026-05-18 — UI polish pass v4 (typography + verdict palette + interaction states)
 
 Second, deeper UI revision after the morning's fine-tuning pass. Brainstormed direction with the visual-companion server, picked **Tool** over Publication. Spec at `docs/superpowers/specs/2026-05-18-ui-polish-pass-design.md`.
