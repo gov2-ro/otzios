@@ -520,6 +520,11 @@ def tags_suggest():
     return render_template('partials/tag_options.html', options=_all_used_tags())
 
 
+@app.route('/metodologie')
+def metodologie():
+    return render_template('metodologie.html')
+
+
 if __name__ == '__main__':
     init_app()
     app.run(debug=True, port=5000)
