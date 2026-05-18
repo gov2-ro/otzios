@@ -198,7 +198,7 @@ POS_OPTIONS = [
 ]
 
 
-_ETYM_JUNK = {'vezi', 'cf.', 'după', 'după unii', 'probabil', 'cuvânt', 'necunoscută'}
+_ETYM_JUNK = {'vezi', 'cf.', 'după', 'după unii', 'probabil', 'cuvânt', 'necunoscută', 'de la', 'sau'}
 
 
 def _distinct_split(column: str, sep: str = '|', limit: int | None = None, exclude: set | None = None) -> list[str]:
@@ -220,6 +220,15 @@ def _bookmarks_map() -> dict[str, dict]:
     return {r['word']: dict(r) for r in rows}
 
 
+def _is_marked(word: str, bmap: dict) -> bool:
+    bm = bmap.get(word, {})
+    return bool(
+        bm.get('bookmarked')
+        or (bm.get('note') or '').strip()
+        or (bm.get('tags') or '').strip()
+    )
+
+
 def _like_any(col: str, vals: list[str]):
     or_parts = [f"('|'||{col}||'|' LIKE ?)" for _ in vals]
     return '(' + ' OR '.join(or_parts) + ')', [f'%|{v}|%' for v in vals]
@@ -236,6 +245,7 @@ def search():
     pos             = request.args.get('pos', '').strip()
     has_def         = request.args.get('has_def', '').strip()
     bookmarked_only = request.args.get('bookmarked', '') == '1'
+    marks           = request.args.get('marks', 'unmarked').strip()
     sort            = request.args.get('sort', '').strip()
     page   = max(1, int(request.args.get('page', 1) or 1))
     offset = (page - 1) * PAGE_SIZE
@@ -272,6 +282,21 @@ def search():
 
     if bookmarked_only:
         all_rows = [r for r in all_rows if bmap.get(r['word'], {}).get('bookmarked')]
+    else:
+        if marks in ('', 'unmarked'):
+            all_rows = [r for r in all_rows if not _is_marked(r['word'], bmap)]
+        elif marks == 'marked':
+            all_rows = [r for r in all_rows if _is_marked(r['word'], bmap)]
+        elif marks == 'noted':
+            all_rows = [r for r in all_rows
+                        if (bmap.get(r['word'], {}).get('note') or '').strip()]
+        elif marks.startswith('tag:') and marks[4:].strip():
+            tag_filter = marks[4:].strip()
+            all_rows = [r for r in all_rows
+                        if tag_filter in [t.strip() for t in
+                                          (bmap.get(r['word'], {}).get('tags') or '').split(',')
+                                          if t.strip()]]
+        # marks == 'all' → no filtering
 
     total = len(all_rows)
     page_rows = all_rows[offset: offset + PAGE_SIZE]
@@ -281,6 +306,8 @@ def search():
         d = dict(r)
         bm = bmap.get(r['word'], {})
         d['bookmarked'] = bool(bm.get('bookmarked'))
+        d['has_note']   = bool((bm.get('note') or '').strip())
+        d['tags']       = [t.strip() for t in (bm.get('tags') or '').split(',') if t.strip()]
         words.append(d)
 
     next_page_url = None
