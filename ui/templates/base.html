@@ -5,32 +5,32 @@
   <title>Oțios — Cuvinte Uitate</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Mona+Sans:wght@400..700&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
   <style>
     /* ── Tokens ── */
     :root {
-      --bg:          #ffffff;
-      --surface:     #ffffff;
+      --bg:          #fcfbf7;
+      --surface:     #fdfcf9;
       --surface-2:   #ffffff;
-      --border:      #e6e2da;
-      --border-2:    #c8c1b7;
-      --text:        #18150f;
+      --border:      #ece6d6;
+      --border-2:    #d6d0bf;
+      --text:        #1a1812;
       --text-2:      #5c5550;
-      --text-3:      #9c9590;
+      --text-3:      #8a8378;
       --accent:      #1a56db;
-      --accent-bg:   #eff6ff;
+      --accent-bg:   #d6e6ff;
       --badge-bg:    #1f1d1a;
 
-      --v-ext:       #9a1313;  --v-ext-bg:  #fff1f0;  --v-ext-bd:  #f87171;
-      --v-dec:       #7a3208;  --v-dec-bg:  #fff7e6;  --v-dec-bd:  #fbbf24;
-      --v-hist:      #15348f;  --v-hist-bg: #eaf0ff;  --v-hist-bd: #60a5fa;
-      --v-abs:       #581cb6;  --v-abs-bg:  #f3f0ff;  --v-abs-bd:  #a78bfa;
+      --v-ext:       #b91c1c;  --v-ext-bg:  #fff1f0;  --v-ext-bd:  #f87171;
+      --v-dec:       #524035;  --v-dec-bg:  #f5efe5;  --v-dec-bd:  #a48870;
+      --v-hist:      #3d4763;  --v-hist-bg: #ebeef5;  --v-hist-bd: #8a96b8;
+      --v-abs:       #4b3d5a;  --v-abs-bg:  #f0ecf5;  --v-abs-bd:  #9b88b3;
 
       --chip-h: 26px;
       --radius: 3px;
-      --sans:  'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --condensed: 'Inter Tight', -apple-system, sans-serif;
+      --sans:  'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --condensed: 'Mona Sans', -apple-system, sans-serif;
       --mono:  'JetBrains Mono', monospace;
       --serif: 'Lora', Georgia, serif;
     }
@@ -48,21 +48,6 @@
       color: var(--text);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-    }
-
-    /* Top accent stripe — verdict palette */
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: linear-gradient(90deg,
-        var(--v-ext)  0%,  var(--v-ext)  25%,
-        var(--v-dec)  25%, var(--v-dec)  50%,
-        var(--v-hist) 50%, var(--v-hist) 75%,
-        var(--v-abs)  75%, var(--v-abs)  100%);
-      z-index: 10;
-      pointer-events: none;
     }
 
     /* ══════════════════════════════════════════
@@ -291,30 +276,31 @@
     #word-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 3px;
-      padding: 12px 14px 14px;
+      column-gap: 9px;
+      row-gap: 9px;
+      padding: 11px 13px;
       align-items: start;
     }
     .word-wide { grid-column: span 2; }
 
-    /* Word chips — borderless, color = verdict, very compact */
+    /* Word chips — hug content via justify-self: start, not stretched to cell */
     .word-row {
+      justify-self: start;
       display: inline-block;
-      padding: 2px 7px 3px;
+      padding: 1px 5px 2px;
       cursor: pointer;
       font-family: var(--sans);
-      font-size: 19px;
-      font-weight: 700;
-      line-height: 1.15;
-      letter-spacing: -.02em;
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: -.005em;
       color: var(--text-3);
       background: transparent;
       border-radius: var(--radius);
       white-space: nowrap;
-      transition: background .08s, color .08s, transform .08s;
+      transition: transform .14s ease, box-shadow .14s ease, background .12s ease;
       position: relative;
     }
-    .word-row:active { transform: translateY(1px); }
     /* Verdict color — applied to word text */
     .word-row.verdict-extinct         { color: var(--v-ext); }
     .word-row.verdict-declining       { color: var(--v-dec); }
@@ -322,60 +308,58 @@
     .word-row.verdict-absent          { color: var(--v-abs); }
     .word-row.verdict-unknown         { color: var(--text-2); }
 
-    .word-row:hover { background: #f0ece5; }
-    .word-row:active { transform: scale(0.97); }
+    /* Hover — translucent blue tint, hugs word width, inset hairline */
+    .word-row:hover {
+      background: rgba(214, 230, 255, 0.9);
+      box-shadow: 0 0 0 1px rgba(112, 158, 235, 0.5) inset;
+    }
+    .word-row:active { transform: translateY(1px); }
 
-    /* Selected chip — high-contrast, verdict-colored solid block */
+    /* Selected — solid charcoal at 90% opacity, lifts above grid via z-index */
     .word-row[data-selected] {
-      background: var(--text);
+      background: rgba(26, 24, 18, 0.9);
       color: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,.15);
-      transform: scale(1.02);
+      transform: scale(1.06);
+      transform-origin: center;
+      box-shadow:
+        0 3px 10px rgba(26, 24, 18, 0.16),
+        0 1px 3px rgba(26, 24, 18, 0.10);
+      z-index: 5;
     }
-    .word-row[data-selected].verdict-extinct         { background: var(--v-ext);  color: #fff; box-shadow: 0 2px 8px rgba(154,19,19,.25); }
-    .word-row[data-selected].verdict-declining       { background: var(--v-dec);  color: #fff; box-shadow: 0 2px 8px rgba(122,50,8,.25); }
-    .word-row[data-selected].verdict-historical_only { background: var(--v-hist); color: #fff; box-shadow: 0 2px 8px rgba(21,52,143,.25); }
-    .word-row[data-selected].verdict-absent          { background: var(--v-abs);  color: #fff; box-shadow: 0 2px 8px rgba(88,28,182,.25); }
-
-    .word-row.bookmarked .word-text { text-decoration: underline; text-decoration-color: #d97706; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
-    .star { color: #d97706; font-size: 10px; }
-
-    /* in-chip metadata */
-    .chip-meta {
-      font-family: var(--serif);
-      font-style: italic;
-      font-weight: 500;
-      font-size: 11px;
-      color: var(--text-3);
-      text-transform: lowercase;
-      letter-spacing: 0;
-      margin-left: 4px;
-      vertical-align: baseline;
-    }
-    .chip-meta.inv {
-      color: var(--v-ext);
-      font-weight: 600;
-      position: absolute;
-      bottom: 0px;
-      left: 7px;
-      margin-left: 0;
-      vertical-align: initial;
+    .word-row[data-selected]:hover {
+      background: rgba(26, 24, 18, 0.9);
+      box-shadow:
+        0 3px 10px rgba(26, 24, 18, 0.16),
+        0 1px 3px rgba(26, 24, 18, 0.10);
     }
 
-    /* True superscript count — raised above x-height */
+    /* Învechit — red dotted underline on the word itself, no extra glyph */
+    .word-row.inv .word-text {
+      text-decoration: underline dotted var(--v-ext);
+      text-decoration-thickness: 1.5px;
+      text-underline-offset: 3px;
+    }
+    /* Bookmarked: solid amber underline (wins over inv when both true) */
+    .word-row.bookmarked .word-text { text-decoration: underline solid #d97706; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
+    .word-row[data-selected].inv .word-text,
+    .word-row[data-selected].bookmarked .word-text { text-decoration-color: rgba(255,255,255,.85); }
+
+    /* Freq superscript — quiet mono metadata */
     .chip-freq {
-      font-family: var(--sans);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--text-3);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      color: #b3a99a;
       font-variant-numeric: tabular-nums;
-      letter-spacing: -.02em;
-      vertical-align: super;
+      letter-spacing: 0;
+      vertical-align: baseline;
+      position: relative;
+      top: -0.55em;
       line-height: 0;
-      margin-left: 2px;
+      margin-left: 3px;
+      opacity: .8;
     }
-    .word-row[data-selected] .chip-meta,
-    .word-row[data-selected] .chip-freq { color: inherit; opacity: .75; }
+    .word-row[data-selected] .chip-freq { color: #c4beb1; opacity: .9; }
 
     /* ── Detail panel — compact footer drawer, slides up ── */
     #detail-panel {
@@ -700,7 +684,7 @@
 
     /* ── Status bar ── */
     #status-bar {
-      padding: 5px 14px;
+      padding: 4px 14px;
       background: var(--surface);
       border-top: 1px solid var(--border);
       font-size: 12px;
@@ -709,6 +693,7 @@
       flex-shrink: 0;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 16px;
     }
     #status-bar > span:first-child {
@@ -813,7 +798,7 @@
       transition: color .1s, background .1s;
       font-weight: 600;
     }
-    .panel-close:hover { color: var(--text); background: #f0ece5; }
+    .panel-close:hover { color: var(--text); background: rgba(214, 230, 255, 0.9); }
     .panel-close:active { transform: scale(0.92); }
 
     /* ── Hover info box ── */
@@ -987,17 +972,8 @@
   <div id="detail-panel"></div>
 
   <div id="status-bar">
-    <span id="status-word-count">{{ total }} words</span> · {{ bookmark_count }} bookmarked
-    <span>
-      <kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>l</kbd> navigate &nbsp;
-      <kbd>/</kbd> search &nbsp;
-      <kbd>b</kbd> bookmark &nbsp;
-      <kbd>i</kbd>/<kbd>B</kbd>/<kbd>f</kbd>/<kbd>x</kbd> mark &nbsp;
-      <kbd>t</kbd> tag &nbsp;
-      <kbd>n</kbd> note &nbsp;
-      <kbd>o</kbd> dexonline &nbsp;
-      <kbd>?</kbd> shortcuts
-    </span>
+    <span class="status-left"><span id="status-word-count">{{ total }} words</span> · {{ bookmark_count }} bookmarked</span>
+    <span class="status-right"><kbd>?</kbd> shortcuts</span>
   </div>
 
   <datalist id="tag-suggestions">

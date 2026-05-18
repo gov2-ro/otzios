@@ -13,6 +13,7 @@ _obsolete
 .vscode/*
 .claude/*
 .github/*
+.superpowers/
 .mcp.json
 
 # Byte-compiled / optimized / DLL files

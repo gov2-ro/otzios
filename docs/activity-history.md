@@ -4,6 +4,47 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-18 — UI polish pass v4 (typography + verdict palette + interaction states)
+
+Second, deeper UI revision after the morning's fine-tuning pass. Brainstormed direction with the visual-companion server, picked **Tool** over Publication. Spec at `docs/superpowers/specs/2026-05-18-ui-polish-pass-design.md`.
+
+- **Typography.** Inter Tight → Mona Sans (variable). Word weight 700→600, size 19→18px, tracking `-0.02em`→`-0.005em` so Romanian diacritics (ț, ș, ă) breathe. Lora kept as italic accent on the filter label + placeholder. JetBrains Mono kept.
+- **Color tokens.** Warm off-white ground (`--bg #fcfbf7`, `--surface #fdfcf9`, `--border #ece6d6`). Verdict palette flipped from "four equal-saturation colors" to **one hero, three muted**: `--v-ext` cleaner red `#b91c1c`, the other three become charcoal-with-hue (`--v-dec #524035`, `--v-hist #3d4763`, `--v-abs #4b3d5a`). Extinct now reads first; the eye explores from there.
+- **Density.** Grid `column-gap: 9px; row-gap: 9px; padding: 11px 13px`; word-row padding `1px 5px 2px`. Denser than the morning pass but still readable.
+- **Hover.** Cool blue tint `rgba(214,230,255,0.9)` + 1px inset border, hugs the word.
+- **Selected.** `transform: scale(1.06)` lift, dark-charcoal 90%-opacity bg, subtle two-layer shadow, `z-index: 5`. Neighbors don't reflow — one unambiguous "this is selected" signal replaces the old verdict-tinted bg + outsized shadow combo.
+- **Critical CSS fix.** Grid items default to `justify-self: stretch`; added `justify-self: start` on `.word-row` so hover/selected boxes hug the word's width instead of stretching to the cell.
+- **Stripped chrome.** Removed `body::before` top accent stripe (advertised the palette we're toning down). Status bar's 8-kbd inline legend collapsed to `<kbd>?</kbd> shortcuts` (modal already exists).
+
+Verified in browser: Mona Sans 600/18px on warm ground, `transform: matrix(1.06,…)` + `background: rgba(26,24,18,0.9)` on selected, hover box ≈ word width.
+
+## 2026-05-18 — UI word-grid fine-tuning
+
+Polished `ui/templates/base.html` + `ui/templates/partials/word_row.html` to fix visual noise in the word list. No structural changes — same routes, markup shape, keyboard shortcuts.
+
+- **Grid breathing room.** `gap: 3px` → `column-gap: 8px; row-gap: 12px`. Outer padding bumped to 14/16. The tight 3px row-gap was the root structural cause of the `înv` overlap.
+- **învechit marker.** Replaced the absolute-positioned `<span class="chip-meta inv">înv</span>` (which sat at `bottom: 0; left: 7px` and bled into the row below) with a red dotted `text-decoration` underline on `.word-text` itself. Word row gets `class="inv"` and `title="învechit"` when applicable; the chip-meta span and its CSS are gone. Bookmark+învechit conflict: bookmark amber wins, logged in BACKLOG.
+- **Superscript freq.** Switched from `vertical-align: super` (oddly tall, competed with the word) to `vertical-align: baseline; position: relative; top: -0.55em` at 10px/600 weight/0.7 opacity. Reads as quiet metadata now.
+- **Hover.** Tan `#f0ece5` → cool `var(--accent-bg)` `#eff6ff` so hover doesn't visually merge with the warm body bg.
+- **Bookmarks.** Dropped the trailing `★` glyph; the amber underline alone is enough indicator.
+- **Wide-word threshold.** `length >= 12` → `length >= 11` in `word_row.html` so 11-char words like `bogasieresc`, `panevghenie` get a 2-col span and stop crowding their neighbors.
+
+Variant chosen via a temporary `/demo/marker` route that rendered six marker treatments side-by-side over the same word sample; demo route + `marker_demo.html` template removed after selection. Logged 4 follow-ups in BACKLOG (verdict palette, bookmark+învechit stacking, mobile breakpoints, extract CSS to static file).
+
+## 2026-05-18 — Fix taxonomy join (load_taxonomy, fetch_all_tags)
+
+`ObjectTag.objectId` where `objectType=3` holds Meaning IDs (max ~503k), but both `load_taxonomy()` in `validate_diachronic.py` and `fetch_all_tags()` in `create_curated_list.py` were joining on `el.entryId` (max ~339k) — different ID spaces, producing random tag assignments. Fixed by:
+
+1. Updating `extract_taxonomy.py` to also extract `TreeEntry(id, treeId, entryId)` and `MeaningTree(meaning_id, tree_id)` from the dump. `Meaning` rows contain a `longtext` `internalRep` field that breaks `parse_mysql_insert`'s `[^)]+` regex, so a dedicated `_MEANING_PATTERN` regex extracts only the two needed integer columns. Re-ran against the full dump: 240,023 TreeEntry rows + 454,993 MeaningTree rows.
+
+2. Rewiring both join sites to use `Lexeme → EntryLexeme → TreeEntry → MeaningTree → ObjectTag(objectType=3) → Tag`.
+
+Verified: `pretutindeni` (no tags — correct), `antipapă` (francesa etymology — correct), `isihie` (`învechit` register + neogreacă etymology — correct). Previous wrong results: `pretutindeni→botanică`, `antipapă→medicină`, `aist→medicină`.
+
+Next step: re-run `validate_diachronic.py` to regenerate `forgotten_words_diachronic.csv` with accurate taxonomy columns.
+
+---
+
 ## 2026-05-17 — DEX dump DefinitionSimple gap confirmed + backlog entry
 
 Investigated why `scrape_definitions.py` is needed despite having the full DEX MySQL dump. Verified against both dumps: `DefinitionSimple` contains exactly **61,041 rows** in both old (Oct 2025, 1.2 GB) and new (May 2026, 1.5 GB) dumps, while `EntryDefinition` references **1,379,043** definition IDs — 94.8% are dangling references with no corresponding record. The gap is unchanged between dump versions, confirming this is a structural omission in the public export, not a regression. Added backlog entry (#Upstream) to report the issue to dexonline developers with counts and workaround context.

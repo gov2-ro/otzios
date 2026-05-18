@@ -1,13 +1,13 @@
-<div class="word-row verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}{% if w.word | length >= 12 %} word-wide{% endif %}{% if w.bookmarked %} bookmarked{% endif %}"
+{% set _is_inv = w.dex_register and 'învechit' in w.dex_register %}
+<div class="word-row verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}{% if w.word | length >= 11 %} word-wide{% endif %}{% if w.bookmarked %} bookmarked{% endif %}{% if _is_inv %} inv{% endif %}"
      data-verdict="{{ w.verdict or 'unknown' }}"
      data-pos="{{ (w.dex_pos or '').split('|')[0] }}"
      data-freq="{{ (w.dex_frequency * 100) | round | int if w.dex_frequency is not none else '' }}"
      data-def="{{ (w.definition or '')[:120] }}"
+     {% if _is_inv %}title="învechit"{% endif %}
      hx-get="/word/{{ w.word | urlencode }}"
      hx-target="#detail-panel"
      hx-swap="innerHTML">
   <span class="word-text">{{ w.word }}</span>
-  {% if w.dex_register and 'învechit' in w.dex_register %}<span class="chip-meta inv">înv</span>{% endif %}
   {% if w.dex_frequency is not none %}<span class="chip-freq">{{ (w.dex_frequency * 100) | round | int }}</span>{% endif %}
-  {% if w.bookmarked %}<span class="star">★</span>{% endif %}
 </div>
