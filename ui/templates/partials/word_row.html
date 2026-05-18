@@ -1,4 +1,9 @@
 {% set _is_inv = w.dex_register and 'învechit' in w.dex_register %}
+{% set _emoji = {'ignore': '🙈', 'boring': '💤', 'funny': '😄', 'remove': '❌'} %}
+{% set _ov = namespace(s='') %}
+{% for t in (w.tags or []) %}{% set _ov.s = _ov.s + _emoji.get(t, '🏷️') %}{% endfor %}
+{% if w.has_note %}{% set _ov.s = _ov.s + '📝' %}{% endif %}
+{% if w.bookmarked %}{% set _ov.s = _ov.s + '⭐' %}{% endif %}
 <div class="word-row verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}{% if w.word | length >= 11 %} word-wide{% endif %}{% if w.bookmarked %} bookmarked{% endif %}{% if _is_inv %} inv{% endif %}"
      data-verdict="{{ w.verdict or 'unknown' }}"
      data-pos="{{ (w.dex_pos or '').split('|')[0] }}"
@@ -10,4 +15,5 @@
      hx-swap="innerHTML">
   <span class="word-text">{{ w.word }}</span>
   {% if w.dex_frequency is not none %}<span class="chip-freq">{{ (w.dex_frequency * 100) | round | int }}</span>{% endif %}
+  {% if _ov.s %}<span class="ann-overlay">{{ _ov.s }}</span>{% endif %}
 </div>
