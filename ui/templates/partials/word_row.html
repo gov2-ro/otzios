@@ -1,9 +1,10 @@
 {% set _is_inv = w.dex_register and 'învechit' in w.dex_register %}
 {% set _emoji = {'ignore': '🙈', 'boring': '💤', 'funny': '😄', 'remove': '❌'} %}
+{% set _hide = suppress_emoji | default('') %}
 {% set _ov = namespace(s='') %}
-{% for t in (w.tags or []) %}{% set _ov.s = _ov.s + _emoji.get(t, '🏷️') %}{% endfor %}
-{% if w.has_note %}{% set _ov.s = _ov.s + '📝' %}{% endif %}
-{% if w.bookmarked %}{% set _ov.s = _ov.s + '⭐' %}{% endif %}
+{% for t in (w.tags or []) %}{% set _e = _emoji.get(t, '🏷️') %}{% if _e != _hide %}{% set _ov.s = _ov.s + _e %}{% endif %}{% endfor %}
+{% if w.has_note and '📝' != _hide %}{% set _ov.s = _ov.s + '📝' %}{% endif %}
+{% if w.bookmarked and '⭐' != _hide %}{% set _ov.s = _ov.s + '⭐' %}{% endif %}
 <div class="word-row verdict-{{ (w.verdict or 'unknown') | replace(' ', '_') }}{% if w.word | length >= 11 %} word-wide{% endif %}{% if w.bookmarked %} bookmarked{% endif %}{% if _is_inv %} inv{% endif %}"
      data-verdict="{{ w.verdict or 'unknown' }}"
      data-pos="{{ (w.dex_pos or '').split('|')[0] }}"

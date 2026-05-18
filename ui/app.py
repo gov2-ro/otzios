@@ -183,7 +183,8 @@ QUICK_TAGS = [
     ('funny',  'f'),
     ('remove', 'x'),
 ]
-QUICK_TAG_NAMES = {t for t, _ in QUICK_TAGS}
+QUICK_TAG_NAMES  = {t for t, _ in QUICK_TAGS}
+QUICK_TAG_EMOJIS = {'ignore': '🙈', 'boring': '💤', 'funny': '😄', 'remove': '❌'}
 
 
 POS_OPTIONS = [
@@ -245,7 +246,7 @@ def search():
     pos             = request.args.get('pos', '').strip()
     has_def         = request.args.get('has_def', '').strip()
     bookmarked_only = request.args.get('bookmarked', '') == '1'
-    marks           = request.args.get('marks', 'unmarked').strip()
+    marks           = request.args.get('marks', 'all').strip()
     sort            = request.args.get('sort', '').strip()
     page   = max(1, int(request.args.get('page', 1) or 1))
     offset = (page - 1) * PAGE_SIZE
@@ -316,6 +317,15 @@ def search():
         args['page'] = str(page + 1)
         next_page_url = '/search?' + urlencode(args, doseq=True)
 
+    if bookmarked_only:
+        suppress_emoji = '⭐'
+    elif marks == 'noted':
+        suppress_emoji = '📝'
+    elif marks.startswith('tag:') and marks[4:].strip():
+        suppress_emoji = QUICK_TAG_EMOJIS.get(marks[4:].strip(), '🏷️')
+    else:
+        suppress_emoji = ''
+
     return render_template(
         'partials/word_list.html',
         words=words,
@@ -323,6 +333,7 @@ def search():
         page=page,
         page_size=PAGE_SIZE,
         next_page_url=next_page_url,
+        suppress_emoji=suppress_emoji,
     )
 
 

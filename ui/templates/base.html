@@ -897,9 +897,9 @@
         <input type="checkbox" name="bookmarked" value="1">
         ☆ bookmarked
       </label>
-      <select name="marks" class="tax-select" data-default="unmarked" aria-label="Marks filter">
-        <option value="unmarked">unmarked only</option>
+      <select name="marks" class="tax-select" data-default="all" aria-label="Marks filter">
         <option value="all">all words</option>
+        <option value="unmarked">unmarked only</option>
         <option value="marked">marked only</option>
         <option value="noted">has note</option>
         {% for t, _ in quick_tags %}
