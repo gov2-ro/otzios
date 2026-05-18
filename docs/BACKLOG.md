@@ -6,6 +6,10 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 ## Bugs / Known Issues
 
+- [ ] check why some words are still missing definitions even if found on dexonline. did scraping fail?
+
+- [ ] `dreadnought` nu e marcat ca `marină` (Mar.) in our UI but it is in dexonline web
+
 - [ ] **P0 — Phase 2 candidate-set mismatch** (`process_corpus.py:56-67,187,292` vs `validate_forgotten_words.py:64-70`): `process_corpus.py` only counts tokens in `forgotten_words_curated.csv` (~1.9k words), but the validator queries `lexemes.db` with `frequency > 0.01 AND frequency < 0.60 AND LENGTH(form) > 3` (tens of thousands of lexemes). Words absent from the curated CSV silently get `total_occurrences = 0` and are classified as `confirmed_forgotten` with confidence ~0.99. The "159,543 validated, 1 false positive" headline in `docs/phase2-test-results.md` is an artefact. Fix: align the candidate source, or have `process_corpus.py` count every token.
 
 - [ ] **Three competing MySQL→SQLite paths** — only `extract_lexemes.py` is wired into the canonical pipeline. `convert_to_sqlite.sh` mishandles multi-line MySQL directives (lines 31, 42-50); `mysql_to_sqlite.py:97` silently swallows AUTOINCREMENT errors. Archive the other two.
@@ -88,6 +92,10 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
   Note: these words may still be worth keeping — a word documented only as a borrowing with no translation is itself a sign of marginal integration into Romanian.
 
+- [ ] **#19 — [XS, Low] Annotation overlay overflow for heavily-annotated words** — Words with 4+ annotations (e.g. all quick tags + note + bookmark = `🙈💤😄❌📝⭐`) produce a ~48px emoji string in `.ann-overlay` that bleeds left over the word text. `letter-spacing: -1px` compresses it slightly but there is no max-width or clip. Either cap visible annotations at 3 and add a `+N` indicator, or accept the overlap as a cosmetic edge case.
+
+- [ ] **#20 — [S, Low] Annotation overlay goes stale after in-panel mutations** — When the user toggles a bookmark or adds/removes a tag via the detail panel, the word chip in the grid is not re-rendered (HTMX only swaps the detail panel / tag row). The `ann-overlay` emoji stays stale until the next search trigger. Fix: add an HTMX OOB swap from `/bookmark/<word>` and `/tag/<word>/*` routes that re-renders the affected `.word-row`.
+
 - [ ] **#18 — [L, Med] Extract per-document metadata from corpora for temporal and domain signals** — Currently both corpus scripts discard document-level metadata and only keep aggregate word counts. Two signals worth extracting:
 
   - **Temporal distribution (CulturaX)**: parquet files carry a `timestamp` field per document. Storing a year histogram per word (e.g. JSON column `year_dist` in `corpus_word_frequency`) would let us answer "when did this word last appear in web text" — a direct measure of *when* usage dropped off, richer than a single `modern_ppm` value. A word with 90% of hits before 2015 and nothing recent is differently forgotten than one that's uniformly rare.
@@ -139,15 +147,35 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 ## UI
 
-- [ ] make .flabel bolder (negative). remove distance between .flabel and choices. Use narrow font for the filter bar.
+- [x] make space for columns a bit wider — grid minmax raised to 120px.
+
+- [x] bring superscript count badge closer to word — margin-left 3px → 1px.
+
+- [x] make definition text larger — bumped to 15px; removed inline 11.5px override in detail.html.
+
+- [x] keyboard nav, after focusing on searchbar and filtering words it's hard to get focus back on the term list — Esc from search now restores selectedIdx via selectRow(noClick=true).
+
+- [ ] create statistics by metadata. in the limited corpus and later in whole dexonline
+
+- [x] hide terms marked as `remove` — hidden by default; "show removed" pill in filter bar re-shows them. **Open question**: what's the semantic difference between `ignore` and `remove`? Clarify and add tooltip/docs so users know which to use.
+
+- [x] make .flabel bolder (negative). remove distance between .flabel and choices. Use narrow font for the filter bar — switched to mono 11px bold var(--text-2), removed min-width/excess padding.
+
+- [x] load more words when page scrolled to bottom — replaced "load more" button with HTMX `intersect once` sentinel; auto-loads as you scroll.
+
+- [x] if I click a word with the mouse the focus doesn't move there. Keyboard and mouse choice is not synced — delegated click listener on word-list-container now sets selectedIdx on mouse click.
+
+- [x] longer words break in the info box, make left panel responsive / flexible width — fp-word changed from fixed 170px to auto (min 140px, max 240px).
+
+- [ ] mark words that have attached notes or tags/flags. Filter words by tags — dot indicator done (blue ::after on .annotated); filter-by-tags in the filter bar still open.
+
+- [ ] select word by typing
 
 - [ ] search bar also accepts metadata - filters. Later / nice to have enhancement: fancy search, like in gmail with autocomplete and style options. Search box also accepts filtering attributes.
 
-- [ ] if I click a word with the mouse the focus doesn't move there. Keyboard and mouse choice is not synced.
+- [ ] later show extended definition. everything in dexonline but compact
 
-- [ ] longer words break in the info box, make left panel responsive / flexible width.
-
-- [ ] select word by typing
+- [ ] exploratory interface. to the point of screensaver. or like tiktok / Tinder feed, but limit per day
 
 - [ ] **Verdict palette saturation review** — four full-saturation colors (red/brown/blue/purple) in the word grid compete equally for attention; consider one dominant verdict color + three muted, or shift to a single-hue density encoding. Out of scope for the 2026-05-18 fine-tuning pass.
 
@@ -168,6 +196,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] publish favorites, custom lists even to a web server. make it a collaborative experience. Eventually publish these currated lists and showcase popular words on the main website.
 
 - [ ] metadata navigator - add wordfreq and scarcity - the result of this project
+
+- [ ] try a super dorpdown navigator, where it can reach all metadata options, witih contextual keyboard shortcuts. or just search by visible terms. but how can we select more or exclude, to make it crazy good? With streer count in brackets?
 
 - [x] **New DEX dump intake** — downloaded `dex-database.sql` (1.65 GB); old dump renamed `dex-database-1.sql` (1.27 GB). Schema is nearly identical (one new index on `Lexeme.pronunciations`). Data growth: Lexeme +3,774, Entry +3,469, ObjectTag +38,074, Meaning +13,367, TreeEntry +5,404; DefinitionSimple unchanged. Four new tables: `Subtitle` (13 M rows — individual Romanian words from 966 YouTube clips, confirmed Digi24 news content, good modern-Romanian corpus candidate), `VideoClip` (966 rows, YouTube IDs), `OCR_stats`, `student`. Actions taken: re-ran `extract_lexemes.py` and `extract_taxonomy.py` against new dump to refresh `lexemes.db`. `validate_diachronic.py` not re-run (waiting for taxonomy join fix above). Subtitle corpus: see #XX backlog entry.
 
