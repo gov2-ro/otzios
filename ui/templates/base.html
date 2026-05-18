@@ -247,15 +247,6 @@
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3);
     }
 
-    /* Bookmark toggle pill */
-    .bm-pill:has(input:checked) {
-      background: #fffbeb;
-      color: #92400e;
-      font-weight: 700;
-      border-color: #d97706;
-      box-shadow: 0 0 0 1px #d97706;
-    }
-
     /* Loading indicator */
     .htmx-indicator { opacity: 0; transition: opacity .2s; color: var(--text-3); font-size: 11px; }
     .htmx-request .htmx-indicator { opacity: 1; }
@@ -893,14 +884,11 @@
         <option value="alpha">↕ alphabetical</option>
       </select>
       <div class="fsep"></div>
-      <label class="pill bm-pill">
-        <input type="checkbox" name="bookmarked" value="1">
-        ☆ bookmarked
-      </label>
       <select name="marks" class="tax-select" data-default="all" aria-label="Marks filter">
         <option value="all">all words</option>
         <option value="unmarked">unmarked only</option>
         <option value="marked">marked only</option>
+        <option value="bookmarked">☆ bookmarked</option>
         <option value="noted">has note</option>
         {% for t, _ in quick_tags %}
         <option value="tag:{{ t }}">tag: {{ t }}</option>

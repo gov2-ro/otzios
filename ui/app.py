@@ -244,9 +244,8 @@ def search():
     domain          = request.args.get('domain', '').strip()
     etym            = request.args.get('etymology', '').strip()
     pos             = request.args.get('pos', '').strip()
-    has_def         = request.args.get('has_def', '').strip()
-    bookmarked_only = request.args.get('bookmarked', '') == '1'
-    marks           = request.args.get('marks', 'all').strip()
+    has_def = request.args.get('has_def', '').strip()
+    marks   = request.args.get('marks', 'all').strip()
     sort            = request.args.get('sort', '').strip()
     page   = max(1, int(request.args.get('page', 1) or 1))
     offset = (page - 1) * PAGE_SIZE
@@ -281,23 +280,22 @@ def search():
         f'SELECT * FROM words {where} ORDER BY {order_by}', params
     ).fetchall()
 
-    if bookmarked_only:
+    if marks == 'unmarked':
+        all_rows = [r for r in all_rows if not _is_marked(r['word'], bmap)]
+    elif marks == 'marked':
+        all_rows = [r for r in all_rows if _is_marked(r['word'], bmap)]
+    elif marks == 'bookmarked':
         all_rows = [r for r in all_rows if bmap.get(r['word'], {}).get('bookmarked')]
-    else:
-        if marks in ('', 'unmarked'):
-            all_rows = [r for r in all_rows if not _is_marked(r['word'], bmap)]
-        elif marks == 'marked':
-            all_rows = [r for r in all_rows if _is_marked(r['word'], bmap)]
-        elif marks == 'noted':
-            all_rows = [r for r in all_rows
-                        if (bmap.get(r['word'], {}).get('note') or '').strip()]
-        elif marks.startswith('tag:') and marks[4:].strip():
-            tag_filter = marks[4:].strip()
-            all_rows = [r for r in all_rows
-                        if tag_filter in [t.strip() for t in
-                                          (bmap.get(r['word'], {}).get('tags') or '').split(',')
-                                          if t.strip()]]
-        # marks == 'all' → no filtering
+    elif marks == 'noted':
+        all_rows = [r for r in all_rows
+                    if (bmap.get(r['word'], {}).get('note') or '').strip()]
+    elif marks.startswith('tag:') and marks[4:].strip():
+        tag_filter = marks[4:].strip()
+        all_rows = [r for r in all_rows
+                    if tag_filter in [t.strip() for t in
+                                      (bmap.get(r['word'], {}).get('tags') or '').split(',')
+                                      if t.strip()]]
+    # marks == 'all' or unrecognised → no filtering
 
     total = len(all_rows)
     page_rows = all_rows[offset: offset + PAGE_SIZE]
@@ -317,7 +315,7 @@ def search():
         args['page'] = str(page + 1)
         next_page_url = '/search?' + urlencode(args, doseq=True)
 
-    if bookmarked_only:
+    if marks == 'bookmarked':
         suppress_emoji = '⭐'
     elif marks == 'noted':
         suppress_emoji = '📝'
