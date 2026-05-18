@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Metodologie · Oțios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens (mirror base.html) ── */
+    :root {
+      --bg:        #fafaf8;
+      --surface:   #ffffff;
+      --surface-2: #f4f1eb;
+      --border:    #e6e2da;
+      --border-2:  #c8c1b7;
+      --text:      #18150f;
+      --text-2:    #5c5550;
+      --text-3:    #9c9590;
+      --accent:    #1a56db;
+
+      --v-ext:     #9a1313;
+      --v-ext-bg:  #fff1f0;
+      --v-dec:     #7a3208;
+      --v-dec-bg:  #fff7e6;
+      --v-hist:    #15348f;
+      --v-hist-bg: #eaf0ff;
+      --v-abs:     #581cb6;
+      --v-abs-bg:  #f3f0ff;
+
+      --gold:      #c8a84b;
+      --hero-bg:   #18150f;
+      --hero-text: #faf8f4;
+      --hero-dim:  rgba(250,248,244,.62);
+
+      --sans:  'Inter Tight', -apple-system, BlinkMacSystemFont, sans-serif;
+      --serif: 'Lora', Georgia, serif;
+      --mono:  'JetBrains Mono', monospace;
+      --radius: 3px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Verdict palette stripe — same as the word explorer */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg,
+        var(--v-ext)  0%,  var(--v-ext)  25%,
+        var(--v-dec)  25%, var(--v-dec)  50%,
+        var(--v-hist) 50%, var(--v-hist) 75%,
+        var(--v-abs)  75%, var(--v-abs) 100%);
+      z-index: 200;
+      pointer-events: none;
+    }
+
+    /* ─────────────────────────────────────────
+       NAV
+    ───────────────────────────────────────── */
+    .site-nav {
+      position: sticky; top: 3px; z-index: 100;
+      height: 44px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(0,0,0,.04);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-brand {
+      font-family: var(--serif);
+      font-style: italic;
+      font-weight: 600;
+      font-size: 1.1em;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: -.01em;
+    }
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .nav-links a {
+      font-family: var(--sans);
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      text-decoration: none;
+      padding-bottom: 2px;
+      border-bottom: 2px solid transparent;
+      transition: color .12s, border-color .12s;
+    }
+    .nav-links a:hover { color: var(--text-2); }
+    .nav-links a.current {
+      color: var(--text);
+      border-bottom-color: var(--gold);
+    }
+
+    /* ─────────────────────────────────────────
+       HERO
+    ───────────────────────────────────────── */
+    .hero {
+      background: var(--hero-bg);
+      color: var(--hero-text);
+      padding: 52px 28px 44px;
+      border-bottom: 3px solid var(--gold);
+    }
+    .hero-wrap { max-width: 900px; margin: 0 auto; }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .24em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 18px;
+    }
+    .hero h1 {
+      font-family: var(--serif);
+      font-size: 2.5em;
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: -.025em;
+      margin-bottom: 14px;
+    }
+    .hero-sub {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 1.05em;
+      line-height: 1.65;
+      color: var(--hero-dim);
+      max-width: 620px;
+      margin-bottom: 36px;
+    }
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid rgba(255,255,255,.08);
+      padding-top: 28px;
+    }
+    .stat-it {
+      padding: 0 24px;
+      border-right: 1px solid rgba(255,255,255,.07);
+    }
+    .stat-it:first-child { padding-left: 0; }
+    .stat-it:last-child  { border-right: none; padding-right: 0; }
+    .stat-lbl {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 7px;
+    }
+    .stat-num {
+      font-family: var(--sans);
+      font-size: 2.1em;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-meta {
+      font-size: 11px;
+      color: rgba(255,255,255,.45);
+      margin-top: 6px;
+      font-family: var(--sans);
+      line-height: 1.45;
+    }
+
+    /* ─────────────────────────────────────────
+       ARTICLE WRAPPER
+    ───────────────────────────────────────── */
+    .article {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 52px 28px 96px;
+    }
+
+    /* TOC */
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 26px;
+      margin-bottom: 52px;
+    }
+    .toc-lbl {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 14px;
+    }
+    .toc ol {
+      list-style: none;
+      padding: 0; margin: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px 28px;
+      counter-reset: toc-ct;
+    }
+    .toc li {
+      counter-increment: toc-ct;
+      display: flex;
+      align-items: baseline;
+      gap: 9px;
+      font-size: 13.5px;
+      line-height: 1.4;
+    }
+    .toc li::before {
+      content: counter(toc-ct, decimal-leading-zero);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+    .toc a { color: var(--text-2); text-decoration: none; transition: color .1s; }
+    .toc a:hover { color: var(--accent); text-decoration: underline; }
+
+    /* Sections */
+    .article section {
+      margin-bottom: 56px;
+      scroll-margin-top: 58px;
+    }
+    .article h2 {
+      font-family: var(--sans);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--text);
+      border-bottom: 2px solid var(--text);
+      padding-bottom: 10px;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: baseline;
+      gap: 11px;
+    }
+    .num {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--gold);
+      letter-spacing: .04em;
+    }
+    .article h3 {
+      font-family: var(--serif);
+      font-size: 1em;
+      font-weight: 600;
+      color: var(--text);
+      margin: 22px 0 9px;
+      letter-spacing: -.01em;
+    }
+    .article p {
+      font-size: 14.5px;
+      line-height: 1.72;
+      color: var(--text-2);
+      margin-bottom: 13px;
+    }
+    .article p strong { color: var(--text); }
+    .article p em { font-style: italic; }
+    .article ul, .article ol.body-list {
+      padding-left: 20px;
+      margin: 8px 0 15px;
+    }
+    .article ul li, .article ol.body-list li {
+      font-size: 14.5px;
+      line-height: 1.68;
+      color: var(--text-2);
+      margin-bottom: 6px;
+    }
+    .article a {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      text-decoration-thickness: 1px;
+      text-decoration-color: rgba(26,86,219,.3);
+    }
+    .article a:hover { text-decoration-color: var(--accent); }
+    .article code {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 1px 5px;
+      border-radius: 2px;
+      color: var(--text);
+    }
+    .callout {
+      background: var(--surface);
+      border-left: 3px solid var(--gold);
+      padding: 14px 18px;
+      margin: 16px 0;
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+    .callout p {
+      margin: 0;
+      font-size: 13.5px;
+      line-height: 1.68;
+      color: var(--text-2);
+    }
+    .callout p + p { margin-top: 8px; }
+
+    /* Monospace demo block */
+    .demo {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--hero-bg);
+      color: #dde4d8;
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      margin: 14px 0;
+      line-height: 1.85;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+    .demo .gold  { color: var(--gold); }
+    .demo .dim   { color: rgba(255,255,255,.35); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+
+    /* Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 13.5px;
+    }
+    .data-table th {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      color: var(--text-3);
+      font-weight: 600;
+      text-align: left;
+      padding: 7px 10px;
+      border-bottom: 2px solid var(--text);
+    }
+    .data-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .data-table td:first-child {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .data-table td.right { text-align: right; font-family: var(--mono); font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    /* Verdict color overrides */
+    .row-ext  td:first-child { color: var(--v-ext); }
+    .row-dec  td:first-child { color: var(--v-dec); }
+    .row-hist td:first-child { color: var(--v-hist); }
+    .row-abs  td:first-child { color: var(--v-abs); }
+    /* Tier row tints */
+    .tier-a { background: rgba(21,52,143,.03); }
+    .tier-b { background: rgba(88,28,182,.03); }
+
+    /* ─────────────────────────────────────────
+       TIMELINE
+    ───────────────────────────────────────── */
+    .timeline {
+      list-style: none;
+      padding: 0;
+      margin: 22px 0 0;
+      position: relative;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px; top: 12px; bottom: 12px;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--gold) 0%, var(--border-2) 100%);
+    }
+    .timeline > li {
+      position: relative;
+      padding: 0 0 26px 34px;
+    }
+    .timeline > li::before {
+      content: '';
+      position: absolute;
+      left: 2px; top: 8px;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 2px solid var(--border-2);
+      transition: border-color .1s;
+    }
+    .timeline > li.milestone::before {
+      background: var(--gold);
+      border-color: var(--gold);
+    }
+    .tl-date {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      background: var(--hero-bg);
+      color: var(--gold);
+      padding: 2px 9px;
+      border-radius: 2px;
+      letter-spacing: .04em;
+      margin-bottom: 8px;
+    }
+    .tl-what {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.45;
+      margin-bottom: 5px;
+    }
+    .tl-why {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--text-3);
+    }
+
+    /* Sources list */
+    .sources {
+      list-style: none;
+      padding: 0; margin: 14px 0;
+    }
+    .sources li {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13.5px;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .sources li code { flex-shrink: 0; }
+
+    /* ─────────────────────────────────────────
+       FOOTER
+    ───────────────────────────────────────── */
+    .site-footer {
+      background: var(--hero-bg);
+      color: rgba(255,255,255,.45);
+      padding: 22px 28px;
+      border-top: 3px solid var(--gold);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: .05em;
+      text-align: center;
+    }
+
+    /* ─────────────────────────────────────────
+       RESPONSIVE
+    ───────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .hero h1      { font-size: 1.9em; }
+      .hero         { padding: 36px 20px 32px; }
+      .stat-row     { grid-template-columns: 1fr 1fr; gap: 20px 0; }
+      .stat-it:nth-child(2) { border-right: none; }
+      .stat-it:nth-child(3) { padding-left: 0; }
+      .toc ol       { grid-template-columns: 1fr; }
+      .article      { padding: 36px 20px 72px; }
+      .site-nav     { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     NAV
+══════════════════════════════════════ -->
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Oțios</a>
+  <div class="nav-links">
+    <a href="/">Cuvinte</a>
+    <a href="metodologie.html" class="current">Metodologie</a>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════
+     HERO
+══════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-wrap">
+    <div class="eyebrow">Metodologie · cum funcționează</div>
+    <h1>De la dicționar la cuvinte uitate</h1>
+    <p class="hero-sub">
+      Un proiect de lingvistică computațională care identifică cuvintele „uitate" din
+      limba română: termeni prezenți în DEX Online dar absenți din orice corpus modern.
+      Această pagină explică sursa datelor, metodologia și deciziile din spatele rezultatelor.
+    </p>
+    <div class="stat-row">
+      <div class="stat-it">
+        <div class="stat-lbl">Lexeme DEX</div>
+        <div class="stat-num">315.247</div>
+        <div class="stat-meta">intrări cu câmp de frecvență</div>
+      </div>
+      <div class="stat-it">
+        <div class="stat-lbl">Candidați Faza 1</div>
+        <div class="stat-num">140.308</div>
+        <div class="stat-meta">după filtrare și curare</div>
+      </div>
+      <div class="stat-it">
+        <div class="stat-lbl">Pe scurtlistă</div>
+        <div class="stat-num">16.879</div>
+        <div class="stat-meta">4 niveluri de încredere</div>
+      </div>
+      <div class="stat-it">
+        <div class="stat-lbl">Corpus modern</div>
+        <div class="stat-num">17 mld.</div>
+        <div class="stat-meta">tokens CulturaX RO</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     ARTICLE
+══════════════════════════════════════ -->
+<article class="article">
+
+  <div class="toc">
+    <div class="toc-lbl">Pe această pagină</div>
+    <ol>
+      <li><a href="#de-ce">De ce acest proiect</a></li>
+      <li><a href="#sursa">Sursa datelor</a></li>
+      <li><a href="#faza1">Faza 1 — Analiza dicționarului</a></li>
+      <li><a href="#faza2">Faza 2 — Validare diacronică</a></li>
+      <li><a href="#scurtlista">Scurtlista</a></li>
+      <li><a href="#taxonomie">Taxonomie și metadate</a></li>
+      <li><a href="#ui">Interfața de cercetare</a></li>
+      <li><a href="#web">Validare web</a></li>
+      <li><a href="#limite">Limite și capcane</a></li>
+      <li><a href="#cronologie">Cronologie</a></li>
+      <li><a href="#cod">Cod și date</a></li>
+    </ol>
+  </div>
+
+  <!-- 01 ─────────────────────────────── -->
+  <section id="de-ce">
+    <h2><span class="num">01</span> De ce acest proiect</h2>
+    <p>
+      Limba română are sute de mii de cuvinte consemnate în DEX Online — dicționarul academic
+      de referință. Dar câte dintre ele mai există cu adevărat în uzul scris curent? Cuvinte
+      precum <strong>tibișir</strong> (un tip de muselină), <strong>ietac</strong> (camera privată
+      a boierului) sau <strong>bolboacă</strong> (oală de lut) există în dicționar, dar practic
+      nu apar niciodată în textele actuale. Sunt, ca să împrumutăm un termen din astrofizică,
+      <em>materie întunecată lingvistică</em>: prezente în catalogul oficial, invizibile în realitate.
+    </p>
+    <p>
+      Proiectul se numește <strong>Oțios</strong> — după unul dintre primele cuvinte pe care
+      le-am descoperit că ar trebui să fie în propria noastră listă. <em>Oțios</em> înseamnă
+      „lipsit de ocupație, inutil". Ironic: DEX îi atribuie o frecvență de 0.85 (cuvânt canonic,
+      central în structura dicționarului), dar termenul este complet absent din ambele corpusuri
+      verificate — 14 milioane de tokens literari și 17 miliarde de tokens web modern. A fost exclus
+      chiar din propriul proiect la prima versiune a filtrului.
+    </p>
+    <p>
+      Întrebarea fundamentală este simplă: <strong>care sunt cuvintele care există în DEX dar au
+      dispărut din uzul scris al limbii române moderne?</strong> Răspunsul vine din date —
+      nu din intuiție sau prejudecăți culturale.
+    </p>
+  </section>
+
+  <!-- 02 ─────────────────────────────── -->
+  <section id="sursa">
+    <h2><span class="num">02</span> Sursa datelor</h2>
+    <p>
+      Sursa primară este <strong>dumpul MySQL DEX Online</strong> — exportul complet al bazei de date
+      a dicționarului academic românesc, disponibil public la
+      <a href="https://wiki.dexonline.ro/wiki/Informa%C8%9Bii#Desc%C4%83rcare" target="_blank" rel="noopener">dexonline.ro</a>.
+      Snapshot-ul curent: 1.65 GB, descărcat în mai 2026.
+    </p>
+    <p>Ce conține dumpul relevant pentru pipeline:</p>
+    <ul>
+      <li>Tabela <code>Lexeme</code> — 315.247 intrări cu <code>form</code>, <code>frequency</code>, <code>description</code>, <code>modelType</code></li>
+      <li>Tabelele <code>Tag</code> / <code>ObjectTag</code> / <code>EntryLexeme</code> / <code>TreeEntry</code> / <code>MeaningTree</code> — taxonomia editorială</li>
+      <li>Tabela <code>DefinitionSimple</code> — ~61.000 de definiții (nu acoperă toate intrările)</li>
+    </ul>
+    <p>
+      Câmpul-cheie din <code>Lexeme</code> este <code>frequency</code>: un scor 0.0–1.0 care
+      măsoară <strong>importanța lexicografică</strong> (cât de central este cuvântul în definițiile
+      din dicționar), <em>nu frecvența în corpusuri de texte</em>. Aceasta este o sursă comună de
+      confuzie: un cuvânt cu <code>frequency = 1.0</code> este esențial în structura dicționarului
+      (e.g. <em>a fi</em>), nu neapărat cel mai frecvent în limbă. La fel, <code>frequency = 0.0</code>
+      înseamnă că valoarea lipsea din dump — nu că termenul este cel mai rar.
+    </p>
+    <div class="callout">
+      <p><strong>Lacuna DefinitionSimple:</strong> tabela acoperă doar ~61.000 din cele 1.37 milioane
+      de intrări referite în <code>EntryDefinition</code> — 94.8% sunt referințe fără corespondent în
+      export. Aceasta nu este o regresie între versiuni, ci o omisiune structurală a exportului public
+      (constatată și pe dump-ul din octombrie 2025, și pe cel din mai 2026). Diferența este completată
+      prin scraping la cerere din dexonline.ro.</p>
+    </div>
+  </section>
+
+  <!-- 03 ─────────────────────────────── -->
+  <section id="faza1">
+    <h2><span class="num">03</span> Faza 1 — Analiza dicționarului</h2>
+    <p>
+      Pipeline-ul Fazei 1 transformă dumpul brut într-o listă de ~140k candidați.
+      Toate scripturile rulează din directorul rădăcină, fără server de baze de date — SQLite
+      este suficient. Construcția bazei de date este idempotentă: se poate rula ori de câte
+      ori este nevoie.
+    </p>
+    <div class="demo"><span class="dim">pipeline faza 1</span>
+dex-database.sql (1.65 GB)
+  <span class="gold">↓</span> extract_lexemes.py
+lexemes.db  <span class="dim">— 315.247 lexeme cu frequency, description, modelType</span>
+  <span class="gold">↓</span> extract_taxonomy.py  <span class="dim">← rulat o singură dată</span>
+lexemes.db + Tag, ObjectTag, EntryLexeme, TreeEntry, MeaningTree
+  <span class="gold">↓</span> create_curated_list.py
+forgotten_words_curated.csv  <span class="gold">140.308 candidați</span></div>
+
+    <h3>Filtrele aplicate</h3>
+    <ul>
+      <li>Exclud formele cu apostrofuri de accent (e.g. <code>bucl'e</code>) — forma curată este în coloana <code>formNoAccent</code></li>
+      <li>Exclud substantivele proprii și intrările fără marker de clasă morfologică</li>
+      <li>Exclud <code>frequency = 0.0</code> — date lipsă, nu semnal util</li>
+      <li>Impun prezența unui marker de clasă: câmp <code>description</code> non-gol sau <code>modelType</code> recunoscut</li>
+    </ul>
+
+    <h3>Categorii de raritate</h3>
+    <p>Candidații sunt binuiți în patru categorii bazate pe scorul DEX (<code>rarity_category</code>):</p>
+    <table class="data-table">
+      <thead><tr><th>Categorie</th><th>Interval frequency</th></tr></thead>
+      <tbody>
+        <tr><td>very_rare</td><td>&lt; 0.30</td></tr>
+        <tr><td>rare</td><td>0.30 – 0.50</td></tr>
+        <tr><td>uncommon</td><td>0.50 – 0.60</td></tr>
+        <tr><td>standard</td><td>0.60 – 1.0 — important în DEX, dar poate fi absent din corpusuri</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      <p><strong>Decizie-cheie:</strong> Plafonul de frecvență a fost ridicat de la <code>&lt; 0.60</code>
+      la <code>&lt; 1.0</code> după ce <em>oțios</em> (frequency=0.85) a fost exclus din propria-i listă.
+      Cuvinte cu frecvență DEX ridicată pot fi totuși complet absente din corpusuri. Singurele excluse sunt
+      cele 14.021 de intrări cu <code>frequency = 1.0</code> — vocabularul de bază esențial.</p>
+    </div>
+  </section>
+
+  <!-- 04 ─────────────────────────────── -->
+  <section id="faza2">
+    <h2><span class="num">04</span> Faza 2 — Validare diacronică</h2>
+    <p>
+      Faza 2 (preferată) compară frecvența fiecărui cuvânt în <strong>două corpusuri complementare</strong>:
+      unul care reprezintă româna de ieri și unul care reprezintă româna de astăzi.
+    </p>
+
+    <h3>Corpusurile</h3>
+    <ul>
+      <li>
+        <strong>Wikisource RO</strong> — 12.921 documente, 14.3M tokens. Baza de referință istorică:
+        texte literare, jurnalism vechi, documente din sec. XIX–XX. Procesat cu <code>process_wikisource.py</code>
+        via HuggingFace <code>datasets</code>.
+      </li>
+      <li>
+        <strong>CulturaX RO</strong> — 40.3 milioane documente, 17.0 miliarde tokens. Web modern în
+        română (2020–2023). Cel mai mare corpus public de text românesc disponibil. Procesat cu
+        <code>process_culturax.py</code> via 64 de fișiere parquet citite direct cu <code>pyarrow</code>.
+      </li>
+    </ul>
+
+    <h3>Formula log-ratio</h3>
+    <p>
+      Ambele corpusuri sunt normalizate la <em>occurrences per million tokens</em> (ppm).
+      Raportul logaritmic cuantifică declinul relativ:
+    </p>
+    <div class="demo"><span class="dim">formula</span>
+log₂( (hist_ppm + 0.1) / (modern_ppm + 0.1) )
+
+<span class="gold">+</span>  pozitiv  →  mai frecvent în textele vechi (candidat de „uitat")
+<span class="gold">−</span>  negativ  →  mai frecvent azi (cuvânt în creștere sau fals-pozitiv)
+    Laplace smoothing (S = 0.1 ppm) previne împărțirea la zero</div>
+
+    <h3>Verdictele</h3>
+    <table class="data-table">
+      <thead><tr><th>Verdict</th><th>Condiție</th></tr></thead>
+      <tbody>
+        <tr class="row-ext">
+          <td>extinct</td>
+          <td>hist_ppm ≥ 1.0 și modern_ppm &lt; 0.1 — atestat istoric, aproape absent azi</td>
+        </tr>
+        <tr class="row-dec">
+          <td>declining</td>
+          <td>log_ratio ≥ 1.0 — de cel puțin 2× mai frecvent în textele vechi, cu oarecare prezență modernă</td>
+        </tr>
+        <tr class="row-hist">
+          <td>historical_only</td>
+          <td>hist_ppm ≥ 0.1 și modern_ppm &lt; 0.1 — apare în texte vechi, nu în corpusul modern</td>
+        </tr>
+        <tr>
+          <td>stable</td>
+          <td>|log_ratio| &lt; 1.0 — frecvență similară în ambele corpusuri</td>
+        </tr>
+        <tr>
+          <td>modern_only</td>
+          <td>modern_ppm ≥ 0.1 și hist_ppm &lt; 0.1 — cuvânt nou sau fals-pozitiv</td>
+        </tr>
+        <tr>
+          <td>emerging</td>
+          <td>log_ratio ≤ −1.0 — de cel puțin 2× mai frecvent azi</td>
+        </tr>
+        <tr class="row-abs">
+          <td>absent</td>
+          <td>ambele ppm &lt; 0.1 — prea rar pentru a apărea semnificativ în vreun corpus</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <p><strong>Bug critic descoperit și corectat (mai 2026):</strong> <code>SkipExamplesIterable._iter_arrow()</code>
+      din <code>datasets</code> v4.8.5 conține un bug: când N depășește dimensiunea dataset-ului,
+      iterarea ciclează de la început și produce frecvențe umflate de ~6.600×. Checkpoint-ul crescuse
+      la 484M (față de 40M real). Remediat prin rescrierea completă a <code>process_culturax.py</code>:
+      cele 64 de parquet-uri sunt enumerate via <code>HfFileSystem</code> și citite cu <code>pyarrow</code>,
+      checkpoint la nivel de fișier + row-group.</p>
+    </div>
+  </section>
+
+  <!-- 05 ─────────────────────────────── -->
+  <section id="scurtlista">
+    <h2><span class="num">05</span> Scurtlista</h2>
+    <p>
+      <code>make_shortlist.py</code> filtrează cele 130k rânduri diacronice la un set de
+      <strong>16.879 cuvinte</strong> cu cel mai solid semnal de uitare. Patru niveluri de
+      încredere, cu excluderi aplicate (domenii tehnice, POS neeligibile):
+    </p>
+    <table class="data-table">
+      <thead><tr><th>Nivel</th><th>Criteriu de selecție</th><th class="right">Cuvinte</th></tr></thead>
+      <tbody>
+        <tr class="tier-a">
+          <td>corpus_extinct</td>
+          <td>verdict=extinct, hist_ppm &gt; 0</td>
+          <td class="right">~1.137</td>
+        </tr>
+        <tr class="tier-a">
+          <td>corpus_declining</td>
+          <td>verdict=declining, hist_ppm &gt; 0</td>
+          <td class="right">~5.668</td>
+        </tr>
+        <tr class="tier-a">
+          <td>corpus_historical_only</td>
+          <td>verdict=historical_only, hist_ppm &gt; 0</td>
+          <td class="right">~8.793</td>
+        </tr>
+        <tr class="tier-b">
+          <td>dex_invechit_absent</td>
+          <td>verdict=absent + dex_register=învechit</td>
+          <td class="right">~1.281</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Nivelul A conține cuvinte cu <strong>semnal de corpus</strong>: au apărut în textele istorice,
+      dar nu mai apar în cele moderne. Nivelul B este <em>materia întunecată</em>: cuvinte pe care
+      editorii DEX le-au etichetat explicit ca <em>învechit</em>, dar care nu apar în niciun corpus
+      digitizat — nici măcar în cel de 17 miliarde de tokens. Două semnale independente de arhaism,
+      zero atestări.
+    </p>
+  </section>
+
+  <!-- 06 ─────────────────────────────── -->
+  <section id="taxonomie">
+    <h2><span class="num">06</span> Taxonomie și metadate</h2>
+    <p>
+      <code>extract_taxonomy.py</code> parsează tabelele de taxonomie din dump și le încarcă
+      în <code>lexemes.db</code> cu indexuri. Patru familii de tag-uri editoriale DEX:
+    </p>
+    <ul>
+      <li><strong>Register</strong> (parentId=42) — <em>învechit</em>, <em>popular</em>, <em>dialectal</em>, <em>livresc</em>, <em>regional</em></li>
+      <li><strong>Domeniu</strong> (parentId=41) — <em>muzică</em>, <em>medicină</em>, <em>chimie</em>, <em>drept</em>, <em>botanică</em> ș.a.</li>
+      <li><strong>Etimologie</strong> (parentId=1) — <em>grecism</em>, <em>latinism</em>, <em>anglicism</em>, <em>turcism</em>, <em>slavonism</em>, <em>franțuzism</em></li>
+      <li><strong>POS</strong> (isPos=1) — substantiv feminin / neutru / masculin, adjectiv, verb, adverb</li>
+    </ul>
+
+    <h3>Lanțul corect de join</h3>
+    <p>
+      Distincția critică: <code>ObjectTag.objectId</code> cu <code>objectType=3</code> conține
+      <strong>Meaning IDs</strong> (spațiu de adrese: max ~503k), nu Entry IDs (max ~339k).
+      Joinul naiv pe <code>entryId</code> amesteca spații de ID diferite, producând atribuiri
+      aleatorii. Exemple de erori anterioare: <em>pretutindeni</em> → <em>botanică</em>,
+      <em>antipapă</em> → <em>medicină</em>.
+    </p>
+    <div class="demo"><span class="dim">lanț join corect</span>
+Lexeme
+  <span class="gold">→</span> EntryLexeme   (on el.entryId)
+  <span class="gold">→</span> TreeEntry      (on te.entryId = el.entryId)
+  <span class="gold">→</span> MeaningTree    (on mt.tree_id = te.id)
+  <span class="gold">→</span> ObjectTag      (on ot.objectId = mt.meaning_id, ot.objectType = 3)
+  <span class="gold">→</span> Tag            (on t.id = ot.tagId)</div>
+
+    <h3>Definiții</h3>
+    <p>
+      <code>DefinitionSimple</code> acoperă ~4.600 din cei 16.879 candidați de pe scurtlistă.
+      Restul de ~12.800 sunt completați prin <code>scrape_definitions.py</code>, care extrage
+      blocul de sinteză de la <code>dexonline.ro/definitie/{cuvant}</code> la 3s/request
+      (respectând serverul comunitar, care este întreținut de voluntari).
+    </p>
+  </section>
+
+  <!-- 07 ─────────────────────────────── -->
+  <section id="ui">
+    <h2><span class="num">07</span> Interfața de cercetare</h2>
+    <p>
+      <code>ui/app.py</code> este o aplicație web locală construită cu Flask 3.0 + HTMX 2.0
+      pentru explorarea interactivă a scurtlistei. Nu este un produs public — este un instrument
+      de cercetare și curare, rulând local pe mașina cercetătorului.
+    </p>
+    <ul>
+      <li><strong>Grilă de cuvinte</strong> — chip-uri colorate după verdict (burgundy=extinct, chihlimbar=declining, bleumarin=historical, violet=absent), 250/pagină, navigare spațială</li>
+      <li><strong>Bară de filtre</strong> — verdict, tier, POS, register, domeniu, etimologie; fiecare ca pill radio sau select compact cu HTMX</li>
+      <li><strong>Panel detaliu</strong> — sertar inferior cu definiția DEX, statistici de corpus (hist_ppm, modern_ppm, log_ratio), metadate taxonomice</li>
+      <li><strong>Navigare prin tastatură</strong> — <code>j</code>/<code>k</code>/<code>h</code>/<code>l</code> grilă, <code>/</code> search, <code>b</code> bookmark, <code>n</code> notă, <code>o</code> dexonline</li>
+      <li><strong>Persistență locală</strong> — bookmarks, notițe, tag-uri de cercetare în <code>data/research.db</code> (SQLite, supraviețuiește la restart)</li>
+    </ul>
+  </section>
+
+  <!-- 08 ─────────────────────────────── -->
+  <section id="web">
+    <h2><span class="num">08</span> Validare web</h2>
+    <p>
+      <code>search_wild.py</code> verifică dacă fiecare cuvânt de pe scurtlistă mai apare
+      pe web-ul românesc actual. Interfață plugabilă cu doi provideri selectați via
+      <code>--provider</code>:
+    </p>
+    <ul>
+      <li>
+        <strong>DDG</strong> (implicit) — DuckDuckGo via biblioteca <code>ddgs</code>. Fără cheie API.
+        Util pentru triaj rapid, dar zgomotos pe cuvinte arhaice rare: potriviri cross-linguale frecvente
+        (pagini universitare, Wikipedia în alte limbi, bloguri). Tratați DDG ca semnal de triage,
+        nu ca validare definitivă.
+      </li>
+      <li>
+        <strong>Google CSE</strong> — Google Custom Search JSON API. Necesită <code>GOOGLE_API_KEY</code>
+        și <code>GOOGLE_CSE_ID</code>. 100 queries/zi pe tier gratuit. Rezultate mai curate,
+        potrivit pentru validarea finală a unui subset de cuvinte.
+      </li>
+    </ul>
+    <p>
+      Output: <code>forgotten_words_web_validated.csv</code> — toate coloanele de pe scurtlistă,
+      plus <code>total_results</code>, <code>in_wild</code>, <code>web_score</code> (bucket-uri
+      diferite per provider), <code>top_url</code>, <code>last_seen_approx</code>, <code>provider</code>.
+      Checkpoint automat: rerularea sare cuvintele deja procesate.
+    </p>
+  </section>
+
+  <!-- 09 ─────────────────────────────── -->
+  <section id="limite">
+    <h2><span class="num">09</span> Limite și capcane</h2>
+    <ul>
+      <li>
+        <strong>Fără lemmatizare.</strong> <em>Buclele</em> nu potrivește <em>bucle</em> în corpus.
+        Verdictul <code>absent</code> acoperă ~83k cuvinte care amestecă „cu adevărat neutilizat" cu
+        „apare doar în forme flexionate netrackate". Adăugarea unui lemmatizator ar reduce semnificativ
+        această categorie ambiguă.
+      </li>
+      <li>
+        <strong><code>frequency = 0</code> este date lipsă, nu „cel mai rar".</strong>
+        Filtrarea cu <code>frequency &gt; 0</code> sau <code>&gt; 0.01</code> este obligatorie
+        în orice analiză downstream.
+      </li>
+      <li>
+        <strong>Zgomot în tag-urile POS și domeniu.</strong> Join-ul ObjectTag poate trage uneori
+        tag-uri din intrări de dicționar adiacente (cross-sense contamination). Metadatele taxonomice
+        sunt suplimentare — nu sunt semnal principal.
+      </li>
+      <li>
+        <strong>Vocabularul etimologiei este inconsistent.</strong> Unele cuvinte au „limba franceză",
+        altele „franțuzism" în DEX — ambele sunt capturate, dar vocabularul variază între editori.
+      </li>
+      <li>
+        <strong>DDG este triage, nu validare.</strong> Rezultatele pe cuvinte arhaice rare sunt
+        puternic poluate de potriviri fuzzy cross-linguale. Google CSE este validatorul real.
+      </li>
+      <li>
+        <strong>Verdictul <code>absent</code> este ambiguu.</strong> Un cuvânt poate fi absent din
+        corpus din două motive: fie chiar nu mai este folosit, fie apare doar în forme flexionate pe
+        care pipeline-ul nu le trackează. Lemmatizarea este elementul lipsă.
+      </li>
+    </ul>
+  </section>
+
+  <!-- 10 ─────────────────────────────── -->
+  <section id="cronologie">
+    <h2><span class="num">10</span> Cronologie</h2>
+    <p>
+      Cum a evoluat proiectul, în pașii principali. Distilat din jurnalul de activitate
+      (<code>docs/activity-history.md</code>) și istoricul de commit-uri.
+    </p>
+    <ol class="timeline">
+      <li>
+        <div class="tl-date">2025-10-26</div>
+        <div class="tl-what">Inițializare proiect. Commit inițial, repo gol.</div>
+      </li>
+      <li class="milestone">
+        <div class="tl-date">2025-10-27</div>
+        <div class="tl-what">Faza 1 completă — pipeline DEX → 1.884 candidați inițiali.</div>
+        <div class="tl-why">Scripturi: <code>extract_lexemes.py</code>, <code>analyze_forgotten_words.py</code>, <code>create_curated_list.py</code>. Prag inițial: frequency &lt; 0.60.</div>
+      </li>
+      <li>
+        <div class="tl-date">2025-10-27</div>
+        <div class="tl-what">Faza 2 legacy — corpus Wikipedia cu bug P0 (candidate-set mismatch).</div>
+        <div class="tl-why"><code>process_corpus.py</code> tracka doar ~1.9k cuvinte din CSV-ul curat, nu cele ~15k din lexemes.db. Rezultatele (159.543 „uitate") erau complet eronate.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-04-27</div>
+        <div class="tl-what">Critică metodologică — pivotare spre abordarea diacronică.</div>
+        <div class="tl-why">Câmpul <code>frequency</code> din DEX nu măsoară frecvența în limbă, ci importanța lexicografică. Necesară o comparație „atunci vs. acum" pe corpusuri reale.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-04-28</div>
+        <div class="tl-what">validate_with_wordfreq.py — calea rapidă prin wordfreq + simplemma.</div>
+        <div class="tl-why">Descoperit: acoperirea wordfreq pentru română este binară — orice cuvânt returnează fie 0.000 fie ≥ 3.0. Nu este semnal util sub top ~1.500 cuvinte.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-04-28</div>
+        <div class="tl-what">process_wikisource.py — corpus Wikisource RO: 14.3M tokens, baza istorică.</div>
+        <div class="tl-why">Fixat bug P0 din calea legacy: trackează ~15k forme DEX în loc de 1.9k. Test run: 500 documente, 1.4M tokens în 7 secunde.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-04-29</div>
+        <div class="tl-what">validate_diachronic.py — formula log₂(hist_ppm / modern_ppm). Verdictele finale.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-05-05</div>
+        <div class="tl-what">process_culturax.py — robustețe și loop de restart automat.</div>
+        <div class="tl-why">SIGKILL repetat din presiune de memorie. Adăugat ds.skip() nativ, gc.collect(), handler SIGTERM, loop bash <code>while true; do python -u ...; done</code>.</div>
+      </li>
+      <li class="milestone">
+        <div class="tl-date">2026-05-12</div>
+        <div class="tl-what">Bug critic corectat — cycling la ds.skip() în datasets v4.8.5.</div>
+        <div class="tl-why"><code>SkipExamplesIterable._iter_arrow()</code> ciclează când N &gt; dimensiunea dataset-ului. Checkpoint crescuse la 484M (real: 40M docs). Frecvențele: umflate de ~6.600×. Rescris pe parquet-uri individuale via <code>HfFileSystem</code> + <code>pyarrow</code>, checkpoint la nivel fișier + row-group.</div>
+      </li>
+      <li class="milestone">
+        <div class="tl-date">2026-05-12</div>
+        <div class="tl-what">Rerulare curată: CulturaX 40.3M docs / 17B tokens. 245 extinct, 1.430 declining.</div>
+        <div class="tl-why">Prima rulare cu date corecte. CSV-ul anterior (2026-04-29) era complet eronat — păstrat ca <code>*.stale-2026-04-29.csv</code> pentru referință istorică.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-05-12</div>
+        <div class="tl-what">search_wild.py — interfață provider plugabilă: DDG + Google CSE.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-05-12</div>
+        <div class="tl-what">Monitoring: health_check.py, audit.py, status.py.</div>
+        <div class="tl-why">Vizibilitate pe joburile de corpus long-running. Alertare via webhook sau email, cron la 30min / 24h.</div>
+      </li>
+      <li class="milestone">
+        <div class="tl-date">2026-05-13</div>
+        <div class="tl-what">Prag ridicat la freq &lt; 1.0 — oțios intră în pipeline. Candidații: 1.884 → 140.308.</div>
+        <div class="tl-why"><em>oțios</em> (frequency=0.85) era exclus din propria-i listă. Noul plafon exclude doar cele 14.021 intrări cu frequency=1.0 — vocabularul de bază esențial al limbii.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-05-15</div>
+        <div class="tl-what">extract_taxonomy.py — register, domeniu, etimologie, POS din dumpul DEX.</div>
+        <div class="tl-why">7.642 tag-uri de register, 3.405 de domeniu, 35.120 de etimologie pe listele curate.</div>
+      </li>
+      <li class="milestone">
+        <div class="tl-date">2026-05-15</div>
+        <div class="tl-what">UI Flask+HTMX — explorator de cuvinte cu navigare prin tastatură.</div>
+        <div class="tl-why">Layout două zone: grilă de chip-uri + panel detaliu footer. Filtre, bookmarks, notițe, tag-uri de cercetare. Suită de teste completă.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-05-16</div>
+        <div class="tl-what">Redesign UI complet — filtre pills, temă caldă luminoasă, chip grid 250 cuvinte.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-05-17</div>
+        <div class="tl-what">Dump DEX nou (1.65 GB). Bug join taxonomie identificat: atribuiri random de domenii.</div>
+        <div class="tl-why"><code>ObjectTag.objectId</code> cu objectType=3 conține Meaning IDs, nu Entry IDs. Joinul greșit: <em>antipapă</em> → medicină, <em>pretutindeni</em> → botanică.</div>
+      </li>
+      <li>
+        <div class="tl-date">2026-05-17</div>
+        <div class="tl-what">scrape_definitions.py — completare definiții lipsă (~12.8k cuvinte) din dexonline.ro.</div>
+      </li>
+      <li class="milestone">
+        <div class="tl-date">2026-05-18</div>
+        <div class="tl-what">Corecție join taxonomie — lanț corect via TreeEntry + MeaningTree.</div>
+        <div class="tl-why">Verificat: <em>antipapă</em> → franceză ✓, <em>isihie</em> → învechit + neogreacă ✓. Precedent greșit: <em>pretutindeni</em> → botanică → corectat: fără tag.</div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 11 ─────────────────────────────── -->
+  <section id="cod">
+    <h2><span class="num">11</span> Cod și date</h2>
+    <p>
+      Tot codul este Python 3.11+, fără framework-uri grele. Pipeline-ul rulează pe stdlib
+      cu câteva dependențe mici: <code>datasets</code>, <code>pyarrow</code>, <code>wordfreq</code>,
+      <code>simplemma</code>, <code>flask</code>, <code>htmx</code>, <code>ddgs</code>,
+      <code>beautifulsoup4</code>.
+    </p>
+    <ul class="sources">
+      <li><code>README.md</code><span>Pipeline end-to-end, contracte de date, descrieri de coloane, sample results.</span></li>
+      <li><code>docs/BACKLOG.md</code><span>Probleme deschise P0–P3, cu context complet pentru fiecare.</span></li>
+      <li><code>docs/activity-history.md</code><span>Jurnal de sesiuni — motivele din spatele fiecărei decizii non-evidente.</span></li>
+      <li><code>docs/conceptual-roadmap.md</code><span>Critica metodologică: ce înseamnă cu adevărat „uitat", limitele abordărilor de frecvență.</span></li>
+      <li><code>docs/corpus-options.md</code><span>Catalog de corpusuri românești deschise cu note de acces (OSCAR, CoRoLa, CC-100, Wikisource).</span></li>
+      <li><code>CLAUDE.md</code><span>Ghid de colaborare: convenții, mediu, pipeline end-to-end, gotchas.</span></li>
+    </ul>
+    <p>
+      Sursa de date principală — dumpul MySQL DEX Online — este disponibilă public la
+      <a href="https://wiki.dexonline.ro/wiki/Informa%C8%9Bii#Desc%C4%83rcare" target="_blank" rel="noopener">wiki.dexonline.ro</a>.
+      Corpusurile sunt pe HuggingFace: Wikisource RO (acces public), CulturaX RO (necesită
+      autentificare și acceptarea termenilor).
+    </p>
+  </section>
+
+</article>
+
+<footer class="site-footer">
+  Oțios · metodologie · mai 2026
+</footer>
+
+</body>
+</html>
