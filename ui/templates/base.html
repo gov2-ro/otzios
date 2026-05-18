@@ -75,19 +75,17 @@
       background: var(--surface);
     }
 
-    /* Section labels — editorial Lora italic */
+    /* Section labels */
     .flabel {
-      font-family: var(--serif);
-      font-style: italic;
-      font-size: 14px;
-      font-weight: 500;
-      letter-spacing: 0;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .02em;
       text-transform: lowercase;
-      color: var(--text-3);
-      padding: 0 12px 0 0;
+      color: var(--text-2);
+      padding: 0 8px 0 0;
       white-space: nowrap;
       user-select: none;
-      min-width: 96px;
     }
     .fsep {
       width: 1px;
@@ -275,7 +273,7 @@
     }
     #word-list {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       column-gap: 9px;
       row-gap: 9px;
       padding: 11px 13px;
@@ -344,6 +342,20 @@
     .word-row[data-selected].inv .word-text,
     .word-row[data-selected].bookmarked .word-text { text-decoration-color: rgba(255,255,255,.85); }
 
+    /* Annotated dot — word has a note or tag */
+    .word-row.annotated::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: .55;
+    }
+    .word-row[data-selected].annotated::after { background: rgba(255,255,255,.85); opacity: 1; }
+
     /* Freq superscript — quiet mono metadata */
     .chip-freq {
       font-family: var(--mono);
@@ -356,7 +368,7 @@
       position: relative;
       top: -0.55em;
       line-height: 0;
-      margin-left: 3px;
+      margin-left: 1px;
       opacity: .8;
     }
     .word-row[data-selected] .chip-freq { color: #c4beb1; opacity: .9; }
@@ -377,7 +389,9 @@
 
     /* Inner footer layout: [word col] | [def / actions] */
     .fp-word {
-      flex: 0 0 170px;
+      flex: 0 0 auto;
+      min-width: 140px;
+      max-width: 240px;
       padding: 6px 10px;
       border-right: 1px solid var(--border);
       display: flex;
@@ -560,8 +574,8 @@
       font-family: var(--serif);
       font-style: italic;
       color: var(--text);
-      line-height: 1.7;
-      font-size: 13px;
+      line-height: 1.6;
+      font-size: 15px;
     }
     .dex-link {
       color: var(--accent);
@@ -883,6 +897,18 @@
         <input type="checkbox" name="bookmarked" value="1">
         ☆ bookmarked
       </label>
+      <select name="marks" class="tax-select" data-default="unmarked" aria-label="Marks filter">
+        <option value="unmarked">unmarked only</option>
+        <option value="all">all words</option>
+        <option value="marked">marked only</option>
+        <option value="noted">has note</option>
+        {% for t, _ in quick_tags %}
+        <option value="tag:{{ t }}">tag: {{ t }}</option>
+        {% endfor %}
+        {% for t in tag_suggestions %}
+        <option value="tag:{{ t }}">tag: {{ t }}</option>
+        {% endfor %}
+      </select>
       <div class="seg">
         <label class="seg-opt"><input type="radio" name="has_def" value="" checked> any</label>
         <label class="seg-opt"><input type="radio" name="has_def" value="1"> def ✓</label>
@@ -1033,13 +1059,13 @@
 
     function rows() { return Array.from(document.querySelectorAll('.word-row')); }
 
-    function selectRow(idx) {
+    function selectRow(idx, noClick) {
       const all = rows();
       if (!all.length) return;
       selectedIdx = Math.max(0, Math.min(idx, all.length - 1));
       all.forEach(r => r.removeAttribute('data-selected'));
       const r = all[selectedIdx];
-      if (r) { r.setAttribute('data-selected', ''); r.scrollIntoView({block:'nearest'}); r.click(); }
+      if (r) { r.setAttribute('data-selected', ''); r.scrollIntoView({block:'nearest'}); if (!noClick) r.click(); }
     }
 
     function navigateSpatial(direction) {
@@ -1081,7 +1107,15 @@
       const tag = document.activeElement.tagName;
       const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
       if (e.key === '?') { e.preventDefault(); showShortcuts(); return; }
-      if (inInput) { if (e.key === 'Escape') { hideShortcuts(); document.activeElement.blur(); } return; }
+      if (inInput) {
+        if (e.key === 'Escape') {
+          hideShortcuts();
+          const wasSearch = document.activeElement.id === 'search';
+          document.activeElement.blur();
+          if (wasSearch && rows().length) selectRow(selectedIdx >= 0 ? selectedIdx : 0, true);
+        }
+        return;
+      }
       if (e.key === 'Escape') { hideShortcuts(); closePanel(); return; }
       if (e.key === '/') { e.preventDefault(); document.getElementById('search').focus(); return; }
       if (e.key === 'j' || e.key === 'ArrowDown')  { e.preventDefault(); navigateSpatial('down');  gPressed = false; return; }
@@ -1112,6 +1146,18 @@
         var hb = document.getElementById('hover-box');
         if (hb) hb.classList.remove('visible');
       }
+    });
+
+    // Sync selectedIdx when clicking a word with the mouse
+    document.getElementById('word-list-container').addEventListener('click', function(e) {
+      var row = e.target.closest('.word-row');
+      if (!row) return;
+      var all = rows();
+      var idx = all.indexOf(row);
+      if (idx < 0) return;
+      all.forEach(r => r.removeAttribute('data-selected'));
+      row.setAttribute('data-selected', '');
+      selectedIdx = idx;
     });
 
     document.getElementById('shortcuts-overlay').addEventListener('click', function(e) {
@@ -1158,7 +1204,8 @@
 
     // Highlight tax-select when a non-"any" value is active
     document.querySelectorAll('.tax-select').forEach(function(sel) {
-      function update() { sel.classList.toggle('active', sel.value !== ''); }
+      var dflt = sel.dataset.default !== undefined ? sel.dataset.default : '';
+      function update() { sel.classList.toggle('active', sel.value !== dflt); }
       sel.addEventListener('change', update);
       sel.form && sel.form.addEventListener('reset', update);
       update();
