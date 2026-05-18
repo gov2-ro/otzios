@@ -342,19 +342,6 @@
     .word-row[data-selected].inv .word-text,
     .word-row[data-selected].bookmarked .word-text { text-decoration-color: rgba(255,255,255,.85); }
 
-    /* Annotated dot — word has a note or tag */
-    .word-row.annotated::after {
-      content: '';
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      width: 4px;
-      height: 4px;
-      border-radius: 50%;
-      background: var(--accent);
-      opacity: .55;
-    }
-    .word-row[data-selected].annotated::after { background: rgba(255,255,255,.85); opacity: 1; }
 
     /* Freq superscript — quiet mono metadata */
     .chip-freq {
@@ -372,6 +359,19 @@
       opacity: .8;
     }
     .word-row[data-selected] .chip-freq { color: #c4beb1; opacity: .9; }
+
+    /* Annotation emoji overlay — absolute, hugs top-right corner of chip */
+    .ann-overlay {
+      position: absolute;
+      top: 1px;
+      right: 2px;
+      font-size: 9px;
+      line-height: 1;
+      letter-spacing: -1px;
+      pointer-events: none;
+      user-select: none;
+    }
+    .word-row[data-selected] .ann-overlay { opacity: .85; }
 
     /* ── Detail panel — compact footer drawer, slides up ── */
     #detail-panel {
