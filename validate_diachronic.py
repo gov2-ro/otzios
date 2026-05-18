@@ -147,12 +147,14 @@ def load_taxonomy(lexemes_db: Path) -> dict:
             SELECT lower(l.formNoAccent), t.parentId, t.isPos, t.value
             FROM Lexeme l
             JOIN EntryLexeme el ON el.lexemeId = l.id
-            JOIN ObjectTag ot ON ot.objectId = el.entryId AND ot.objectType = 3
+            JOIN TreeEntry te ON te.entryId = el.entryId
+            JOIN MeaningTree m ON m.tree_id = te.treeId
+            JOIN ObjectTag ot ON ot.objectId = m.meaning_id AND ot.objectType = 3
             JOIN Tag t ON t.id = ot.tagId
             WHERE t.parentId IN (1, 41, 42) OR t.isPos = 1
         """).fetchall()
     except sqlite3.OperationalError:
-        print("  [taxonomy] Tag tables not found — run extract_taxonomy.py to enable taxonomy columns")
+        print("  [taxonomy] Tag/TreeEntry/MeaningTree tables not found — run extract_taxonomy.py to enable taxonomy columns")
         return {}
     finally:
         conn.close()

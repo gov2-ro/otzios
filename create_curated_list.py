@@ -40,11 +40,13 @@ def fetch_all_tags(conn, lexeme_ids):
         FROM ObjectTag ot JOIN Tag t ON t.id = ot.tagId
         WHERE ot.objectType = 2 AND ot.objectId IN ({placeholders})
     """, lexeme_ids).fetchall())
-    # Entry path: ObjectTag.objectId = EntryLexeme.entryId
+    # Entry path: Lexeme → EntryLexeme → TreeEntry → MeaningTree → ObjectTag(objectType=3)
     raw.extend(conn.execute(f"""
         SELECT el.lexemeId, t.value, t.parentId
         FROM EntryLexeme el
-        JOIN ObjectTag ot ON ot.objectId = el.entryId AND ot.objectType = 3
+        JOIN TreeEntry te ON te.entryId = el.entryId
+        JOIN MeaningTree m ON m.tree_id = te.treeId
+        JOIN ObjectTag ot ON ot.objectId = m.meaning_id AND ot.objectType = 3
         JOIN Tag t ON t.id = ot.tagId
         WHERE el.lexemeId IN ({placeholders})
     """, lexeme_ids).fetchall())
