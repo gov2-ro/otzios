@@ -136,6 +136,8 @@ def build(shortlist: Path, web: Path, defs: Path, out: Path) -> None:
         for word, definition in dconn.execute('SELECT word, definition FROM definitions'):
             conn.execute('UPDATE words SET definition=? WHERE word=?', (definition, word))
         dconn.close()
+        # Reconcile has_definition to reflect actual definition presence.
+        conn.execute('UPDATE words SET has_definition = (definition IS NOT NULL)')
     else:
         print(f'  (definitions DB not found, skipping: {defs})')
 

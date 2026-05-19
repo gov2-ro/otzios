@@ -2,6 +2,8 @@
 
 Exploratory UI: [lab.gov2.ro/oțios](https://lab.gov2.ro/otios/)
 
+![Oțios Interface](public/screenshot-otzios.png)
+
 <mark>[⚠️NOTE]</mark> Data still needs some finetunning and QA.
 
 ----

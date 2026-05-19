@@ -29,6 +29,7 @@ import csv
 import sqlite3
 import sys
 import time
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -80,12 +81,94 @@ def parse_synthesis(html: str) -> str | None:
     return ' | '.join(parts)
 
 
+def _norm_headword(text: str) -> str:
+    """Normalise a DEX headword for comparison.
+
+    Strips leading * / ❍ markers and trailing punctuation, removes stress
+    accent marks (acute/grave on base Latin letters — not Romanian ă/â/î/ș/ț),
+    collapses internal whitespace, and lowercases.
+    """
+    text = text.lstrip('*❍').rstrip(',.;:()').strip()
+    # Remove only combining ACUTE and GRAVE accents (used for stress marks in
+    # some dictionaries) by NFC-decomposing, stripping those two categories,
+    # then recomposing. Romanian-specific diacritics (ă, â, î, ș, ț) are
+    # NOT affected because their combining characters are cedilla / breve.
+    nfd = unicodedata.normalize('NFD', text)
+    stripped = ''.join(
+        ch for ch in nfd
+        if unicodedata.category(ch) != 'Mn'
+        or unicodedata.name(ch, '').split()[0] not in ('COMBINING',)
+        or unicodedata.name(ch, '') not in (
+            'COMBINING ACUTE ACCENT', 'COMBINING GRAVE ACCENT',
+        )
+    )
+    return unicodedata.normalize('NFC', stripped).lower()
+
+
+def parse_tab0_defs(html: str, word: str) -> str | None:
+    """Fallback for words with no synthesis panel: scan #tab_0 .defWrapper entries.
+
+    Matches .defWrapper headwords case-insensitively against `word`.
+    Returns the first 3 matching raw-dictionary definition texts joined by " | ".
+    Headwords in DEX HTML sometimes have individual characters in separate
+    spans; we join them without separators to reconstruct the word.
+    """
+    soup = BeautifulSoup(html, 'lxml')
+    tab0 = soup.select_one('#tab_0')
+    if not tab0:
+        return None
+    word_norm = _norm_headword(word)
+    results: list[str] = []
+    for wrapper in tab0.select('.defWrapper'):
+        b = wrapper.select_one('.def b')
+        if not b:
+            continue
+        # Join with no separator to handle per-character spans.
+        hw_raw = ''.join(b.strings).strip()
+        hw = _norm_headword(hw_raw)
+        if hw == word_norm:
+            span = wrapper.select_one('.def')
+            if span:
+                clean = ' '.join(span.get_text(' ', strip=True).split())
+                if clean:
+                    results.append(clean)
+    if not results:
+        return None
+    return ' | '.join(results[:3])
+
+
+def parse_lemma_fallback(word: str, defs_db: Path) -> str | None:
+    """Fallback for inflected forms with empty synthesis.
+
+    Uses simplemma to derive the base lemma, then looks it up in definitions.db.
+    Returns a prefixed definition string, or None if the lemma matches the word
+    (simplemma couldn't lemmatize) or has no definition.
+    """
+    try:
+        import simplemma
+        lemma = simplemma.lemmatize(word, lang='ro')
+    except Exception:
+        return None
+    if lemma == word or not defs_db.exists():
+        return None
+    conn = sqlite3.connect(str(defs_db))
+    try:
+        row = conn.execute('SELECT definition FROM definitions WHERE word=?', (lemma,)).fetchone()
+        return f'[formă a lui {lemma}] {row[0]}' if row else None
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Checkpoint
 # ---------------------------------------------------------------------------
 
-def load_checkpoint(output_path: Path) -> set[str]:
-    """Read existing output CSV, return set of words already attempted."""
+def load_checkpoint(output_path: Path, retry_not_found: bool = False) -> set[str]:
+    """Read existing output CSV, return set of words already attempted.
+
+    When retry_not_found is True, words with status=not_found are excluded
+    from the done set so they get re-queued.
+    """
     if not output_path.exists():
         return set()
     done: set[str] = set()
@@ -93,6 +176,8 @@ def load_checkpoint(output_path: Path) -> set[str]:
         reader = csv.DictReader(f)
         if reader.fieldnames and 'word' in reader.fieldnames:
             for row in reader:
+                if retry_not_found and row.get('status') == 'not_found':
+                    continue
                 done.add(row['word'])
     return done
 
@@ -117,11 +202,17 @@ def load_shortlist(input_path: Path) -> list[str]:
 # Scraper
 # ---------------------------------------------------------------------------
 
-def fetch_synthesis(session: requests.Session, word: str) -> tuple[str, str | None, str]:
+def fetch_synthesis(
+    session: requests.Session, word: str, defs_db: Path
+) -> tuple[str, str | None, str]:
     """Fetch one word. Returns (status, definition_or_None, source_url).
 
     status ∈ {ok, not_found, error}. On a transient HTTP error we retry
     once after a 30s backoff.
+
+    Fallback chain when synthesis is absent:
+      1. parse_tab0_defs  — raw dictionary entries in #tab_0
+      2. parse_lemma_fallback — base-lemma lookup via simplemma
     """
     url = DEXONLINE_URL_TMPL.format(quote(word, safe=''))
 
@@ -147,6 +238,10 @@ def fetch_synthesis(session: requests.Session, word: str) -> tuple[str, str | No
             return 'error', None, url
 
         definition = parse_synthesis(resp.text)
+        if definition is None:
+            definition = parse_tab0_defs(resp.text, word)
+        if definition is None:
+            definition = parse_lemma_fallback(word, defs_db)
         if definition:
             return 'ok', definition, url
         return 'not_found', None, url
@@ -214,6 +309,8 @@ def main() -> int:
                         help='After scraping, upsert ok rows into definitions.db')
     parser.add_argument('--merge-only', action='store_true',
                         help='Skip scraping; only run the merge step')
+    parser.add_argument('--retry-not-found', action='store_true',
+                        help='Re-queue words previously marked not_found (tries new fallbacks)')
     args = parser.parse_args()
 
     if args.merge_only:
@@ -227,7 +324,7 @@ def main() -> int:
 
     shortlist = load_shortlist(args.input)
     already_defined = load_already_defined(args.definitions_db)
-    checkpoint = load_checkpoint(args.output)
+    checkpoint = load_checkpoint(args.output, retry_not_found=args.retry_not_found)
 
     shortlist_in_db = sum(1 for w in shortlist if w in already_defined)
     targets = [w for w in shortlist
@@ -276,7 +373,7 @@ def main() -> int:
 
         for i, word in enumerate(targets, 1):
             try:
-                status, definition, url = fetch_synthesis(session, word)
+                status, definition, url = fetch_synthesis(session, word, args.definitions_db)
             except KeyboardInterrupt:
                 print('\nInterrupted. Partial output retained for checkpoint resume.')
                 break

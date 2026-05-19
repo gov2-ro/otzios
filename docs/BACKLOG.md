@@ -240,13 +240,22 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **Subtitle corpus from new DEX dump** — `Subtitle` table in `dex-database.sql` has 13 M pre-tokenised Romanian word tokens from 966 YouTube clips (Digi24 news). Quick sample: 89k tokens → 11,240 unique types; top words are normal function words. Estimated 1.4% shortlist word coverage in sample (scales to ~20% at full 13M tokens). Too small to replace CulturaX as primary corpus, but valuable as a modern spoken-register spot-check. To use: write `process_subtitles.py` that extracts `SELECT word, COUNT(*) FROM Subtitle GROUP BY word` via `extract_lexemes.parse_mysql_insert` (or a dedicated streaming extractor) and loads into `corpus_frequencies.db` under `corpus_name='subtitle_ro'`. VideoClip table links clipId → YouTube videoId (11-char IDs) if metadata is needed.
 
+- [ ] create presentation video. With PLaywright and a scenario, subtitles and generated voiceover. Create youtube account / channel.
 
-## 260519 Data audit
+## Post launch
+
+- [ ] traffic analytics
+- [ ] SEO webmasters registrations
+
+## 260519 Data Audit
 
 - [ ] some terms still lack definitions, although they are present (the definitions) on dexonline. Ex: 
   - `mofluzită`, `libovnică`, `ischiuzară` - so _genul feminin_, feminine versions of words.
-  - `cfartal` - is a different spelling of `cvartal` – dexonline has the url (https://dexonline.ro/definitie/cfartal), but the word in dexonline is `cvartal`
+  - `cfartal` - is a different spelling of `cvartal` – dexonline has the url (https://dexonline.ro/definitie/cfartal), but the word in dexonline is `cvartal`. Same with `prijuni` --> `sprijini' (https://dexonline.ro/definitie/prijuni)
   -  `murea` (form of `a muri`), `abecedare` (plural of `abecedar`)
-  - other examples: `ospătător`, `săhăstricesc`, `bașfir`, `aeresc`, `gad` 
+  - other examples: `ospătător`, `săhăstricesc`, `bașfir`, `aeresc`, `gad`, `pestitor` 
   - analyze and figure out the cases where definitions are missing – even after our initial dexonline scraping attempt.  
   - do these also mess with our statistics?
+  - differently spelled variations shouldn't be listed, it poisons word exploration - or listed separately?
+
+- [ ] why does the list contain `fost` -- this is a form of a very popular verb, `a fi` ?

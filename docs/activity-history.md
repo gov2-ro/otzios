@@ -4,6 +4,26 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-19 — Data audit: missing definitions root cause + scraper fallbacks
+
+Investigated the Data Audit backlog item: 4,065 shortlist words (20.6%) had no definition in `ui.db` despite dexonline.ro having entries for them.
+
+**Root causes found:**
+- **2,703 words** never attempted — scraper was run with `--limit` or interrupted before reaching them. All tested examples (`mofluzită`, `ospătător`, `aeresc`, `cfartal`, `prijuni` etc.) parse fine with the existing synthesis selector; they just need a scrape run.
+- **1,370 words stuck as `not_found`** — scraper ran but found no synthesis. Sampling showed ~95% have no `.tree-body` in `#tab_2` (dexonline hasn't curated a synthesis for them yet), while ~5% are inflected/derived forms where dexonline explicitly says "Nu avem definiții" for that form.
+- **Side issue**: 3,530 words were flagged `has_definition=0` in the shortlist but had actual definitions in `definitions.db` — the flag was stale.
+
+**Fixes in `scrape_definitions.py`:**
+- `parse_tab0_defs(html, word)` — fallback for the ~95% case. Scans `#tab_0 .defWrapper` entries, matches headwords case-insensitively (handling per-character span markup and stress-accent diacritics like `márgă` → `margă`), returns first 3 matching raw-dictionary definitions.
+- `parse_lemma_fallback(word, defs_db)` — fallback for inflected forms. Lemmatizes via `simplemma('ro')` and looks up the base form's definition in `definitions.db`. Prefixes the result with `[formă a lui {lemma}]`.
+- `--retry-not-found` flag — re-queues `not_found` checkpoint entries without wiping the full checkpoint.
+
+**Fix in `tools/build_ui_db.py`:** after merging definitions, reconciles `has_definition` to reflect actual definition presence.
+
+**Next:** run `python scrape_definitions.py --delay 2.0 --merge` (pass 1, 2,703 words) then `python scrape_definitions.py --retry-not-found --delay 2.0 --merge` (pass 2, 1,370 words), then rebuild `ui.db`.
+
+---
+
 ## 2026-05-19 — PHP thin-API port for shared hosting
 
 Ported the Flask research UI to a PHP + SQLite stack deployable on any shared host. Flask app is kept intact for local pipeline work.
