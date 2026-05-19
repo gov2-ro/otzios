@@ -282,3 +282,5 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] `uitate` / filter: `în comparații / la comparativ` - words that don't seem to have anything with comparații -- can you backtrack on how did that end-up there?
 
 - [ ] rare / Filter: `Maramureș` lists 'biodiversitate'
+
+- [ ] remove _diminutive_, maybe?
