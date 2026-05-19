@@ -10,7 +10,7 @@ selects three tiers:
   Tier B — DEX editorial: verdict == absent AND dex_register contains 'învechit'
             with no domain tag, no excluded POS
   Tier C — truly absent: verdict == absent, hist_ppm == 0, modern_ppm < threshold
-            (default 0.1), dex_frequency >= threshold (default 0.70). Captures
+            (default 0.1), dex_frequency >= threshold (default 0.85). Captures
             words that DEX considers legitimate but that appear in no corpus —
             the most forgotten words of all (e.g. oțios).
 
@@ -99,7 +99,7 @@ def main() -> int:
         help='Tier C: max modern_ppm for dex_absent_highfreq words (default: %(default)s)',
     )
     parser.add_argument(
-        '--dex-freq-threshold', type=float, default=0.70, metavar='FREQ',
+        '--dex-freq-threshold', type=float, default=0.85, metavar='FREQ',
         help='Tier C: min dex_frequency for dex_absent_highfreq words (default: %(default)s)',
     )
     args = parser.parse_args()

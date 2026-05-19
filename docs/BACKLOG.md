@@ -187,6 +187,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] search bar also accepts metadata - filters. Later / nice to have enhancement: fancy search, like in gmail with autocomplete and style options. Search box also accepts filtering attributes.
 
+- [ ] **Diacritic-insensitive search** — searching `otios` should find `oțios`; `stramosesc` should find `strămoșesc`. Normalize both the query and the indexed word by stripping diacritics before matching (ț→t, ș→s, ă→a, â→a, î→i). Implement in the SQL WHERE clause using a pre-computed `word_normalized` column in the `words` table (populated at build time), or a SQLite custom function. Both PHP and Flask search endpoints need updating.
+
 - [ ] later show extended definition. everything in dexonline but compact
 
 - [ ] exploratory interface. to the point of screensaver. or like tiktok / Tinder feed, but limit per day
