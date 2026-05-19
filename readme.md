@@ -1,14 +1,6 @@
 # Oțios - Romanian Forgotten Words Finder
 
-Exploratory UI: [lab.gov2.ro/oțios](https://lab.gov2.ro/otios/)
-
-![Oțios Interface](public/screenshot-otzios.png)
-
 <mark>[⚠️NOTE]</mark> Data still needs some finetunning and QA.
-
-----
-
-Vezi și: [initial specs](docs/oțios-init-specs.docx.md) / [live](https://docs.google.com/document/d/1FTMIONmSylQDaV4YxFprd8jyHxREXpcL/) (google doc) 
 
 A computational linguistics tool to identify "forgotten" Romanian words - terms that exist in official dictionaries but have fallen out of modern usage.
 
@@ -20,6 +12,15 @@ A computational linguistics tool to identify "forgotten" Romanian words - terms 
 - Compares official dictionaries (including archaisms) against usage frequency data
 - Identifies linguistic "dark matter" - words that exist in dictionaries but have fallen out of active use
 - Produces curated lists with rarity scores and linguistic metadata
+
+
+![Oțios Interface](public/screenshot-otzios.png)
+
+See exploratory UI prototype: [lab.gov2.ro/oțios](https://lab.gov2.ro/otios/)
+
+---
+
+Vezi și: [initial specs](docs/oțios-init-specs.docx.md) / [live](https://docs.google.com/document/d/1FTMIONmSylQDaV4YxFprd8jyHxREXpcL/) (google doc) 
 
 ## Pipeline
 
