@@ -424,12 +424,20 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// Sync selectedIdx on mouse click
+// Sync selectedIdx on mouse click (and handle dismissing on mobile)
 document.addEventListener('click', function(e) {
   const container = document.getElementById('word-list-container');
   if (!container || !container.contains(e.target)) return;
   const row = e.target.closest('.word-row');
-  if (!row) return;
+  
+  if (!row) {
+    // Tapped an empty spot in the list -> Hide panel and deselect
+    closePanel();
+    const selected = document.querySelector('.word-row[data-selected]');
+    if (selected) selected.removeAttribute('data-selected');
+    return;
+  }
+
   const all = rows();
   const idx = all.indexOf(row);
   if (idx < 0) return;
@@ -513,3 +521,37 @@ document.querySelectorAll('.tax-select').forEach(function(sel) {
 
 updateBookmarkCount();
 populateTagDatalist();
+
+// ── Mobile Auto-Close on Scroll ─────────────────────────────────────────────────
+
+(function() {
+  let mobileTouchStartY = 0;
+  
+  // Track where a swipe begins
+  document.addEventListener('touchstart', function(e) {
+    if (e.touches.length > 0) {
+      mobileTouchStartY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  // Check if they swipe significantly
+  document.addEventListener('touchmove', function(e) {
+    if (window.innerWidth > 768 || e.touches.length === 0) return;
+    
+    const panel = document.getElementById('detail-panel');
+    if (!panel || !panel.classList.contains('panel-open')) return;
+
+    // Do NOT close if they are scrolling INSIDE the definition drawer itself
+    if (panel.contains(e.target)) return;
+
+    const touchY = e.touches[0].clientY;
+    // If they drag up or down by 15px in the word list, close it
+    if (Math.abs(touchY - mobileTouchStartY) > 15) {
+      closePanel();
+      
+      // Visually remove the dark highlight from the word
+      const selected = document.querySelector('.word-row[data-selected]');
+      if (selected) selected.removeAttribute('data-selected');
+    }
+  }, { passive: true });
+})();

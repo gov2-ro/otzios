@@ -155,7 +155,9 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] keyboard nav, after focusing on searchbar and filtering words it's hard to get focus back on the term list — Esc from search now restores selectedIdx via selectRow(noClick=true).
 
-- [ ] optimize for mobile
+- [x] optimize for mobile
+
+- [x] mobile, when scrolling, hide definition drawer. after focus moves on the list
 
 - [ ] create statistics by metadata. in the limited corpus and later in whole dexonline
 

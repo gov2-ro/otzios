@@ -865,206 +865,213 @@ kbd {
   :root {
     --chip-h: 40px; 
   }
+
+  /* ── 1. BODY SCROLLING (Filters naturally scroll away) ── */
   body {
     font-size: 16px; 
+    display: block !important; 
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    padding-bottom: 40px !important; 
   }
-  
-  /* Prevent iOS Safari input zooming */
+
   #search, .sort-select, .tax-select, #tag-input, #note-input, .fp-note textarea {
     font-size: 16px !important;
   }
-
-  /* ── 1. COMPACT HORIZONTAL FILTER ROWS ── */
-  #filter-form {
-    max-height: none; /* Let the scrollable rows naturally determine height */
-  }
-  .filter-row {
-    padding: 10px 14px;
-    gap: 10px;
-  }
-  .fsep {
-    display: none; /* Remove dividers */
-  }
   
-  /* Row 1: Keeps flex wrapping for search & main selects */
-  .filter-row:nth-child(1) {
-    flex-wrap: wrap;
-  }
-  #search {
-    flex: 1 1 100%;
-    min-width: 100%;
-  }
-  .sort-select, .tax-select[name="marks"] {
-    flex: 1 1 calc(50% - 5px);
-  }
-  .seg {
-    flex: 1 1 100%;
-  }
-  .seg-opt {
-    font-size: 15px;
-    padding: 0 12px;
-    flex: 1;
-    justify-content: center;
+  #app, #word-list-container {
+    display: block !important; 
+    overflow: visible !important; 
+    height: auto !important;
   }
 
-  /* Rows 2 & 3: Horizontally scrollable (saves massive vertical space) */
+  /* ── 2. COMPACT HORIZONTAL FILTER ROWS ── */
+  #filter-form { max-height: none; }
+  .filter-row { padding: 10px 14px; gap: 10px; }
+  .fsep { display: none; }
+  
+  .filter-row:nth-child(1) { flex-wrap: wrap; }
+  #search { flex: 1 1 100%; min-width: 100%; }
+  .sort-select, .tax-select[name="marks"] { flex: 1 1 calc(50% - 5px); }
+  .seg { flex: 1 1 100%; }
+  .seg-opt { font-size: 15px; padding: 0 12px; flex: 1; justify-content: center; }
+
   .filter-row:nth-child(n+2) {
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding-bottom: 12px; /* Extra padding for easier swiping */
+    padding-bottom: 12px; 
   }
-  .filter-row:nth-child(n+2)::-webkit-scrollbar {
-    display: none;
-  }
+  .filter-row:nth-child(n+2)::-webkit-scrollbar { display: none; }
   
-  /* Reset labels in scrolling rows so they sit inline */
-  .flabel {
-    flex: 0 0 auto; 
-    background: transparent;
-    color: var(--text-3);
-    font-size: 11px;
-    padding: 0;
-    margin-right: 2px;
-  }
-  /* Keep pills and selects rigid in horizontal scroll */
-  .pill {
-    flex: 0 0 auto;
-    font-size: 14px;
-    padding: 0 14px;
-  }
-  .tax-select[name="register"], 
-  .tax-select[name="domain"], 
-  .tax-select[name="etymology"] {
-    flex: 0 0 auto;
-    width: auto;
-  }
+  .flabel { flex: 0 0 auto; background: transparent; color: var(--text-3); font-size: 11px; padding: 0; margin-right: 2px; }
+  .pill { flex: 0 0 auto; font-size: 14px; padding: 0 14px; }
+  .tax-select[name="register"], .tax-select[name="domain"], .tax-select[name="etymology"] { flex: 0 0 auto; width: auto; }
 
-  /* Word list scale */
-  #word-list {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 12px;
-    padding: 16px;
-  }
-  .word-row {
-    font-size: 20px;
-    padding: 8px 10px;
-  }
-  .chip-freq {
-    font-size: 12px;
-    top: -0.6em;
-  }
+  /* ── 3. HIDE FILTERS ON TAP FOR SPLIT-SCREEN ── */
+  body:has(#detail-panel.panel-open) #filter-form { display: none !important; }
+  body:has(#detail-panel.panel-open) #word-list-container { padding-bottom: 60vh !important; }
 
-  /* ── 2. STACKED DETAILS PANEL ── */
+  #word-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; padding: 16px; }
+  .word-row { font-size: 20px; padding: 8px 10px; }
+  .chip-freq { font-size: 12px; top: -0.6em; }
+
+  /* ── 4. BULLETPROOF SLIDING DRAWER ── */
   #detail-panel {
-    flex-direction: column;
+    position: fixed !important;
+    bottom: 38px !important; 
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 50 !important;
+    background: var(--surface) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 0 !important;
+    border-top: none !important;
+    transform: none !important;
+    transition: height 250ms cubic-bezier(0.2, 0.9, 0.3, 1) !important;
+    overflow: hidden !important; 
   }
+  
   #detail-panel.panel-open {
-    height: 75vh;
+    height: 55vh !important;
+    border-top: 1px solid var(--border) !important;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.15) !important;
   }
   
+  /* Tighter Word Title Header */
   .fp-word {
-    max-width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 14px 16px;
+    flex: 0 0 auto !important;
+    max-width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 8px 14px !important;
   }
-  .fp-word h2 { font-size: 1.8em; }
+  .fp-word h2 { font-size: 1.6em !important; margin-bottom: 2px !important; }
   
+  /* Maximize Definition Space */
   .fp-right {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
   }
   .fp-def {
-    padding: 14px 16px;
+    flex: 1 1 auto !important;
+    padding: 8px 14px !important;
+    overflow-y: auto !important;
   }
+  .definition-block { padding: 8px 12px !important; margin-bottom: 10px !important; }
+  .definition-text { font-size: 14px !important; line-height: 1.4 !important; }
   
-  /* ── 3. INLINE ACTION BUTTONS FIX ── */
+  /* ── 5. ULTRA-COMPACT ACTION BUTTONS ── */
   .fp-actions {
-    display: flex;
-    flex-direction: column; /* Keep stats above actions */
-    align-items: flex-start;
-    padding: 14px 16px 24px;
-    gap: 12px;
-    border-top: 1px solid var(--border);
-    height: auto;
-    overflow: visible;
-  }
-  .fp-stats {
-    flex-wrap: wrap;
-    width: 100%;
+    flex: 0 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 8px 14px 10px !important; /* Shrunk padding */
+    gap: 8px !important; /* Shrunk gap */
+    border-top: 1px solid var(--border) !important;
+    overflow: visible !important;
   }
   
-  /* Force the action buttons container to wrap its children perfectly */
-  .fp-btns {
-    display: flex;
-    flex-wrap: wrap; 
-    gap: 8px;
-    width: 100%;
-    margin-left: 0;
-  }
-  #tags-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .quick-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+  .fp-stats { flex-wrap: wrap; width: 100%; margin-bottom: -2px !important; }
+  
+  /* Force Star and Quick Tags to share a single row */
+  .fp-btns { 
+    display: flex !important; 
+    flex-wrap: nowrap !important; 
+    align-items: flex-start !important;
+    gap: 6px !important; 
+    width: 100% !important; 
+    margin-left: 0 !important; 
   }
   
-  /* Ensure individual buttons share identical sizing parameters and don't shrink */
-  #bookmark-btn, .qt-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 38px;
-    font-size: 14px;
-    margin: 0;
-    flex: 0 0 auto;
-  }
-  #bookmark-btn {
-    padding: 0 16px;
-  }
-  .qt-btn {
-    padding: 0 14px;
-  }
-  .qt-key {
-    display: none; /* Hide shortcut hints on mobile */
-  }
-  #tag-input {
-    height: 38px;
-    flex: 1 1 100%; /* Force tag input onto its own line */
-    min-width: 100%;
-    margin-top: 4px;
+  #bookmark-btn { 
+    display: inline-flex !important; 
+    align-items: center !important; 
+    justify-content: center !important; 
+    height: 32px !important; 
+    font-size: 16px !important; 
+    padding: 0 14px !important; 
+    margin: 0 !important; 
+    flex: 0 0 auto !important; 
   }
   
-  .fp-note textarea {
-    height: 44px;
+  #tags-row { 
+    display: flex !important; 
+    flex-wrap: wrap !important; 
+    gap: 6px !important; 
+    flex: 1 1 0 !important; /* Takes remaining space beside Star */
+    min-width: 0 !important; 
+  }
+  
+  .quick-tags { 
+    display: flex !important; 
+    flex-wrap: nowrap !important; /* Force all tags on one line */
+    gap: 4px !important; 
+    flex: 1 1 100% !important; 
+    min-width: 0 !important; 
+  }
+  
+  .qt-btn { 
+    display: inline-flex !important; 
+    align-items: center !important; 
+    justify-content: center !important; 
+    height: 32px !important; 
+    font-size: 11px !important; /* Smaller to fit */
+    margin: 0 !important; 
+    flex: 1 1 0 !important; /* Distribute evenly */
+    padding: 0 4px !important; 
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important; /* Trim text if too long */
+  }
+  .qt-key { display: none !important; } /* Hide keyboard hint */
+  
+  #tag-input { 
+    height: 32px !important; 
+    flex: 1 1 100% !important; /* Force add-tag to next line */
+    min-width: 100% !important; 
+    margin-top: 0 !important; 
+  }
+  
+  /* Restrict Note to a Single Row */
+  .fp-note { width: 100% !important; margin-top: -2px !important; }
+  .fp-note label { display: none !important; } /* Hide label */
+  .fp-note textarea { 
+    height: 34px !important; 
+    min-height: 34px !important;
+    padding: 8px 10px !important;
+    white-space: nowrap !important; /* Prevents wrapping, acts like <input type="text"> */
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    resize: none !important;
   }
 
   /* Closer / Status Bar */
-  .panel-close, .fp-close {
-    font-size: 24px;
-    padding: 12px;
-    top: 4px;
-    right: 4px;
-  }
+  .panel-close, .fp-close { font-size: 24px; padding: 12px; top: 4px; right: 4px; }
+  
   #status-bar {
-    padding: 10px 14px;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 38px !important;
+    z-index: 60 !important;
+    padding: 0 14px;
     font-size: 13px;
-    flex-wrap: wrap;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   .status-right kbd { display: none; }
   .status-right a { font-size: 13px !important; }
 
-  #shortcuts-modal {
-    min-width: 0;
-    width: 90%;
-    padding: 16px;
-  }
+  #shortcuts-modal { min-width: 0; width: 90%; padding: 16px; }
   #hover-box { display: none !important; }
 }
