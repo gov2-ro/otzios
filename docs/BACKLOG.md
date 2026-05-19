@@ -195,7 +195,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] create methodology, including activity log, look at activity log and commit history
 
-- [ ] tune parameters until it includes `oțios` – maybe use a flag to hide these other, second tier words (new words beyond  current list/limits)
+- [ ] tune parameters until it includes `oțios` – maybe use a flag to hide these other, second tier words (new words beyond  current list/limits). What we would also like to surface would be words that are rarely used, but worth attention. The sweet spot might not be totally forgotten words, but let's see which are the rare words but still in use. For the UI we could use a global switch flag. Which corpus to browse, forgotten or rarely used terms?
 
 - [ ] handle in browser curration - choices saved in browser memory and can be exported as json
 

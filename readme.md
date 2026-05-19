@@ -1,5 +1,11 @@
 # Oțios - Romanian Forgotten Words Finder
 
+Exploratory UI: [lab.gov2.ro/oțios](https://lab.gov2.ro/otios/)
+
+<mark>[⚠️NOTE]</mark> Data still needs some finetunning and QA.
+
+----
+
 Vezi și: [initial specs](docs/oțios-init-specs.docx.md) / [live](https://docs.google.com/document/d/1FTMIONmSylQDaV4YxFprd8jyHxREXpcL/) (google doc) 
 
 A computational linguistics tool to identify "forgotten" Romanian words - terms that exist in official dictionaries but have fallen out of modern usage.
@@ -509,12 +515,10 @@ python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
     --provider ddg --delay 2
 ```
 
-See `docs/BACKLOG.md` for the full list of open items.
+See [Activity history](docs/activity-history.md) and [Backlog](docs/BACKLOG.md) for the changelong and open items / roadmap.
 
 ## Contributing
 
 See [CLAUDE.md](CLAUDE.md) for development guidelines and project context.
 
-## License
-
-[License TBD]
+ 
