@@ -515,7 +515,7 @@ python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
     --provider ddg --delay 2
 ```
 
-See [Activity history](docs/activity-history.md) and [Backlog](docs/BACKLOG.md) for the changelong and open items / roadmap.
+See [Activity History](docs/activity-history.md) and [Backlog](docs/BACKLOG.md) for the changelong and open items / roadmap.
 
 ## Contributing
 

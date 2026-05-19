@@ -143,6 +143,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **#21 — [M, Med] Factor in dictionary coverage (how many dictionaries list a term)** — DEX Online aggregates entries from multiple source dictionaries (DEX '98, DEX '09, MDA, NODEX, DLRLC, Scriban, Șăineanu, etc.). A word appearing in only one source — especially an older or specialised one — is a different kind of rare than one that appears in every modern dictionary. Add a per-word `dict_count` (and optionally `dict_sources` list) column derived from the `Definition.sourceId` → `Source` join in `lexemes.db`, then surface it in the curated/diachronic CSVs and as a filter/sort in the research UI (#19). Likely useful as an additional axis in the "forgotten" verdict: low corpus frequency + low dictionary coverage = stronger signal than low corpus frequency alone.
 
+- [ ] also have a look at [wiktionary](https://ro.wiktionary.org/)
+
 
 
 ## UI
@@ -158,6 +160,10 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [x] optimize for mobile
 
 - [x] mobile, when scrolling, hide definition drawer. after focus moves on the list
+
+- [ ] in info window show which dictionaries this word is found in (incl wikitionary)
+
+- [ ] desktop tooltip on hover with definition
 
 - [ ] create statistics by metadata. in the limited corpus and later in whole dexonline
 
@@ -189,7 +195,11 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **Extract inline CSS to `ui/static/app.css`** — `ui/templates/base.html` carries ~870 lines of inline styles. Move to a static stylesheet so it can be cached + edited without touching templates. Set up Flask's static directory if not already wired.
 
+- [ ] Meta tags, Open Graph fields, description og image etc
+
 - [ ] web ui: follow schema.org for appropriate entities - add to claude.md maybe?
+
+- [ ] SEO Audit. INcluding `/llms.txt` 
 
 ## Misc
 
@@ -201,7 +211,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] publish favorites, custom lists even to a web server. make it a collaborative experience. Eventually publish these currated lists and showcase popular words on the main website.
 
-- [ ] metadata navigator - add wordfreq and scarcity - the result of this project
+- [ ] metadata navigator - add wordfreq and scarcity - the result of this project. 
 
 - [ ] try a super dorpdown navigator, where it can reach all metadata options, witih contextual keyboard shortcuts. or just search by visible terms. but how can we select more or exclude, to make it crazy good? With streer count in brackets?
 
@@ -224,4 +234,19 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] track synonyms. count synonyms
 
+- [ ] also filter by: masculin, feminin, neutru.
+
+- [ ] I also see on dexoline the tag 'rar' but in our interface filters I only see 'învechit' see [săhăstricesc](https://dexonline.ro/definitie/săhăstricesc)
+
 - [ ] **Subtitle corpus from new DEX dump** — `Subtitle` table in `dex-database.sql` has 13 M pre-tokenised Romanian word tokens from 966 YouTube clips (Digi24 news). Quick sample: 89k tokens → 11,240 unique types; top words are normal function words. Estimated 1.4% shortlist word coverage in sample (scales to ~20% at full 13M tokens). Too small to replace CulturaX as primary corpus, but valuable as a modern spoken-register spot-check. To use: write `process_subtitles.py` that extracts `SELECT word, COUNT(*) FROM Subtitle GROUP BY word` via `extract_lexemes.parse_mysql_insert` (or a dedicated streaming extractor) and loads into `corpus_frequencies.db` under `corpus_name='subtitle_ro'`. VideoClip table links clipId → YouTube videoId (11-char IDs) if metadata is needed.
+
+
+## 260519 Data audit
+
+- [ ] some terms still lack definitions, although they are present (the definitions) on dexonline. Ex: 
+  - `mofluzită`, `libovnică`, `ischiuzară` - so _genul feminin_, feminine versions of words.
+  - `cfartal` - is a different spelling of `cvartal` – dexonline has the url (https://dexonline.ro/definitie/cfartal), but the word in dexonline is `cvartal`
+  -  `murea` (form of `a muri`), `abecedare` (plural of `abecedar`)
+  - other examples: `ospătător`, `săhăstricesc`, `bașfir`, `aeresc`, `gad` 
+  - analyze and figure out the cases where definitions are missing – even after our initial dexonline scraping attempt.  
+  - do these also mess with our statistics?
