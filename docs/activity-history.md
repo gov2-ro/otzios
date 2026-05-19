@@ -4,6 +4,20 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-19 — Add rare-in-use word tier to wordfreq validation
+
+Extended `validate_with_wordfreq.py` with a three-tier Zipf classification alongside the existing binary forgotten/not-forgotten output.
+
+**New `tier` column:** `forgotten` (zipf < 3.0) / `rare_in_use` (3.0 ≤ zipf < 4.5) / `common` (≥ 4.5). The existing `is_forgotten` bool is preserved for backward compatibility with `search_wild.py` and `build_ui_db.py`.
+
+**New CLI args:** `--upper-threshold` (default 4.5) and `--output-rare` (default `data/processed/rare_words_wordfreq.csv`). In default mode the script produces two output files — the existing forgotten-words CSV (127,886 rows) and a new rare-in-use CSV (11,668 rows). `--keep-all` writes all tiers to the main output as before.
+
+Calibration: `oțios` itself has zero corpus signal (zipf=0.000) so it lands in `forgotten`, not `rare_in_use`. The rare-in-use tier catches words like `bucle` (zipf 3.42) that do still appear in Romanian text but very infrequently.
+
+BACKLOG item (line 208) marked resolved on the pipeline side; UI global switch (browse forgotten vs rare-in-use list) remains open.
+
+---
+
 ## 2026-05-19 — Data audit: missing definitions root cause + scraper fallbacks
 
 Investigated the Data Audit backlog item: 4,065 shortlist words (20.6%) had no definition in `ui.db` despite dexonline.ro having entries for them.
