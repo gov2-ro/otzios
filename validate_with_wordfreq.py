@@ -148,7 +148,7 @@ def main() -> int:
 
             if zipf < args.threshold:
                 tier = 'forgotten'
-            elif zipf < args.upper_threshold:
+            elif zipf < args.upper_threshold and (row.get('dex_register') or '').strip():
                 tier = 'rare_in_use'
             else:
                 tier = 'common'

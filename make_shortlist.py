@@ -3,12 +3,16 @@
 Build a curated shortlist of forgotten Romanian words for web validation.
 
 Reads forgotten_words_diachronic.csv (output of validate_diachronic.py) and
-selects two tiers:
+selects three tiers:
 
   Tier A — corpus evidence: verdict in (extinct, declining, historical_only)
             with hist_ppm > 0, no domain tag, no excluded POS
   Tier B — DEX editorial: verdict == absent AND dex_register contains 'învechit'
             with no domain tag, no excluded POS
+  Tier C — truly absent: verdict == absent, hist_ppm == 0, modern_ppm < threshold
+            (default 0.1), dex_frequency >= threshold (default 0.70). Captures
+            words that DEX considers legitimate but that appear in no corpus —
+            the most forgotten words of all (e.g. oțios).
 
 Output is compatible with search_wild.py (has 'word' and 'is_forgotten' columns).
 
@@ -39,6 +43,7 @@ TIER_ORDER = {
     'corpus_declining':        1,
     'corpus_historical_only':  2,
     'dex_invechit_absent':     3,
+    'dex_absent_highfreq':     4,
 }
 
 OUT_FIELDS = [
@@ -54,7 +59,12 @@ def pos_excluded(dex_pos: str) -> bool:
     return bool(tags & EXCLUDED_POS)
 
 
-def classify(row: dict, exclude_etym: frozenset = frozenset()) -> str | None:
+def classify(
+    row: dict,
+    exclude_etym: frozenset = frozenset(),
+    absent_ppm_threshold: float = 0.1,
+    dex_freq_threshold: float = 0.70,
+) -> str | None:
     if pos_excluded(row['dex_pos']):
         return None
     if exclude_etym:
@@ -66,6 +76,11 @@ def classify(row: dict, exclude_etym: frozenset = frozenset()) -> str | None:
         return f'corpus_{verdict}'
     if verdict == 'absent' and 'învechit' in (row.get('dex_register') or '').split('|'):
         return 'dex_invechit_absent'
+    if (verdict == 'absent'
+            and float(row['hist_ppm']) == 0
+            and float(row.get('modern_ppm') or 0) < absent_ppm_threshold
+            and float(row.get('dex_frequency') or 0) >= dex_freq_threshold):
+        return 'dex_absent_highfreq'
     return None
 
 
@@ -78,6 +93,14 @@ def main() -> int:
     parser.add_argument(
         '--exclude-etymology', default='', metavar='TAGS',
         help='Comma-separated etymology tags to exclude. E.g. anglicism,franțuzism',
+    )
+    parser.add_argument(
+        '--absent-ppm-threshold', type=float, default=0.1, metavar='PPM',
+        help='Tier C: max modern_ppm for dex_absent_highfreq words (default: %(default)s)',
+    )
+    parser.add_argument(
+        '--dex-freq-threshold', type=float, default=0.70, metavar='FREQ',
+        help='Tier C: min dex_frequency for dex_absent_highfreq words (default: %(default)s)',
     )
     args = parser.parse_args()
 
@@ -98,8 +121,8 @@ def main() -> int:
     excluded_etym = 0
 
     for row in rows:
-        tier_unfiltered = classify(row, frozenset()) if exclude_etym else None
-        tier = classify(row, exclude_etym)
+        tier_unfiltered = classify(row, frozenset(), args.absent_ppm_threshold, args.dex_freq_threshold) if exclude_etym else None
+        tier = classify(row, exclude_etym, args.absent_ppm_threshold, args.dex_freq_threshold)
         if tier is None:
             if pos_excluded(row['dex_pos']):
                 excluded_pos += 1
@@ -111,10 +134,10 @@ def main() -> int:
         out['is_forgotten'] = 'true'
         selected.append(out)
 
-    # Sort: Tier A by log_ratio desc, Tier B by dex_frequency desc
+    # Sort: Tier A by log_ratio desc, Tiers B+C by dex_frequency desc
     def sort_key(r: dict):
         order = TIER_ORDER.get(r['confidence_tier'], 99)
-        if r['confidence_tier'] == 'dex_invechit_absent':
+        if r['confidence_tier'] in ('dex_invechit_absent', 'dex_absent_highfreq'):
             return (order, -float(r['dex_frequency'] or 0))
         return (order, -float(r['log_ratio'] or 0))
 

@@ -167,6 +167,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] desktop tooltip on hover with definition
 
+- [ ] top filter, the posibility to remove one attribute - now we can just select.
+
 - [ ] create statistics by metadata. in the limited corpus and later in whole dexonline
 
 - [x] hide terms marked as `remove` — hidden by default; "show removed" pill in filter bar re-shows them. **Open question**: what's the semantic difference between `ignore` and `remove`? Clarify and add tooltip/docs so users know which to use.
@@ -196,6 +198,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] **Mobile / narrow-viewport breakpoints** — `ui/templates/base.html` has no media queries; the 3-row filter bar and word grid are desktop-only. Add breakpoints for tablet (collapse filter rows into a single overflow menu) and phone (single column word grid, slide-up detail panel from bottom).
 
 - [ ] **Filter bar tooltips** — add `title` attributes (or custom CSS tooltips) to all controls in the filter bar: the uitate/rare toggle, verdict pills, tier pills, POS pills, sort select, marks select, def toggle, and taxonomy selects. Especially useful for the uitate/rare switch and the verdict color-coding which are non-obvious to new users.
+
+- [ ] **URL-encoded filter state** — encode all active filter values (word_tier, verdict, tier, sort, pos, register, domain, etymology, has_def, marks, q) into the URL query string on every filter change, so that the current view is bookmarkable and shareable. Use `history.replaceState` (no page reload) to update the URL as HTMX triggers fire; parse and restore from `window.location.search` on page load to pre-select the right controls. Both PHP and Flask apps should support this.
 
 - [ ] **Extract inline CSS to `ui/static/app.css`** — `ui/templates/base.html` carries ~870 lines of inline styles. Move to a static stylesheet so it can be cached + edited without touching templates. Set up Flask's static directory if not already wired.
 
@@ -268,4 +272,10 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] cuvinte rare has waay too many commong words: manipulat, mediere, adițională, agravat, neurologie, organizatoare, cowboy, spitalizare – but still **not** `oțios`?!
 
-- [ ] all forms of terms listed, ex: `bleuit`, `bleuire`, `bleui` – could we just show one entry? Also `blehui`, `blehuire`, `blehuit` – root word, `bleau`. IF root word not in list we should also remove references?
+- [ ] all forms of terms listed, ex: `bleuit`, `bleuire`, `bleui` – could we just show one entry? Also `blehui`, `blehuire`, `blehuit` – root word, `bleau`. IF root word not in list we should also remove references? Most words in rare --> filter --> popular. 
+
+- [ ] `cimbru` appears at `rare` / filter: `în comparații / la comparativ`. 
+
+- [ ] `uitate` / filter: `în comparații / la comparativ` - words that don't seem to have anything with comparații -- can you backtrack on how did that end-up there?
+
+- [ ] rare / FIlter: `Maramureș` lists 'biodiversitate'
