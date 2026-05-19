@@ -11,6 +11,7 @@ from collections import Counter
 from pathlib import Path
 
 SHORTLIST_PATH  = Path('data/processed/forgotten_words_shortlist.csv')
+RARE_PATH       = Path('data/processed/rare_words_wordfreq.csv')
 WEB_PATH        = Path('data/processed/diachronic_shortlist_web_validated.csv')
 DEFINITIONS_PATH = Path('data/processed/definitions.db')
 OUT_PATH        = Path('public/data/ui.db')
@@ -47,7 +48,7 @@ def _normalize_sep(val):
     return val.replace('; ', '|').replace(';', '|')
 
 
-def build(shortlist: Path, web: Path, defs: Path, out: Path) -> None:
+def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None:
     if not shortlist.exists():
         sys.exit(f'Missing: {shortlist}')
 
@@ -78,7 +79,8 @@ def build(shortlist: Path, web: Path, defs: Path, out: Path) -> None:
             top_url          TEXT,
             last_seen_approx TEXT,
             provider         TEXT,
-            definition       TEXT
+            definition       TEXT,
+            word_tier        TEXT DEFAULT 'forgotten'
         )
     """)
 
@@ -89,8 +91,8 @@ def build(shortlist: Path, web: Path, defs: Path, out: Path) -> None:
                 """INSERT OR IGNORE INTO words
                    (word, dex_frequency, verdict, confidence_tier, log_ratio,
                     hist_ppm, modern_ppm, dex_pos, dex_register, dex_domain,
-                    dex_etymology, is_forgotten, has_definition)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    dex_etymology, is_forgotten, has_definition, word_tier)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     row['word'],
                     _float(row.get('dex_frequency', '')),
@@ -105,8 +107,35 @@ def build(shortlist: Path, web: Path, defs: Path, out: Path) -> None:
                     _normalize_sep(row.get('dex_etymology')),
                     _bool(row.get('is_forgotten', '')),
                     _bool(row.get('has_definition', '')),
+                    'forgotten',
                 ),
             )
+
+    if rare.exists():
+        print(f'Loading rare-in-use words from {rare}…')
+        with open(rare, newline='', encoding='utf-8') as f:
+            for row in csv.DictReader(f):
+                word_key = row.get('word_no_accent') or row.get('word', '')
+                if not word_key:
+                    continue
+                conn.execute(
+                    """INSERT OR IGNORE INTO words
+                       (word, dex_frequency, dex_pos, dex_register, dex_domain,
+                        dex_etymology, is_forgotten, word_tier)
+                       VALUES (?,?,?,?,?,?,?,?)""",
+                    (
+                        word_key,
+                        _float(row.get('frequency', '')),
+                        _normalize_sep(row.get('description')),
+                        _normalize_sep(row.get('dex_register')),
+                        _normalize_sep(row.get('dex_domain')),
+                        _normalize_sep(row.get('dex_etymology')),
+                        0,
+                        'rare_in_use',
+                    ),
+                )
+    else:
+        print(f'  (rare-in-use file not found, skipping: {rare})')
 
     if web.exists():
         print(f'Merging web validation from {web}…')
@@ -173,11 +202,12 @@ def build(shortlist: Path, web: Path, defs: Path, out: Path) -> None:
             )
 
     # Indexes
-    conn.execute('CREATE INDEX idx_vocab_kind    ON vocab(kind)')
-    conn.execute('CREATE INDEX idx_words_verdict ON words(verdict)')
-    conn.execute('CREATE INDEX idx_words_tier    ON words(confidence_tier)')
-    conn.execute('CREATE INDEX idx_words_word    ON words(word COLLATE NOCASE)')
-    conn.execute('CREATE INDEX idx_words_modern  ON words(modern_ppm)')
+    conn.execute('CREATE INDEX idx_vocab_kind     ON vocab(kind)')
+    conn.execute('CREATE INDEX idx_words_verdict  ON words(verdict)')
+    conn.execute('CREATE INDEX idx_words_tier     ON words(confidence_tier)')
+    conn.execute('CREATE INDEX idx_words_word_tier ON words(word_tier)')
+    conn.execute('CREATE INDEX idx_words_word     ON words(word COLLATE NOCASE)')
+    conn.execute('CREATE INDEX idx_words_modern   ON words(modern_ppm)')
 
     conn.commit()
     conn.close()
@@ -188,4 +218,4 @@ def build(shortlist: Path, web: Path, defs: Path, out: Path) -> None:
 
 
 if __name__ == '__main__':
-    build(SHORTLIST_PATH, WEB_PATH, DEFINITIONS_PATH, OUT_PATH)
+    build(SHORTLIST_PATH, RARE_PATH, WEB_PATH, DEFINITIONS_PATH, OUT_PATH)

@@ -9,6 +9,7 @@ from flask import Flask, render_template, request
 app = Flask(__name__)
 
 SHORTLIST_PATH = Path('data/processed/forgotten_words_shortlist.csv')
+RARE_PATH = Path('data/processed/rare_words_wordfreq.csv')
 WEB_PATH = Path('data/processed/diachronic_shortlist_web_validated.csv')
 RESEARCH_DB_PATH = Path('data/research.db')
 DEFINITIONS_DB_PATH = Path('data/processed/definitions.db')
@@ -43,6 +44,7 @@ def load_words(
     shortlist_path: Path,
     web_path: Path,
     definitions_path: Path | None = None,
+    rare_path: Path | None = None,
 ) -> sqlite3.Connection:
     conn = sqlite3.connect(':memory:', check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -67,7 +69,8 @@ def load_words(
             top_url          TEXT,
             last_seen_approx TEXT,
             provider         TEXT,
-            definition       TEXT
+            definition       TEXT,
+            word_tier        TEXT DEFAULT 'forgotten'
         )
     """)
 
@@ -82,8 +85,8 @@ def load_words(
                 """INSERT OR IGNORE INTO words
                    (word, dex_frequency, verdict, confidence_tier, log_ratio,
                     hist_ppm, modern_ppm, dex_pos, dex_register, dex_domain,
-                    dex_etymology, is_forgotten, has_definition)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    dex_etymology, is_forgotten, has_definition, word_tier)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     row['word'],
                     _float(row.get('dex_frequency', '')),
@@ -98,8 +101,33 @@ def load_words(
                     _normalize_separators(row.get('dex_etymology')),
                     _bool(row.get('is_forgotten', '')),
                     _bool(row.get('has_definition', '')),
+                    'forgotten',
                 ),
             )
+
+    _rare = rare_path if rare_path is not None else RARE_PATH
+    if _rare.exists():
+        with open(_rare, newline='', encoding='utf-8') as f:
+            for row in csv.DictReader(f):
+                word_key = row.get('word_no_accent') or row.get('word', '')
+                if not word_key:
+                    continue
+                conn.execute(
+                    """INSERT OR IGNORE INTO words
+                       (word, dex_frequency, dex_pos, dex_register, dex_domain,
+                        dex_etymology, is_forgotten, word_tier)
+                       VALUES (?,?,?,?,?,?,?,?)""",
+                    (
+                        word_key,
+                        _float(row.get('frequency', '')),
+                        _normalize_separators(row.get('description')),
+                        _normalize_separators(row.get('dex_register')),
+                        _normalize_separators(row.get('dex_domain')),
+                        _normalize_separators(row.get('dex_etymology')),
+                        0,
+                        'rare_in_use',
+                    ),
+                )
 
     if web_path.exists():
         with open(web_path, newline='', encoding='utf-8') as f:
@@ -154,12 +182,14 @@ def init_app(
     web_path: Path | None = None,
     research_path: Path | None = None,
     definitions_path: Path | None = None,
+    rare_path: Path | None = None,
 ) -> None:
     global _words_db, _research_db
     _words_db = load_words(
         shortlist_path or SHORTLIST_PATH,
         web_path or WEB_PATH,
         definitions_path or DEFINITIONS_DB_PATH,
+        rare_path or RARE_PATH,
     )
     _research_db = open_research_db(research_path or RESEARCH_DB_PATH)
 
@@ -238,6 +268,7 @@ def _like_any(col: str, vals: list[str]):
 @app.route('/search')
 def search():
     q               = request.args.get('q', '').strip()
+    word_tier       = request.args.get('word_tier', 'forgotten').strip()
     verdict         = request.args.get('verdict', '').strip()
     tier            = request.args.get('tier', '').strip()
     register        = request.args.get('register', '').strip()
@@ -250,8 +281,8 @@ def search():
     page   = max(1, int(request.args.get('page', 1) or 1))
     offset = (page - 1) * PAGE_SIZE
 
-    conditions: list[str] = []
-    params: list = []
+    conditions: list[str] = ['word_tier = ?']
+    params: list = [word_tier if word_tier in ('forgotten', 'rare_in_use') else 'forgotten']
     if q:
         conditions.append('word LIKE ?')
         params.append(f'%{q}%')
@@ -350,7 +381,7 @@ def _all_used_tags() -> list[str]:
 
 @app.route('/')
 def index():
-    total  = _words_db.execute('SELECT COUNT(*) FROM words').fetchone()[0]
+    total  = _words_db.execute("SELECT COUNT(*) FROM words WHERE word_tier='forgotten'").fetchone()[0]
     bcount = _research_db.execute('SELECT COUNT(*) FROM bookmarks WHERE bookmarked=1').fetchone()[0]
     return render_template('base.html',
         total=total,

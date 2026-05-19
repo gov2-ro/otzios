@@ -2,18 +2,19 @@
 declare(strict_types=1);
 require_once __DIR__ . '/_lib.php';
 
-$q        = trim($_GET['q']        ?? '');
-$verdict  = trim($_GET['verdict']  ?? '');
-$tier     = trim($_GET['tier']     ?? '');
-$register = trim($_GET['register'] ?? '');
-$domain   = trim($_GET['domain']   ?? '');
-$etym     = trim($_GET['etymology'] ?? '');
-$pos      = trim($_GET['pos']      ?? '');
-$has_def  = trim($_GET['has_def']  ?? '');
-$marks    = trim($_GET['marks']    ?? 'all');
-$sort     = trim($_GET['sort']     ?? '');
-$page     = max(1, (int)($_GET['page'] ?? 1));
-$offset   = ($page - 1) * PAGE_SIZE;
+$q         = trim($_GET['q']         ?? '');
+$word_tier = trim($_GET['word_tier'] ?? 'forgotten');
+$verdict   = trim($_GET['verdict']   ?? '');
+$tier      = trim($_GET['tier']      ?? '');
+$register  = trim($_GET['register']  ?? '');
+$domain    = trim($_GET['domain']    ?? '');
+$etym      = trim($_GET['etymology'] ?? '');
+$pos       = trim($_GET['pos']       ?? '');
+$has_def   = trim($_GET['has_def']   ?? '');
+$marks     = trim($_GET['marks']     ?? 'all');
+$sort      = trim($_GET['sort']      ?? '');
+$page      = max(1, (int)($_GET['page'] ?? 1));
+$offset    = ($page - 1) * PAGE_SIZE;
 
 // marked_words is a comma-separated list sent by client JS for marks filtering
 $marked_words_raw = trim($_GET['marked_words'] ?? '');
@@ -21,8 +22,11 @@ $marked_words = $marked_words_raw !== ''
     ? array_filter(array_map('trim', explode(',', $marked_words_raw)))
     : [];
 
-$conditions = [];
-$params     = [];
+$valid_tiers = ['forgotten', 'rare_in_use'];
+$word_tier   = in_array($word_tier, $valid_tiers, true) ? $word_tier : 'forgotten';
+
+$conditions = ['word_tier = ?'];
+$params     = [$word_tier];
 
 if ($q !== '') {
     $conditions[] = 'word LIKE ?';

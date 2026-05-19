@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/api/_lib.php';
 
-$total      = (int)db()->query('SELECT COUNT(*) FROM words')->fetchColumn();
+$total      = (int)db()->query("SELECT COUNT(*) FROM words WHERE word_tier='forgotten'")->fetchColumn();
 $registers  = vocab('register');
 $domains    = vocab('domain');
 $etyms      = vocab('etymology');
@@ -48,6 +48,11 @@ $tiers = [
 
     <!-- Row 1: search + utility controls -->
     <div class="filter-row">
+      <div class="seg">
+        <label class="seg-opt"><input type="radio" name="word_tier" value="forgotten" checked> uitate</label>
+        <label class="seg-opt"><input type="radio" name="word_tier" value="rare_in_use"> rare</label>
+      </div>
+      <div class="fsep"></div>
       <input id="search" type="text" name="q" placeholder="Search words…"
              hx-get="<?= BASE ?>/api/search.php" hx-trigger="input changed delay:200ms"
              hx-target="#word-list" hx-include="#filter-form" autocomplete="off">
