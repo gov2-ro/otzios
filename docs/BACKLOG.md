@@ -155,6 +155,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] keyboard nav, after focusing on searchbar and filtering words it's hard to get focus back on the term list — Esc from search now restores selectedIdx via selectRow(noClick=true).
 
+- [ ] optimize for mobile
+
 - [ ] create statistics by metadata. in the limited corpus and later in whole dexonline
 
 - [x] hide terms marked as `remove` — hidden by default; "show removed" pill in filter bar re-shows them. **Open question**: what's the semantic difference between `ignore` and `remove`? Clarify and add tooltip/docs so users know which to use.
@@ -185,9 +187,11 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **Extract inline CSS to `ui/static/app.css`** — `ui/templates/base.html` carries ~870 lines of inline styles. Move to a static stylesheet so it can be cached + edited without touching templates. Set up Flask's static directory if not already wired.
 
+- [ ] web ui: follow schema.org for appropriate entities - add to claude.md maybe?
+
 ## Misc
 
-- [ ] create methodology, including activity log, look at activity log and commit history
+- [x] create methodology, including activity log, look at activity log and commit history
 
 - [ ] tune parameters until it includes `oțios` – maybe use a flag to hide these other, second tier words (new words beyond  current list/limits)
 

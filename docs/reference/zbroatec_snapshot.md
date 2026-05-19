@@ -1,0 +1,158 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e4]:
+        - link "dexonline logo" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - img "dexonline logo" [ref=e6]
+        - generic [ref=e14]:
+          - list [ref=e15]:
+            - listitem [ref=e16]:
+              - button "Despre noi" [ref=e17] [cursor=pointer]
+            - listitem [ref=e18]:
+              - button "Voluntari" [ref=e19] [cursor=pointer]
+            - listitem [ref=e20]:
+              - button "Resurse" [ref=e21] [cursor=pointer]
+            - listitem [ref=e22]:
+              - link "savings Donează" [ref=e23] [cursor=pointer]:
+                - /url: /doneaza
+                - generic [ref=e24]: savings
+                - text: Donează
+            - listitem [ref=e25]:
+              - link "edit Formularul 230" [ref=e26] [cursor=pointer]:
+                - /url: https://formular230.ro/asociatia-dexonline
+                - generic [ref=e27]: edit
+                - text: Formularul 230
+          - list [ref=e28]:
+            - listitem [ref=e29]:
+              - button "language" [ref=e30] [cursor=pointer]:
+                - generic [ref=e31]: language
+            - listitem [ref=e32]:
+              - link "dark_mode" [ref=e33] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e34]: dark_mode
+            - listitem [ref=e35]:
+              - button "person Anonim" [ref=e36] [cursor=pointer]:
+                - generic [ref=e37]: person
+                - text: Anonim
+  - generic [ref=e38]:
+    - main [ref=e39]:
+      - generic [ref=e40]:
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - textbox "cuvânt" [active] [ref=e45]: zbroatec
+            - button "clear" [ref=e46] [cursor=pointer]:
+              - generic [ref=e47]: clear
+            - button "search caută" [ref=e48] [cursor=pointer]:
+              - generic [ref=e49]: search
+              - text: caută
+          - link "opțiuni" [ref=e50] [cursor=pointer]:
+            - /url: "#"
+        - generic:
+          - insertion
+        - tablist [ref=e51]:
+          - tab "sinteza definițiilor (1)" [selected] [ref=e52] [cursor=pointer]
+          - tab "definiții (20)" [ref=e53] [cursor=pointer]
+          - tab "declinări" [ref=e54] [cursor=pointer]
+          - listitem [ref=e55]:
+            - link "info" [ref=e56] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e57]: info
+        - generic [ref=e58]:
+          - text: ", * , * , *"
+          - tabpanel [ref=e59]:
+            - generic [ref=e61]:
+              - generic [ref=e63]: info
+              - generic [ref=e64]:
+                - text: Aceste definiții sunt compilate de echipa dexonline. Definițiile originale se află pe fila
+                - link "definiții" [ref=e65] [cursor=pointer]:
+                  - /url: "#"
+                - text: . Puteți reordona filele pe pagina de
+                - link "preferințe" [ref=e66] [cursor=pointer]:
+                  - /url: /preferinte
+                - text: .
+                - button "ascunde" [ref=e68] [cursor=pointer]
+            - generic [ref=e70]:
+              - generic [ref=e71]: "arată:"
+              - generic [ref=e72]:
+                - checkbox "sensuri secundare" [checked] [ref=e73]
+                - generic [ref=e74]: sensuri secundare
+              - generic [ref=e75]:
+                - checkbox "expresii" [checked] [ref=e76]
+                - generic [ref=e77]: expresii
+              - generic [ref=e78]:
+                - checkbox "exemple" [ref=e79]
+                - generic [ref=e80]: exemple
+              - generic [ref=e81]:
+                - checkbox "surse" [ref=e82]
+                - generic [ref=e83]: surse
+            - heading "zburatic, zburaticăadjectiv" [level=3] [ref=e84]:
+              - generic [ref=e85]:
+                - text: zburatic
+                - generic [ref=e86]: ", zburatică"
+                - text: adjectiv
+            - generic [ref=e87]:
+              - list [ref=e88]:
+                - listitem [ref=e89]:
+                  - generic [ref=e90]:
+                    - generic [ref=e91]:
+                      - text: "1."
+                      - generic [ref=e93]:
+                        - link "popular":
+                          - /url: /editare-eticheta?id=15
+                      - text: Iute la fugă.
+                    - generic [ref=e95]:
+                      - text: "sinonime:"
+                      - link "ager" [ref=e97] [cursor=pointer]:
+                        - /url: /intrare/ager/1000
+                      - link "iute" [ref=e99] [cursor=pointer]:
+                        - /url: /intrare/iute/29489
+                      - link "sprinten" [ref=e101] [cursor=pointer]:
+                        - /url: /intrare/sprinten/53713
+                  - link [ref=e103] [cursor=pointer]:
+                    - /url: https://dexonline.ro/spre/formular230
+                  - list
+                - listitem [ref=e104]:
+                  - generic [ref=e105]:
+                    - generic [ref=e106]:
+                      - text: "2."
+                      - generic [ref=e107]:
+                        - generic [ref=e108]:
+                          - link "popular":
+                            - /url: /editare-eticheta?id=15
+                        - generic [ref=e109]:
+                          - link "figurat":
+                            - /url: /editare-eticheta?id=2
+                      - text: Nestatornic, ușuratic.
+                    - generic [ref=e111]:
+                      - text: "sinonime:"
+                      - link "nestatornic" [ref=e113] [cursor=pointer]:
+                        - /url: /intrare/nestatornic/37621
+                      - link "ușuratic" [ref=e115] [cursor=pointer]:
+                        - /url: /intrare/ușuratic/59693
+                  - list
+              - generic [ref=e116]:
+                - heading "etimologie:" [level=6] [ref=e117]
+                - list [ref=e118]:
+                  - listitem [ref=e119]:
+                    - generic [ref=e122]: Zbura + -atic.
+            - paragraph [ref=e123]:
+              - generic [ref=e124]: info
+              - text: Lista completă de definiții se află pe fila
+              - link "definiții" [ref=e125] [cursor=pointer]:
+                - /url: "#"
+              - text: .
+    - contentinfo [ref=e126]:
+      - generic [ref=e127]: Copyright © 2004-2026 dexonline (https://dexonline.ro)
+      - list [ref=e128]:
+        - listitem [ref=e129]:
+          - link "licență" [ref=e130] [cursor=pointer]:
+            - /url: /licenta
+        - listitem [ref=e131]:
+          - text: •
+          - link "confidențialitate" [ref=e132] [cursor=pointer]:
+            - /url: https://wiki.dexonline.ro/wiki/Principii_de_confiden%C8%9Bialitate_dexonline.ro
+        - listitem [ref=e133]:
+          - text: •găzduit de
+          - link "Hosterion" [ref=e134] [cursor=pointer]:
+            - /url: https://hosterion.ro/
