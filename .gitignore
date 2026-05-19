@@ -9,6 +9,8 @@ data/*
 *.log
 */data/*
 _obsolete
+*/_obsolete/*
+_obsolete*
 
 .vscode/*
 .claude/*

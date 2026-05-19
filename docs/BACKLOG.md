@@ -145,6 +145,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] also have a look at [wiktionary](https://ro.wiktionary.org/)
 
+- [ ] go for root semantics fro definitions like _"Acțiunea de a (se) spârcui și rezultatul ei."_
+
 
 
 ## UI
@@ -192,6 +194,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] **Bookmark + învechit underline conflict** — both are rendered as `text-decoration: underline` on `.word-text`. When a word is both bookmarked and `învechit`, the bookmark's solid amber wins and the dotted red `învechit` indicator is invisible. Today's compromise: bookmark precedence (set in `ui/templates/base.html`, comment "wins over inv when both true"). Fix later by stacking a second indicator — e.g., a thin red dotted `box-shadow` below the amber underline, or move bookmarks to a non-underline visual (left-edge marker, subtle bg tint).
 
 - [ ] **Mobile / narrow-viewport breakpoints** — `ui/templates/base.html` has no media queries; the 3-row filter bar and word grid are desktop-only. Add breakpoints for tablet (collapse filter rows into a single overflow menu) and phone (single column word grid, slide-up detail panel from bottom).
+
+- [ ] **Filter bar tooltips** — add `title` attributes (or custom CSS tooltips) to all controls in the filter bar: the uitate/rare toggle, verdict pills, tier pills, POS pills, sort select, marks select, def toggle, and taxonomy selects. Especially useful for the uitate/rare switch and the verdict color-coding which are non-obvious to new users.
 
 - [ ] **Extract inline CSS to `ui/static/app.css`** — `ui/templates/base.html` carries ~870 lines of inline styles. Move to a static stylesheet so it can be cached + edited without touching templates. Set up Flask's static directory if not already wired.
 
@@ -252,7 +256,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 ## 260519 Data Audit
 
 - [ ] some terms still lack definitions, although they are present (the definitions) on dexonline. Ex: 
-  - `mofluzită`, `libovnică`, `ischiuzară` - so _genul feminin_, feminine versions of words.
+  - `mofluzită`, `libovnică`, `ischiuzară`, `consumatoare` - so _genul feminin_, feminine versions of words.
   - `cfartal` - is a different spelling of `cvartal` – dexonline has the url (https://dexonline.ro/definitie/cfartal), but the word in dexonline is `cvartal`. Same with `prijuni` --> `sprijini' (https://dexonline.ro/definitie/prijuni)
   -  `murea` (form of `a muri`), `abecedare` (plural of `abecedar`)
   - other examples: `ospătător`, `săhăstricesc`, `bașfir`, `aeresc`, `gad`, `pestitor` 
@@ -260,4 +264,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - do these also mess with our statistics?
   - differently spelled variations shouldn't be listed, it poisons word exploration - or listed separately?
 
-- [ ] why does the list contain `fost` -- this is a form of a very popular verb, `a fi` ?
+- [ ] why does the list contain `fost` -- this is a form of a very popular verb, `a fi`? See also other common words: `eleșteu`, `văr`, `nepot`, `coproducție`
+
+- [ ] cuvinte rare has waay too many commong words: manipulat, mediere, adițională, agravat, neurologie, organizatoare, cowboy, spitalizare – but still **not** `oțios`?!
+
+- [ ] all forms of terms listed, ex: `bleuit`, `bleuire`, `bleui` – could we just show one entry? Also `blehui`, `blehuire`, `blehuit` – root word, `bleau`. IF root word not in list we should also remove references?
