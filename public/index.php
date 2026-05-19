@@ -32,11 +32,11 @@ $tiers = [
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Mona+Sans:wght@400..700&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
 </head>
 <body>
   <form id="filter-form"
-        hx-get="/api/search.php"
+        hx-get="<?= BASE ?>/api/search.php"
         hx-trigger="change"
         hx-target="#word-list"
         hx-include="#filter-form">
@@ -44,7 +44,7 @@ $tiers = [
     <!-- Row 1: search + utility controls -->
     <div class="filter-row">
       <input id="search" type="text" name="q" placeholder="Search words…"
-             hx-get="/api/search.php" hx-trigger="input changed delay:200ms"
+             hx-get="<?= BASE ?>/api/search.php" hx-trigger="input changed delay:200ms"
              hx-target="#word-list" hx-include="#filter-form" autocomplete="off">
       <select name="sort" class="sort-select">
         <option value="rare">↓ rarest modern</option>
@@ -131,7 +131,7 @@ $tiers = [
     </div>
     <div id="word-list-container">
       <div id="word-list"
-           hx-get="/api/search.php"
+           hx-get="<?= BASE ?>/api/search.php"
            hx-trigger="load"
            hx-swap="innerHTML">
         <span class="htmx-indicator">loading…</span>
@@ -143,7 +143,7 @@ $tiers = [
 
   <div id="status-bar">
     <span class="status-left"><span id="status-word-count"><?= (int)$total ?> words</span> · <span id="bookmark-count">0</span> bookmarked</span>
-    <span class="status-right"><a href="/metodologie.html" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">metodologie</a> &nbsp; <kbd>?</kbd> shortcuts</span>
+    <span class="status-right"><a href="<?= BASE ?>/metodologie.html" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">metodologie</a> &nbsp; <kbd>?</kbd> shortcuts</span>
   </div>
 
   <datalist id="tag-suggestions"></datalist>
@@ -176,6 +176,7 @@ $tiers = [
     </div>
   </div>
 
-  <script src="/assets/app.js"></script>
+  <script>var OTIOS_BASE = '<?= BASE ?>';</script>
+  <script src="<?= BASE ?>/assets/app.js"></script>
 </body>
 </html>

@@ -16,7 +16,7 @@ $inv_title = str_contains($w['dex_register'] ?? '', 'învechit') ? ' title="înv
      data-freq="<?= $freq !== null ? $freq : '' ?>"
      data-def="<?= e($def_preview) ?>"
      <?= $inv_title ?>
-     hx-get="/api/word.php?word=<?= urlenc($w['word']) ?>"
+     hx-get="<?= BASE ?>/api/word.php?word=<?= urlenc($w['word']) ?>"
      hx-target="#detail-panel"
      hx-swap="innerHTML">
   <span class="word-text"><?= e($w['word']) ?></span>

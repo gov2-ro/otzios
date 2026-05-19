@@ -198,7 +198,8 @@ function markedWordsForFilter(marks) {
 
 document.addEventListener('htmx:configRequest', function(e) {
   const url = e.detail.path || '';
-  if (!url.startsWith('/api/search.php')) return;
+  const base = (typeof OTIOS_BASE !== 'undefined' ? OTIOS_BASE : '');
+  if (!url.startsWith(base + '/api/search.php')) return;
   const marks = e.detail.parameters['marks'] || 'all';
   const wordList = markedWordsForFilter(marks);
   if (wordList !== null) {

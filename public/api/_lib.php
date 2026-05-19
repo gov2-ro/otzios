@@ -2,6 +2,15 @@
 declare(strict_types=1);
 
 define('DB_PATH', __DIR__ . '/../data/ui.db');
+
+// URL prefix for the public/ directory, e.g. '' (root) or '/otios' (subdirectory).
+// Computed from DOCUMENT_ROOT vs the actual filesystem path of public/.
+(function () {
+    $doc_root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/');
+    $pub_dir  = rtrim(dirname(__DIR__), '/');   // parent of api/ = public/
+    $base     = $doc_root !== '' ? substr($pub_dir, strlen($doc_root)) : '';
+    define('BASE', $base === false ? '' : rtrim($base, '/'));
+})();
 define('PAGE_SIZE', 250);
 
 $SORT_OPTIONS = [

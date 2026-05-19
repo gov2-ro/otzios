@@ -92,7 +92,7 @@ $next_url = null;
 if ($page * PAGE_SIZE < $total) {
     $args         = $_GET;
     $args['page'] = $page + 1;
-    $next_url     = '/api/search.php?' . http_build_query($args);
+    $next_url     = BASE . '/api/search.php?' . http_build_query($args);
 }
 
 header('Content-Type: text/html; charset=utf-8');
