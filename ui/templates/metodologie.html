@@ -500,6 +500,7 @@
   <div class="nav-links">
     <a href="/">Cuvinte</a>
     <a href="metodologie.html" class="current">Metodologie</a>
+    <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">GitHub</a>
   </div>
 </nav>
 
@@ -528,8 +529,8 @@
       </div>
       <div class="stat-it">
         <div class="stat-lbl">Pe scurtlistă</div>
-        <div class="stat-num">16.879</div>
-        <div class="stat-meta">4 niveluri de încredere</div>
+        <div class="stat-num">23.112</div>
+        <div class="stat-meta">5 niveluri de încredere</div>
       </div>
       <div class="stat-it">
         <div class="stat-lbl">Corpus modern</div>
@@ -749,7 +750,7 @@ log₂( (hist_ppm + 0.1) / (modern_ppm + 0.1) )
     <h2><span class="num">05</span> Scurtlista</h2>
     <p>
       <code>make_shortlist.py</code> filtrează cele 130k rânduri diacronice la un set de
-      <strong>16.879 cuvinte</strong> cu cel mai solid semnal de uitare. Patru niveluri de
+      <strong>23.112 cuvinte</strong> cu cel mai solid semnal de uitare. Cinci niveluri de
       încredere, cu excluderi aplicate (domenii tehnice, POS neeligibile):
     </p>
     <table class="data-table">
@@ -758,31 +759,38 @@ log₂( (hist_ppm + 0.1) / (modern_ppm + 0.1) )
         <tr class="tier-a">
           <td>corpus_extinct</td>
           <td>verdict=extinct, hist_ppm &gt; 0</td>
-          <td class="right">~1.137</td>
+          <td class="right">1.218</td>
         </tr>
         <tr class="tier-a">
           <td>corpus_declining</td>
           <td>verdict=declining, hist_ppm &gt; 0</td>
-          <td class="right">~5.668</td>
+          <td class="right">6.169</td>
         </tr>
         <tr class="tier-a">
           <td>corpus_historical_only</td>
           <td>verdict=historical_only, hist_ppm &gt; 0</td>
-          <td class="right">~8.793</td>
+          <td class="right">9.399</td>
         </tr>
         <tr class="tier-b">
           <td>dex_invechit_absent</td>
           <td>verdict=absent + dex_register=învechit</td>
-          <td class="right">~1.281</td>
+          <td class="right">2.994</td>
+        </tr>
+        <tr class="tier-b">
+          <td>dex_absent_highfreq</td>
+          <td>verdict=absent, hist_ppm=0, modern_ppm&lt;0.1, dex_frequency≥0.85</td>
+          <td class="right">3.332</td>
         </tr>
       </tbody>
     </table>
     <p>
       Nivelul A conține cuvinte cu <strong>semnal de corpus</strong>: au apărut în textele istorice,
-      dar nu mai apar în cele moderne. Nivelul B este <em>materia întunecată</em>: cuvinte pe care
-      editorii DEX le-au etichetat explicit ca <em>învechit</em>, dar care nu apar în niciun corpus
-      digitizat — nici măcar în cel de 17 miliarde de tokens. Două semnale independente de arhaism,
-      zero atestări.
+      dar nu mai apar în cele moderne. Nivelul B (<code>dex_invechit_absent</code>) este <em>materia
+      întunecată</em>: cuvinte etichetate explicit <em>învechit</em> de editorii DEX, absente din
+      orice corpus. Nivelul C (<code>dex_absent_highfreq</code>) captează cuvintele cu cea mai mare
+      <strong>legitimitate lexicografică DEX</strong> (frequency ≥ 0.85) dar zero urmă în corpusuri —
+      cazul <em>oțios</em> însuși: DEX îl consideră central (0.85), absent din 14M tokens literari și
+      17 miliarde tokens web.
     </p>
   </section>
 
@@ -818,8 +826,8 @@ Lexeme
 
     <h3>Definiții</h3>
     <p>
-      <code>DefinitionSimple</code> acoperă ~4.600 din cei 16.879 candidați de pe scurtlistă.
-      Restul de ~12.800 sunt completați prin <code>scrape_definitions.py</code>, care extrage
+      <code>DefinitionSimple</code> acoperă ~4.600 din cei 23.112 candidați de pe scurtlistă.
+      Restul de ~18.500 sunt completați prin <code>scrape_definitions.py</code>, care extrage
       blocul de sinteză de la <code>dexonline.ro/definitie/{cuvant}</code> la 3s/request
       (respectând serverul comunitar, care este întreținut de voluntari).
     </p>
@@ -1010,6 +1018,16 @@ Lexeme
         <div class="tl-what">UI — filtru „marks", overlay emoji pe chip-uri, rafinări vizuale.</div>
         <div class="tl-why">Dropdown <em>marks</em> înlocuiește pill-ul <em>show-removed</em> și caseta <em>bookmarked</em>; opțiuni: all / unmarked / marked / bookmarked / noted / tag:X. Helper <code>_is_marked()</code>. Overlay emoji per chip (Jinja2 namespace accumulator), emoji activ suprimat în modul de filtru curent. <code>.flabel</code> inversat: pill întunecat pe fond clar. Link metodologie în bara de status.</div>
       </li>
+      <li>
+        <div class="tl-date">2026-05-19</div>
+        <div class="tl-what">Toggle „uitate" / „rare în uz" în UI — Flask și PHP.</div>
+        <div class="tl-why">Scurtlista conținea și cuvinte rare-în-uz (Zipf 3.0–4.5 cu <code>dex_register</code> non-gol). UI-ul a primit un pill toggle care comută între cele două mulțimi fără reload complet.</div>
+      </li>
+      <li class="milestone">
+        <div class="tl-date">2026-05-19</div>
+        <div class="tl-what">Nivel C — <code>dex_absent_highfreq</code>. Fix rare list. Scurtlista: 16.879 → 23.112 cuvinte.</div>
+        <div class="tl-why">Nivelul C captează cuvinte cu legitimitate DEX ridicată (frequency ≥ 0.85) dar zero urmă în corpusuri — cazul <em>oțios</em> însuși. Fix rare list: <code>rare_in_use</code> acum necesită <code>dex_register</code> non-gol (elimină <em>neurologie</em>, <em>cowboy</em>, <em>manipulat</em> din lista de cuvinte rare).</div>
+      </li>
     </ol>
   </section>
 
@@ -1031,6 +1049,10 @@ Lexeme
       <li><code>CLAUDE.md</code><span>Ghid de colaborare: convenții, mediu, pipeline end-to-end, gotchas.</span></li>
     </ul>
     <p>
+      Codul sursă este disponibil pe
+      <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">github.com/gov2-ro/otzios</a>.
+    </p>
+    <p>
       Sursa de date principală — dumpul MySQL DEX Online — este disponibilă public la
       <a href="https://wiki.dexonline.ro/wiki/Informa%C8%9Bii#Desc%C4%83rcare" target="_blank" rel="noopener">wiki.dexonline.ro</a>.
       Corpusurile sunt pe HuggingFace: Wikisource RO (acces public), CulturaX RO (necesită
@@ -1041,7 +1063,7 @@ Lexeme
 </article>
 
 <footer class="site-footer">
-  Oțios · metodologie · mai 2026
+  Oțios · metodologie · v0.1 · <a href="https://github.com/gov2-ro/otzios/commit/b348844" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">b348844</a> · 2026-05-19
 </footer>
 
 </body>

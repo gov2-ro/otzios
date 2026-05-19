@@ -153,7 +153,7 @@ $tiers = [
 
   <div id="status-bar">
     <span class="status-left"><span id="status-word-count"><?= (int)$total ?> words</span> · <span id="bookmark-count">0</span> bookmarked</span>
-    <span class="status-right"><a href="<?= BASE ?>/metodologie.html" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">metodologie</a> &nbsp; <kbd>?</kbd> shortcuts</span>
+    <span class="status-right"><a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">GitHub</a> &nbsp; <a href="<?= BASE ?>/metodologie.html" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">metodologie</a> &nbsp; <kbd>?</kbd> shortcuts</span>
   </div>
 
   <datalist id="tag-suggestions"></datalist>
