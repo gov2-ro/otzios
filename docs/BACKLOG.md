@@ -272,7 +272,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] why does the list contain `fost` -- this is a form of a very popular verb, `a fi`? See also other common words: `eleșteu`, `văr`, `nepot`, `coproducție`
 
-- [ ] cuvinte rare has waay too many commong words: manipulat, mediere, adițională, agravat, neurologie, organizatoare, cowboy, spitalizare – but still **not** `oțios`?!
+- [x] cuvinte rare has waay too many common words: manipulat, mediere, adițională, agravat, neurologie, organizatoare, cowboy, spitalizare – but still **not** `oțios`?!
+  - **Resolved**: `validate_with_wordfreq.py` now gates `rare_in_use` on non-empty `dex_register` — words with Zipf 3.0–4.5 but no register tag fall to `common`. Rare list: 11,668 → 469. `oțios` addressed by Tier C in `make_shortlist.py` (`dex_absent_highfreq`, threshold dex_frequency ≥ 0.85); now appears in UI.
 
 - [ ] all forms of terms listed, ex: `bleuit`, `bleuire`, `bleui` – could we just show one entry? Also `blehui`, `blehuire`, `blehuit` – root word, `bleau`. IF root word not in list we should also remove references? Most words in rare --> filter --> popular. 
 
@@ -280,4 +281,4 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] `uitate` / filter: `în comparații / la comparativ` - words that don't seem to have anything with comparații -- can you backtrack on how did that end-up there?
 
-- [ ] rare / FIlter: `Maramureș` lists 'biodiversitate'
+- [ ] rare / Filter: `Maramureș` lists 'biodiversitate'

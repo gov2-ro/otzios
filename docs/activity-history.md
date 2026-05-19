@@ -4,6 +4,30 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-19 — Add Tier C to shortlist; fix rare list quality
+
+Two pipeline fixes to address the 260519 Data Audit:
+
+**Tier C — `dex_absent_highfreq`** added to `make_shortlist.py`. Captures words that are fully absent from all corpora (`hist_ppm=0`, `modern_ppm < 0.1`) but are well-documented in DEX (`dex_frequency ≥ 0.85`). These are the "most forgotten" words — DEX-canonical but never seen in digitised text. Threshold was initially set at 0.70 (too many inflected/derived forms: ~20k words), then tuned to 0.85 (~3,332 words). oțios (dex_frequency=0.85) is right at the boundary and now appears in the UI. New CLI args: `--absent-ppm-threshold` (default 0.1) and `--dex-freq-threshold` (default 0.85). Sort key shared with Tier B: by dex_frequency descending.
+
+**Rare-in-use filter** tightened in `validate_with_wordfreq.py`: `rare_in_use` classification now requires non-empty `dex_register`. Words with Zipf 3.0–4.5 but no register tag (modern unmarked vocabulary like `neurologie`, `cowboy`, `manipulat`) fall through to `common` and are excluded from both output files. Rare list: 11,668 → 469 words.
+
+Pipeline rebuilt: shortlist 19,780 → 23,112 forgotten words (Tier A: 16,786, Tier B: 2,994, Tier C: 3,332) + 469 rare-in-use. DB: 23,581 words total.
+
+---
+
+## 2026-05-19 — Add forgotten/rare-in-use toggle to both Flask and PHP apps
+
+Added a segmented `uitate | rare` toggle to both UIs, backed by a new `word_tier` column in `ui.db`.
+
+**`tools/build_ui_db.py`**: loads `forgotten_words_shortlist.csv` with `word_tier='forgotten'` and `rare_words_wordfreq.csv` with `word_tier='rare_in_use'`; adds `word_tier TEXT DEFAULT 'forgotten'` column and `idx_words_word_tier` index; DB grew to 28,447 words (19,780 forgotten + 8,667 rare at the time).
+
+**`public/api/search.php`** and **`public/index.php`**: `word_tier` filter applied to every query (allowlisted: `forgotten`/`rare_in_use`); segmented radio toggle in Row 1 of the filter bar; initial status-bar count uses `WHERE word_tier='forgotten'`.
+
+**`ui/app.py`**: same changes mirrored — `load_words()` accepts `rare_path`; `/search` validates and applies `word_tier`; in-memory schema includes `word_tier`.
+
+---
+
 ## 2026-05-19 — Add rare-in-use word tier to wordfreq validation
 
 Extended `validate_with_wordfreq.py` with a three-tier Zipf classification alongside the existing binary forgotten/not-forgotten output.
