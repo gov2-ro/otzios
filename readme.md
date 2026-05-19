@@ -4,7 +4,7 @@ Vezi și: [initial specs](docs/oțios-init-specs.docx.md) / [live](https://docs
 
 A computational linguistics tool to identify "forgotten" Romanian words - terms that exist in official dictionaries but have fallen out of modern usage.
 
-**Status**: 📚 Definitions + 🔍 Phase 3 — shortlist generated, definitions complete, web validation next
+**Status**: 📚 Definitions + 🔍 Phase 3 + 🌐 Web UI (PHP) — shortlist generated, definitions complete, web validation next
 
 ## What It Does
 
@@ -464,8 +464,10 @@ DEX-tagged archaic words with no corpus signal at all (Tier B — "dark matter")
 - [ ] Cross-reference: corpus verdict vs web presence
 
 ### Phase 5: User Interface & Visualization
-- [ ] Exploratory UI for browsing the shortlist (filter by tier, POS, etymology, domain)
-- [ ] Word detail view: diachronic chart, DEX definition, web hits
+- [x] Exploratory UI for browsing the shortlist (filter by tier, POS, etymology, domain, verdict, marks)
+- [x] Word detail view: DEX definition, corpus stats, dexonline.ro link
+- [x] PHP thin-API port — deployable on shared hosting (`public/`, `tools/build_ui_db.py`)
+- [x] localStorage bookmarks / notes / quick-tags (no server-side auth needed)
 - [ ] REST API for programmatic access
 - [ ] Interactive visualizations
   - Frequency decay curves (hist_ppm vs modern_ppm scatter)

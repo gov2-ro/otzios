@@ -4,6 +4,22 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-19 — PHP thin-API port for shared hosting
+
+Ported the Flask research UI to a PHP + SQLite stack deployable on any shared host. Flask app is kept intact for local pipeline work.
+
+- **`tools/build_ui_db.py`** — one-shot build script that merges `forgotten_words_shortlist.csv` + `diachronic_shortlist_web_validated.csv` + `definitions.db` into `public/data/ui.db` (~11 MB). Adds a `vocab` table for dropdown options and four search indexes.
+- **`public/api/search.php`** — port of Flask `/search`. Marks filter is now client-driven: JS sends `marked_words` (comma list from localStorage) so the server does `WHERE word IN (…)` / `NOT IN (…)` without touching any server-side user state.
+- **`public/api/word.php`**, **`_lib.php`**, **`_partials/`** — word detail endpoint, shared PDO helpers, PHP equivalents of the three Jinja partials.
+- **`public/assets/app.js`** — localStorage research store (`otios.research` key); `hydrateRows` / `hydrateDetail` run on `htmx:afterSwap`; bookmark/tag/note handlers replace the five dropped HTMX POST routes; keyboard shortcuts retargeted at localStorage; `htmx:configRequest` hook injects `marked_words` before search requests.
+- **`public/assets/app.css`** — extracted verbatim from `base.html`.
+- **`public/index.php`** — page chrome with server-rendered vocab dropdowns; bookmark count filled by JS.
+- **`public/metodologie.html`** — static copy.
+- **`tools/export_research_to_json.py`** — dumps `data/research.db` to the localStorage JSON shape for one-time console import.
+- Verified locally: word grid, search, live filter, detail panel, bookmark/tag/note (localStorage), marks filter, infinite scroll, zero console errors.
+
+---
+
 ## 2026-05-19 — Marks filter + annotation overlay + UI refinements
 
 Unified annotation filtering and word-chip decoration in the research UI.

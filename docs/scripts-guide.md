@@ -824,4 +824,82 @@ SELECT description, COUNT(*) FROM Lexeme GROUP BY description LIMIT 20;
 
 ---
 
-**Last updated**: October 2025
+---
+
+## Tools Scripts (`tools/`)
+
+### `tools/build_ui_db.py` ⭐ **Run before deploying the web UI**
+
+**Purpose**: Build `public/data/ui.db` — the single SQLite file that powers the PHP web interface.
+
+**Input**:
+- `data/processed/forgotten_words_shortlist.csv`
+- `data/processed/diachronic_shortlist_web_validated.csv` (optional — adds web score columns)
+- `data/processed/definitions.db` (optional — adds definition text)
+
+**Output**:
+- `public/data/ui.db` (~11 MB)
+
+**Usage**:
+```bash
+# Run from repo root
+python tools/build_ui_db.py
+```
+
+**What it does**:
+1. Merges the shortlist CSV + web-validated CSV + definitions.db into a single `words` table (19,780 rows, 20 columns).
+2. Builds a `vocab` table with distinct pipe-split values for `register`, `domain`, `etymology`, `pos` + occurrence counts, so PHP dropdown rendering is a simple `SELECT` instead of a full scan.
+3. Creates four indexes: `idx_words_verdict`, `idx_words_tier`, `idx_words_word`, `idx_words_modern`.
+
+Re-run after any pipeline update that changes the shortlist or definitions.
+
+---
+
+### `tools/export_research_to_json.py`
+
+**Purpose**: Export server-side bookmarks/notes/tags from `data/research.db` (Flask app) into the localStorage JSON format used by the PHP UI.
+
+**Usage**:
+```bash
+python tools/export_research_to_json.py > research_export.json
+```
+
+Then in the browser console on the PHP site:
+```js
+localStorage.setItem('otios.research', JSON.stringify(/* paste JSON */))
+```
+
+Only needed once when migrating from the Flask app. The PHP UI stores all research data in browser localStorage — no server writes.
+
+---
+
+## Web UI (`public/`)
+
+The PHP web interface lives under `public/` and is equivalent to the Flask UI (`ui/`), but deployable on any shared host without Python.
+
+**Deploy**:
+1. `python tools/build_ui_db.py` → `public/data/ui.db`
+2. Upload `public/` to the web root.
+3. PHP 7.4+ with SQLite3 extension (default on most shared hosts).
+
+**Run locally**:
+```bash
+php -S localhost:8000 -t public/
+```
+
+**Architecture**:
+- `public/index.php` — page chrome, filter form, server-rendered vocab dropdowns
+- `public/api/search.php` — paginated word list (HTML partial, HTMX)
+- `public/api/word.php` — word detail panel (HTML partial, HTMX)
+- `public/api/_lib.php` — shared PDO helpers
+- `public/api/_partials/` — PHP equivalents of the Jinja partials
+- `public/assets/app.css` — all styles
+- `public/assets/app.js` — localStorage research store + HTMX hydration + keyboard shortcuts
+- `public/metodologie.html` — static methodology page
+- `public/data/ui.db` — generated; not committed
+
+**Bookmarks, notes, tags** are stored in browser `localStorage` under the key `otios.research` (JSON, version 1). No server writes. Export/import is manual for now — use `tools/export_research_to_json.py` to seed from the Flask `research.db`.
+
+---
+
+**Last updated**: 2026-05-19
