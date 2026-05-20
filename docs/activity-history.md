@@ -4,6 +4,12 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-21 — Diacritic-insensitive search in Flask and PHP apps
+
+Added `word_normalized` column (ț→t, ș→s, ţ→t, ş→s, ă→a, â→a, î→i) to the words table in both the Flask in-memory DB and the PHP on-disk DB. Searching "otios" now finds "oțios"; "stramosesc" finds "strămoșesc". Both the normal word-list search and the audit-mode search respect the normalized form. PHP app updated in `_lib.php` (`normalize_diacritics()`) and `public/api/search.php`. Flask app updated in `ui/app.py` (`_strip_diacritics()`, registered as a SQLite custom function). `tools/build_ui_db.py` updated to populate the column and add an index.
+
+---
+
 ## 2026-05-21 — Audit pipeline: stratified sampling, labeling UI, report
 
 Added a full data-quality audit workflow to measure shortlist precision and recall across strata.

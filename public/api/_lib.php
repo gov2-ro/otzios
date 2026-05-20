@@ -57,6 +57,15 @@ function db(): PDO {
     return $pdo;
 }
 
+function normalize_diacritics(string $s): string {
+    $s = mb_strtolower($s, 'UTF-8');
+    return str_replace(
+        ['ț', 'ș', 'ţ', 'ş', 'ă', 'â', 'î'],
+        ['t', 's', 't', 's', 'a', 'a', 'i'],
+        $s
+    );
+}
+
 function e(?string $s): string {
     return htmlspecialchars($s ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }

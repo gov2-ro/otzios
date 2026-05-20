@@ -107,7 +107,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   Schema sketch: add `year_dist` (JSON), `domain_dist` (JSON) to `corpus_word_frequency`, or a separate `word_temporal` table keyed on `(word, corpus_name, year)`.
 
 
-- [ ] **#19 — [S, Med] Research UI: browse/filter by more metadata fields** — the filter bar currently exposes verdict, tier, and sort order. Useful additions:
+- [x] **#19 — [S, Med] Research UI: browse/filter by more metadata fields** — the filter bar currently exposes verdict, tier, and sort order. Useful additions:
 
   - **Domain filter** (`dex_domain` column) — already loaded in the `words` table. A `<select>` populated from distinct non-null domain values would let researchers exclude technical jargon (e.g. medicină, drept, informatică) from results, since a domain-specific word being rare in a general corpus is expected, not "forgotten".
   - **Etymology filter** (`dex_etymology`) — filter by language family (slavă, turcă, latină, franceză, engleză, etc.) to answer questions like "are Turkisms more likely to go extinct than Latinisms?"
@@ -187,7 +187,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] search bar also accepts metadata - filters. Later / nice to have enhancement: fancy search, like in gmail with autocomplete and style options. Search box also accepts filtering attributes.
 
-- [ ] **Diacritic-insensitive search** — searching `otios` should find `oțios`; `stramosesc` should find `strămoșesc`. Normalize both the query and the indexed word by stripping diacritics before matching (ț→t, ș→s, ă→a, â→a, î→i). Implement in the SQL WHERE clause using a pre-computed `word_normalized` column in the `words` table (populated at build time), or a SQLite custom function. Both PHP and Flask search endpoints need updating.
+- [x] **Diacritic-insensitive search** — searching `otios` should find `oțios`; `stramosesc` should find `strămoșesc`. Normalize both the query and the indexed word by stripping diacritics before matching (ț→t, ș→s, ă→a, â→a, î→i). Implement in the SQL WHERE clause using a pre-computed `word_normalized` column in the `words` table (populated at build time), or a SQLite custom function. Both PHP and Flask search endpoints need updating.
 
 - [ ] later show extended definition. everything in dexonline but compact
 

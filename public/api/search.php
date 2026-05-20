@@ -29,8 +29,10 @@ $conditions = ['word_tier = ?'];
 $params     = [$word_tier];
 
 if ($q !== '') {
-    $conditions[] = 'word LIKE ?';
+    $q_norm       = normalize_diacritics($q);
+    $conditions[] = '(word LIKE ? OR word_normalized LIKE ?)';
     $params[]     = '%' . $q . '%';
+    $params[]     = '%' . $q_norm . '%';
 }
 if ($verdict !== '') {
     $conditions[] = 'verdict = ?';

@@ -48,6 +48,13 @@ def _normalize_sep(val):
     return val.replace('; ', '|').replace(';', '|')
 
 
+_DIACRITIC_MAP = str.maketrans('țșţşăâî', 'tstsaai')
+
+
+def _strip_diacritics(s: str) -> str:
+    return s.lower().translate(_DIACRITIC_MAP)
+
+
 def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None:
     if not shortlist.exists():
         sys.exit(f'Missing: {shortlist}')
@@ -61,6 +68,7 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     conn.execute("""
         CREATE TABLE words (
             word             TEXT PRIMARY KEY,
+            word_normalized  TEXT,
             dex_frequency    REAL,
             verdict          TEXT,
             confidence_tier  TEXT,
@@ -201,13 +209,17 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
                 (kind, value, count),
             )
 
+    conn.create_function('strip_diacritics', 1, _strip_diacritics)
+    conn.execute('UPDATE words SET word_normalized = strip_diacritics(word)')
+
     # Indexes
-    conn.execute('CREATE INDEX idx_vocab_kind     ON vocab(kind)')
-    conn.execute('CREATE INDEX idx_words_verdict  ON words(verdict)')
-    conn.execute('CREATE INDEX idx_words_tier     ON words(confidence_tier)')
+    conn.execute('CREATE INDEX idx_vocab_kind      ON vocab(kind)')
+    conn.execute('CREATE INDEX idx_words_verdict   ON words(verdict)')
+    conn.execute('CREATE INDEX idx_words_tier      ON words(confidence_tier)')
     conn.execute('CREATE INDEX idx_words_word_tier ON words(word_tier)')
-    conn.execute('CREATE INDEX idx_words_word     ON words(word COLLATE NOCASE)')
-    conn.execute('CREATE INDEX idx_words_modern   ON words(modern_ppm)')
+    conn.execute('CREATE INDEX idx_words_word      ON words(word COLLATE NOCASE)')
+    conn.execute('CREATE INDEX idx_words_modern    ON words(modern_ppm)')
+    conn.execute('CREATE INDEX idx_words_normalized ON words(word_normalized)')
 
     conn.commit()
     conn.close()

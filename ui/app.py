@@ -41,6 +41,14 @@ def _bool(v: str) -> int | None:
     return None
 
 
+# ț/ş cedilla variants included for older encodings
+_DIACRITIC_MAP = str.maketrans('țșţşăâî', 'tstsaai')
+
+
+def _strip_diacritics(s: str) -> str:
+    return s.lower().translate(_DIACRITIC_MAP)
+
+
 def load_words(
     shortlist_path: Path,
     web_path: Path,
@@ -52,6 +60,7 @@ def load_words(
     conn.execute("""
         CREATE TABLE words (
             word             TEXT PRIMARY KEY,
+            word_normalized  TEXT,
             dex_frequency    REAL,
             verdict          TEXT,
             confidence_tier  TEXT,
@@ -156,6 +165,9 @@ def load_words(
             conn.execute('UPDATE words SET definition=? WHERE word=?', (definition, word))
         dconn.close()
 
+    conn.create_function('strip_diacritics', 1, _strip_diacritics)
+    conn.execute('UPDATE words SET word_normalized = strip_diacritics(word)')
+    conn.execute('CREATE INDEX idx_words_normalized ON words(word_normalized)')
     conn.commit()
     return conn
 
@@ -436,8 +448,9 @@ def _search_audit(stratum: str, q: str):
     sql = f'SELECT * FROM words WHERE word IN ({placeholders})'
     params: list = list(sample_words)
     if q:
-        sql += ' AND word LIKE ?'
-        params.append(f'%{q}%')
+        q_norm = _strip_diacritics(q)
+        sql += ' AND (word LIKE ? OR word_normalized LIKE ?)'
+        params.extend([f'%{q}%', f'%{q_norm}%'])
 
     rows = _words_db.execute(sql, params).fetchall()
     by_word = {r['word']: r for r in rows}
@@ -507,8 +520,9 @@ def search():
     conditions: list[str] = ['word_tier = ?']
     params: list = [word_tier if word_tier in ('forgotten', 'rare_in_use') else 'forgotten']
     if q:
-        conditions.append('word LIKE ?')
-        params.append(f'%{q}%')
+        q_norm = _strip_diacritics(q)
+        conditions.append('(word LIKE ? OR word_normalized LIKE ?)')
+        params.extend([f'%{q}%', f'%{q_norm}%'])
     if verdict:
         conditions.append('verdict = ?')
         params.append(verdict)
