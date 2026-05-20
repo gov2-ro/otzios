@@ -640,6 +640,45 @@
     .qt-btn.active .qt-key { background: #fef3c7; border-color: #d97706; color: #92400e; }
     .qt-btn[data-qtkey="x"].active { background: #fef2f2; border-color: #dc2626; color: #991b1b; font-weight: 700; box-shadow: 0 0 0 1px #dc2626; }
     .qt-btn[data-qtkey="x"].active .qt-key { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
+
+    /* Audit mode */
+    .audit-row-bar { background: #fff7e6 !important; border-bottom: 1px solid #d97706 !important; }
+    .audit-strata-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; width: 100%; }
+    .audit-stratum-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 7px; border-radius: 3px; cursor: pointer;
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
+      user-select: none;
+    }
+    .audit-stratum-pill input { display: none; }
+    .audit-stratum-pill.audit-incl { border-left: 3px solid #1a56db; }
+    .audit-stratum-pill.audit-excl { border-left: 3px solid #6b7280; opacity: .85; }
+    .audit-stratum-pill:hover { background: #fffbeb; }
+    .audit-stratum-pill.active { background: #1f1d1a; color: #fcfbf7; border-color: #1f1d1a; }
+    .audit-stratum-pill.active .audit-progress { color: #fcfbf7; opacity: .7; }
+    .audit-progress { font-size: 9px; opacity: .55; font-variant-numeric: tabular-nums; }
+    .audit-row {
+      display: inline-flex; flex-wrap: wrap; gap: 3px;
+      padding: 3px 6px; margin-right: 6px;
+      background: #fff7e6; border: 1px dashed #d97706; border-radius: 3px;
+    }
+    .audit-btn {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 6px; height: 22px;
+      border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
+      border-radius: 3px; cursor: pointer;
+      font-family: var(--sans); font-size: 11px; font-weight: 500;
+    }
+    .audit-btn:hover { border-color: #d97706; background: #fffbeb; color: var(--text); }
+    .audit-btn.active { background: #fffbeb; border-color: #d97706; color: #92400e; font-weight: 700; box-shadow: 0 0 0 1px #d97706; }
+    .audit-btn .qt-key {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 2px;
+      padding: 0 4px; font-family: var(--mono); font-size: 9px; font-weight: 700;
+      color: var(--text-2);
+    }
+    .audit-btn.active .qt-key { background: #fef3c7; border-color: #d97706; color: #92400e; }
+    .word-row.audit-labeled { opacity: .55; }
     .tag {
       display: inline-flex;
       align-items: center;
@@ -878,6 +917,15 @@
         hx-trigger="change"
         hx-target="#word-list"
         hx-include="#filter-form">
+
+    {% if audit_mode %}
+    <input type="hidden" name="audit" value="1">
+    <div class="filter-row audit-row-bar">
+      {% set progress = audit_progress %}
+      {% set current = '' %}
+      {% include 'partials/audit_strata.html' %}
+    </div>
+    {% endif %}
 
     <!-- Row 1: search + utility controls -->
     <div class="filter-row">
@@ -1136,6 +1184,48 @@
         const btn = document.querySelector('#detail-panel .qt-btn[data-qtkey="' + e.key + '"]');
         if (btn) { e.preventDefault(); btn.click(); }
         return;
+      }
+      // Audit mode: uppercase reserved keys → click matching audit-btn
+      if ('KIVLDJMOX'.indexOf(e.key) !== -1) {
+        const abtn = document.querySelector('#audit-row .audit-btn[data-akey="' + e.key + '"]');
+        if (abtn) { e.preventDefault(); abtn.click(); }
+        return;
+      }
+    });
+
+    // Audit mode: append audit=1 to every /word/ request so the detail panel
+    // includes the audit-verdict button row.
+    {% if audit_mode %}
+    document.body.addEventListener('htmx:configRequest', function(evt) {
+      const path = evt.detail.path || '';
+      if (path.startsWith('/word/')) {
+        evt.detail.parameters['audit'] = '1';
+      }
+    });
+    {% endif %}
+
+    // Audit mode auto-advance: after a label is applied, jump to next unlabeled word
+    document.body.addEventListener('audit-advance', function() {
+      const all = rows();
+      if (!all.length) return;
+      // Mark the current row as labeled so it won't be picked again
+      const cur = (selectedIdx >= 0) ? all[selectedIdx] : null;
+      if (cur) cur.classList.add('audit-labeled');
+      // Find next unlabeled row at or after current selection; fall back to wrap-around
+      const start = selectedIdx >= 0 ? selectedIdx : 0;
+      let next = -1;
+      for (let off = 1; off <= all.length; off++) {
+        const i = (start + off) % all.length;
+        if (!all[i].classList.contains('audit-labeled')) { next = i; break; }
+      }
+      if (next >= 0) selectRow(next);
+      // Refresh the stratum picker so its count ticks up
+      const picker = document.getElementById('audit-strata');
+      if (picker) {
+        const checked = picker.querySelector('input[name=stratum]:checked');
+        const sval = checked ? checked.value : '';
+        htmx.ajax('GET', '/audit/strata?stratum=' + encodeURIComponent(sval),
+                  { target: '#audit-strata', swap: 'outerHTML' });
       }
     });
 

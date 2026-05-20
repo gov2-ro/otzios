@@ -29,7 +29,7 @@ $tiers = [
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Oțios — Cuvinte Uitate</title>
-  <meta property="og:title" content="Oțios — Cuvinte Uitate">
+  <meta property="og:title" content="Oțios — cuvinte uitate">
   <meta property="og:description" content="Exploratory tool to identify forgotten Romanian words from official dictionaries that have fallen out of modern usage.">
   <meta property="og:image" content="<?= BASE ?>/screenshot-otzios.png">
   <meta property="og:type" content="website">
@@ -153,7 +153,7 @@ $tiers = [
 
   <div id="status-bar">
     <span class="status-left"><span id="status-word-count"><?= (int)$total ?> words</span> · <span id="bookmark-count">0</span> bookmarked</span>
-    <span class="status-right"><a href="<?= BASE ?>/metodologie.html" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">🧐 metodologie</a> &nbsp; &middot; &nbsp; <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">GitHub</a> &nbsp; &middot; &nbsp; <a href="#" onclick="showShortcuts();return false;" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'"><kbd>?</kbd> shortcuts</a></span>
+    <span class="status-right"><a href="<?= BASE ?>/metodologie.html" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'"><span style="transform: scale(1.3);">🧐</span> metodologie</a> &nbsp; &middot; &nbsp; <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">GitHub</a> &nbsp; &middot; &nbsp; <a href="#" onclick="showShortcuts();return false;" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'"><kbd>?</kbd> shortcuts</a></span>
   </div>
 
   <datalist id="tag-suggestions"></datalist>
@@ -188,5 +188,7 @@ $tiers = [
 
   <script>var OTIOS_BASE = '<?= BASE ?>';</script>
   <script src="<?= BASE ?>/assets/app.js"></script>
+  <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+  <noscript><img src="https://queue.simpleanalyticscdn.com/noscript.gif" alt="" referrerpolicy="no-referrer-when-downgrade"/></noscript>
 </body>
 </html>

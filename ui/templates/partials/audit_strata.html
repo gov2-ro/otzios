@@ -1,0 +1,11 @@
+<div id="audit-strata" class="audit-strata-row">
+  <span class="flabel" title="Audit-mode sample picker">audit</span>
+  {% for p in progress %}
+  <label class="pill audit-stratum-pill {{ 'audit-incl' if p.kind == 'incl' else 'audit-excl' }}{% if current == p.stratum %} active{% endif %}"
+         title="{{ p.stratum }} — {{ p.labeled }}/{{ p.total }} labeled">
+    <input type="radio" name="stratum" value="{{ p.stratum }}"{% if current == p.stratum %} checked{% endif %}>
+    {{ p.stratum.replace('tier_a_', 'A·').replace('tier_b_', 'B·').replace('tier_c_', 'C·').replace('rare_in_use', 'rare').replace('excl_', '✗·') }}
+    <span class="audit-progress">{{ p.labeled }}/{{ p.total }}</span>
+  </label>
+  {% endfor %}
+</div>

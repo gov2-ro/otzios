@@ -205,11 +205,15 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **Extract inline CSS to `ui/static/app.css`** — `ui/templates/base.html` carries ~870 lines of inline styles. Move to a static stylesheet so it can be cached + edited without touching templates. Set up Flask's static directory if not already wired.
 
+- [ ] do we actually need the word search bar? Does word search add any overhead? Word exploration/discovery should be done by categories, this is not a dictionary. Maybe turn it into attribute search bar. 
+
+- [ ] final list of words, mark some, then pass through llm to filter some more.
+
 - [ ] Meta tags, Open Graph fields, description og image etc
 
 - [ ] web ui: follow schema.org for appropriate entities - add to claude.md maybe?
 
-- [ ] SEO Audit. INcluding `/llms.txt` 
+- [ ] SEO Audit. Including `/llms.txt` 
 
 ## Misc
 
@@ -218,6 +222,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [x] tune parameters until it includes `oțios` – maybe use a flag to hide these other, second tier words (new words beyond  current list/limits). What we would also like to surface would be words that are rarely used, but worth attention. The sweet spot might not be totally forgotten words, but let's see which are the rare words but still in use. For the UI we could use a global switch flag. Which corpus to browse, forgotten or rarely used terms?
   - **Resolved (pipeline side)**: `validate_with_wordfreq.py` now emits a `tier` column (`forgotten` / `rare_in_use` / `common`) alongside the existing `is_forgotten` bool. Default thresholds: `--threshold 3.0` (lower, forgotten floor) / `--upper-threshold 4.5` (upper, common cutoff). Rare-in-use words (3.0 ≤ zipf < 4.5) are written to a separate `data/processed/rare_words_wordfreq.csv` so they don't contaminate the forgotten list. Note: `oțios` itself has zero corpus signal (zipf=0.000) so it lands in `forgotten`, not `rare_in_use`.
   - **Still open (UI side)**: add a global switch in the web UI to toggle between the forgotten-words list and the rare-in-use list.
+
+- [ ] maybe we should also look in the dictionaries themselves. Are we including really old dictionaries? We could make a page with per dictionary `diff`? Does dexonline dump cover all dictionaries listed here: https://clre.solirom.ro/  https://clre.solirom.ro/content/ro/list-of-lexicographical-works.html https://clre.solirom.ro/content/ro/statistics.html 
 
 - [ ] handle in browser curration - choices saved in browser memory and can be exported as json
 
@@ -259,6 +265,11 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] traffic analytics
 - [ ] SEO webmasters registrations
 
+### Extend
+
+- quizzes
+- flash cards
+
 ## 260519 Data Audit
 
 - [ ] some terms still lack definitions, although they are present (the definitions) on dexonline. Ex: 
@@ -275,7 +286,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [x] cuvinte rare has waay too many common words: manipulat, mediere, adițională, agravat, neurologie, organizatoare, cowboy, spitalizare – but still **not** `oțios`?!
   - **Resolved**: `validate_with_wordfreq.py` now gates `rare_in_use` on non-empty `dex_register` — words with Zipf 3.0–4.5 but no register tag fall to `common`. Rare list: 11,668 → 469. `oțios` addressed by Tier C in `make_shortlist.py` (`dex_absent_highfreq`, threshold dex_frequency ≥ 0.85); now appears in UI.
 
-- [ ] all forms of terms listed, ex: `bleuit`, `bleuire`, `bleui` – could we just show one entry? Also `blehui`, `blehuire`, `blehuit` – root word, `bleau`. IF root word not in list we should also remove references? Most words in rare --> filter --> popular. 
+- [ ] all forms of terms listed, ex: `bleuit`, `bleuire`, `bleui` – could we just show one entry (as a bundle)? Also `blehui`, `blehuire`, `blehuit` – root word, `bleau`. IF root word not in list we should also remove references? Most words in rare --> filter --> popular. 
 
 - [ ] `cimbru` appears at `rare` / filter: `în comparații / la comparativ`. 
 

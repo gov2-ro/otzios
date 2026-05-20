@@ -4,6 +4,18 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-21 — Audit pipeline: stratified sampling, labeling UI, report
+
+Added a full data-quality audit workflow to measure shortlist precision and recall across strata.
+
+**`audit_sample.py`** — draws a stratified random sample (default 100 words/stratum) from all 10 strata: included tiers (tier_a_extinct, tier_a_declining, tier_a_historical, tier_b_invechit, tier_c_absent_highfreq, rare_in_use) and excluded buckets (excl_pos, excl_absent_lowdex, excl_stable_emerging, excl_other). Sample stored in `data/research.db:audit_sample`. CLI: `--n`, `--seed`, `--reset`, `--strata`, `--stats`.
+
+**`audit_report.py`** — aggregates `audit:*` tags from labeled words into a stratum × label markdown table (`docs/audit/YYYY-MM-DD-summary.md`) and per-cell word lists (`data/audit/<stratum>_<label>.txt`). Counts `keep`, `inflection`, `variant`, `loanword`, `dialect`, `jargon`, `no_def`, `other` for included tiers; `keep`/`correctly_out`/`no_def`/`other` for excluded buckets. Coverage table shows labeled/total per stratum.
+
+**Flask audit mode** (`?audit=1`) — orange audit bar replaces the normal filter row with 10 stratum radio-pills (A·extinct, B·invechit, ✗·pos, etc.) each showing labeled/total progress. Selecting a stratum scopes the word list to that sample; unlabeled words sort first. Detail panel gains a row of one-key verdict buttons: K/I/V/L/D/J/M/O for included strata, K/X/M/O for excluded. Keyboard shortcuts fire via `htmx:configRequest` injection of `?audit=1` on every `/word/` request. After each label, auto-advance moves to the next unlabeled word and refreshes the stratum counter via `/audit/strata`. Words from excluded strata (not in the shortlist) are pulled from `forgotten_words_diachronic.csv` at startup so the detail panel doesn't 404. Audit tags are stored in `bookmarks.tags` as `audit:*` entries and are filtered out of the normal tag display.
+
+---
+
 ## 2026-05-19 — Add Tier C to shortlist; fix rare list quality
 
 Two pipeline fixes to address the 260519 Data Audit:

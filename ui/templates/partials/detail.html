@@ -34,6 +34,22 @@
       {% set word = w.word %}
       {% set bookmarked = w.bookmarked %}
       {% include 'partials/bookmark_btn.html' %}
+      {% if audit_mode and audit_tags %}
+      <div id="audit-row" class="audit-row" data-audit="1">
+        {% for tag, key, label in audit_tags %}
+        <button type="button"
+                class="audit-btn{% if tag in w.tags %} active{% endif %}"
+                data-akey="{{ key }}"
+                title="{{ label }} ({{ key }})"
+                hx-post="/tag/{{ word | urlencode }}/toggle/{{ tag | urlencode }}"
+                hx-target="#tags-row"
+                hx-swap="outerHTML"
+                hx-on::after-request="document.body.dispatchEvent(new CustomEvent('audit-advance'))">
+          <span class="qt-key">{{ key }}</span>{{ label }}
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
       {% set tags = w.tags %}
       {% include 'partials/tags_row.html' %}
     </div>
