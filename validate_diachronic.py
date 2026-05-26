@@ -242,18 +242,26 @@ def load_corpus_freqs(conn: sqlite3.Connection,
 
 def load_taxonomy(lexemes_db: Path) -> dict:
     """Return {word_lower: {register, domain, etymology, pos}} from Tag/ObjectTag/EntryLexeme.
-    Returns empty dict with a warning if tables are absent (run extract_taxonomy.py first)."""
+    Returns empty dict with a warning if tables are absent (run extract_taxonomy.py first).
+
+    In addition to tags under the standard register (42), domain (41), and etymology (1)
+    hierarchies, captures three root-level tags that DEX applies directly to meanings:
+      6  = rar          (rare usage)        → register
+      17 = regional     (regional form)     → register; children = Banat, Moldova, etc.
+      239 = ieșit din uz (fallen out of use) → register
+    """
     conn = sqlite3.connect(lexemes_db)
     try:
         rows = conn.execute("""
-            SELECT lower(l.formNoAccent), t.parentId, t.isPos, t.value
+            SELECT lower(l.formNoAccent), t.id, t.parentId, t.isPos, t.value
             FROM Lexeme l
             JOIN EntryLexeme el ON el.lexemeId = l.id
             JOIN TreeEntry te ON te.entryId = el.entryId
             JOIN MeaningTree m ON m.tree_id = te.treeId
             JOIN ObjectTag ot ON ot.objectId = m.meaning_id AND ot.objectType = 3
             JOIN Tag t ON t.id = ot.tagId
-            WHERE t.parentId IN (1, 41, 42) OR t.isPos = 1
+            WHERE t.parentId IN (1, 6, 17, 41, 42) OR t.isPos = 1
+               OR t.id IN (6, 17, 239)
         """).fetchall()
     except sqlite3.OperationalError:
         print("  [taxonomy] Tag/TreeEntry/MeaningTree tables not found — run extract_taxonomy.py to enable taxonomy columns")
@@ -261,14 +269,15 @@ def load_taxonomy(lexemes_db: Path) -> dict:
     finally:
         conn.close()
 
-    parent_to_family = {1: 'etymology', 41: 'domain', 42: 'register'}
+    parent_to_family = {1: 'etymology', 6: 'register', 17: 'register', 41: 'domain', 42: 'register'}
+    tag_id_family   = {6: 'register', 17: 'register', 239: 'register'}
     taxonomy: dict = {}
-    for word, parent_id, is_pos, tag_value in rows:
+    for word, tag_id, parent_id, is_pos, tag_value in rows:
         entry = taxonomy.setdefault(word, {'register': set(), 'domain': set(), 'etymology': set(), 'pos': set()})
         if is_pos:
             entry['pos'].add(tag_value)
         else:
-            family = parent_to_family.get(parent_id)
+            family = parent_to_family.get(parent_id) or tag_id_family.get(tag_id)
             if family:
                 entry[family].add(tag_value)
     return taxonomy

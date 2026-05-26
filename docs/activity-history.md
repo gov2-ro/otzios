@@ -4,6 +4,14 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-27 — Garbled definitions fix, rar/regional/ieșit-din-uz taxonomy tags
+
+**Garbled definitions fix:** Root cause: `_parse_values` in `extract_definitions.py` handled `\'` and `\\` but not `\n`/`\r`/`\t` — these appeared as literal `n` + surrounding dump indentation spaces (e.g. `"Acțiunea den       a ( se ) abaten         n       și rezultatul ei."`). Fix: complete escape table in the parser + `re.sub(r'\s+', ' ', ...)` whitespace normalization in `_clean`. Re-ran `extract_definitions.py` (50,678 headwords from DefinitionSimple) then `scrape_definitions.py --merge-only` (19,835 scraped rows on top). Garbled count in `definitions.db`: 3,152 → 0.
+
+**New register tags — rar, regional, ieșit din uz:** Three semantically important DEX tags (ids 6, 17, 239) have `parentId=0` (root level) and were silently missed by `load_taxonomy()` which filtered only `parentId IN (1, 41, 42)`. Extended the SQL `WHERE` clause and `parent_to_family` map to include them and their children (Banat, Moldova, Transilvania, etc. as sub-tags of `regional`). Result in register vocab: `regional` 3,202 words, `rar` 2,463, `ieșit din uz` 95. All now available in the register filter dropdown. Re-ran full pipeline: `validate_diachronic.py` → `make_shortlist.py` → `build_ui_db.py`.
+
+---
+
 ## 2026-05-27 — Definition scrape completion, dictionary coverage count (#21)
 
 **Definition scrape completion:** Pass 3 scraped 21,110 words (started 26 May, finished overnight). Merged 19,157 ok rows into `definitions.db`. Rebuilt `ui.db` → 26,279 words now have definitions.

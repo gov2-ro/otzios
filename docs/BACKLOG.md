@@ -238,7 +238,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [x] **definitions.db has severe word→definition misalignment** — `abac` (abacus) is paired with a bacteremia definition; `vânzător` gets a paranasal osteoma definition; `acătarii` has no entry at all despite dexonline showing one. The DB has 83,609 rows so the content is present, but the word↔text association is broken. Likely cause: the extraction script joins on a row offset or integer key that doesn't stably map across tables (e.g. `Lexeme.id` vs `Meaning.entryId` vs `Entry.id` — a multi-hop join gone wrong). Fix: re-examine the extraction query against the DEX MySQL schema; spot-check 10–20 words against dexonline.ro to confirm the join path. Related: the existing `drăngălău` note below.
   - **Resolved**: root cause was a misunderstood schema, not a join error. `DefinitionSimple.lexicon` is the headword (despite the misleading column name), not a dictionary identifier. The old code joined `Lexeme → EntryLexeme → EntryDefinition → DefinitionSimple` and picked the rank-1 definition for each Entry, but Entry records group multiple related-but-distinct words, so the rank-1 definition is often about a *different* word. Fixed by reading `DefinitionSimple.lexicon` directly as the headword key. See commit 8113dbf and `docs/DEFINITIONS_ANALYSIS.md`. Gaps still in the dump are filled by `scrape_definitions.py` (synthesis tab from dexonline.ro).
 
-- [ ] **Garbled definitions from DEX dump extraction** — ~46k definitions loaded from `DefinitionSimple` via `extract_definitions.py` contain malformed text with spurious whitespace and embedded markup artifacts, e.g. `"Acțiunea den       a ( se ) abaten         n       și rezultatul ei."` The dump's `internalRep`-style markup (word references, verb forms) wasn't stripped cleanly. Scraped definitions (from `scrape_definitions.py`) are clean. Fix options: (1) re-run `extract_definitions.py` with better markup stripping; (2) prefer scraped definition over dump definition when both exist for the same word. Check scale: `SELECT COUNT(*) FROM definitions WHERE definition LIKE '%  %'`.
+- [x] **Garbled definitions from DEX dump extraction** — Root cause: `_parse_values` parsed `\n` as the literal letter `n`, leaving dump indentation spaces in the output. Fixed: added full escape table (`\n`, `\r`, `\t`) + `re.sub(r'\s+', ' ')` normalization in `_clean`. Re-ran `extract_definitions.py` + `--merge-only`. Garbled count: 3,152 → 0.
 
 - [ ] **domain taxonomy contains compound nodes with semicolons** — some DEX `dex_domain` values are compound strings from the source taxonomy: `'mineralogie; minerit'`, `'cinema; cinematografie'`, `'fonetică; fonologie'`, `'farmacie; farmacologie'`. These are stored and filtered as single pipe-delimited tokens (which is correct for exact-match filtering), but the UI dropdown shows the full compound string. Two open questions: (1) should the filter split on `;` to allow filtering by `mineralogie` alone? (2) are these compound nodes semantically intentional in DEX, or are they artifacts of how the tag hierarchy was imported? Check the `Tag` table: if `'mineralogie; minerit'` is a single row with that literal name, it's intentional; if it's two rows joined somewhere, the extraction is concatenating them incorrectly.
 
@@ -254,7 +254,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] also filter by: masculin, feminin, neutru.
 
-- [ ] I also see on dexoline the tag 'rar' but in our interface filters I only see 'învechit' see [săhăstricesc](https://dexonline.ro/definitie/săhăstricesc)
+- [x] I also see on dexoline the tag 'rar' but in our interface filters I only see 'învechit' see [săhăstricesc](https://dexonline.ro/definitie/săhăstricesc) — Fixed: `rar` (id=6), `regional` (id=17), `ieșit din uz` (id=239) were root-level DEX tags missed by the `parentId IN (1,41,42)` filter. Extended taxonomy loader to capture them and their children (Banat, Moldova, etc.). `rar`: 2,463 words; `regional`: 3,202; `ieșit din uz`: 95.
 
 - [ ] **Subtitle corpus from new DEX dump** — `Subtitle` table in `dex-database.sql` has 13 M pre-tokenised Romanian word tokens from 966 YouTube clips (Digi24 news). Quick sample: 89k tokens → 11,240 unique types; top words are normal function words. Estimated 1.4% shortlist word coverage in sample (scales to ~20% at full 13M tokens). Too small to replace CulturaX as primary corpus, but valuable as a modern spoken-register spot-check. To use: write `process_subtitles.py` that extracts `SELECT word, COUNT(*) FROM Subtitle GROUP BY word` via `extract_lexemes.parse_mysql_insert` (or a dedicated streaming extractor) and loads into `corpus_frequencies.db` under `corpus_name='subtitle_ro'`. VideoClip table links clipId → YouTube videoId (11-char IDs) if metadata is needed.
 
@@ -264,6 +264,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] traffic analytics
 - [ ] SEO webmasters registrations
+- [ ] write scientific paper(s). 1. method, 2. conclusions – co-publish with academic?
+- [ ] write articles, scena9 or such
 
 ### Extend
 

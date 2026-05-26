@@ -50,7 +50,8 @@ def _parse_values(values_str: str) -> list[list]:
             if in_str:
                 if c == '\\' and i + 1 < n:
                     nxt = values_str[i + 1]
-                    field.append("'" if nxt == "'" else ('\\' if nxt == '\\' else nxt))
+                    _ESC = {"'": "'", '\\': '\\', 'n': '\n', 'r': '\r', 't': '\t'}
+                    field.append(_ESC.get(nxt, nxt))
                     i += 2
                     continue
                 elif c == "'":
@@ -74,9 +75,11 @@ def _parse_values(values_str: str) -> list[list]:
     return rows
 
 
+import re as _re
+
 def _clean(v: str) -> str | None:
-    v = v.strip()
-    return None if v == 'NULL' else v
+    v = _re.sub(r'\s+', ' ', v).strip()
+    return None if v == 'NULL' else v or None
 
 
 def extract(sql_path: Path, out_path: Path) -> int:
