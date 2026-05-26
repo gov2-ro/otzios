@@ -18,7 +18,7 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 - [ ] **Frequency-bin definitions disagree across scripts** — `analyze_forgotten_words.py` uses 0.25/0.50/0.70; `create_curated_list.py:131-138` uses 0.30/0.50 with a 0.60 ceiling; `validate_forgotten_words.py:67` filters 0.01–0.60. No shared `constants.py`. Changing one requires hunting down the others.
 
-- [ ] **Regex probable typo in `create_curated_list.py:28-32`** — `r"^[a-z]+-[a-z]+'"` has a trailing apostrophe. Verify intent; likely a bug.
+- [x] **Regex probable typo in `create_curated_list.py:28-32`** — Fixed: removed trailing apostrophe from `r"^[a-z]+-[a-z]+'"` so the hyphenation filter now actually fires. Was dead code (matched 0 words in the shortlist).
 
 - [ ] **OSCAR auth fails silently** (`process_corpus.py:255-261`) — when `--full` is requested but the dataset is unreachable, the run silently skips OSCAR. Should fail loudly or warn clearly.
 
@@ -46,7 +46,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **#3 — [S, Med] Pick one MySQL→SQLite path; archive the others** — `extract_lexemes.py` is canonical; archive `convert_to_sqlite.sh` + `mysql_to_sqlite.py`.
 
-- [ ] **#4 — [XS, Low] Delete `explore_dex.py`** — move any useful content to `docs/`.
+- [x] **#4 — [XS, Low] Delete `explore_dex.py`** — Deleted. Content was narrative documentation that couldn't run; the useful structural notes are covered by `docs/conceptual-roadmap.md` and `CLAUDE.md`.
 
 - [ ] **#5 — [S, Med] Centralize frequency bins in `constants.py`** — eliminates the three-way disagreement.
 
@@ -94,7 +94,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] **#19 — [XS, Low] Annotation overlay overflow for heavily-annotated words** — Capped at 3 emojis + `+N` superscript in muted mono for the remainder. Template now builds `_ov.items` list instead of string; slices `[:3]` and appends `<span class="ann-more">+N</span>`.
 
-- [ ] **#20 — [S, Low] Annotation overlay goes stale after in-panel mutations** — When the user toggles a bookmark or adds/removes a tag via the detail panel, the word chip in the grid is not re-rendered (HTMX only swaps the detail panel / tag row). The `ann-overlay` emoji stays stale until the next search trigger. Fix: add an HTMX OOB swap from `/bookmark/<word>` and `/tag/<word>/*` routes that re-renders the affected `.word-row`.
+- [x] **#20 — [S, Low] Annotation overlay goes stale after in-panel mutations** — Fixed via HTMX OOB swap: `/bookmark/<word>` and `/tag/<word>/*` routes now re-render the affected `.word-row` partial alongside the detail panel swap so the overlay emoji stays current without a search trigger.
 
 - [ ] **#18 — [L, Med] Extract per-document metadata from corpora for temporal and domain signals** — Currently both corpus scripts discard document-level metadata and only keep aggregate word counts. Two signals worth extracting:
 
@@ -141,7 +141,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - `t` focuses the free-form tag input. Input is bound to `<datalist id="tag-suggestions">` populated server-side from `/tags/suggest` (distinct tags across all bookmarks). Stale until reload acceptable for v1.
   - Update shortcuts modal + status bar with the new bindings.
 
-- [ ] **#21 — [M, Med] Factor in dictionary coverage (how many dictionaries list a term)** — DEX Online aggregates entries from multiple source dictionaries (DEX '98, DEX '09, MDA, NODEX, DLRLC, Scriban, Șăineanu, etc.). A word appearing in only one source — especially an older or specialised one — is a different kind of rare than one that appears in every modern dictionary. Add a per-word `dict_count` (and optionally `dict_sources` list) column derived from the `Definition.sourceId` → `Source` join in `lexemes.db`, then surface it in the curated/diachronic CSVs and as a filter/sort in the research UI (#19). Likely useful as an additional axis in the "forgotten" verdict: low corpus frequency + low dictionary coverage = stronger signal than low corpus frequency alone.
+- [x] **#21 — [M, Med] Factor in dictionary coverage (how many dictionaries list a term)** — Done. `dict_count` (distinct `sourceId`s per headword) streamed from DEX MySQL dump in `validate_diachronic.py:_load_dict_counts()` (~12s for 301k headwords). Column flows through `make_shortlist.py` → `build_ui_db.py` → UI `words` table; displayed as a `<em>dicts</em>N` chip in `detail.html`.
 
 - [ ] also have a look at [wiktionary](https://ro.wiktionary.org/)
 

@@ -4,6 +4,16 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-27 — Regex fix, dead code removal, BACKLOG housekeeping
+
+Fixed dead regex in `create_curated_list.py:80`: `r"^[a-z]+-[a-z]+'"` had a trailing apostrophe that caused the hyphenated-word filter to match zero words. Removed the apostrophe so compound/multi-word entries (chaise-longue, mai-mare, calea-valea, etc.) are now correctly excluded from the curated candidate list. Re-ran pipeline (`validate_diachronic.py` → `make_shortlist.py` → `build_ui_db.py`).
+
+Deleted `explore_dex.py` (dead code: connects sqlite3 to a `.sql` file; content is narrative documentation, now redundant with `CLAUDE.md`).
+
+Marked completed BACKLOG items: regex typo, #4 (explore_dex.py), #20 (OOB swap for stale overlay), #21 (dict_count).
+
+---
+
 ## 2026-05-27 — Type-ahead word navigation; annotation overflow cap
 
 **Type-ahead navigation:** Pressing any unbound printable character (when not focused on an input) accumulates in a 1.2s buffer and jumps to the first visible word whose text starts with the buffer (diacritic-insensitive: ț→t, ș→s, ă→a, â→a, î→i). Multi-character sequences narrow the match. Documented in the shortcuts modal as "a–z: jump to matching word".

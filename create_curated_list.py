@@ -77,7 +77,7 @@ def is_romanian_word(word):
     foreign_patterns = [
         r'^[A-Z][a-z]+ [A-Z]',  # "El Alamein" pattern
         r' ',  # Multi-word phrases (many are Latin/foreign)
-        r"^[a-z]+-[a-z]+'",  # Strange hyphenation
+        r"^[a-z]+-[a-z]+",  # Hyphenated multi-word expressions
     ]
 
     for pattern in foreign_patterns:
