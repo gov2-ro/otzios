@@ -48,9 +48,9 @@ TIER_ORDER = {
 
 OUT_FIELDS = [
     'word', 'dex_frequency', 'description', 'dex_pos',
-    'verdict', 'log_ratio', 'hist_ppm', 'modern_ppm',
+    'verdict', 'log_ratio', 'hist_ppm', 'modern_ppm', 'subtitle_ppm',
     'dex_register', 'dex_domain', 'dex_etymology',
-    'confidence_tier', 'is_forgotten', 'has_definition',
+    'confidence_tier', 'is_forgotten', 'has_definition', 'dict_count',
 ]
 
 

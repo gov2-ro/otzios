@@ -81,7 +81,8 @@ def load_words(
             last_seen_approx TEXT,
             provider         TEXT,
             definition       TEXT,
-            word_tier        TEXT DEFAULT 'forgotten'
+            word_tier        TEXT DEFAULT 'forgotten',
+            dict_count       INTEGER
         )
     """)
 
@@ -96,8 +97,8 @@ def load_words(
                 """INSERT OR IGNORE INTO words
                    (word, dex_frequency, verdict, confidence_tier, log_ratio,
                     hist_ppm, modern_ppm, subtitle_ppm, dex_pos, dex_register, dex_domain,
-                    dex_etymology, is_forgotten, has_definition, word_tier)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    dex_etymology, is_forgotten, has_definition, word_tier, dict_count)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     row['word'],
                     _float(row.get('dex_frequency', '')),
@@ -114,6 +115,7 @@ def load_words(
                     _bool(row.get('is_forgotten', '')),
                     _bool(row.get('has_definition', '')),
                     'forgotten',
+                    _int(row.get('dict_count', '')),
                 ),
             )
 
@@ -236,8 +238,8 @@ def _augment_with_audit_samples(words_conn: sqlite3.Connection,
                 """INSERT OR IGNORE INTO words
                    (word, dex_frequency, verdict, log_ratio, hist_ppm, modern_ppm,
                     subtitle_ppm, dex_pos, dex_register, dex_domain, dex_etymology,
-                    is_forgotten, has_definition, word_tier)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    is_forgotten, has_definition, word_tier, dict_count)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     w,
                     _float(row.get('dex_frequency', '')),
@@ -253,6 +255,7 @@ def _augment_with_audit_samples(words_conn: sqlite3.Connection,
                     _bool(row.get('is_forgotten', '')),
                     _bool(row.get('has_definition', '')),
                     'audit_only',
+                    _int(row.get('dict_count', '')),
                 ),
             )
             inserted += 1

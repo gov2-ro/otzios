@@ -40,6 +40,107 @@ FREQ_DB       = Path('data/processed/corpus_frequencies.db')
 CURATED_CSV   = Path('data/processed/forgotten_words_curated.csv')
 OUTPUT_CSV    = Path('data/processed/forgotten_words_diachronic.csv')
 DEFINITIONS_DB = Path('data/processed/definitions.db')
+DEX_SQL_PATH   = Path('data/dictionaries/dex-database.sql')
+
+_DEF_INSERT_PREFIX = "INSERT INTO `Definition` VALUES "
+
+
+def _load_dict_counts(sql_path: Path) -> dict[str, int]:
+    """Count distinct source dictionaries per headword from the Definition table.
+
+    Streams the MySQL dump and reads only columns 2 (sourceId) and 3 (lexicon)
+    from each row, skipping the large internalRep field for speed.
+    Returns {normalized_word: count_of_distinct_dicts}.
+    """
+    if not sql_path.exists():
+        return {}
+
+    word_sources: dict[str, set] = {}
+    n_prefix = len(_DEF_INSERT_PREFIX)
+
+    with open(sql_path, encoding='utf-8', errors='replace') as f:
+        for line in f:
+            if not line.startswith(_DEF_INSERT_PREFIX):
+                continue
+            s = line[n_prefix:].rstrip('\n')
+            if s.endswith(';'):
+                s = s[:-1]
+            i = 0
+            n = len(s)
+            while i < n:
+                # find tuple start
+                while i < n and s[i] != '(':
+                    i += 1
+                if i >= n:
+                    break
+                i += 1  # skip '('
+
+                # skip column 0 (id) and column 1 (userId) — integers
+                for _ in range(2):
+                    while i < n and s[i] not in (',', ')'):
+                        i += 1
+                    if i < n and s[i] == ',':
+                        i += 1
+
+                # column 2: sourceId (integer)
+                sid_start = i
+                while i < n and s[i] not in (',', ')'):
+                    i += 1
+                source_id = s[sid_start:i].strip()
+                if i < n and s[i] == ',':
+                    i += 1
+
+                # column 3: lexicon (quoted string or NULL)
+                lexicon = None
+                if i < n and s[i] == "'":
+                    i += 1
+                    buf: list[str] = []
+                    while i < n:
+                        c = s[i]
+                        if c == '\\' and i + 1 < n:
+                            nxt = s[i + 1]
+                            buf.append("'" if nxt == "'" else ('\\' if nxt == '\\' else nxt))
+                            i += 2
+                        elif c == "'":
+                            i += 1
+                            break
+                        else:
+                            buf.append(c)
+                            i += 1
+                    lexicon = ''.join(buf)
+                elif s[i:i+4] == 'NULL':
+                    i += 4
+
+                if lexicon and source_id:
+                    norm = normalize(lexicon)
+                    if norm not in word_sources:
+                        word_sources[norm] = set()
+                    word_sources[norm].add(source_id)
+
+                # skip past the rest of this tuple (internalRep etc.)
+                depth = 1
+                in_str = False
+                while i < n and depth > 0:
+                    c = s[i]
+                    if in_str:
+                        if c == '\\' and i + 1 < n:
+                            i += 2
+                        elif c == "'":
+                            in_str = False
+                            i += 1
+                        else:
+                            i += 1
+                    else:
+                        if c == "'":
+                            in_str = True
+                            i += 1
+                        elif c == ')':
+                            depth -= 1
+                            i += 1
+                        else:
+                            i += 1
+
+    return {w: len(srcs) for w, srcs in word_sources.items()}
 
 
 def _load_definition_words(db_path: Path) -> set[str]:
@@ -52,8 +153,9 @@ def _load_definition_words(db_path: Path) -> set[str]:
     conn.close()
     return {normalize(r[0]) for r in rows}
 
-HIST_CORPUS   = 'wikisource_ro'
-MODERN_CORPUS = 'culturax_ro'
+HIST_CORPUS     = 'wikisource_ro'
+MODERN_CORPUS   = 'culturax_ro'
+SUBTITLE_CORPUS = 'subtitle_ro'
 
 SMOOTHING = 0.1   # per-million tokens; floor for log ratio
 
@@ -217,6 +319,8 @@ def main() -> int:
         return 1
 
     print(f'Corpus sizes:')
+    subtitle_tokens = get_corpus_tokens(freq_conn, SUBTITLE_CORPUS)
+
     if hist_tokens:
         print(f'  {HIST_CORPUS:<20} {hist_tokens:>15,} tokens')
     else:
@@ -225,6 +329,10 @@ def main() -> int:
         print(f'  {MODERN_CORPUS:<20} {modern_tokens:>15,} tokens')
     else:
         print(f'  {MODERN_CORPUS:<20}  (no completed run)')
+    if subtitle_tokens:
+        print(f'  {SUBTITLE_CORPUS:<20} {subtitle_tokens:>15,} tokens')
+    else:
+        print(f'  {SUBTITLE_CORPUS:<20}  (no completed run)')
 
     curated_only = not args.all_dex
     print(f'\nLoading DEX candidates ({"curated list" if curated_only else "all DEX"})...')
@@ -236,8 +344,9 @@ def main() -> int:
     print(f'  {len(candidates):,} words')
 
     print('Loading corpus frequencies...')
-    hist_freqs   = load_corpus_freqs(freq_conn, HIST_CORPUS)   if hist_tokens   else {}
-    modern_freqs = load_corpus_freqs(freq_conn, MODERN_CORPUS) if modern_tokens else {}
+    hist_freqs     = load_corpus_freqs(freq_conn, HIST_CORPUS)     if hist_tokens     else {}
+    modern_freqs   = load_corpus_freqs(freq_conn, MODERN_CORPUS)   if modern_tokens   else {}
+    subtitle_freqs = load_corpus_freqs(freq_conn, SUBTITLE_CORPUS) if subtitle_tokens else {}
     freq_conn.close()
 
     print('Loading DEX taxonomy...')
@@ -248,6 +357,10 @@ def main() -> int:
     def_words = _load_definition_words(DEFINITIONS_DB)
     print(f'  {len(def_words):,} words with definitions')
 
+    print('Extracting dictionary coverage counts...')
+    dict_counts = _load_dict_counts(DEX_SQL_PATH)
+    print(f'  {len(dict_counts):,} headwords across all dictionaries')
+
     # Restrict to candidates that appear in at least one corpus (unless --all-dex)
     if args.all_dex:
         universe = candidates.keys() | hist_freqs.keys() | modern_freqs.keys()
@@ -255,40 +368,47 @@ def main() -> int:
         universe = candidates.keys()
 
     S = args.smoothing
-    hist_scale   = 1_000_000 / hist_tokens   if hist_tokens   else 0.0
-    modern_scale = 1_000_000 / modern_tokens if modern_tokens else 0.0
+    hist_scale     = 1_000_000 / hist_tokens     if hist_tokens     else 0.0
+    modern_scale   = 1_000_000 / modern_tokens   if modern_tokens   else 0.0
+    subtitle_scale = 1_000_000 / subtitle_tokens if subtitle_tokens else 0.0
 
     results = []
     for word in universe:
         meta = candidates.get(word, {'dex_frequency': 0.0, 'description': '', 'rarity_category': ''})
 
-        h_occ, h_doc = hist_freqs.get(word,   (0, 0))
-        m_occ, m_doc = modern_freqs.get(word, (0, 0))
+        h_occ, h_doc = hist_freqs.get(word,     (0, 0))
+        m_occ, m_doc = modern_freqs.get(word,   (0, 0))
+        s_occ, s_doc = subtitle_freqs.get(word, (0, 0))
 
-        hist_ppm   = h_occ * hist_scale   if hist_scale   else 0.0
-        modern_ppm = m_occ * modern_scale if modern_scale else 0.0
+        hist_ppm     = h_occ * hist_scale     if hist_scale     else 0.0
+        modern_ppm   = m_occ * modern_scale   if modern_scale   else 0.0
+        subtitle_ppm = s_occ * subtitle_scale if subtitle_scale else 0.0
 
         log_ratio = math.log2((hist_ppm + S) / (modern_ppm + S))
 
         tax = taxonomy.get(word, {})
         results.append({
-            'word':             word,
-            'dex_frequency':    f"{meta['dex_frequency']:.4f}",
-            'description':      meta['description'],
-            'rarity_category':  meta['rarity_category'],
-            'hist_occurrences': h_occ,
-            'hist_documents':   h_doc,
-            'hist_ppm':         f'{hist_ppm:.4f}',
+            'word':               word,
+            'dex_frequency':      f"{meta['dex_frequency']:.4f}",
+            'description':        meta['description'],
+            'rarity_category':    meta['rarity_category'],
+            'hist_occurrences':   h_occ,
+            'hist_documents':     h_doc,
+            'hist_ppm':           f'{hist_ppm:.4f}',
             'modern_occurrences': m_occ,
             'modern_documents':   m_doc,
-            'modern_ppm':       f'{modern_ppm:.4f}',
-            'log_ratio':        f'{log_ratio:.4f}',
-            'verdict':          verdict(hist_ppm, modern_ppm, log_ratio),
-            'dex_pos':          '|'.join(sorted(tax.get('pos',       set()))),
-            'dex_register':     '|'.join(sorted(tax.get('register',  set()))),
-            'dex_domain':       '|'.join(sorted(tax.get('domain',    set()))),
-            'dex_etymology':    '|'.join(sorted(tax.get('etymology', set()))),
-            'has_definition':   1 if word in def_words else 0,
+            'modern_ppm':         f'{modern_ppm:.4f}',
+            'subtitle_occurrences': s_occ,
+            'subtitle_documents':   s_doc,
+            'subtitle_ppm':         f'{subtitle_ppm:.4f}',
+            'log_ratio':          f'{log_ratio:.4f}',
+            'verdict':            verdict(hist_ppm, modern_ppm, log_ratio),
+            'dex_pos':            '|'.join(sorted(tax.get('pos',       set()))),
+            'dex_register':       '|'.join(sorted(tax.get('register',  set()))),
+            'dex_domain':         '|'.join(sorted(tax.get('domain',    set()))),
+            'dex_etymology':      '|'.join(sorted(tax.get('etymology', set()))),
+            'has_definition':     1 if word in def_words else 0,
+            'dict_count':         dict_counts.get(word, 0),
         })
 
     results.sort(key=lambda r: float(r['log_ratio']), reverse=True)
@@ -298,9 +418,10 @@ def main() -> int:
         'word', 'dex_frequency', 'description', 'rarity_category',
         'hist_occurrences', 'hist_documents', 'hist_ppm',
         'modern_occurrences', 'modern_documents', 'modern_ppm',
+        'subtitle_occurrences', 'subtitle_documents', 'subtitle_ppm',
         'log_ratio', 'verdict',
         'dex_pos', 'dex_register', 'dex_domain', 'dex_etymology',
-        'has_definition',
+        'has_definition', 'dict_count',
     ]
     with args.output.open('w', encoding='utf-8', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fields)

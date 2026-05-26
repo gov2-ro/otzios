@@ -95,7 +95,7 @@ def init_freq_db(db_path: Path) -> sqlite3.Connection:
 
 
 def flush(conn: sqlite3.Connection, word_counts: dict, doc_counts: dict) -> None:
-    ts = datetime.now()
+    ts = datetime.now().isoformat()
     conn.executemany("""
         INSERT INTO corpus_word_frequency
             (word, corpus_name, occurrence_count, document_count, last_updated)
@@ -183,12 +183,13 @@ def main() -> int:
         docs_done += 1
 
         if docs_done % COMMIT_EVERY == 0:
+            batch_unique = len(word_counts)
             flush(conn, word_counts, doc_counts)
             save_checkpoint(skip + docs_done)
             elapsed = time.time() - start
             rate = docs_done / elapsed
             print(f'  {docs_done:,} docs | {total_tokens:,} tokens | '
-                  f'{rate:.0f} docs/s | {len(word_counts)+1} dex matches this batch')
+                  f'{rate:.0f} docs/s | {batch_unique:,} unique dex forms this batch')
 
     flush(conn, word_counts, doc_counts)
     save_checkpoint(skip + docs_done)

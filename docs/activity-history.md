@@ -4,6 +4,30 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-27 — Definition scrape completion, dictionary coverage count (#21)
+
+**Definition scrape completion:** Pass 3 scraped 21,110 words (started 26 May, finished overnight). Merged 19,157 ok rows into `definitions.db`. Rebuilt `ui.db` → 26,279 words now have definitions.
+
+**Dictionary coverage count (`dict_count`):** New field counts how many distinct DEX source dictionaries contain a headword. Extracted from `Definition.sourceId` in the MySQL dump via a new `_load_dict_counts()` function in `validate_diachronic.py` (streams 125 INSERT lines, ~12s). Propagated through the full pipeline: `validate_diachronic.py` → `make_shortlist.py` → `build_ui_db.py` → `ui/app.py` (in-memory schema + INSERT) → `detail.html` (`dicts N` stat chip). Range: 0–47 dicts per word (e.g. `oțios` → 11, `arie` → 28). Rebuilt `ui.db` with new shortlist.
+
+---
+
+## 2026-05-23 — Corpus refresh: subtitle corpus, Wikisource re-run, CulturaX merge, subtitle signal in diachronic
+
+**Definition scrape completion:** Ran two-pass scrape (`scrape_definitions.py --merge` then `--retry-not-found`). Pass 1: 1,810 new definitions from 1,839 unchecked words. Pass 2: 5 more recovered. Definition coverage: 98.5% for forgotten tier (was ~79%). Rebuilt `ui.db`.
+
+**Subtitle corpus (`process_subtitles.py`):** New script streams `dex-database.sql` for `Subtitle` INSERT rows (13.2M pre-tokenised tokens from 966 Digi24 YouTube clips). Filters against `load_dex_words()`, writes to `corpus_frequencies.db` under `corpus_name='subtitle_ro'`. 29,733 unique DEX forms found. Runs in ~13s locally.
+
+**Wikisource re-run:** Wiped stale `wikisource_ro` data and re-ran `process_wikisource.py` with the corrected `load_dex_words()` filter (141k lookup forms vs 16k before). Found 45,218 unique forms (up from 44,756 — small delta confirms new words are modern vocabulary absent from 19th-century literary text, as expected). Fixed cosmetic display bug: progress line printed `len(word_counts)+1` after flush had already cleared the dict; now captures count before flush.
+
+**CulturaX re-run (VPS):** Re-ran `process_culturax.py` on VPS with corrected filter. Uploaded `lexemes.db` (91 MB); pulled updated `process_culturax.py` via git. Result: 122,463 unique words, 40.3M docs, completed. Downloaded `corpus_frequencies2.db`, merged only `culturax_ro` rows into local DB (preserving fresh wikisource + subtitle data), deleted temp file.
+
+**Pipeline rebuilt:** `validate_diachronic.py` → `make_shortlist.py` → `build_ui_db.py`. Shortlist grew from 23,112 → 27,410 words (+4,300 with real CulturaX signal). `ui.db`: 27,829 words, 17.6 MB. `fost` correctly absent from results now.
+
+**Subtitle signal in diachronic:** Added `subtitle_ppm`, `subtitle_occurrences`, `subtitle_documents` columns to `validate_diachronic.py` output, passed through `make_shortlist.py` and `build_ui_db.py`. 8,737 shortlist words have subtitle signal — identifies words forgotten in written text but surviving in broadcast Romanian.
+
+---
+
 ## 2026-05-21 — Diacritic-insensitive search in Flask and PHP apps
 
 Added `word_normalized` column (ț→t, ș→s, ţ→t, ş→s, ă→a, â→a, î→i) to the words table in both the Flask in-memory DB and the PHP on-disk DB. Searching "otios" now finds "oțios"; "stramosesc" finds "strămoșesc". Both the normal word-list search and the audit-mode search respect the normalized form. PHP app updated in `_lib.php` (`normalize_diacritics()`) and `public/api/search.php`. Flask app updated in `ui/app.py` (`_strip_diacritics()`, registered as a SQLite custom function). `tools/build_ui_db.py` updated to populate the column and add an index.

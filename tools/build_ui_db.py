@@ -75,6 +75,7 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             log_ratio        REAL,
             hist_ppm         REAL,
             modern_ppm       REAL,
+            subtitle_ppm     REAL,
             dex_pos          TEXT,
             dex_register     TEXT,
             dex_domain       TEXT,
@@ -88,7 +89,8 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             last_seen_approx TEXT,
             provider         TEXT,
             definition       TEXT,
-            word_tier        TEXT DEFAULT 'forgotten'
+            word_tier        TEXT DEFAULT 'forgotten',
+            dict_count       INTEGER
         )
     """)
 
@@ -98,9 +100,11 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             conn.execute(
                 """INSERT OR IGNORE INTO words
                    (word, dex_frequency, verdict, confidence_tier, log_ratio,
-                    hist_ppm, modern_ppm, dex_pos, dex_register, dex_domain,
-                    dex_etymology, is_forgotten, has_definition, word_tier)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    hist_ppm, modern_ppm, subtitle_ppm,
+                    dex_pos, dex_register, dex_domain,
+                    dex_etymology, is_forgotten, has_definition, word_tier,
+                    dict_count)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     row['word'],
                     _float(row.get('dex_frequency', '')),
@@ -109,6 +113,7 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
                     _float(row.get('log_ratio', '')),
                     _float(row.get('hist_ppm', '')),
                     _float(row.get('modern_ppm', '')),
+                    _float(row.get('subtitle_ppm', '')),
                     _normalize_sep(row.get('dex_pos')),
                     _normalize_sep(row.get('dex_register')),
                     _normalize_sep(row.get('dex_domain')),
@@ -116,6 +121,7 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
                     _bool(row.get('is_forgotten', '')),
                     _bool(row.get('has_definition', '')),
                     'forgotten',
+                    _int(row.get('dict_count', '')),
                 ),
             )
 

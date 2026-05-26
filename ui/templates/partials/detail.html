@@ -30,6 +30,7 @@
       <span><em>mod</em>{{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</span>
       <span><em>sub</em>{{ "%.2f"|format(w.subtitle_ppm) if w.subtitle_ppm is not none else '—' }}</span>
       <span><em>ratio</em>{{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</span>
+      <span><em>dicts</em>{{ w.dict_count if w.dict_count else '—' }}</span>
     </div>
     <div class="fp-btns">
       {% set word = w.word %}
