@@ -697,11 +697,12 @@ def bookmark(word: str):
         )
     _research_db.commit()
 
-    return render_template(
+    btn_html = render_template(
         'partials/bookmark_btn.html',
         word=word,
         bookmarked=bool(new_val),
     )
+    return btn_html + _render_word_row(word)
 
 
 @app.route('/note/<word>', methods=['POST'])
@@ -766,6 +767,24 @@ def _render_tags_row(word: str, tags: list[str]):
     )
 
 
+def _render_word_row(word: str) -> str:
+    """Return word_row.html rendered as an OOB swap fragment for the word grid."""
+    from urllib.parse import quote as _quote
+    row = _words_db.execute('SELECT * FROM words WHERE word = ?', (word,)).fetchone()
+    if row is None:
+        return ''
+    bm = _research_db.execute('SELECT * FROM bookmarks WHERE word = ?', (word,)).fetchone()
+    w = dict(row)
+    w['bookmarked'] = bool(bm and bm['bookmarked'])
+    w['has_note']   = bool((bm and bm['note'] or '').strip())
+    w['tags']       = [t.strip() for t in ((bm and bm['tags']) or '').split(',') if t.strip()]
+    w['audit_labeled'] = False
+    encoded = _quote(word, safe='')
+    oob_html = render_template('partials/word_row.html', w=w)
+    # Wrap in a div with hx-swap-oob so HTMX replaces the grid chip
+    return f'<div hx-swap-oob="outerHTML:#wr-{encoded}">{oob_html}</div>'
+
+
 @app.route('/tag/<word>', methods=['POST'])
 def add_tag(word: str):
     if not _words_db.execute('SELECT 1 FROM words WHERE word=?', (word,)).fetchone():
@@ -777,7 +796,7 @@ def add_tag(word: str):
     if tag not in tags:
         tags.append(tag)
     _set_tags(word, tags)
-    return _render_tags_row(word, tags)
+    return _render_tags_row(word, tags) + _render_word_row(word)
 
 
 @app.route('/tag/<word>/<tag>', methods=['DELETE'])
@@ -786,7 +805,7 @@ def remove_tag(word: str, tag: str):
         return 'Not found', 404
     tags = [t for t in _get_tags(word) if t != tag]
     _set_tags(word, tags)
-    return _render_tags_row(word, tags)
+    return _render_tags_row(word, tags) + _render_word_row(word)
 
 
 @app.route('/tag/<word>/toggle/<tag>', methods=['POST'])
@@ -802,7 +821,7 @@ def toggle_tag(word: str, tag: str):
     else:
         tags.append(tag)
     _set_tags(word, tags)
-    return _render_tags_row(word, tags)
+    return _render_tags_row(word, tags) + _render_word_row(word)
 
 
 @app.route('/tags/suggest')
