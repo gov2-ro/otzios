@@ -4,6 +4,14 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-27 — Type-ahead word navigation; annotation overflow cap
+
+**Type-ahead navigation:** Pressing any unbound printable character (when not focused on an input) accumulates in a 1.2s buffer and jumps to the first visible word whose text starts with the buffer (diacritic-insensitive: ț→t, ș→s, ă→a, â→a, î→i). Multi-character sequences narrow the match. Documented in the shortcuts modal as "a–z: jump to matching word".
+
+**Annotation overflow cap:** Words with 4+ emoji annotations (quick tags + note + bookmark) now cap at 3 emoji + a muted "+N" superscript. Template refactored from string concatenation to a `_ov.items` list, sliced at [:3].
+
+---
+
 ## 2026-05-27 — Definition hover tooltip in word grid
 
 Added a lightweight hover tooltip to word chips in the grid. The `data-def` attribute was already populated (first 120 chars of definition) on each `.word-row`. A single floating `#def-tip` div is appended to `<body>` and shown/hidden via `mouseover`/`mouseout` delegation on `#word-list-container`. Positioned below the chip; flips above if within 120px of viewport bottom. No network requests. Tooltips also work after HTMX-loaded pages.

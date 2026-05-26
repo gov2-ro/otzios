@@ -1072,6 +1072,7 @@
         <tr><td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>l</kbd></td><td>Navigate grid (↓ ↑ ← →)</td></tr>
         <tr><td><kbd>g</kbd><kbd>g</kbd></td><td>Jump to top</td></tr>
         <tr><td><kbd>G</kbd></td><td>Jump to bottom</td></tr>
+        <tr><td><kbd>a</kbd>–<kbd>z</kbd></td><td>Type-ahead: jump to matching word</td></tr>
         <tr><td colspan="2" class="shortcuts-group">Search</td></tr>
         <tr><td><kbd>/</kbd></td><td>Focus search</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Blur / close popup</td></tr>
@@ -1198,7 +1199,33 @@
         if (abtn) { e.preventDefault(); abtn.click(); }
         return;
       }
+      // Type-ahead: any other printable character jumps to the first matching word
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        typeAhead(e.key);
+      }
     });
+
+    // Type-ahead word navigation
+    var _taBuffer = '', _taTimer = null;
+    function _normTA(s) {
+      return s.toLowerCase()
+        .replace(/[țţ]/g,'t').replace(/[șş]/g,'s')
+        .replace(/ă/g,'a').replace(/â/g,'a').replace(/î/g,'i');
+    }
+    function typeAhead(ch) {
+      clearTimeout(_taTimer);
+      _taBuffer += _normTA(ch);
+      var buf = _taBuffer;
+      var all = rows();
+      var start = selectedIdx >= 0 ? selectedIdx : -1;
+      for (var off = 1; off <= all.length; off++) {
+        var idx = (start + off) % all.length;
+        var wt = all[idx].querySelector('.word-text');
+        if (wt && _normTA(wt.textContent).startsWith(buf)) { selectRow(idx); break; }
+      }
+      _taTimer = setTimeout(function() { _taBuffer = ''; }, 1200);
+    }
 
     // Audit mode: append audit=1 to every /word/ request so the detail panel
     // includes the audit-verdict button row.
