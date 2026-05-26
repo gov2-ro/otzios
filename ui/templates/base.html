@@ -1300,6 +1300,41 @@
       sel.form && sel.form.addEventListener('reset', update);
       update();
     });
+
+    // ── Bookmarkable filter state ──────────────────────────────────────────
+    // 1. On page load: read URLSearchParams and pre-select matching controls.
+    // 2. After every /search request: sync URL with current form state.
+    (function() {
+      var form = document.getElementById('filter-form');
+
+      // Restore state from URL on load (before htmx fires its own requests)
+      document.addEventListener('DOMContentLoaded', function() {
+        var params = new URLSearchParams(window.location.search);
+        params.forEach(function(value, key) {
+          if (!value) return;
+          // Radio
+          var radio = form.querySelector('input[type=radio][name="' + key + '"][value="' + CSS.escape(value) + '"]');
+          if (radio) { radio.checked = true; return; }
+          // Text input
+          var text = form.querySelector('input[type=text][name="' + key + '"]');
+          if (text) { text.value = value; return; }
+          // Select
+          var sel = form.querySelector('select[name="' + key + '"]');
+          if (sel) { sel.value = value; }
+        });
+      });
+
+      // Push current form state to URL after each /search request settles
+      document.body.addEventListener('htmx:afterRequest', function(evt) {
+        var path = (evt.detail.pathInfo && evt.detail.pathInfo.requestPath) || evt.detail.path || '';
+        if (path !== '/search') return;
+        var params = new URLSearchParams();
+        for (var pair of new FormData(form)) {
+          if (pair[1]) params.set(pair[0], pair[1]);
+        }
+        history.replaceState(null, '', '?' + params.toString());
+      });
+    })();
   </script>
 </body>
 </html>
