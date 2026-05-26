@@ -134,12 +134,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   ```
   Input: any CSV with `dex_register`, `dex_domain`, `dex_etymology` columns (output of `create_curated_list.py` or `validate_diachronic.py`). See also #19 for web UI filter dropdowns using the same columns.
 
-- [ ] **#22 — [S, Med] Hybrid word-marking UX: reserved one-key tags + tag autocomplete** — research UI today supports bookmark (`b`) + free-form tags via the detail-panel input. Add (a) a reserved set of single-keystroke "verdict" tags so the common cases are zero-friction, and (b) `<datalist>` autocomplete on the free-form tag input from the union of tags used so far.
-
-  - Reserved keys: `i` = ignore, `B` = boring (Shift+B avoids collision with `b` bookmark), `f` = funny, `x` = remove. Each toggles its tag on the current word via a new `POST /tag/<word>/toggle/<tag>` endpoint that returns the refreshed `tags_row` partial (idempotent: re-pressing the key removes the tag).
-  - Reserved tags render as a dedicated row of toggle buttons at the top of `#tags-row` (visible state + clickable for mouse users) and are filtered out of the regular tag-pill list to avoid duplication. Treated as ordinary tags in storage — same `bookmarks.tags` column.
-  - `t` focuses the free-form tag input. Input is bound to `<datalist id="tag-suggestions">` populated server-side from `/tags/suggest` (distinct tags across all bookmarks). Stale until reload acceptable for v1.
-  - Update shortcuts modal + status bar with the new bindings.
+- [x] **#22 — [S, Med] Hybrid word-marking UX: reserved one-key tags + tag autocomplete** — Done. `i`/`B`/`f`/`x` keydown shortcuts toggle tags via `/tag/<word>/toggle/<tag>`; quick-tags render as a dedicated button row in `tags_row.html` (filtered out of regular pill list); `t` focuses tag input; `<datalist id="tag-suggestions">` backed by `/tags/suggest`; shortcuts modal updated.
 
 - [x] **#21 — [M, Med] Factor in dictionary coverage (how many dictionaries list a term)** — Done. `dict_count` (distinct `sourceId`s per headword) streamed from DEX MySQL dump in `validate_diachronic.py:_load_dict_counts()` (~12s for 301k headwords). Column flows through `make_shortlist.py` → `build_ui_db.py` → UI `words` table; displayed as a `<em>dicts</em>N` chip in `detail.html`.
 
