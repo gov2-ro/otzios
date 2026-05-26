@@ -67,6 +67,7 @@ def load_words(
             log_ratio        REAL,
             hist_ppm         REAL,
             modern_ppm       REAL,
+            subtitle_ppm     REAL,
             dex_pos          TEXT,
             dex_register     TEXT,
             dex_domain       TEXT,
@@ -94,9 +95,9 @@ def load_words(
             conn.execute(
                 """INSERT OR IGNORE INTO words
                    (word, dex_frequency, verdict, confidence_tier, log_ratio,
-                    hist_ppm, modern_ppm, dex_pos, dex_register, dex_domain,
+                    hist_ppm, modern_ppm, subtitle_ppm, dex_pos, dex_register, dex_domain,
                     dex_etymology, is_forgotten, has_definition, word_tier)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     row['word'],
                     _float(row.get('dex_frequency', '')),
@@ -105,6 +106,7 @@ def load_words(
                     _float(row.get('log_ratio', '')),
                     _float(row.get('hist_ppm', '')),
                     _float(row.get('modern_ppm', '')),
+                    _float(row.get('subtitle_ppm', '')),
                     _normalize_separators(row.get('dex_pos')),
                     _normalize_separators(row.get('dex_register')),
                     _normalize_separators(row.get('dex_domain')),
@@ -233,9 +235,9 @@ def _augment_with_audit_samples(words_conn: sqlite3.Connection,
             words_conn.execute(
                 """INSERT OR IGNORE INTO words
                    (word, dex_frequency, verdict, log_ratio, hist_ppm, modern_ppm,
-                    dex_pos, dex_register, dex_domain, dex_etymology,
+                    subtitle_ppm, dex_pos, dex_register, dex_domain, dex_etymology,
                     is_forgotten, has_definition, word_tier)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     w,
                     _float(row.get('dex_frequency', '')),
@@ -243,6 +245,7 @@ def _augment_with_audit_samples(words_conn: sqlite3.Connection,
                     _float(row.get('log_ratio', '')),
                     _float(row.get('hist_ppm', '')),
                     _float(row.get('modern_ppm', '')),
+                    _float(row.get('subtitle_ppm', '')),
                     _normalize_separators(row.get('dex_pos')),
                     _normalize_separators(row.get('dex_register')),
                     _normalize_separators(row.get('dex_domain')),

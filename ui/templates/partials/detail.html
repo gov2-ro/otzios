@@ -28,6 +28,7 @@
     <div class="fp-stats">
       <span><em>hist</em>{{ "%.2f"|format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</span>
       <span><em>mod</em>{{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</span>
+      <span><em>sub</em>{{ "%.2f"|format(w.subtitle_ppm) if w.subtitle_ppm is not none else '—' }}</span>
       <span><em>ratio</em>{{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</span>
     </div>
     <div class="fp-btns">
