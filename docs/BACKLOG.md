@@ -195,7 +195,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **Verdict palette saturation review** — four full-saturation colors (red/brown/blue/purple) in the word grid compete equally for attention; consider one dominant verdict color + three muted, or shift to a single-hue density encoding. Out of scope for the 2026-05-18 fine-tuning pass.
 
-- [ ] **Bookmark + învechit underline conflict** — both are rendered as `text-decoration: underline` on `.word-text`. When a word is both bookmarked and `învechit`, the bookmark's solid amber wins and the dotted red `învechit` indicator is invisible. Today's compromise: bookmark precedence (set in `ui/templates/base.html`, comment "wins over inv when both true"). Fix later by stacking a second indicator — e.g., a thin red dotted `box-shadow` below the amber underline, or move bookmarks to a non-underline visual (left-edge marker, subtle bg tint).
+- [x] **Bookmark + învechit underline conflict** — switched `.inv .word-text` from `text-decoration: underline dotted` to `border-bottom: 1.5px dotted`. The two indicators now coexist: amber `text-decoration` for bookmark + red dotted `border-bottom` for inv.
 
 - [ ] **Mobile / narrow-viewport breakpoints** — `ui/templates/base.html` has no media queries; the 3-row filter bar and word grid are desktop-only. Add breakpoints for tablet (collapse filter rows into a single overflow menu) and phone (single column word grid, slide-up detail panel from bottom).
 

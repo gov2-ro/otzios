@@ -331,13 +331,12 @@
 
     /* Învechit — red dotted underline on the word itself, no extra glyph */
     .word-row.inv .word-text {
-      text-decoration: underline dotted var(--v-ext);
-      text-decoration-thickness: 1.5px;
-      text-underline-offset: 3px;
+      border-bottom: 1.5px dotted var(--v-ext);
+      padding-bottom: 1px;
     }
-    /* Bookmarked: solid amber underline (wins over inv when both true) */
+    /* Bookmarked: solid amber underline — coexists with inv border-bottom */
     .word-row.bookmarked .word-text { text-decoration: underline solid #d97706; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
-    .word-row[data-selected].inv .word-text,
+    .word-row[data-selected].inv .word-text { border-bottom-color: rgba(255,255,255,.85); }
     .word-row[data-selected].bookmarked .word-text { text-decoration-color: rgba(255,255,255,.85); }
 
 
