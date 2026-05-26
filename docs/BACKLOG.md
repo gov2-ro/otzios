@@ -92,7 +92,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
   Note: these words may still be worth keeping — a word documented only as a borrowing with no translation is itself a sign of marginal integration into Romanian.
 
-- [ ] **#19 — [XS, Low] Annotation overlay overflow for heavily-annotated words** — Words with 4+ annotations (e.g. all quick tags + note + bookmark = `🙈💤😄❌📝⭐`) produce a ~48px emoji string in `.ann-overlay` that bleeds left over the word text. `letter-spacing: -1px` compresses it slightly but there is no max-width or clip. Either cap visible annotations at 3 and add a `+N` indicator, or accept the overlap as a cosmetic edge case.
+- [x] **#19 — [XS, Low] Annotation overlay overflow for heavily-annotated words** — Capped at 3 emojis + `+N` superscript in muted mono for the remainder. Template now builds `_ov.items` list instead of string; slices `[:3]` and appends `<span class="ann-more">+N</span>`.
 
 - [ ] **#20 — [S, Low] Annotation overlay goes stale after in-panel mutations** — When the user toggles a bookmark or adds/removes a tag via the detail panel, the word chip in the grid is not re-rendered (HTMX only swaps the detail panel / tag row). The `ann-overlay` emoji stays stale until the next search trigger. Fix: add an HTMX OOB swap from `/bookmark/<word>` and `/tag/<word>/*` routes that re-renders the affected `.word-row`.
 
