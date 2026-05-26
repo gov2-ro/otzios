@@ -4,6 +4,12 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-27 — Definition hover tooltip in word grid
+
+Added a lightweight hover tooltip to word chips in the grid. The `data-def` attribute was already populated (first 120 chars of definition) on each `.word-row`. A single floating `#def-tip` div is appended to `<body>` and shown/hidden via `mouseover`/`mouseout` delegation on `#word-list-container`. Positioned below the chip; flips above if within 120px of viewport bottom. No network requests. Tooltips also work after HTMX-loaded pages.
+
+---
+
 ## 2026-05-27 — Garbled definitions fix, rar/regional/ieșit-din-uz taxonomy tags
 
 **Garbled definitions fix:** Root cause: `_parse_values` in `extract_definitions.py` handled `\'` and `\\` but not `\n`/`\r`/`\t` — these appeared as literal `n` + surrounding dump indentation spaces (e.g. `"Acțiunea den       a ( se ) abaten         n       și rezultatul ei."`). Fix: complete escape table in the parser + `re.sub(r'\s+', ' ', ...)` whitespace normalization in `_clean`. Re-ran `extract_definitions.py` (50,678 headwords from DefinitionSimple) then `scrape_definitions.py --merge-only` (19,835 scraped rows on top). Garbled count in `definitions.db`: 3,152 → 0.

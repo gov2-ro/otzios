@@ -1324,6 +1324,35 @@
         });
       });
 
+      // Definition tooltip on word-row hover
+      (function() {
+        var tip = document.createElement('div');
+        tip.id = 'def-tip';
+        tip.style.cssText = 'position:fixed;z-index:9999;max-width:320px;background:var(--bg-1);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:7px 10px;font-size:11px;line-height:1.5;pointer-events:none;opacity:0;transition:opacity .1s;box-shadow:0 2px 8px rgba(0,0,0,.18);';
+        document.body.appendChild(tip);
+
+        var hideTimer = null;
+        document.getElementById('word-list-container').addEventListener('mouseover', function(e) {
+          var row = e.target.closest('.word-row');
+          if (!row) return;
+          var def = (row.dataset.def || '').trim();
+          if (!def) return;
+          clearTimeout(hideTimer);
+          tip.textContent = def;
+          var r = row.getBoundingClientRect();
+          var top = r.bottom + 6;
+          if (top + 120 > window.innerHeight) top = r.top - 120;
+          tip.style.left = Math.min(r.left, window.innerWidth - 330) + 'px';
+          tip.style.top = top + 'px';
+          tip.style.opacity = '1';
+        });
+        document.getElementById('word-list-container').addEventListener('mouseout', function(e) {
+          var row = e.target.closest('.word-row');
+          if (!row) return;
+          hideTimer = setTimeout(function(){ tip.style.opacity = '0'; }, 80);
+        });
+      })();
+
       // Push current form state to URL after each /search request settles
       document.body.addEventListener('htmx:afterRequest', function(evt) {
         var path = (evt.detail.pathInfo && evt.detail.pathInfo.requestPath) || evt.detail.path || '';

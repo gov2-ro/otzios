@@ -165,7 +165,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] in info window show which dictionaries this word is found in (incl wikitionary)
 
-- [ ] desktop tooltip on hover with definition
+- [x] desktop tooltip on hover with definition — floating `#def-tip` div populated from existing `data-def` attribute on `.word-row` via `mouseover`/`mouseout` on the word-list-container. Positioned below the chip (above if near bottom of viewport). No extra network requests.
 
 - [ ] top filter, the posibility to remove one attribute - now we can just select.
 
