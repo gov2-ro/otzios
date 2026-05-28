@@ -4,6 +4,32 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-28 — Richer detail panel + reversible UI filters for triage
+
+Follow-up to the rare-tab diagnosis: rather than baking filters into the pipeline, surface all
+per-word evidence in the UI and add reversible filter knobs so the data can be explored before
+committing to any permanent filter.
+
+- **New `extract_dict_sources.py`** — streams the DEX dump (mirrors `validate_diachronic.py::_load_dict_counts`), joining `Definition.sourceId → Source.shortName` to record the *names* of the dictionaries each headword appears in. Output `data/processed/dict_sources.db` (`dict_sources(word, sources, dict_count)`). Full run: 301,439 headwords, 113 sources (e.g. `meeting` → DEX '98|DLRLC|Scriban|Șăineanu; `criptare` → Neoficial).
+- **`ui/app.py::load_words`** — added a `_enrich_words()` pass: wordfreq Zipf for `ro` and `en` (recomputed uniformly; also restores the rare tier's zipf, which the CSV load drops), a `proper_noun_like` flag recovered from `lexemes.db` casing (the CSVs are lowercased, so the old `word[0].isupper()` filter was dead), and `dict_sources` joined by normalized headword. New columns: `zipf_frequency`, `en_zipf`, `proper_noun_like`, `dict_sources`.
+- **Detail panel (`partials/detail.html`)** — now shows zipf / en / dex band alongside hist/mod/sub/ratio, the dictionary-names list, web-validation signals (score/results/in-wild/provider/last-seen/top-url), and a proper-noun flag. The DEX-frequency superscript (the small number on each grid word = `dex_frequency × 100`) is now also rendered next to the word title in the panel.
+- **Legend popup (`base.html`)** — an "ⓘ legend" footer link opens a glossary modal (modeled on the shortcuts overlay) explaining every number and tag: the superscript/DEX band, zipf, en, hist/mod/sub/ratio, dict-count + source short-names, web signals, verdicts, and common DEX register tags.
+- **Four reversible filters** (`/search` + `base.html` row 4): zipf range, DEX-frequency range, hide-likely-loanwords (`en_zipf ≥ LOANWORD_EN_ZIPF`, default 4.0), exclude proper-noun-like. Server-side, applied only when present, preserved across pagination.
+
+Verified end-to-end (curl + browser screenshot): `hide_loanwords` drops `meeting`/`house`, `hide_proper` drops `jonathan`, `zipf_max=3.0` narrows to sub-floor words; detail panel renders all signals. No `data/` artifacts regenerated. wordfreq import is optional (graceful degrade).
+
+---
+
+## 2026-05-28 — Diagnosed rare-tab pollution (no code changes)
+
+Investigated why the UI "rare" tab (`?word_tier=rare_in_use`) shows non-rare words: English loanwords (`screening`, `meeting`, `house`, `short`, `golden`, `dolby`, `wild`, `trend`), variety/brand names (`jonathan`), and proper nouns (`sioux`, `zulu`, `hagi`, `viking`).
+
+Root cause: the `rare_in_use` tier rests on two failing signals. (1) Low DEX `frequency` is editorial-coverage, not corpus frequency, so recent borrowings sit in the `0.01–1.0` candidate band (`create_curated_list.py:127-129`) while still being everyday words. (2) The register gate in `validate_with_wordfreq.py:151` admits a word on `zipf < 4.5 AND dex_register non-empty` — *any* tag — but of 582 rows in `rare_words_wordfreq.csv` only ~124 are `învechit`; the rest are stylistic tags (`figurat`, `popular`, `familiar`, `livresc`) that colloquial loanwords carry. Compounding: no loanword filter, a dead proper-noun filter (`create_curated_list.py:69-72` checks `word[0].isupper()` on lowercased data), homograph mismatches (`cannabis`/`listat`→`învechit`), and 28 duplicate rows.
+
+Diagnose-only at the user's request; logged as a Bugs/Known-Issues entry in `docs/BACKLOG.md` (sharpens enhancement #12) with fix options for later.
+
+---
+
 ## 2026-05-28 — Lemma dedup in shortlist (backlog #6)
 
 Added simplemma-based inflected-form deduplication to `make_shortlist.py`. After the classification loop, each word is lemmatized via `simplemma.lemmatize(word, lang='ro')` and grouped by lemma. Groups with multiple shortlist entries keep one canonical representative (the word whose form equals the lemma, else the highest-tier/highest-dex_frequency entry); the rest are dropped. Added `--no-dedup` flag to opt out.

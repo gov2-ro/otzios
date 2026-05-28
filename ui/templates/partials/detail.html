@@ -2,7 +2,7 @@
 
 <div class="fp-word">
   <div class="fp-title">
-    <h2>{{ w.word }}</h2>
+    <h2>{{ w.word }}{% if w.dex_frequency is not none %}<span class="chip-freq" title="DEX frequency band (0–100). See ⓘ legend.">{{ (w.dex_frequency * 100) | round | int }}</span>{% endif %}</h2>
     <span class="verdict-badge vb-{{ (w.verdict or 'unknown') | replace(' ','_') }}" style="font-size:9px;padding:1px 6px;flex-shrink:0;">{{ w.verdict or '—' }}</span>
   </div>
   <div class="fp-chips">
@@ -26,12 +26,36 @@
 
   <div class="fp-actions">
     <div class="fp-stats">
+      <span><em>zipf</em>{{ "%.2f"|format(w.zipf_frequency) if w.zipf_frequency is not none else '—' }}</span>
+      <span title="English wordfreq Zipf — high = likely loanword"><em>en</em>{{ "%.2f"|format(w.en_zipf) if w.en_zipf is not none else '—' }}</span>
+      <span title="DEX editorial frequency band (0–100)"><em>dex</em>{{ (w.dex_frequency * 100) | round | int if w.dex_frequency is not none else '—' }}</span>
       <span><em>hist</em>{{ "%.2f"|format(w.hist_ppm) if w.hist_ppm is not none else '—' }}</span>
       <span><em>mod</em>{{ "%.2f"|format(w.modern_ppm) if w.modern_ppm is not none else '—' }}</span>
       <span><em>sub</em>{{ "%.2f"|format(w.subtitle_ppm) if w.subtitle_ppm is not none else '—' }}</span>
       <span><em>ratio</em>{{ "%.2f"|format(w.log_ratio) if w.log_ratio is not none else '—' }}</span>
-      <span><em>dicts</em>{{ w.dict_count if w.dict_count else '—' }}</span>
+      {% if w.proper_noun_like %}<span style="color:var(--text-3);" title="DEX headword is capitalized — likely a name/place/brand"><em>flag</em>proper?</span>{% endif %}
     </div>
+
+    {% if w.dict_sources %}
+    {% set _dicts = w.dict_sources.split('|') %}
+    <div class="fp-dicts" style="display:flex;flex-wrap:wrap;gap:3px;align-items:baseline;margin-top:4px;">
+      <span style="font-size:9px;color:var(--text-3);font-style:italic;margin-right:2px;">in {{ _dicts | length }} dict.</span>
+      {% for d in _dicts %}<span class="detail-tag" style="opacity:.7;font-size:9px;">{{ d }}</span>{% endfor %}
+    </div>
+    {% elif w.dict_count %}
+    <div class="fp-dicts" style="margin-top:4px;"><span style="font-size:9px;color:var(--text-3);font-style:italic;">in {{ w.dict_count }} dictionaries</span></div>
+    {% endif %}
+
+    {% if w.web_score or w.total_results is not none or w.in_wild is not none %}
+    <div class="fp-stats" style="margin-top:4px;">
+      {% if w.web_score %}<span><em>web</em>{{ w.web_score }}</span>{% endif %}
+      {% if w.total_results is not none %}<span><em>results</em>{{ w.total_results }}</span>{% endif %}
+      {% if w.in_wild is not none %}<span><em>in wild</em>{{ 'yes' if w.in_wild else 'no' }}</span>{% endif %}
+      {% if w.provider %}<span><em>via</em>{{ w.provider }}</span>{% endif %}
+      {% if w.last_seen_approx %}<span><em>seen</em>{{ w.last_seen_approx }}</span>{% endif %}
+      {% if w.top_url %}<a class="dex-link" style="font-size:10px;" href="{{ w.top_url }}" target="_blank" rel="noopener">↗ top result</a>{% endif %}
+    </div>
+    {% endif %}
     <div class="fp-btns">
       {% set word = w.word %}
       {% set bookmarked = w.bookmarked %}
