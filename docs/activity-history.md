@@ -4,6 +4,18 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-28 — Lemma dedup in shortlist (backlog #6)
+
+Added simplemma-based inflected-form deduplication to `make_shortlist.py`. After the classification loop, each word is lemmatized via `simplemma.lemmatize(word, lang='ro')` and grouped by lemma. Groups with multiple shortlist entries keep one canonical representative (the word whose form equals the lemma, else the highest-tier/highest-dex_frequency entry); the rest are dropped. Added `--no-dedup` flag to opt out.
+
+Result: 1,571 inflected forms collapsed, shortlist 26,788 → 25,217 words. Concrete improvements: `abecedare` dropped (→ `abecedar` kept); `murea` dropped (lemma `muri` not in shortlist, so it was alone in its group and correctly removed).
+
+Known remaining gap: simplemma does not reduce Romanian verb-derived nouns or participial adjectives (`bleui`/`bleuire`/`bleuit` stay as three separate entries). Corpus-level lemmatization (so `buclele` counts toward `buclă`) remains outstanding.
+
+Rebuilt `tools/build_ui_db.py`: 25,685 words in `ui.db`.
+
+---
+
 ## 2026-05-28 — Data audit: corpus merge, Tier A guards, register filter cleanup
 
 **Corpus merge:** Fresh CulturaX run from VPN contained only `culturax_ro` (122,463 words). Merged `wikisource_ro` (45,218 words) and `subtitle_ro` (29,733 words) from the previous complete DB into the new `corpus_frequencies.db`. All three corpora now present and correct.
