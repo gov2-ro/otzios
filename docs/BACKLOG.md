@@ -281,15 +281,16 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - differently spelled variations shouldn't be listed, it poisons word exploration - or listed separately?
 
 - [ ] why does the list contain `fost` -- this is a form of a very popular verb, `a fi`? See also other common words: `eleșteu`, `văr`, `nepot`, `coproducție`
+  - **Partially resolved**: `fost` and `coproducție` removed by the `modern_ppm > 5.0` Tier A guard (2026-05-28). `eleșteu` is correct — it's a genuine archaic word (fishpond, modern_ppm=0.055). `văr` (1.4 ppm) and `nepot` (3.1 ppm) remain as borderline cases; their inflected nature would be addressed by lemmatization (backlog #6).
 
 - [x] cuvinte rare has waay too many common words: manipulat, mediere, adițională, agravat, neurologie, organizatoare, cowboy, spitalizare – but still **not** `oțios`?!
   - **Resolved**: `validate_with_wordfreq.py` now gates `rare_in_use` on non-empty `dex_register` — words with Zipf 3.0–4.5 but no register tag fall to `common`. Rare list: 11,668 → 469. `oțios` addressed by Tier C in `make_shortlist.py` (`dex_absent_highfreq`, threshold dex_frequency ≥ 0.85); now appears in UI.
 
 - [ ] all forms of terms listed, ex: `bleuit`, `bleuire`, `bleui` – could we just show one entry (as a bundle)? Also `blehui`, `blehuire`, `blehuit` – root word, `bleau`. IF root word not in list we should also remove references? Most words in rare --> filter --> popular. 
 
-- [ ] `cimbru` appears at `rare` / filter: `în comparații / la comparativ`. 
+- [x] `cimbru` appears at `rare` / filter: `în comparații / la comparativ`. — **Fixed**: `în comparații / la comparativ` removed from register filter dropdown via `_REGISTER_USAGE_NOTES` exclusion set (2026-05-28). `cimbru` itself correctly stays in `rare_in_use`.
 
-- [ ] `uitate` / filter: `în comparații / la comparativ` - words that don't seem to have anything with comparații -- can you backtrack on how did that end-up there?
+- [x] `uitate` / filter: `în comparații / la comparativ` - words that don't seem to have anything with comparații -- can you backtrack on how did that end-up there? — **Fixed**: `în comparații / la comparativ` is a DEX usage-context note (word can be used in comparative phrases), not an archaic register. Removed from register filter dropdown via `_REGISTER_USAGE_NOTES` (2026-05-28). 38 other usage-style tags cleaned up at the same time.
 
 - [ ] rare / Filter: `Maramureș` lists 'biodiversitate'
 
