@@ -356,6 +356,18 @@ POS_OPTIONS = [
 
 _ETYM_JUNK = {'vezi', 'cf.', 'după', 'după unii', 'probabil', 'cuvânt', 'necunoscută', 'de la', 'sau'}
 
+_REGISTER_USAGE_NOTES = {
+    'figurat', 'adesea figurat', 'metaforic', 'popular', 'familiar', 'poetic',
+    'literar', 'ironic', 'glumeț', 'depreciativ', 'peiorativ', 'neobișnuit',
+    'în comparații / la comparativ', 'în superstiții', 'prin exagerare',
+    'prin metonimie', 'eliptic', 'repetat', 'personificat', 'pleonastic',
+    'impropriu', 'argou', 'argotic', 'eufemistic', 'hiperbolic', 'emfatic',
+    'alegoric', 'augmentativ', 'corelativ', 'vulgar', 'jargon',
+    'cu pronunțare regională', 'la vocativ', 'sens curent', 'personal',
+    'cu valoare de singular', 'cu valoare verbală',
+    'cu valoare de numeral cardinal', 'cu valoare de numeral distributiv',
+}
+
 
 def _distinct_split(column: str, sep: str = '|', limit: int | None = None, exclude: set | None = None) -> list[str]:
     from collections import Counter
@@ -631,7 +643,7 @@ def index():
         total=total,
         bookmark_count=bcount,
         pos_options          = POS_OPTIONS,
-        distinct_registers   = _distinct_split('dex_register'),
+        distinct_registers   = _distinct_split('dex_register', exclude=_REGISTER_USAGE_NOTES),
         distinct_domains     = _distinct_split('dex_domain'),
         distinct_etymologies = _distinct_split('dex_etymology', exclude=_ETYM_JUNK),
         tag_suggestions      = _all_used_tags(),

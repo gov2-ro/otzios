@@ -249,6 +249,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] also filter by: masculin, feminin, neutru.
 
+- [ ] Meta: suggest versions, note in both activity log, chronology and readme.
+
 - [x] I also see on dexoline the tag 'rar' but in our interface filters I only see 'învechit' see [săhăstricesc](https://dexonline.ro/definitie/săhăstricesc) — Fixed: `rar` (id=6), `regional` (id=17), `ieșit din uz` (id=239) were root-level DEX tags missed by the `parentId IN (1,41,42)` filter. Extended taxonomy loader to capture them and their children (Banat, Moldova, etc.). `rar`: 2,463 words; `regional`: 3,202; `ieșit din uz`: 95.
 
 - [ ] **Subtitle corpus from new DEX dump** — `Subtitle` table in `dex-database.sql` has 13 M pre-tokenised Romanian word tokens from 966 YouTube clips (Digi24 news). Quick sample: 89k tokens → 11,240 unique types; top words are normal function words. Estimated 1.4% shortlist word coverage in sample (scales to ~20% at full 13M tokens). Too small to replace CulturaX as primary corpus, but valuable as a modern spoken-register spot-check. To use: write `process_subtitles.py` that extracts `SELECT word, COUNT(*) FROM Subtitle GROUP BY word` via `extract_lexemes.parse_mysql_insert` (or a dedicated streaming extractor) and loads into `corpus_frequencies.db` under `corpus_name='subtitle_ro'`. VideoClip table links clipId → YouTube videoId (11-char IDs) if metadata is needed.

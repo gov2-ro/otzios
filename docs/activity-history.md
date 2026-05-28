@@ -4,6 +4,23 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-05-28 — Data audit: corpus merge, Tier A guards, register filter cleanup
+
+**Corpus merge:** Fresh CulturaX run from VPN contained only `culturax_ro` (122,463 words). Merged `wikisource_ro` (45,218 words) and `subtitle_ro` (29,733 words) from the previous complete DB into the new `corpus_frequencies.db`. All three corpora now present and correct.
+
+**Tier A common-word guards (`make_shortlist.py`):** Tier A (`corpus_extinct`, `corpus_declining`, `corpus_historical_only`) now requires two additional conditions: `modern_ppm <= 5.0` (word is not still actively used in modern text) and `dex_frequency < 1.0` (not DEX core vocabulary). Without these guards, words like `lui` (2,750 ppm), `casă` (200 ppm), `dumnezeu` (562 ppm), `miel` (10 ppm) were passing because Wikisource (19th-century literary) simply uses these proportionally more than modern web text, triggering a "declining" verdict. 612 words removed from Tier A (993 by ppm, 133 by dex_frequency, some overlap). New `TIER_A_MODERN_PPM_MAX = 5.0` constant at module level. Legitimate archaic words in the 1–5 ppm range (e.g. `dară` 1.2 ppm, `sosi` 4.97 ppm `rar|învechit`) are kept.
+
+**Register dropdown cleanup (`tools/build_ui_db.py`, `ui/app.py`):** Added `_REGISTER_USAGE_NOTES` exclusion set (39 tags) shared between both apps. DEX register tags that describe usage style (`figurat`, `popular`, `familiar`, `metaforic`, `în comparații / la comparativ`, `ironic`, `argou`, etc.) are excluded from the register filter dropdown. The `dex_register` column in the DB is unchanged — these tags are still available as metadata on each word, they just don't appear as filter options. Register dropdown reduced from 52 noisy values to 17 true archaic/regional markers: `învechit`, `regional`, `rar`, `livresc`, `Moldova`, `ieșit din uz`, `arhaizant`, `Țara Românească`, `Transilvania`, `Țările Române`, `dialectal`, `Bucovina`, `Muntenia`, `Banat`, `Maramureș`, `Oltenia`.
+
+**Pipeline rebuilt:** `validate_diachronic.py` → `make_shortlist.py` → `tools/build_ui_db.py`. Shortlist: 26,788 words (was ~27,400 before guards). Verified: egregious common words gone, `oțios`/`tibișir`/`eleșteu` present, register dropdown clean.
+
+**Remaining 260519 audit items (not tackled today):**
+- Inflected/derived forms as separate entries (bleuit/bleuire/bleui, murea, abecedare) — requires lemmatization (backlog #6).
+- Missing definitions for feminine forms and spelling variants (mofluzită, cfartal etc.) — separate investigation needed.
+- `Maramureș` on `biodiversitate` — likely taxonomy artifact; re-check after pipeline rerun.
+
+---
+
 ## 2026-05-27 — Regex fix, dead code removal, BACKLOG housekeeping
 
 Fixed dead regex in `create_curated_list.py:80`: `r"^[a-z]+-[a-z]+'"` had a trailing apostrophe that caused the hyphenated-word filter to match zero words. Removed the apostrophe so compound/multi-word entries (chaise-longue, mai-mare, calea-valea, etc.) are now correctly excluded from the curated candidate list. Re-ran pipeline (`validate_diachronic.py` → `make_shortlist.py` → `build_ui_db.py`).

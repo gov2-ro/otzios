@@ -19,6 +19,20 @@ OUT_PATH        = Path('public/data/ui.db')
 _ETYM_JUNK = {'vezi', 'cf.', 'după', 'după unii', 'probabil', 'cuvânt',
               'necunoscută', 'de la', 'sau'}
 
+# DEX register tags that describe usage style rather than archaic/rare status.
+# Excluded from the register filter dropdown so it only shows meaningful archaic markers.
+_REGISTER_USAGE_NOTES = {
+    'figurat', 'adesea figurat', 'metaforic', 'popular', 'familiar', 'poetic',
+    'literar', 'ironic', 'glumeț', 'depreciativ', 'peiorativ', 'neobișnuit',
+    'în comparații / la comparativ', 'în superstiții', 'prin exagerare',
+    'prin metonimie', 'eliptic', 'repetat', 'personificat', 'pleonastic',
+    'impropriu', 'argou', 'argotic', 'eufemistic', 'hiperbolic', 'emfatic',
+    'alegoric', 'augmentativ', 'corelativ', 'vulgar', 'jargon',
+    'cu pronunțare regională', 'la vocativ', 'sens curent', 'personal',
+    'cu valoare de singular', 'cu valoare verbală',
+    'cu valoare de numeral cardinal', 'cu valoare de numeral distributiv',
+}
+
 
 def _float(v):
     try:
@@ -195,7 +209,7 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     """)
 
     for kind, col, exclude in [
-        ('register',  'dex_register',  None),
+        ('register',  'dex_register',  _REGISTER_USAGE_NOTES),
         ('domain',    'dex_domain',    None),
         ('etymology', 'dex_etymology', _ETYM_JUNK),
         ('pos',       'dex_pos',       None),

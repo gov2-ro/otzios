@@ -33,6 +33,10 @@ OUTPUT_CSV = Path('data/processed/forgotten_words_shortlist.csv')
 
 TIER_A_VERDICTS = ('extinct', 'declining', 'historical_only')
 
+# Words still appearing this often in modern text are not forgotten, regardless of the
+# historical/modern ratio (e.g. common words that Wikisource just used more than modern web text).
+TIER_A_MODERN_PPM_MAX = 5.0
+
 EXCLUDED_POS = {
     'prefix', 'sufix', 'element de compunere',
     'nume propriu', 'siglă', 'abreviere', 'non-lexem',
@@ -72,7 +76,13 @@ def classify(
         if etym_tags & exclude_etym:
             return None
     verdict = row['verdict']
+    dex_freq   = float(row.get('dex_frequency') or 0)
+    modern_ppm = float(row.get('modern_ppm') or 0)
     if verdict in TIER_A_VERDICTS and float(row['hist_ppm']) > 0:
+        if dex_freq >= 1.0:              # core DEX vocabulary, not forgotten
+            return None
+        if modern_ppm > TIER_A_MODERN_PPM_MAX:  # still actively used in modern text
+            return None
         return f'corpus_{verdict}'
     if verdict == 'absent' and 'învechit' in (row.get('dex_register') or '').split('|'):
         return 'dex_invechit_absent'
