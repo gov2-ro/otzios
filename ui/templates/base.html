@@ -860,9 +860,7 @@
 
     /* ── Hover info box ── */
     #hover-box {
-      position: absolute;
-      top: 8px;
-      right: 8px;
+      position: fixed;
       width: 260px;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -873,7 +871,7 @@
       opacity: 0;
       transform: translateY(-4px);
       transition: opacity 120ms ease, transform 120ms ease;
-      z-index: 4;
+      z-index: 50;
     }
     #hover-box.visible {
       opacity: 1;
@@ -1030,15 +1028,16 @@
 
   </form>
 
-  <div id="app">
-    <div id="hover-box">
-      <div id="hb-word"></div>
-      <div id="hb-verdict-row">
-        <span id="hb-verdict" class="verdict-badge"></span>
-        <span id="hb-meta"></span>
-      </div>
-      <div id="hb-def"></div>
+  <div id="hover-box">
+    <div id="hb-word"></div>
+    <div id="hb-verdict-row">
+      <span id="hb-verdict" class="verdict-badge"></span>
+      <span id="hb-meta"></span>
     </div>
+    <div id="hb-def"></div>
+  </div>
+
+  <div id="app">
     <div id="word-list-container">
       <div id="word-list"
            hx-get="/search"
@@ -1313,6 +1312,15 @@
         } else {
           hbDef.style.display = 'none';
         }
+        var rect = row.getBoundingClientRect();
+        var bw = 274;
+        var left = rect.left;
+        if (left + bw > window.innerWidth) left = window.innerWidth - bw;
+        if (left < 4) left = 4;
+        var top = rect.bottom + 6;
+        if (top + 180 > window.innerHeight) top = rect.top - 180;
+        box.style.left = left + 'px';
+        box.style.top  = top  + 'px';
         box.classList.add('visible');
       });
 
@@ -1357,34 +1365,6 @@
         });
       });
 
-      // Definition tooltip on word-row hover
-      (function() {
-        var tip = document.createElement('div');
-        tip.id = 'def-tip';
-        tip.style.cssText = 'position:fixed;z-index:9999;max-width:320px;background:var(--bg-1);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:7px 10px;font-size:11px;line-height:1.5;pointer-events:none;opacity:0;transition:opacity .1s;box-shadow:0 2px 8px rgba(0,0,0,.18);';
-        document.body.appendChild(tip);
-
-        var hideTimer = null;
-        document.getElementById('word-list-container').addEventListener('mouseover', function(e) {
-          var row = e.target.closest('.word-row');
-          if (!row) return;
-          var def = (row.dataset.def || '').trim();
-          if (!def) return;
-          clearTimeout(hideTimer);
-          tip.textContent = def;
-          var r = row.getBoundingClientRect();
-          var top = r.bottom + 6;
-          if (top + 120 > window.innerHeight) top = r.top - 120;
-          tip.style.left = Math.min(r.left, window.innerWidth - 330) + 'px';
-          tip.style.top = top + 'px';
-          tip.style.opacity = '1';
-        });
-        document.getElementById('word-list-container').addEventListener('mouseout', function(e) {
-          var row = e.target.closest('.word-row');
-          if (!row) return;
-          hideTimer = setTimeout(function(){ tip.style.opacity = '0'; }, 80);
-        });
-      })();
 
       // Push current form state to URL after each /search request settles
       document.body.addEventListener('htmx:afterRequest', function(evt) {
