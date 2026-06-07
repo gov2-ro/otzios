@@ -14,13 +14,14 @@ import csv
 from collections import Counter
 from datetime import datetime
 
+from constants import MIN_FREQUENCY, ANALYZE_FREQ_THRESHOLD
+
 DB_PATH = "data/processed/lexemes.db"
 OUTPUT_CSV = "data/processed/forgotten_words_v1.csv"
 STATS_FILE = "data/processed/statistics.txt"
 
-# Thresholds
-FREQUENCY_THRESHOLD = 0.70  # Words below this are candidates
-MIN_FREQUENCY = 0.01  # Exclude zero/near-zero (likely errors)
+# Thresholds (single source of truth: constants.py)
+FREQUENCY_THRESHOLD = ANALYZE_FREQ_THRESHOLD  # Words below this are candidates
 
 def analyze_database(db_path):
     """Analyze the lexeme database and generate forgotten words list."""

@@ -22,7 +22,7 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 - [ ] **`explore_dex.py` is dead code** — imports `sqlite3` but never uses it; `__main__` points `db_path` at a `.sql` file that `sqlite3.connect()` cannot open. Content is narrative; move to `docs/` or delete.
 
-- [ ] **Frequency-bin definitions disagree across scripts** — `analyze_forgotten_words.py` uses 0.25/0.50/0.70; `create_curated_list.py:131-138` uses 0.30/0.50 with a 0.60 ceiling; `validate_forgotten_words.py:67` filters 0.01–0.60. No shared `constants.py`. Changing one requires hunting down the others.
+- [x] **Frequency-bin definitions disagree across scripts** — Fixed. Added `constants.py` as the single source of truth: `MIN_FREQUENCY`, `MIN_FORM_LENGTH`, the canonical rarity-bin edges (`VERY_RARE_MAX`/`RARE_MAX`/`UNCOMMON_MAX`) + a `rarity_category()` helper, plus the per-stage candidate ceilings (`CURATED_FREQ_CEILING`, and the clearly-marked legacy `ANALYZE_FREQ_THRESHOLD`/`VALIDATION_FREQ_CEILING`). `create_curated_list.py` now bins via `rarity_category()` (removed two duplicated inline binning blocks); `analyze_forgotten_words.py` and `validate_forgotten_words.py` import their floors/ceilings. Boundary-tested: new binning matches the old logic exactly at every edge. Legacy display histogram bins in `analyze_forgotten_words.py` are coupled to its 0.70 candidate threshold and left script-local (documented as intentional in `constants.py`).
 
 - [x] **Regex probable typo in `create_curated_list.py:28-32`** — Fixed: removed trailing apostrophe from `r"^[a-z]+-[a-z]+'"` so the hyphenation filter now actually fires. Was dead code (matched 0 words in the shortlist).
 
@@ -54,7 +54,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] **#4 — [XS, Low] Delete `explore_dex.py`** — Deleted. Content was narrative documentation that couldn't run; the useful structural notes are covered by `docs/conceptual-roadmap.md` and `CLAUDE.md`.
 
-- [ ] **#5 — [S, Med] Centralize frequency bins in `constants.py`** — eliminates the three-way disagreement.
+- [x] **#5 — [S, Med] Centralize frequency bins in `constants.py`** — Done. Single source of truth for `MIN_FREQUENCY`, `MIN_FORM_LENGTH`, the canonical rarity bins + `rarity_category()` helper, and per-stage candidate ceilings. Canonical `create_curated_list.py` fully driven by it; legacy scripts import their floors/ceilings. Behaviour preserved (boundary-tested).
 
 - [x] **#6 — [M, High] Add lemmatization with `simplemma`** — implemented as a post-classification dedup step in `make_shortlist.py` (2026-05-28). Collapsed 1,571 inflected/derived forms into their canonical lemmas (e.g. `abecedare`→`abecedar`, `murea` removed when alone). Shortlist: 26,788 → 25,217 words. **Remaining gap:** Romanian verb-derived nouns and participial adjectives (`bleui`/`bleuire`/`bleuit`) are not reduced by simplemma and still appear as separate entries. Full corpus-level lemmatization (`bucle`→`buclă` matching) still outstanding.
 

@@ -14,6 +14,16 @@ import sqlite3
 import csv
 import re
 
+from constants import (
+    MIN_FREQUENCY,
+    MIN_FORM_LENGTH,
+    CURATED_FREQ_CEILING,
+    VERY_RARE_MAX,
+    RARE_MAX,
+    UNCOMMON_MAX,
+    rarity_category,
+)
+
 DB_PATH = "data/processed/lexemes.db"
 OUTPUT_CSV = "data/processed/forgotten_words_curated.csv"
 
@@ -125,11 +135,11 @@ def create_curated_list(db_path, output_csv):
             notes
         FROM Lexeme
         WHERE typeof(frequency) = 'real'
-          AND frequency > 0.01
-          AND frequency < 1.0
-          AND LENGTH(form) > 3
+          AND frequency > ?
+          AND frequency < ?
+          AND LENGTH(form) > ?
         ORDER BY frequency ASC
-    """)
+    """, (MIN_FREQUENCY, CURATED_FREQ_CEILING, MIN_FORM_LENGTH))
 
     all_candidates = cursor.fetchall()
     print(f"Initial candidates: {len(all_candidates):,}")
@@ -181,32 +191,24 @@ def create_curated_list(db_path, output_csv):
     tagged_count = sum(1 for lid in curated_ids if lid in tag_map)
     print(f"  Words with at least one tag: {tagged_count:,} / {len(curated):,}")
 
-    # Categorize by frequency
+    # Categorize by frequency (canonical bins live in constants.py)
     categories = {
-        'very_rare': [],   # 0.01-0.30
-        'rare': [],        # 0.30-0.50
-        'uncommon': [],    # 0.50-0.60
-        'standard': [],    # 0.60-1.0  (DEX considers canonical but corpus may disagree)
+        'very_rare': [],
+        'rare': [],
+        'uncommon': [],
+        'standard': [],
     }
 
     for word_data in curated:
-        freq = word_data[3]
-        if freq < 0.30:
-            categories['very_rare'].append(word_data)
-        elif freq < 0.50:
-            categories['rare'].append(word_data)
-        elif freq < 0.60:
-            categories['uncommon'].append(word_data)
-        else:
-            categories['standard'].append(word_data)
+        categories[rarity_category(word_data[3])].append(word_data)
 
     print()
     print("CATEGORIZATION")
     print("-" * 70)
-    print(f"  Very rare (0.01-0.30):  {len(categories['very_rare']):>8,}")
-    print(f"  Rare (0.30-0.50):       {len(categories['rare']):>8,}")
-    print(f"  Uncommon (0.50-0.60):   {len(categories['uncommon']):>8,}")
-    print(f"  Standard (0.60-1.0):    {len(categories['standard']):>8,}")
+    print(f"  Very rare ({MIN_FREQUENCY}-{VERY_RARE_MAX}):  {len(categories['very_rare']):>8,}")
+    print(f"  Rare ({VERY_RARE_MAX}-{RARE_MAX}):       {len(categories['rare']):>8,}")
+    print(f"  Uncommon ({RARE_MAX}-{UNCOMMON_MAX}):   {len(categories['uncommon']):>8,}")
+    print(f"  Standard ({UNCOMMON_MAX}-{CURATED_FREQ_CEILING}):    {len(categories['standard']):>8,}")
 
     # Show samples
     print()
@@ -248,15 +250,8 @@ def create_curated_list(db_path, output_csv):
         for word_data in curated:
             lexeme_id, form, form_no_accent, freq, desc, model_type, notes = word_data
 
-            # Determine category
-            if freq < 0.30:
-                category = 'very_rare'
-            elif freq < 0.50:
-                category = 'rare'
-            elif freq < 0.60:
-                category = 'uncommon'
-            else:
-                category = 'standard'
+            # Determine category (canonical bins live in constants.py)
+            category = rarity_category(freq)
 
             tags = tag_map.get(lexeme_id, {})
             writer.writerow([

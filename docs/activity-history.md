@@ -4,6 +4,15 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-06-07 — Centralize frequency thresholds in `constants.py` (backlog #5)
+
+Resolved the long-standing three-way disagreement on frequency bins (CLAUDE.md gotcha + BACKLOG #5).
+
+- **New `constants.py`** — single source of truth: `MIN_FREQUENCY` (0.01) and `MIN_FORM_LENGTH` (3) shared across stages; canonical rarity-bin edges `VERY_RARE_MAX` (0.30) / `RARE_MAX` (0.50) / `UNCOMMON_MAX` (0.60) plus a `rarity_category(freq)` helper; per-stage candidate ceilings `CURATED_FREQ_CEILING` (1.0) and the explicitly-marked legacy `ANALYZE_FREQ_THRESHOLD` (0.70) / `VALIDATION_FREQ_CEILING` (0.60).
+- **`create_curated_list.py`** (canonical) — candidate WHERE clause now parameterized from constants; the two duplicated inline binning blocks (categorization + CSV write) both collapse to `rarity_category()`.
+- **`analyze_forgotten_words.py`** / **`validate_forgotten_words.py`** (legacy) — import their floors/ceilings instead of hardcoding. Legacy display histogram bins left script-local (coupled to the 0.70 candidate threshold; documented as intentional in `constants.py`).
+- **Verification** — `rarity_category()` matches the old inline logic at every boundary (0.0/0.01/0.29/0.30/0.49/0.50/0.59/0.60/0.99); all four modules import cleanly. No `data/` artifacts regenerated — behaviour is unchanged, so existing CSVs remain valid.
+
 ## 2026-05-28 — Richer detail panel + reversible UI filters for triage
 
 Follow-up to the rare-tab diagnosis: rather than baking filters into the pipeline, surface all
