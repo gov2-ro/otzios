@@ -23,7 +23,7 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 - [ ] **P0 — Phase 2 candidate-set mismatch** (`process_corpus.py:56-67,187,292` vs `validate_forgotten_words.py:64-70`): `process_corpus.py` only counts tokens in `forgotten_words_curated.csv` (~1.9k words), but the validator queries `lexemes.db` with `frequency > 0.01 AND frequency < 0.60 AND LENGTH(form) > 3` (tens of thousands of lexemes). Words absent from the curated CSV silently get `total_occurrences = 0` and are classified as `confirmed_forgotten` with confidence ~0.99. The "159,543 validated, 1 false positive" headline in `docs/phase2-test-results.md` is an artefact. Fix: align the candidate source, or have `process_corpus.py` count every token.
 
-- [ ] **Three competing MySQL→SQLite paths** — only `extract_lexemes.py` is wired into the canonical pipeline. `convert_to_sqlite.sh` mishandles multi-line MySQL directives (lines 31, 42-50); `mysql_to_sqlite.py:97` silently swallows AUTOINCREMENT errors. Archive the other two.
+- [x] **Three competing MySQL→SQLite paths** — Fixed. `extract_lexemes.py` is the sole canonical path; `convert_to_sqlite.sh` + `mysql_to_sqlite.py` moved to `archive/` (with `archive/README.md` explaining why). Note: `docs/scripts-guide.md` still documents `mysql_to_sqlite.py` as an "alternative approach" — left for a separate docs pass.
 
 - [ ] **`explore_dex.py` is dead code** — imports `sqlite3` but never uses it; `__main__` points `db_path` at a `.sql` file that `sqlite3.connect()` cannot open. Content is narrative; move to `docs/` or delete.
 
@@ -55,7 +55,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **#2 — [XS, Med] `pyproject.toml` with PEP 621 metadata** — `requirements.txt` exists but no install metadata.
 
-- [ ] **#3 — [S, Med] Pick one MySQL→SQLite path; archive the others** — `extract_lexemes.py` is canonical; archive `convert_to_sqlite.sh` + `mysql_to_sqlite.py`.
+- [x] **#3 — [S, Med] Pick one MySQL→SQLite path; archive the others** — Done. `extract_lexemes.py` is canonical; `convert_to_sqlite.sh` + `mysql_to_sqlite.py` moved to `archive/`.
 
 - [x] **#4 — [XS, Low] Delete `explore_dex.py`** — Deleted. Content was narrative documentation that couldn't run; the useful structural notes are covered by `docs/conceptual-roadmap.md` and `CLAUDE.md`.
 

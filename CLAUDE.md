@@ -140,7 +140,7 @@ processing_stats(id, corpus_name, documents_processed, tokens_processed, ...)
 - **P0 bug:** `process_corpus.py` counts only words in the curated CSV (~1.9k), but `validate_forgotten_words.py` queries `lexemes.db` across tens of thousands. Most words are never observed → bogus "confirmed_forgotten" results. Full details + fix options in `docs/BACKLOG.md`.
 - **Frequency bins disagree** across scripts (0.25/0.50/0.70 vs 0.30/0.50/0.60 vs 0.01–0.60). No shared constants file — changing one requires hunting down the others.
 - **`explore_dex.py` is not a working script** — it's narrative documentation that can't run. Don't import or execute it.
-- **`convert_to_sqlite.sh` and `mysql_to_sqlite.py` are not used** in the canonical pipeline. Use `extract_lexemes.py` instead.
+- **`convert_to_sqlite.sh` and `mysql_to_sqlite.py` are obsolete** — moved to `archive/` (see `archive/README.md`). Use `extract_lexemes.py` instead; don't run or import the archived scripts.
 
 ## Conventions
 

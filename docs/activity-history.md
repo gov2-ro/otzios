@@ -4,6 +4,10 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-06-07 — Archive dead MySQL→SQLite scripts (backlog #3)
+
+`extract_lexemes.py` is the only MySQL→SQLite path wired into the canonical pipeline. Moved the two abandoned alternatives — `mysql_to_sqlite.py` (silently swallows AUTOINCREMENT errors) and `convert_to_sqlite.sh` (mishandles multi-line MySQL directives) — into a new `archive/` directory with a `README.md` warning not to run/import them. Confirmed no script imports either (only self-references + docs). Updated the CLAUDE.md gotcha. `docs/scripts-guide.md` still lists `mysql_to_sqlite.py` as an "alternative" — flagged in BACKLOG for a separate docs pass.
+
 ## 2026-06-07 — De-pollute the `rare_in_use` tier (archaic register gate + dedup)
 
 Addressed the bulk of the "rare_in_use tier is polluted by modern loanwords + proper nouns" bug in `validate_with_wordfreq.py` (pipeline options (a) + (d)).
