@@ -4,6 +4,15 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-06-07 — De-pollute the `rare_in_use` tier (archaic register gate + dedup)
+
+Addressed the bulk of the "rare_in_use tier is polluted by modern loanwords + proper nouns" bug in `validate_with_wordfreq.py` (pipeline options (a) + (d)).
+
+- **(a) Archaic register gate.** Added `ARCHAIC_REGISTER_MARKERS` (`învechit`, `arhaizant`, `rar`, `ieșit din uz`) + `has_archaic_register()`. The `rare_in_use` gate previously admitted any word with a *non-empty* `dex_register` — including stylistic tags (`figurat`, `popular`, `familiar`, `livresc`) that everyday loanwords carry. It now requires an archaic/rare marker. New `--rare-register {archaic,any}` flag (default `archaic`; `any` = legacy). Effect on the current curated CSV: `rare_in_use` 582 → 113; `screening`/`meeting`/`house`/`jonathan`/`sioux`/`zulu`/`viking` removed.
+- **(d) Dedup by `word_no_accent`.** New `--dedup` (default on) keeps the first row per normalized headword, collapsing POS duplicates (`house` s.n. + adj.). Dropped 10,133 duplicate rows on the current input; surfaced in the run summary.
+- **Verification.** `has_archaic_register()` unit-checked; ran new vs `--rare-register any --no-dedup` (legacy) side by side to confirm the 582→113 delta; spot-checked that 14/15 backlog noise words are gone. Residual noise is now sense-level homograph mismatches (`cannabis`/`spray`/`court`/`hagi` tagged `învechit` on a non-modern sense) — caught today by the UI `hide_loanwords`/`hide_proper` toggles; options (b)/(c) intentionally remain reversible UI toggles.
+- No `data/` artifacts regenerated (verified via /tmp outputs); takes effect on next `validate_with_wordfreq.py` run.
+
 ## 2026-06-07 — Flag "[Fără definiție.]" placeholder entries (backlog #17)
 
 Closed the remaining gap in #17. The `has_definition` column already existed (in `forgotten_words_diachronic.csv` and the UI), and DEX headwords with no extractable definition already showed `has_definition=0` by being absent from `definitions.db`. The leak: dexonline's "[Fără definiție.]" placeholder rows (entry exists, only usage citations follow) counted as real definitions.
