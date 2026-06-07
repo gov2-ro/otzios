@@ -177,7 +177,12 @@ def load_words(
     if defs_path.exists():
         dconn = sqlite3.connect(str(defs_path))
         for word, definition in dconn.execute('SELECT word, definition FROM definitions'):
-            conn.execute('UPDATE words SET definition=? WHERE word=?', (definition, word))
+            # Skip "[Fără definiție.]" placeholders (mirrors
+            # validate_diachronic.is_placeholder_definition / BACKLOG #17) so the
+            # has-definition filter and the panel text stay consistent. The word
+            # still appears in the list; it just has no local definition body.
+            if definition and not definition.strip().lower().startswith('[fără definiț'):
+                conn.execute('UPDATE words SET definition=? WHERE word=?', (definition, word))
         dconn.close()
 
     conn.create_function('strip_diacritics', 1, _strip_diacritics)

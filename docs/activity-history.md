@@ -4,6 +4,14 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-06-07 — Flag "[Fără definiție.]" placeholder entries (backlog #17)
+
+Closed the remaining gap in #17. The `has_definition` column already existed (in `forgotten_words_diachronic.csv` and the UI), and DEX headwords with no extractable definition already showed `has_definition=0` by being absent from `definitions.db`. The leak: dexonline's "[Fără definiție.]" placeholder rows (entry exists, only usage citations follow) counted as real definitions.
+
+- **`validate_diachronic.py`** — added `is_placeholder_definition(text)`: placeholder when text is missing/blank or "[Fără definiț…" *leads* the string. `_load_definition_words()` now excludes those, so the CSV `has_definition` is accurate. Mid-text placeholders in multi-sense words (`perină`, `spectacul`) correctly still count.
+- **`ui/app.py`** — definition load skips placeholder rows (matching inline check) so the `has_def` filter (`definition IS NULL`) and the panel text agree; placeholder words still appear in the list and link out to dexonline.
+- **Scale / verification** — predicate unit-checked (None/blank/leading/embedded/normal); against the live `definitions.db` (70,472 rows) it flags exactly 7 placeholder-only words: `animaltecă`, `apastop`, `fibrinactiv`, `magnetodiaflux`, `narcorublă`, `perfluorbutilamină`, `relin`. Both modules import cleanly. No `data/` artifacts regenerated — takes effect on next `validate_diachronic.py` run / `ui.db` rebuild.
+
 ## 2026-06-07 — Centralize frequency thresholds in `constants.py` (backlog #5)
 
 Resolved the long-standing three-way disagreement on frequency bins (CLAUDE.md gotcha + BACKLOG #5).

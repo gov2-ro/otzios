@@ -143,15 +143,27 @@ def _load_dict_counts(sql_path: Path) -> dict[str, int]:
     return {w: len(srcs) for w, srcs in word_sources.items()}
 
 
+# dexonline renders entries that have a headword but no meaning body as
+# "[Fără definiție.]". When that placeholder *leads* the text (only usage
+# citations follow) the word has no real definition; when it appears mid-text
+# as one sense among many, the word does. See BACKLOG #17.
+_PLACEHOLDER_DEF_PREFIX = "[fără definiț"
+
+
+def is_placeholder_definition(text) -> bool:
+    """True when `text` is missing or only a '[Fără definiție.]' placeholder."""
+    if not text or not text.strip():
+        return True
+    return text.strip().lower().startswith(_PLACEHOLDER_DEF_PREFIX)
+
+
 def _load_definition_words(db_path: Path) -> set[str]:
     if not db_path.exists():
         return set()
     conn = sqlite3.connect(str(db_path))
-    rows = conn.execute(
-        "SELECT word FROM definitions WHERE definition IS NOT NULL AND definition != ''"
-    ).fetchall()
+    rows = conn.execute("SELECT word, definition FROM definitions").fetchall()
     conn.close()
-    return {normalize(r[0]) for r in rows}
+    return {normalize(w) for w, d in rows if not is_placeholder_definition(d)}
 
 HIST_CORPUS     = 'wikisource_ro'
 MODERN_CORPUS   = 'culturax_ro'

@@ -91,12 +91,9 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
   Columns flow through `validate_with_wordfreq.py` automatically (DictReader/DictWriter preserves extra fields).
 
-- [ ] **#17 — [XS, Med] Flag words with no definition body** — Some DEX entries exist as a headword with POS and etymology but no actual meaning text (dexonline renders these as "[Fără definiție.]", e.g. *nombrilist*). In the `Meaning`/`DefinitionSimple` tables these have a null or empty `internalRep`. These words pass our Lexeme filter and appear in the candidate set, but their "forgotten" verdict rests purely on frequency with no semantic content to validate against. Two action items:
+- [x] **#17 — [XS, Med] Flag words with no definition body** — Done. The `has_definition` column already existed in `forgotten_words_diachronic.csv` (and flows into the UI via `validate_diachronic._load_definition_words` → `ui.db.words.has_definition`), and DEX headwords with no extractable definition already land as `has_definition=0` simply by being absent from `definitions.db`. The remaining leak: dexonline's "[Fără definiție.]" placeholder rows (where the entry exists but only usage citations follow) were counted as real definitions. Fixed with `is_placeholder_definition()` in `validate_diachronic.py` — a definition is a placeholder when missing/blank or when "[Fără definiț…" *leads* the text (mid-text occurrences in multi-sense words like *perină*/*spectacul* still count). Mirrored in `ui/app.py` definition load so the UI `has_def` filter and panel text stay consistent (placeholder words still appear, just with no local definition body, linking out to dexonline). Scale in the current `definitions.db`: 7 placeholder-only words (`animaltecă`, `apastop`, `fibrinactiv`, `magnetodiaflux`, `narcorublă`, `perfluorbutilamină`, `relin`). Takes effect on the next `validate_diachronic.py` run / `ui.db` rebuild.
 
-  1. Count them: `SELECT COUNT(DISTINCT l.form) FROM Lexeme l JOIN EntryLexeme el ... JOIN Meaning m ... WHERE m.internalRep IS NULL OR m.internalRep = ''` — gives the scale of the problem.
-  2. Add a `has_definition` boolean column to `forgotten_words_diachronic.csv` (and the curated list) so they can be filtered out of final results or treated as a lower-confidence subcategory.
-
-  Note: these words may still be worth keeping — a word documented only as a borrowing with no translation is itself a sign of marginal integration into Romanian.
+  Note: these words are kept, not dropped — a word documented only as a borrowing with no translation is itself a sign of marginal integration into Romanian.
 
 - [x] **#19 — [XS, Low] Annotation overlay overflow for heavily-annotated words** — Capped at 3 emojis + `+N` superscript in muted mono for the remainder. Template now builds `_ov.items` list instead of string; slices `[:3]` and appends `<span class="ann-more">+N</span>`.
 
