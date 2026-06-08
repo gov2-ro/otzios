@@ -81,14 +81,14 @@ $tiers = [
       <span class="flabel">tier</span>
       <?php foreach ($tiers as [$v, $lbl]): ?>
       <label class="pill">
-        <input type="radio" name="tier" value="<?= e($v) ?>"> <?= e($lbl) ?>
+        <input type="checkbox" name="tier[]" value="<?= e($v) ?>" checked> <?= e($lbl) ?>
       </label>
       <?php endforeach; ?>
       <div class="fsep"></div>
       <span class="flabel">POS</span>
       <?php foreach ($POS_OPTIONS as [$val, $lbl]): ?>
       <label class="pill">
-        <input type="radio" name="pos" value="<?= e($val) ?>"> <?= e($lbl) ?>
+        <input type="checkbox" name="pos[]" value="<?= e($val) ?>" checked> <?= e($lbl) ?>
       </label>
       <?php endforeach; ?>
     </div>

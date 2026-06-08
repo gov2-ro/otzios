@@ -550,12 +550,22 @@ function applyUrlToForm() {
   var q = params.get('q');
   if (q) { var qi = form.querySelector('input[name=q]'); if (qi) qi.value = q; }
 
-  // Radio groups: word_tier, tier, pos, has_def
-  ['word_tier', 'tier', 'pos', 'has_def'].forEach(function(name) {
+  // Radio groups
+  ['word_tier', 'has_def'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     form.querySelectorAll('input[name=' + name + ']').forEach(function(r) {
       r.checked = (r.value === val);
+    });
+  });
+
+  // Checkbox groups (tier, pos): comma-separated in URL; absent = all checked
+  ['tier', 'pos'].forEach(function(name) {
+    var val = params.get(name);
+    if (val === null) return; // not in URL → leave all checked
+    var selected = val.split(',').filter(Boolean);
+    form.querySelectorAll('input[name="' + name + '[]"]').forEach(function(cb) {
+      cb.checked = selected.includes(cb.value);
     });
   });
 
@@ -578,10 +588,19 @@ function syncUrlFromForm() {
   if (q && q.value.trim()) params.set('q', q.value.trim());
 
   // Radio groups
-  ['word_tier', 'tier', 'pos', 'has_def'].forEach(function(name) {
+  ['word_tier', 'has_def'].forEach(function(name) {
     var el = form.querySelector('input[name=' + name + ']:checked');
     var val = el ? el.value : '';
     if (val && val !== (URL_PARAM_DEFAULTS[name] || '')) params.set(name, val);
+  });
+
+  // Checkbox groups: only write to URL when some-but-not-all are checked
+  ['tier', 'pos'].forEach(function(name) {
+    var all  = Array.from(form.querySelectorAll('input[name="' + name + '[]"]'));
+    var chkd = all.filter(function(cb) { return cb.checked; });
+    if (chkd.length > 0 && chkd.length < all.length) {
+      params.set(name, chkd.map(function(cb) { return cb.value; }).join(','));
+    }
   });
 
   // Selects

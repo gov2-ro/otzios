@@ -5,11 +5,21 @@ require_once __DIR__ . '/_lib.php';
 $q         = trim($_GET['q']         ?? '');
 $word_tier = trim($_GET['word_tier'] ?? 'forgotten');
 $verdict   = trim($_GET['verdict']   ?? '');
-$tier      = trim($_GET['tier']      ?? '');
 $register  = trim($_GET['register']  ?? '');
 $domain    = trim($_GET['domain']    ?? '');
 $etym      = trim($_GET['etymology'] ?? '');
-$pos       = trim($_GET['pos']       ?? '');
+
+// tier[] and pos[] are multi-value checkboxes; also accept comma-separated from URL deep links
+function parse_multi(mixed $raw): array {
+    if ($raw === null) return [];
+    if (is_array($raw)) return array_values(array_filter(array_map('trim', $raw)));
+    return array_values(array_filter(array_map('trim', explode(',', (string)$raw))));
+}
+global $POS_OPTIONS;
+$TIER_TOTAL = 5; // corpus_extinct, corpus_declining, corpus_historical_only, dex_invechit_absent, dex_absent_highfreq
+$POS_TOTAL  = count($POS_OPTIONS);
+$tier_values = parse_multi($_GET['tier'] ?? null);
+$pos_values  = parse_multi($_GET['pos']  ?? null);
 $has_def   = trim($_GET['has_def']   ?? '');
 $dex_max   = trim($_GET['dex_max']   ?? '');
 $dict_min  = trim($_GET['dict_min']  ?? '');
@@ -40,19 +50,28 @@ if ($verdict !== '') {
     $conditions[] = 'verdict = ?';
     $params[]     = $verdict;
 }
-if ($tier !== '') {
-    $conditions[] = 'confidence_tier = ?';
-    $params[]     = $tier;
+// Only filter if some-but-not-all tiers selected; "all" or "none" = no filter (preserves NULLs)
+if ($tier_values !== [] && count($tier_values) < $TIER_TOTAL) {
+    $ph = implode(',', array_fill(0, count($tier_values), '?'));
+    $conditions[] = "confidence_tier IN ($ph)";
+    $params       = array_merge($params, $tier_values);
 }
 foreach ([
     ['dex_register', $register],
     ['dex_domain',   $domain],
     ['dex_etymology', $etym],
-    ['dex_pos',      $pos],
 ] as [$col, $val]) {
     if ($val !== '') {
         $conditions[] = "('|'||{$col}||'|' LIKE ?)";
         $params[]     = '%|' . $val . '|%';
+    }
+}
+// POS multi-select: OR across selected values; "all" or "none" = no filter
+if ($pos_values !== [] && count($pos_values) < $POS_TOTAL) {
+    $or_parts = array_fill(0, count($pos_values), "('|'||dex_pos||'|' LIKE ?)");
+    $conditions[] = '(' . implode(' OR ', $or_parts) . ')';
+    foreach ($pos_values as $pv) {
+        $params[] = '%|' . $pv . '|%';
     }
 }
 if ($has_def === '1') {
