@@ -6,6 +6,7 @@
 ?>
 <?php if ($page === 1): ?>
 <span id="status-word-count" hx-swap-oob="true"><?= (int)$total ?> words</span>
+<span id="result-count" hx-swap-oob="true"><?= number_format((int)$total) ?> <?= (int)$total === 1 ? 'word' : 'words' ?></span>
 <?php endif; ?>
 <?php foreach ($words as $w): include __DIR__ . '/word_row.php'; endforeach; ?>
 <?php if (empty($words)): ?>

@@ -4,6 +4,19 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-06-09 — Filter dedup, dict_count filter, URL deep-linking
+
+- **Removed verdict pills** (extinct / declining / historical / absent) — they duplicated the tier labels (corp. extinct / corp. declining / corp. historical) since `confidence_tier` is derived from `verdict`. Tier is more informative (adds `dex. absent` path) so it's the one to keep.
+- **Added missing `dex_absent_highfreq` tier** — 3,848 words had no tier pill to filter them until now.
+- **`dict_count` filter** — new "dicts: any / ≥3 / ≥6 / ≥10 / ≥15" select in filter row 3. Filters `dict_count >= N` in SQLite. Works as a quality gate: words attested in more dictionaries are more firmly established.
+- **URL deep-linking** — `applyUrlToForm()` reads `?q=&tier=&sort=…` on page load and pre-selects filters before HTMX fires its initial request. `syncUrlFromForm()` updates the URL (via `history.replaceState`) on every HTMX search, so every filter state is bookmarkable and shareable. Default values are omitted from the URL to keep links clean.
+
+## 2026-06-09 — Reversible DEX-rare filter on the rare tab (Phase 1)
+
+The rare tab still showed everyday words (credit, ecran, universitate, ceapă…). Root cause: the `rare_in_use` gate has no rarity requirement — it admits any `zipf ∈ [3.0, 4.5)` word with an archaic register tag, and DEX register tags are per-*headword*, so `învechit` fires on a long-dead *sense* of a common word. 112 of the 113 rare words are DEX `rarity_category = "standard"` (96% have `dex_frequency ≥ 0.80`).
+
+Phase 1 (reversible, no pipeline re-run): added a `dex_max` filter to the PHP UI, scoped to the rare tab. `public/api/search.php` applies `dex_frequency BETWEEN 0.01 AND <ceiling>` only when `word_tier = rare_in_use` (0.01 floor drops `frequency = 0` missing data). `public/index.php` adds a select (DEX: all / ≤0.60 / ≤0.50 / ≤0.30, default ≤0.60); `public/assets/app.js` shows it only on the rare tab. Default ≤0.60 collapses the rare tab to **1 word (`listat`)** — confirming the pool is ~entirely DEX-standard and that a useful rare tier needs re-sourcing (Phase 2: rarity-first gate in `validate_with_wordfreq.py`, drop the archaic requirement, lower zipf ceiling 4.5→3.5, drop English loanwords). See plan `rare-list-still-shows-lucky-mitten.md`.
+
 ## 2026-06-07 — Archive dead MySQL→SQLite scripts (backlog #3)
 
 `extract_lexemes.py` is the only MySQL→SQLite path wired into the canonical pipeline. Moved the two abandoned alternatives — `mysql_to_sqlite.py` (silently swallows AUTOINCREMENT errors) and `convert_to_sqlite.sh` (mishandles multi-line MySQL directives) — into a new `archive/` directory with a `README.md` warning not to run/import them. Confirmed no script imports either (only self-references + docs). Updated the CLAUDE.md gotcha. `docs/scripts-guide.md` still lists `mysql_to_sqlite.py` as an "alternative" — flagged in BACKLOG for a separate docs pass.

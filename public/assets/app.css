@@ -244,6 +244,16 @@ body {
 .htmx-indicator { opacity: 0; transition: opacity .2s; color: var(--text-3); font-size: 11px; }
 .htmx-request .htmx-indicator { opacity: 1; }
 
+/* Live result count — sits at the right end of the filter row, updates per search */
+.result-count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
 /* ══════════════════════════════════════════
    FULL-WIDTH WORD GRID + OVERLAY PANEL
 ══════════════════════════════════════════ */

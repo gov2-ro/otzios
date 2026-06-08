@@ -469,6 +469,19 @@ document.querySelectorAll('#filter-form label.pill input[type=radio]').forEach(f
   });
 });
 
+// DEX-rare filter is only meaningful on the rare tab — show it there only.
+(function() {
+  const ctrl = document.getElementById('dex-rare-control');
+  if (!ctrl) return;
+  function sync() {
+    const sel = document.querySelector('#filter-form input[name=word_tier]:checked');
+    ctrl.style.display = (sel && sel.value === 'rare_in_use') ? '' : 'none';
+  }
+  document.querySelectorAll('#filter-form input[name=word_tier]')
+    .forEach(function(r) { r.addEventListener('change', sync); });
+  sync();
+})();
+
 // Tax-select active highlight
 document.querySelectorAll('.tax-select').forEach(function(sel) {
   const dflt = sel.dataset.default !== undefined ? sel.dataset.default : '';
@@ -516,6 +529,83 @@ document.querySelectorAll('.tax-select').forEach(function(sel) {
     box.classList.remove('visible');
   });
 })();
+
+// ── URL ↔ filter sync ──────────────────────────────────────────────────────────
+
+// Param names whose default value means "no filter" (omit from URL when at default)
+var URL_PARAM_DEFAULTS = {
+  word_tier: 'forgotten',
+  has_def:   '',
+  sort:      'rare',
+  marks:     'all',
+};
+
+function applyUrlToForm() {
+  var params = new URLSearchParams(location.search);
+  if (!params.toString()) return;
+  var form = document.getElementById('filter-form');
+  if (!form) return;
+
+  // Text input
+  var q = params.get('q');
+  if (q) { var qi = form.querySelector('input[name=q]'); if (qi) qi.value = q; }
+
+  // Radio groups: word_tier, tier, pos, has_def
+  ['word_tier', 'tier', 'pos', 'has_def'].forEach(function(name) {
+    var val = params.get(name);
+    if (val === null) return;
+    form.querySelectorAll('input[name=' + name + ']').forEach(function(r) {
+      r.checked = (r.value === val);
+    });
+  });
+
+  // Selects: sort, register, domain, etymology, dex_max, dict_min, marks
+  ['sort', 'register', 'domain', 'etymology', 'dex_max', 'dict_min', 'marks'].forEach(function(name) {
+    var val = params.get(name);
+    if (val === null) return;
+    var el = form.querySelector('select[name=' + name + ']');
+    if (el) el.value = val;
+  });
+}
+
+function syncUrlFromForm() {
+  var form = document.getElementById('filter-form');
+  if (!form) return;
+  var params = new URLSearchParams();
+
+  // Text input
+  var q = form.querySelector('input[name=q]');
+  if (q && q.value.trim()) params.set('q', q.value.trim());
+
+  // Radio groups
+  ['word_tier', 'tier', 'pos', 'has_def'].forEach(function(name) {
+    var el = form.querySelector('input[name=' + name + ']:checked');
+    var val = el ? el.value : '';
+    if (val && val !== (URL_PARAM_DEFAULTS[name] || '')) params.set(name, val);
+  });
+
+  // Selects
+  ['sort', 'register', 'domain', 'etymology', 'dex_max', 'dict_min', 'marks'].forEach(function(name) {
+    var el = form.querySelector('select[name=' + name + ']');
+    if (!el) return;
+    var val = el.value;
+    if (val && val !== (URL_PARAM_DEFAULTS[name] || '')) params.set(name, val);
+  });
+
+  var qs = params.toString();
+  history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
+}
+
+// Apply URL params to form before HTMX fires its initial load request
+applyUrlToForm();
+
+// Keep URL in sync with every HTMX search request
+document.addEventListener('htmx:configRequest', function(e) {
+  var url = e.detail.path || '';
+  var base = (typeof OTIOS_BASE !== 'undefined' ? OTIOS_BASE : '');
+  if (!url.startsWith(base + '/api/search.php')) return;
+  syncUrlFromForm();
+});
 
 // ── Init ────────────────────────────────────────────────────────────────────────
 

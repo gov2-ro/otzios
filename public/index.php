@@ -9,18 +9,12 @@ $etyms      = vocab('etymology');
 
 global $QUICK_TAGS, $POS_OPTIONS;
 
-$verdicts = [
-    ['extinct',         'pv-ext',  'extinct'],
-    ['declining',       'pv-dec',  'declining'],
-    ['historical_only', 'pv-hist', 'historical'],
-    ['absent',          'pv-abs',  'absent'],
-];
-
 $tiers = [
     ['corpus_extinct',         'corp. extinct'],
     ['corpus_declining',       'corp. declining'],
     ['corpus_historical_only', 'corp. historical'],
     ['dex_invechit_absent',    'dex. învechit'],
+    ['dex_absent_highfreq',    'dex. absent'],
 ];
 ?>
 <!DOCTYPE html>
@@ -79,17 +73,11 @@ $tiers = [
         <label class="seg-opt"><input type="radio" name="has_def" value="0"> def ✗</label>
       </div>
       <span class="htmx-indicator">loading…</span>
+      <span id="result-count" class="result-count"><?= number_format((int)$total) ?> words</span>
     </div>
 
-    <!-- Row 2: verdict + tier + POS -->
+    <!-- Row 2: tier + POS -->
     <div class="filter-row">
-      <span class="flabel">verdict</span>
-      <?php foreach ($verdicts as [$v, $cls, $lbl]): ?>
-      <label class="pill <?= e($cls) ?>">
-        <input type="radio" name="verdict" value="<?= e($v) ?>"> <?= e($lbl) ?>
-      </label>
-      <?php endforeach; ?>
-      <div class="fsep"></div>
       <span class="flabel">tier</span>
       <?php foreach ($tiers as [$v, $lbl]): ?>
       <label class="pill">
@@ -126,6 +114,21 @@ $tiers = [
         <option value="<?= e($et) ?>"><?= e(str_replace('limba ', '', $et)) ?></option>
         <?php endforeach; ?>
       </select>
+      <select name="dict_min" class="tax-select" data-default="" aria-label="Minimum dictionaries">
+        <option value="">dicts: any</option>
+        <option value="3">dicts ≥3</option>
+        <option value="6">dicts ≥6</option>
+        <option value="10">dicts ≥10</option>
+        <option value="15">dicts ≥15</option>
+      </select>
+      <span id="dex-rare-control" class="dex-rare-control" style="display:none">
+        <select name="dex_max" class="tax-select" data-default="0.60" aria-label="Restrict rare tab to DEX-rare words">
+          <option value="all">DEX: all</option>
+          <option value="0.60" selected>DEX-rare ≤0.60</option>
+          <option value="0.50">DEX-rare ≤0.50</option>
+          <option value="0.30">DEX-rare ≤0.30</option>
+        </select>
+      </span>
     </div>
 
   </form>

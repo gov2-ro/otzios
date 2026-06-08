@@ -11,6 +11,8 @@ $domain    = trim($_GET['domain']    ?? '');
 $etym      = trim($_GET['etymology'] ?? '');
 $pos       = trim($_GET['pos']       ?? '');
 $has_def   = trim($_GET['has_def']   ?? '');
+$dex_max   = trim($_GET['dex_max']   ?? '');
+$dict_min  = trim($_GET['dict_min']  ?? '');
 $marks     = trim($_GET['marks']     ?? 'all');
 $sort      = trim($_GET['sort']      ?? '');
 $page      = max(1, (int)($_GET['page'] ?? 1));
@@ -57,6 +59,25 @@ if ($has_def === '1') {
     $conditions[] = 'definition IS NOT NULL';
 } elseif ($has_def === '0') {
     $conditions[] = 'definition IS NULL';
+}
+$dict_min_int = (int)$dict_min;
+if ($dict_min_int > 0) {
+    $conditions[] = 'dict_count >= ?';
+    $params[]     = $dict_min_int;
+}
+
+// DEX-rarity ceiling — only meaningful on the rare tab. The rare_in_use tier has
+// no intrinsic rarity gate, so this restricts it to words DEX itself rates as
+// non-standard (frequency <= ceiling). Defaults to 0.60 when unset; 'all'
+// disables it. The 0.01 floor drops frequency=0 (missing data, per CLAUDE.md).
+// Ignored on the forgotten tab.
+if ($word_tier === 'rare_in_use') {
+    $ceiling = $dex_max === '' ? 0.60 : ($dex_max === 'all' ? null : (float)$dex_max);
+    if ($ceiling !== null && $ceiling > 0) {
+        $conditions[] = 'dex_frequency BETWEEN ? AND ?';
+        $params[]     = 0.01;
+        $params[]     = $ceiling;
+    }
 }
 
 // Client-driven marks filter
