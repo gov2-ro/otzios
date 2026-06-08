@@ -129,6 +129,7 @@ $tiers = [
           <option value="0.30">DEX-rare ≤0.30</option>
         </select>
       </span>
+      <button type="reset" id="reset-filters" class="reset-btn" title="Reset all filters">reset</button>
     </div>
 
   </form>

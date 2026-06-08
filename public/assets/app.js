@@ -596,6 +596,15 @@ function syncUrlFromForm() {
   history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
 }
 
+// Reset: re-fire HTMX search and clear URL after the browser resets form values
+document.getElementById('filter-form') && document.getElementById('filter-form').addEventListener('reset', function() {
+  setTimeout(function() {
+    var form = document.getElementById('filter-form');
+    if (form) form.dispatchEvent(new Event('change', { bubbles: true }));
+    syncUrlFromForm();
+  }, 0);
+});
+
 // Apply URL params to form before HTMX fires its initial load request
 applyUrlToForm();
 
