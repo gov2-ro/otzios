@@ -84,3 +84,86 @@ function render(string $partial, array $vars = []): void {
     extract($vars, EXTR_SKIP);
     include __DIR__ . '/_partials/' . $partial;
 }
+
+function parse_multi(mixed $raw): array {
+    if ($raw === null) return [];
+    if (is_array($raw)) return array_values(array_filter(array_map('trim', $raw)));
+    return array_values(array_filter(array_map('trim', explode(',', (string)$raw))));
+}
+
+function split_pipe(?string $s): array {
+    if ($s === null || $s === '') return [];
+    return array_values(
+        array_filter(array_map('trim', explode('|', $s)), fn(string $v) => $v !== '')
+    );
+}
+
+function build_word_filter(array $p): array {
+    global $POS_OPTIONS;
+    static $TIER_TOTAL = 5;
+    $POS_TOTAL = count($POS_OPTIONS);
+
+    $word_tier = trim($p['word_tier'] ?? 'forgotten');
+    if (!in_array($word_tier, ['forgotten', 'rare_in_use'], true)) {
+        $word_tier = 'forgotten';
+    }
+
+    $conditions = ['word_tier = ?'];
+    $params     = [$word_tier];
+
+    // Confidence tier checkboxes
+    $tier_values = parse_multi($p['tier'] ?? null);
+    if ($tier_values !== [] && count($tier_values) < $TIER_TOTAL) {
+        $ph           = implode(',', array_fill(0, count($tier_values), '?'));
+        $conditions[] = "confidence_tier IN ($ph)";
+        $params       = array_merge($params, $tier_values);
+    }
+
+    // Taxonomy pipe-delimited single-value filters
+    foreach ([
+        ['dex_register',  trim($p['register']  ?? '')],
+        ['dex_domain',    trim($p['domain']    ?? '')],
+        ['dex_etymology', trim($p['etymology'] ?? '')],
+    ] as [$col, $val]) {
+        if ($val !== '') {
+            $conditions[] = "('|'||{$col}||'|' LIKE ?)";
+            $params[]     = '%|' . $val . '|%';
+        }
+    }
+
+    // POS multi-select (OR across selected values)
+    $pos_values = parse_multi($p['pos'] ?? null);
+    if ($pos_values !== [] && count($pos_values) < $POS_TOTAL) {
+        $or_parts     = array_fill(0, count($pos_values), "('|'||dex_pos||'|' LIKE ?)");
+        $conditions[] = '(' . implode(' OR ', $or_parts) . ')';
+        foreach ($pos_values as $pv) { $params[] = '%|' . $pv . '|%'; }
+    }
+
+    // Definition filter
+    $has_def = trim($p['has_def'] ?? '');
+    if ($has_def === '1') {
+        $conditions[] = 'definition IS NOT NULL';
+    } elseif ($has_def === '0') {
+        $conditions[] = 'definition IS NULL';
+    }
+
+    // Minimum dictionaries
+    $dict_min_int = (int)trim($p['dict_min'] ?? '');
+    if ($dict_min_int > 0) {
+        $conditions[] = 'dict_count >= ?';
+        $params[]     = $dict_min_int;
+    }
+
+    // DEX frequency ceiling (only meaningful for rare_in_use tab)
+    if ($word_tier === 'rare_in_use') {
+        $dex_max = trim($p['dex_max'] ?? '');
+        $ceiling = $dex_max === '' ? 0.60 : ($dex_max === 'all' ? null : (float)$dex_max);
+        if ($ceiling !== null && $ceiling > 0) {
+            $conditions[] = 'dex_frequency BETWEEN ? AND ?';
+            $params[]     = 0.01;
+            $params[]     = $ceiling;
+        }
+    }
+
+    return ['conditions' => $conditions, 'params' => $params, 'word_tier' => $word_tier];
+}

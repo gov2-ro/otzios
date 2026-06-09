@@ -4,6 +4,20 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-06-09 — Statistics page with sliceable filters
+
+Built a full statistics dashboard (`public/stats.php`) that mirrors the main word list's filter UI. Users can slice statistics by the same dimensions: tier, POS, register, domain, etymology, dict_count, definition status, and DEX frequency ceiling (rare tab).
+
+- **Refactored filter building**: Extracted `build_word_filter()` helper in `_lib.php` — shared by both `search.php` and the new `stats.php`, eliminates duplication and maintenance risk.
+- **`parse_multi()` + `split_pipe()` helpers**: Moved to `_lib.php`, handle multi-value checkbox arrays (tier[], pos[]) and pipe-delimited fields (etymology, register, domain, POS).
+- **API endpoint (`api/stats.php`)**: Single SQL scan per word, PHP-side aggregation: counts by confidence_tier (GROUP BY), then counts by etymology/register/domain/POS (split pipes, frequency maps). Generates top-15 etymologies, top-10 domains, all registers, top-8 POS.
+- **Stats panels (`api/_partials/stats_panels.php`)**: HTML-only bar charts, inline `width: X%` styling, no JS library. Shows summary strip (total, definition coverage %), then 5 cards: etymology (full-width 2-column), tier, POS, register, domain — all color-coded per verdict/category.
+- **CSS**: New `.stats-*` classes, grid layout for panels, mobile collapse of 2-column etymology to 1 on narrow screens.
+- **Filter form**: Reuses the same tier/POS checkboxes, register/domain/etymology/dict_min selects, dex_max (rare-only). Inline JS handles DEX-rare visibility, tax-select active highlight, and form reset re-dispatch.
+- **Navigation**: "📊 statistici" link in status bar, back-link ("← cuvinte") from stats page.
+
+No changes needed to existing `search.php` behavior — all filter logic is now centralized in `build_word_filter()`.
+
 ## 2026-06-09 — Filter dedup, dict_count filter, URL deep-linking
 
 - **Removed verdict pills** (extinct / declining / historical / absent) — they duplicated the tier labels (corp. extinct / corp. declining / corp. historical) since `confidence_tier` is derived from `verdict`. Tier is more informative (adds `dex. absent` path) so it's the one to keep.
