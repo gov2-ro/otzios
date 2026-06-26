@@ -4,6 +4,30 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-06-26 — Beta-prep UX pass: dictionaries, play modes, design brief
+
+A UX-polish phase to get the app ready to share with friends as beta testers. Two tracks: durable, data-backed detail features + play/exploration mechanics (built now), and a written redesign brief (handed off later). Sharing/virality infrastructure and data-quality work were explicitly deferred to their own phases.
+
+**Detail panel (durable wins):**
+- **Dictionaries-in-info**: new `sources` column in `ui.db`, merged from `data/processed/dict_sources.db` (exact + diacritic-normalized fallback, 98.2% of words matched). Added `merge_dict_sources()` to `tools/build_ui_db.py` and a one-time backfill `tools/migrate_ui_db_sources.py`. Rendered as a "📚 N dicționare" chip list in `_partials/detail.php`.
+- **Synonyms placeholder**: "Sinonime: în curând" slot wired in the detail panel, ready for a future `synonyms` data source (none exists yet).
+- **Larger definition box**: detail drawer raised 130px → 210px (desktop), definition bumped to 16px/1.65.
+- **Shared-word focus**: opening `?word=X` now adds a `share-focus` class so the panel opens tall (50vh desktop / 80vh mobile) — the definition is the hero, the list secondary.
+
+**Usability:**
+- **Active-filter chips** (`#active-filters`): every non-default filter shows as a removable chip with an individual ✕ (plus "resetează tot"). `renderActiveFilters()` in `app.js`.
+- **ignore vs remove** clarified with tooltips + shortcuts-modal copy (ignore = not interesting to you; remove = not genuinely forgotten).
+
+**Play / exploration:**
+- **🎲 surprise** (`r`): random word respecting current filters — `api/random.php`.
+- **Cuvântul zilei**: deterministic daily word over a quality subset, dismissible banner, once/day via localStorage.
+- **📇 feed / swipe mode**: one-card-at-a-time keep/skip explorer (keyboard + touch swipe, soft daily count) — `api/feed.php`.
+- **🎮 joc** (`joc.php`): flashcards (word → reveal meaning) + multiple-choice quiz (meaning → pick the word, same-POS distractors, masked target), streak/record in localStorage — `api/quiz.php`.
+
+**Redesign brief:** `docs/design-brief.md` — fresh-identity, mobile-first spec for a designer, covering the table view, filter-bar redesign, calmer verdict palette, play modes, and the shared-word landing state.
+
+Verified end-to-end with Playwright (system Chrome): word list, surprise, active-filter add/remove, feed keep/advance/close, shared-word focus, and the joc flashcard + quiz flows all pass with no console errors from app code.
+
 ## 2026-06-09 — Statistics page with sliceable filters
 
 Built a full statistics dashboard (`public/stats.php`) that mirrors the main word list's filter UI. Users can slice statistics by the same dimensions: tier, POS, register, domain, etymology, dict_count, definition status, and DEX frequency ceiling (rare tab).

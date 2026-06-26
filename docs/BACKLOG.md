@@ -166,15 +166,17 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] mobile, when scrolling, hide definition drawer. after focus moves on the list
 
-- [ ] in info window show which dictionaries this word is found in (incl wikitionary)
+- [x] in info window show which dictionaries this word is found in — `sources` column added to `ui.db` from `dict_sources.db` (98.2% of words matched, exact + diacritic-normalized fallback); rendered as a "📚 N dicționare" chip list in the detail panel. Build: `tools/build_ui_db.py merge_dict_sources()`; one-time backfill: `tools/migrate_ui_db_sources.py`. (Wiktionary membership not yet a data source — separate task.)
 
 - [x] desktop tooltip on hover with definition — floating `#def-tip` div populated from existing `data-def` attribute on `.word-row` via `mouseover`/`mouseout` on the word-list-container. Positioned below the chip (above if near bottom of viewport). No extra network requests.
 
-- [ ] top filter, the posibility to remove one attribute - now we can just select.
+- [x] top filter, the posibility to remove one attribute - now we can just select. — added an "active filters" chip bar (`#active-filters`) that lists each non-default filter (search, taxonomy selects, ranges, hide toggles, partial verdict/tier/POS groups) with an individual ✕ to clear just that one, plus a "resetează tot". See `renderActiveFilters()` in `app.js`.
 
 - [ ] create statistics by metadata. in the limited corpus and later in whole dexonline
 
-- [x] hide terms marked as `remove` — hidden by default; "show removed" pill in filter bar re-shows them. **Open question**: what's the semantic difference between `ignore` and `remove`? Clarify and add tooltip/docs so users know which to use.
+- [x] shareable word viewer url - focus on the word — `?word=<word>` already encoded in URL when panel opens (`syncUrlFromForm`). On page load: panel re-opens via HTMX (`/api/word.php`); after the word list swaps in, `htmx:afterSwap` now also calls `selectRow(idx, true)` to scroll to and highlight the word in the grid.
+
+- [x] hide terms marked as `remove` — hidden by default; "show removed" pill in filter bar re-shows them. ~~**Open question**: what's the semantic difference between `ignore` and `remove`?~~ Resolved: documented as *ignore = not interesting to you (skip)* vs *remove = not a genuinely forgotten word (exclude)*; tooltips added to the quick-tag buttons and the shortcuts modal.
 
 - [x] make .flabel bolder (negative). remove distance between .flabel and choices. Use narrow font for the filter bar — switched to mono 11px bold var(--text-2), removed min-width/excess padding.
 
@@ -184,7 +186,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] longer words break in the info box, make left panel responsive / flexible width — fp-word changed from fixed 170px to auto (min 140px, max 240px).
 
-- [ ] mark words that have attached notes or tags/flags. Filter words by tags — dot indicator done (blue ::after on .annotated); filter-by-tags in the filter bar still open.
+- [x] mark words that have attached notes or tags/flags. Filter words by tags — dot indicator done; quick-tag filter options (ignore/boring/funny/remove) already in marks select. Custom tags (user-defined via tag input) now also dynamically added to the marks `<select>` via `populateTagFilterOptions()` — called at init and whenever a custom tag is added or deleted.
 
 - [x] select word by typing — type-ahead navigation: unbound printable chars accumulate in a 1.2s buffer, jumping to the first visible word whose normalized text starts with the buffer. Diacritic-insensitive (ț→t etc). Documented in shortcuts modal.
 
@@ -192,9 +194,13 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] **Diacritic-insensitive search** — searching `otios` should find `oțios`; `stramosesc` should find `strămoșesc`. Normalize both the query and the indexed word by stripping diacritics before matching (ț→t, ș→s, ă→a, â→a, î→i). Implement in the SQL WHERE clause using a pre-computed `word_normalized` column in the `words` table (populated at build time), or a SQLite custom function. Both PHP and Flask search endpoints need updating.
 
+- [ ] **synonyms data** — the detail panel has a "Sinonime: în curând" placeholder slot wired up, but no synonym data exists in any source DB yet. Scrape synonyms (dexonline has `Sinonime`/`Sinonime82` dictionaries) into a `synonyms` column / table and populate the slot.
+
+- [ ] **UI redesign** — fresh-identity, mobile-first redesign spec written for a designer in `docs/design-brief.md` (covers table view, filter-bar redesign, calmer verdict palette, play modes, shared-word landing). Hand off when ready.
+
 - [ ] later show extended definition. everything in dexonline but compact
 
-- [ ] exploratory interface. to the point of screensaver. or like tiktok / Tinder feed, but limit per day
+- [x] exploratory interface. to the point of screensaver. or like tiktok / Tinder feed, but limit per day — shipped as **feed / swipe mode** (`📇 feed` button): one word-card at a time, keep (→ / swipe right → bookmark) or skip (← / swipe left), respects current filters, with a soft daily count (`FEED_DAILY_LIMIT`). Endpoint `api/feed.php`. Further "screensaver"-style auto-advance is a possible enhancement.
 
 - [ ] **Verdict palette saturation review** — four full-saturation colors (red/brown/blue/purple) in the word grid compete equally for attention; consider one dominant verdict color + three muted, or shift to a single-hue density encoding. Out of scope for the 2026-05-18 fine-tuning pass.
 
@@ -202,7 +208,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **Mobile / narrow-viewport breakpoints** — `ui/templates/base.html` has no media queries; the 3-row filter bar and word grid are desktop-only. Add breakpoints for tablet (collapse filter rows into a single overflow menu) and phone (single column word grid, slide-up detail panel from bottom).
 
-- [ ] **Filter bar tooltips** — add `title` attributes (or custom CSS tooltips) to all controls in the filter bar: the uitate/rare toggle, verdict pills, tier pills, POS pills, sort select, marks select, def toggle, and taxonomy selects. Especially useful for the uitate/rare switch and the verdict color-coding which are non-obvious to new users.
+- [x] **Filter bar tooltips** — `title` attributes added to all filter bar controls: uitate/rare toggle, verdict pills (with per-verdict explanations), tier pills (with corpus/DEX logic notes), POS pills (full Romanian name as title), sort select, marks select, def toggle, domain/register/etymology/dict_min selects (domain tooltip flags the "any-sense" matching caveat), reset button.
 
 - [ ] **URL-encoded filter state** — encode all active filter values (word_tier, verdict, tier, sort, pos, register, domain, etymology, has_def, marks, q) into the URL query string on every filter change, so that the current view is bookmarkable and shareable. Use `history.replaceState` (no page reload) to update the URL as HTMX triggers fire; parse and restore from `window.location.search` on page load to pre-select the right controls. Both PHP and Flask apps should support this.
 
@@ -247,7 +253,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] create a statistics page. guide yourself by existing filters options. Maybe the statistics page could keep the existing filters - to create dynamic / sliceable statistics?
 
-- [ ] **domain taxonomy contains compound nodes with semicolons** — some DEX `dex_domain` values are compound strings from the source taxonomy: `'mineralogie; minerit'`, `'cinema; cinematografie'`, `'fonetică; fonologie'`, `'farmacie; farmacologie'`. These are stored and filtered as single pipe-delimited tokens (which is correct for exact-match filtering), but the UI dropdown shows the full compound string. Two open questions: (1) should the filter split on `;` to allow filtering by `mineralogie` alone? (2) are these compound nodes semantically intentional in DEX, or are they artifacts of how the tag hierarchy was imported? Check the `Tag` table: if `'mineralogie; minerit'` is a single row with that literal name, it's intentional; if it's two rows joined somewhere, the extraction is concatenating them incorrectly.
+- [x] **domain taxonomy contains compound nodes with semicolons** — resolved. `_normalize_sep()` in `build_ui_db.py` converts `'; '` → `'|'` before writing `dex_domain` to the DB; the `vocab` table then splits on `|` when counting. Result: `'mineralogie; minerit'` in the raw CSV becomes two separate vocab entries (`mineralogie`, `minerit`) and is filterable individually. Verified in current `ui.db`: no compound strings remain in vocab or in the `dex_domain` column.
 
 - [ ] **domain filter matches on any sub-sense, not primary meaning** — `dex_domain` is set at the word level by aggregating all per-meaning domain tags from DEX. This means a word like *simpatie* (meaning: emotional affinity) appears under medicină because DEX tags one secondary sense as medicină ("legătură între organe simetrice" = sympathetic nerve link); *scaon* appears because DEX tags the compound *scaun rulant* (wheelchair) as medicină; *pipăi* appears for its medical sense of "to palpate". The tags are correct in the source data — this is how DEX models domains. The UI filter is therefore "has at least one medicina meaning" rather than "is primarily a medical word", which can be confusing. Options: (1) show per-word domain count in the word card so the user can judge; (2) add a "strict" domain mode that only matches words whose *only* domain tag is the selected one; (3) document this in a filter tooltip. Related: compound-semicolon entry above.
 
@@ -278,8 +284,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 ### Extend
 
-- quizzes
-- flash cards
+- [x] quizzes — multiple-choice quiz (definition → pick the word, 4 same-POS choices, target word masked in the prompt) on `joc.php`, with streak/record in localStorage. Endpoint `api/quiz.php`.
+- [x] flash cards — word → reveal definition card on `joc.php` (shares `api/quiz.php`), with "păstrează" to bookmark.
 
 ## 260519 Data Audit
 

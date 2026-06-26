@@ -29,9 +29,25 @@ $etym_parts   = array_map(fn($e) => str_replace('limba ', '', $e), $etym_parts);
     <?php if ($w['definition']): ?>
     <div class="definition-text"><?= e($w['definition']) ?></div>
     <?php else: ?>
-    <span style="color:var(--text-3);font-family:var(--serif);font-style:italic;font-size:11px;">no definition</span>
+    <span class="fp-nodef">fără definiție locală</span>
     <?php endif; ?>
-    <a class="dex-link" style="font-size:10px;margin-top:3px;"
+
+    <div class="fp-extra">
+      <?php $sources = split_pipe($w['sources'] ?? ''); ?>
+      <?php if ($sources): ?>
+      <div class="fp-dicts">
+        <span class="fp-extra-label" title="Dicționare DEX Online în care apare cuvântul">📚 <?= count($sources) ?> <?= count($sources) === 1 ? 'dicționar' : 'dicționare' ?></span>
+        <?php foreach ($sources as $src): ?><span class="dict-chip"><?= e($src) ?></span><?php endforeach; ?>
+      </div>
+      <?php endif; ?>
+
+      <div class="fp-syns">
+        <span class="fp-extra-label">Sinonime</span>
+        <span class="fp-syns-placeholder">în curând</span>
+      </div>
+    </div>
+
+    <a class="dex-link"
        href="https://dexonline.ro/definitie/<?= urlenc($w['word']) ?>"
        target="_blank" rel="noopener">↗ dexonline.ro</a>
   </div>
@@ -46,10 +62,10 @@ $etym_parts   = array_map(fn($e) => str_replace('limba ', '', $e), $etym_parts);
       <button id="bookmark-btn" data-word="<?= e($w['word']) ?>">☆</button>
       <div id="tags-row" data-word="<?= e($w['word']) ?>">
         <div class="quick-tags">
-          <button type="button" class="qt-btn" data-qtkey="i" title="ignore (i)"><span class="qt-key">i</span>ignore</button>
-          <button type="button" class="qt-btn" data-qtkey="B" title="boring (B)"><span class="qt-key">B</span>boring</button>
-          <button type="button" class="qt-btn" data-qtkey="f" title="funny (f)"><span class="qt-key">f</span>funny</button>
-          <button type="button" class="qt-btn" data-qtkey="x" title="remove (x)"><span class="qt-key">x</span>remove</button>
+          <button type="button" class="qt-btn" data-qtkey="i" title="ignore — neinteresant pentru tine, îl sari (i)"><span class="qt-key">i</span>ignore</button>
+          <button type="button" class="qt-btn" data-qtkey="B" title="boring — plictisitor (B)"><span class="qt-key">B</span>boring</button>
+          <button type="button" class="qt-btn" data-qtkey="f" title="funny — amuzant (f)"><span class="qt-key">f</span>funny</button>
+          <button type="button" class="qt-btn" data-qtkey="x" title="remove — nu e cu adevărat uitat, exclude din listă (x)"><span class="qt-key">x</span>remove</button>
         </div>
         <input id="tag-input" type="text" name="tag" placeholder="add tag…"
                list="tag-suggestions" autocomplete="off">

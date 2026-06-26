@@ -5,6 +5,9 @@ const STORE_KEY = 'otios.research';
 const QUICK_TAG_EMOJIS = { ignore: '🙈', boring: '💤', funny: '😄', remove: '❌' };
 const QUICK_TAG_KEYS   = Object.keys(QUICK_TAG_EMOJIS);
 
+let openWord = null;
+let arrivedViaShare = false;   // true while opening the panel from a shared ?word= link
+
 function getResearch() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -143,7 +146,238 @@ function updateBookmarkCount() {
   if (!el) return;
   const count = Object.values(getResearch().words).filter(function(w) { return w.bookmarked; }).length;
   el.textContent = String(count);
+  const shareBtn = document.getElementById('share-bookmarks-btn');
+  if (shareBtn) shareBtn.style.display = count > 0 ? '' : 'none';
 }
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 2200);
+}
+
+function shareBookmarks() {
+  const r = getResearch();
+  const bookmarked = Object.entries(r.words)
+    .filter(function(entry) { return entry[1].bookmarked; })
+    .map(function(entry) { return entry[0]; });
+  if (!bookmarked.length) { showToast('No bookmarks yet'); return; }
+  const url = location.origin + location.pathname + '?words=' + bookmarked.map(encodeURIComponent).join(',');
+  navigator.clipboard.writeText(url).then(function() { showToast('Playlist URL copied!'); });
+}
+
+function copyPlaylistUrl() {
+  const pwInput = document.getElementById('playlist-words');
+  if (!pwInput || !pwInput.value) return;
+  const url = location.origin + location.pathname + '?words=' + pwInput.value;
+  navigator.clipboard.writeText(url).then(function() { showToast('Playlist URL copied!'); });
+}
+
+function exitPlaylist() {
+  const pwInput = document.getElementById('playlist-words');
+  if (pwInput) pwInput.value = '';
+  const banner = document.getElementById('playlist-banner');
+  if (banner) banner.style.display = 'none';
+  var params = new URLSearchParams(location.search);
+  params.delete('words');
+  var qs = params.toString();
+  history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
+  var form = document.getElementById('filter-form');
+  if (form) htmx.trigger(form, 'change');
+}
+
+// ── Play / exploration ───────────────────────────────────────────────────────────
+
+function openWordPanel(word, share) {
+  if (!word) return;
+  openWord = word;
+  if (share) arrivedViaShare = true;
+  var base = (typeof OTIOS_BASE !== 'undefined' ? OTIOS_BASE : '');
+  htmx.ajax('GET', base + '/api/word.php?word=' + encodeURIComponent(word),
+            { target: '#detail-panel', swap: 'innerHTML' });
+}
+
+function formQuery() {
+  var form = document.getElementById('filter-form');
+  if (!form) return '';
+  return new URLSearchParams(new FormData(form)).toString();
+}
+
+function surpriseWord() {
+  var base = (typeof OTIOS_BASE !== 'undefined' ? OTIOS_BASE : '');
+  var qs = formQuery();
+  fetch(base + '/api/random.php' + (qs ? '?' + qs : ''))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.word) { showToast('Niciun cuvânt pentru aceste filtre'); return; }
+      openWordPanel(d.word, false);
+    })
+    .catch(function() { showToast('Eroare la „surprise”'); });
+}
+
+// Word of the day
+function wotdToday() { return new Date().toISOString().slice(0, 10); }
+
+function openWotd() {
+  var b = document.getElementById('wotd-banner');
+  if (b) openWordPanel(b.dataset.word, false);
+  dismissWotd();
+}
+
+function dismissWotd() {
+  var b = document.getElementById('wotd-banner');
+  if (b) b.style.display = 'none';
+  try { localStorage.setItem('otios.wotd.seen', wotdToday()); } catch (_) {}
+}
+
+(function initWotd() {
+  var b = document.getElementById('wotd-banner');
+  if (!b) return;
+  var seen = '';
+  try { seen = localStorage.getItem('otios.wotd.seen') || ''; } catch (_) {}
+  if (seen !== wotdToday()) b.style.display = '';
+})();
+
+// ── Feed / swipe mode ──────────────────────────────────────────────────────────
+
+var FEED_DAILY_LIMIT = 50;          // soft, friendly nudge — not a hard block
+var feedQueue = [];
+var feedIdx   = 0;
+var feedKept  = 0;
+var feedLoading = false;
+
+function feedOpen() {
+  var o = document.getElementById('feed-overlay');
+  return o && o.style.display !== 'none';
+}
+
+function feedDailyCount() {
+  try {
+    var raw = JSON.parse(localStorage.getItem('otios.feed') || '{}');
+    return raw.date === wotdToday() ? (raw.count || 0) : 0;
+  } catch (_) { return 0; }
+}
+function feedBumpDaily() {
+  var c = feedDailyCount() + 1;
+  try { localStorage.setItem('otios.feed', JSON.stringify({ date: wotdToday(), count: c })); } catch (_) {}
+  return c;
+}
+
+function enterFeed() {
+  var o = document.getElementById('feed-overlay');
+  if (!o) return;
+  feedQueue = []; feedIdx = 0; feedKept = 0;
+  o.style.display = 'flex';
+  closePanel();
+  loadFeedBatch(function() { renderFeedCard(); });
+}
+
+function exitFeed() {
+  var o = document.getElementById('feed-overlay');
+  if (o) o.style.display = 'none';
+}
+
+function loadFeedBatch(cb) {
+  if (feedLoading) return;
+  feedLoading = true;
+  var base = (typeof OTIOS_BASE !== 'undefined' ? OTIOS_BASE : '');
+  var qs = formQuery();
+  fetch(base + '/api/feed.php?n=24' + (qs ? '&' + qs : ''))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      feedLoading = false;
+      if (d.words && d.words.length) { feedQueue = feedQueue.concat(d.words); }
+      if (cb) cb();
+    })
+    .catch(function() { feedLoading = false; });
+}
+
+function renderFeedCard() {
+  var card = document.getElementById('feed-card');
+  var prog = document.getElementById('feed-progress');
+  if (!card) return;
+  if (feedIdx >= feedQueue.length) {
+    if (!feedLoading) {
+      loadFeedBatch(function() {
+        if (feedIdx >= feedQueue.length) {
+          card.innerHTML = '<div class="feed-empty">Niciun cuvânt pentru aceste filtre.</div>';
+        } else { renderFeedCard(); }
+      });
+    }
+    card.innerHTML = '<div class="feed-empty">se încarcă…</div>';
+    return;
+  }
+  var w = feedQueue[feedIdx];
+  var verdict = w.verdict || 'unknown';
+  var pos = (w.dex_pos || '').split('|')[0];
+  var freq = (w.dex_frequency !== null && w.dex_frequency !== undefined) ? Math.round(w.dex_frequency * 100) : null;
+  var dictN = w.sources ? w.sources.split('|').filter(Boolean).length : 0;
+  var meta = [];
+  if (pos)  meta.push(escHtml(pos));
+  if (freq !== null) meta.push('dex ' + freq);
+  if (dictN) meta.push('📚 ' + dictN);
+  card.innerHTML =
+    '<div class="feed-verdict verdict-badge vb-' + escHtml(verdict.replace(/ /g, '_')) + '">' + escHtml(verdict) + '</div>' +
+    '<div class="feed-word">' + escHtml(w.word) + '</div>' +
+    (meta.length ? '<div class="feed-cardmeta">' + meta.join(' · ') + '</div>' : '') +
+    '<div class="feed-def">' + escHtml(w.definition || '') + '</div>';
+  card.classList.remove('feed-anim-keep', 'feed-anim-skip');
+  if (prog) {
+    var today = feedDailyCount();
+    prog.textContent = 'azi: ' + today + ' · păstrate: ' + feedKept;
+  }
+}
+
+function feedAdvance(animClass) {
+  var card = document.getElementById('feed-card');
+  if (card && animClass) card.classList.add(animClass);
+  var count = feedBumpDaily();
+  feedIdx++;
+  var go = function() { renderFeedCard(); };
+  if (count === FEED_DAILY_LIMIT) {
+    showToast('Ai explorat ' + FEED_DAILY_LIMIT + ' de cuvinte azi 🎉');
+  }
+  setTimeout(go, animClass ? 160 : 0);
+}
+
+function feedKeep() {
+  if (feedIdx >= feedQueue.length) return;
+  var w = feedQueue[feedIdx];
+  if (w && !getWord(w.word).bookmarked) {
+    updateWord(w.word, { bookmarked: true });
+    feedKept++;
+    updateBookmarkCount();
+  }
+  feedAdvance('feed-anim-keep');
+}
+
+function feedSkip() {
+  if (feedIdx >= feedQueue.length) return;
+  feedAdvance('feed-anim-skip');
+}
+
+// Touch swipe on the feed card
+(function() {
+  var startX = 0, startY = 0, tracking = false;
+  var card = function() { return document.getElementById('feed-card'); };
+  document.addEventListener('touchstart', function(e) {
+    if (!feedOpen() || e.touches.length !== 1) return;
+    var c = card();
+    if (!c || !c.contains(e.target)) return;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = true;
+  }, { passive: true });
+  document.addEventListener('touchend', function(e) {
+    if (!tracking) return;
+    tracking = false;
+    var t = e.changedTouches[0];
+    var dx = t.clientX - startX, dy = t.clientY - startY;
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 0) feedKeep(); else feedSkip();
+    }
+  }, { passive: true });
+})();
 
 // ── Datalist for tag autocomplete ───────────────────────────────────────────────
 
@@ -161,6 +395,26 @@ function populateTagDatalist() {
     const opt = document.createElement('option');
     opt.value = t;
     dl.appendChild(opt);
+  });
+}
+
+// Populate marks <select> with custom tags from localStorage so they're filterable
+function populateTagFilterOptions() {
+  const sel = document.querySelector('select[name=marks]');
+  if (!sel) return;
+  sel.querySelectorAll('option.custom-tag-opt').forEach(function(o) { o.remove(); });
+  const seen = new Set();
+  Object.values(getResearch().words).forEach(function(w) {
+    (w.tags || []).forEach(function(t) {
+      if (!QUICK_TAG_KEYS.includes(t)) seen.add(t);
+    });
+  });
+  seen.forEach(function(t) {
+    const opt = document.createElement('option');
+    opt.value = 'tag:' + t;
+    opt.textContent = 'tag: ' + t;
+    opt.className = 'custom-tag-opt';
+    sel.appendChild(opt);
   });
 }
 
@@ -214,12 +468,28 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
   if (target.id === 'word-list') {
     selectedIdx = -1;
     hydrateRows(target);
+    // Highlight the word from a shared URL after the list renders
+    if (openWord) {
+      var all = rows();
+      var idx = all.findIndex(function(r) { return r.dataset.word === openWord; });
+      if (idx >= 0) selectRow(idx, true);
+    }
   }
   if (target.id === 'detail-panel') {
     target.classList.add('panel-open');
+    // Definition-as-hero when arriving from a shared link; normal height otherwise.
+    if (arrivedViaShare) {
+      target.classList.add('share-focus');
+      arrivedViaShare = false;
+      setTimeout(function() { target.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60);
+    } else {
+      target.classList.remove('share-focus');
+    }
     const hb = document.getElementById('hover-box');
     if (hb) hb.classList.remove('visible');
     hydrateDetail(target);
+    var wordEl = target.querySelector('[data-word]');
+    if (wordEl) { openWord = wordEl.dataset.word; syncUrlFromForm(); }
   }
 });
 
@@ -275,6 +545,7 @@ document.body.addEventListener('click', function(e) {
     hydrateDetail(document.getElementById('detail-panel'));
     hydrateRows(document.getElementById('word-list'));
     populateTagDatalist();
+    populateTagFilterOptions();
     return;
   }
 });
@@ -296,6 +567,7 @@ document.body.addEventListener('keydown', function(e) {
     hydrateDetail(document.getElementById('detail-panel'));
     hydrateRows(document.getElementById('word-list'));
     populateTagDatalist();
+    populateTagFilterOptions();
   }
   input.value = '';
 }, true);
@@ -369,11 +641,24 @@ function navigateSpatial(direction) {
 
 function showShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'flex'; }
 function hideShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'none'; }
-function closePanel()    { document.getElementById('detail-panel').classList.remove('panel-open'); }
+function closePanel() {
+  var panel = document.getElementById('detail-panel');
+  panel.classList.remove('panel-open');
+  panel.classList.remove('share-focus');
+  openWord = null;
+  syncUrlFromForm();
+}
 
 document.addEventListener('keydown', function(e) {
   const tag     = document.activeElement.tagName;
   const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  // Feed mode captures navigation keys
+  if (feedOpen()) {
+    if (e.key === 'Escape') { e.preventDefault(); exitFeed(); return; }
+    if (e.key === 'ArrowRight' || e.key === 'l') { e.preventDefault(); feedKeep(); return; }
+    if (e.key === 'ArrowLeft'  || e.key === 'h') { e.preventDefault(); feedSkip(); return; }
+    return;
+  }
   if (e.key === '?') { e.preventDefault(); showShortcuts(); return; }
   if (inInput) {
     if (e.key === 'Escape') {
@@ -396,6 +681,7 @@ document.addEventListener('keydown', function(e) {
     else { gPressed = true; setTimeout(function() { gPressed = false; }, 400); }
     return;
   }
+  if (e.key === 'r') { e.preventDefault(); surpriseWord(); return; }
   // Actions — call localStorage handlers instead of HTMX
   if (e.key === 'b') {
     const btn = document.getElementById('bookmark-btn');
@@ -530,6 +816,108 @@ document.querySelectorAll('.tax-select').forEach(function(sel) {
   });
 })();
 
+// ── Active-filter chips (at-a-glance, individually removable) ────────────────────
+
+var AF_SPECS = [
+  { name: 'q',              type: 'text',     label: function(v){ return '„' + v + '”'; } },
+  { name: 'has_def',        type: 'radio',  def: '', label: function(v){ return v === '1' ? 'cu definiție' : 'fără definiție'; } },
+  { name: 'register',       type: 'select', def: '', label: function(v){ return 'registru: ' + v; } },
+  { name: 'domain',         type: 'select', def: '', label: function(v){ return 'domeniu: ' + v; } },
+  { name: 'etymology',      type: 'select', def: '', label: function(v){ return 'etim: ' + v.replace('limba ', ''); } },
+  { name: 'dict_min',       type: 'select', def: '', label: function(v){ return 'dicts ≥' + v; } },
+  { name: 'dex_max',        type: 'select', def: '0.60', label: function(v){ return 'DEX ' + (v === 'all' ? 'toate' : '≤' + v); } },
+  { name: 'zipf_min',       type: 'number',   label: function(v){ return 'zipf ≥' + v; } },
+  { name: 'zipf_max',       type: 'number',   label: function(v){ return 'zipf ≤' + v; } },
+  { name: 'dexfreq_min',    type: 'number',   label: function(v){ return 'dex ≥' + v; } },
+  { name: 'dexfreq_max',    type: 'number',   label: function(v){ return 'dex ≤' + v; } },
+  { name: 'hide_loanwords', type: 'checkbox', label: function(){ return 'fără împrumuturi'; } },
+  { name: 'hide_proper',    type: 'checkbox', label: function(){ return 'fără nume proprii'; } },
+  { name: 'verdict',        type: 'group',    label: function(n, t){ return 'verdict ' + n + '/' + t; } },
+  { name: 'tier',           type: 'group',    label: function(n, t){ return 'tier ' + n + '/' + t; } },
+  { name: 'pos',            type: 'group',    label: function(n, t){ return 'POS ' + n + '/' + t; } },
+];
+
+function activeFilterChips() {
+  var form = document.getElementById('filter-form');
+  if (!form) return [];
+  var wordTier = (form.querySelector('input[name=word_tier]:checked') || {}).value || 'forgotten';
+  var chips = [];
+  AF_SPECS.forEach(function(spec) {
+    if (spec.name === 'dex_max' && wordTier !== 'rare_in_use') return;
+    if (spec.type === 'text' || spec.type === 'number') {
+      var el = form.querySelector('input[name=' + spec.name + ']');
+      if (el && el.value.trim()) chips.push({ spec: spec, text: spec.label(el.value.trim()) });
+    } else if (spec.type === 'radio') {
+      var r = form.querySelector('input[name=' + spec.name + ']:checked');
+      if (r && r.value !== spec.def) chips.push({ spec: spec, text: spec.label(r.value) });
+    } else if (spec.type === 'select') {
+      var s = form.querySelector('select[name=' + spec.name + ']');
+      if (s && s.value !== spec.def && s.value !== '') chips.push({ spec: spec, text: spec.label(s.value) });
+    } else if (spec.type === 'checkbox') {
+      var c = form.querySelector('input[name=' + spec.name + ']');
+      if (c && c.checked) chips.push({ spec: spec, text: spec.label() });
+    } else if (spec.type === 'group') {
+      var all = Array.from(form.querySelectorAll('input[name="' + spec.name + '[]"]'));
+      var chk = all.filter(function(cb){ return cb.checked; });
+      if (all.length && chk.length < all.length) chips.push({ spec: spec, text: spec.label(chk.length, all.length) });
+    }
+  });
+  return chips;
+}
+
+function clearFilter(spec) {
+  var form = document.getElementById('filter-form');
+  if (!form) return;
+  if (spec.type === 'text' || spec.type === 'number') {
+    var el = form.querySelector('input[name=' + spec.name + ']');
+    if (el) el.value = '';
+  } else if (spec.type === 'radio') {
+    form.querySelectorAll('input[name=' + spec.name + ']').forEach(function(r){ r.checked = (r.value === spec.def); });
+  } else if (spec.type === 'select') {
+    var s = form.querySelector('select[name=' + spec.name + ']');
+    if (s) { s.value = spec.def; s.dispatchEvent(new Event('change', { bubbles: true })); return; }
+  } else if (spec.type === 'checkbox') {
+    var c = form.querySelector('input[name=' + spec.name + ']');
+    if (c) c.checked = false;
+  } else if (spec.type === 'group') {
+    form.querySelectorAll('input[name="' + spec.name + '[]"]').forEach(function(cb){ cb.checked = true; });
+  }
+  form.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function renderActiveFilters() {
+  var bar = document.getElementById('active-filters');
+  if (!bar) return;
+  var chips = activeFilterChips();
+  bar.innerHTML = '';
+  chips.forEach(function(c) {
+    var chip = document.createElement('span');
+    chip.className = 'af-chip';
+    chip.appendChild(document.createTextNode(c.text + ' '));
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'elimină filtrul');
+    btn.textContent = '×';
+    btn.addEventListener('click', function() { clearFilter(c.spec); });
+    chip.appendChild(btn);
+    bar.appendChild(chip);
+  });
+  if (chips.length > 1) {
+    var clearAll = document.createElement('button');
+    clearAll.type = 'button';
+    clearAll.className = 'af-clear-all';
+    clearAll.textContent = 'resetează tot';
+    clearAll.addEventListener('click', function() {
+      var form = document.getElementById('filter-form');
+      if (form) form.reset();
+    });
+    bar.appendChild(clearAll);
+  }
+}
+
+document.getElementById('filter-form') &&
+  document.getElementById('filter-form').addEventListener('change', renderActiveFilters);
+
 // ── URL ↔ filter sync ──────────────────────────────────────────────────────────
 
 // Param names whose default value means "no filter" (omit from URL when at default)
@@ -559,8 +947,8 @@ function applyUrlToForm() {
     });
   });
 
-  // Checkbox groups (tier, pos): comma-separated in URL; absent = all checked
-  ['tier', 'pos'].forEach(function(name) {
+  // Checkbox groups (verdict, tier, pos): comma-separated in URL; absent = all checked
+  ['verdict', 'tier', 'pos'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return; // not in URL → leave all checked
     var selected = val.split(',').filter(Boolean);
@@ -576,6 +964,40 @@ function applyUrlToForm() {
     var el = form.querySelector('select[name=' + name + ']');
     if (el) el.value = val;
   });
+
+  // Explore: number inputs (zipf_min, zipf_max, dexfreq_min, dexfreq_max)
+  ['zipf_min', 'zipf_max', 'dexfreq_min', 'dexfreq_max'].forEach(function(name) {
+    var val = params.get(name);
+    if (val === null) return;
+    var el = form.querySelector('input[name=' + name + ']');
+    if (el) el.value = val;
+  });
+
+  // Explore: checkboxes (hide_loanwords, hide_proper)
+  ['hide_loanwords', 'hide_proper'].forEach(function(name) {
+    var val = params.get(name);
+    if (val === null) return;
+    var el = form.querySelector('input[name=' + name + ']');
+    if (el) el.checked = (val === '1');
+  });
+
+  // Word profile param
+  var wordParam = params.get('word');
+  if (wordParam) openWord = wordParam;
+
+  // Playlist words param
+  var wordsParam = params.get('words');
+  if (wordsParam) {
+    var pwInput = document.getElementById('playlist-words');
+    if (pwInput) pwInput.value = wordsParam;
+    var banner = document.getElementById('playlist-banner');
+    var countEl = document.getElementById('playlist-count');
+    if (banner) banner.style.display = '';
+    if (countEl) {
+      var wcount = wordsParam.split(',').filter(Boolean).length;
+      countEl.textContent = wcount + (wcount === 1 ? ' word' : ' words') + ' in playlist';
+    }
+  }
 }
 
 function syncUrlFromForm() {
@@ -595,7 +1017,7 @@ function syncUrlFromForm() {
   });
 
   // Checkbox groups: only write to URL when some-but-not-all are checked
-  ['tier', 'pos'].forEach(function(name) {
+  ['verdict', 'tier', 'pos'].forEach(function(name) {
     var all  = Array.from(form.querySelectorAll('input[name="' + name + '[]"]'));
     var chkd = all.filter(function(cb) { return cb.checked; });
     if (chkd.length > 0 && chkd.length < all.length) {
@@ -611,6 +1033,23 @@ function syncUrlFromForm() {
     if (val && val !== (URL_PARAM_DEFAULTS[name] || '')) params.set(name, val);
   });
 
+  // Explore: number inputs
+  ['zipf_min', 'zipf_max', 'dexfreq_min', 'dexfreq_max'].forEach(function(name) {
+    var el = form.querySelector('input[name=' + name + ']');
+    if (el && el.value.trim()) params.set(name, el.value.trim());
+  });
+
+  // Explore: binary checkboxes
+  ['hide_loanwords', 'hide_proper'].forEach(function(name) {
+    var el = form.querySelector('input[name=' + name + ']');
+    if (el && el.checked) params.set(name, '1');
+  });
+
+  // Preserve open word and playlist
+  if (openWord) params.set('word', openWord);
+  var pwInput = document.getElementById('playlist-words');
+  if (pwInput && pwInput.value.trim()) params.set('words', pwInput.value.trim());
+
   var qs = params.toString();
   history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
 }
@@ -621,11 +1060,21 @@ document.getElementById('filter-form') && document.getElementById('filter-form')
     var form = document.getElementById('filter-form');
     if (form) form.dispatchEvent(new Event('change', { bubbles: true }));
     syncUrlFromForm();
+    renderActiveFilters();
   }, 0);
 });
 
 // Apply URL params to form before HTMX fires its initial load request
 applyUrlToForm();
+
+// Rehydrate open word from URL on page load — definition takes the spotlight
+(function() {
+  var w = new URLSearchParams(location.search).get('word');
+  if (!w) return;
+  arrivedViaShare = true;
+  var base = (typeof OTIOS_BASE !== 'undefined' ? OTIOS_BASE : '');
+  htmx.ajax('GET', base + '/api/word.php?word=' + encodeURIComponent(w), { target: '#detail-panel', swap: 'innerHTML' });
+})();
 
 // Keep URL in sync with every HTMX search request
 document.addEventListener('htmx:configRequest', function(e) {
@@ -639,6 +1088,8 @@ document.addEventListener('htmx:configRequest', function(e) {
 
 updateBookmarkCount();
 populateTagDatalist();
+populateTagFilterOptions();
+renderActiveFilters();
 
 // ── Mobile Auto-Close on Scroll ─────────────────────────────────────────────────
 

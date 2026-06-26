@@ -7,11 +7,14 @@ $page      = max(1, (int)($_GET['page'] ?? 1));
 $offset    = ($page - 1) * PAGE_SIZE;
 $marks     = trim($_GET['marks']     ?? 'all');
 $q         = trim($_GET['q']         ?? '');
-$verdict   = trim($_GET['verdict']   ?? '');
-
 $marked_words_raw = trim($_GET['marked_words'] ?? '');
 $marked_words = $marked_words_raw !== ''
     ? array_filter(array_map('trim', explode(',', $marked_words_raw)))
+    : [];
+
+$playlist_words_raw = trim($_GET['words'] ?? '');
+$playlist_words = $playlist_words_raw !== ''
+    ? array_filter(array_map('trim', explode(',', $playlist_words_raw)))
     : [];
 
 // Build shared server-side filters
@@ -24,10 +27,11 @@ if ($q !== '') {
     $params[]     = '%' . $q . '%';
     $params[]     = '%' . $q_norm . '%';
 }
-// search-only: verdict
-if ($verdict !== '') {
-    $conditions[] = 'verdict = ?';
-    $params[]     = $verdict;
+// Playlist filter — restrict to specific words
+if ($playlist_words !== []) {
+    $placeholders = implode(',', array_fill(0, count($playlist_words), '?'));
+    $conditions[] = "word IN ($placeholders)";
+    $params       = array_merge($params, array_values($playlist_words));
 }
 
 // Client-driven marks filter
