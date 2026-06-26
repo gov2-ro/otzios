@@ -10,10 +10,16 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+try:
+    from wordfreq import zipf_frequency as _zipf
+except ImportError:
+    _zipf = None
+
 SHORTLIST_PATH  = Path('data/processed/forgotten_words_shortlist.csv')
 RARE_PATH       = Path('data/processed/rare_words_wordfreq.csv')
 WEB_PATH        = Path('data/processed/diachronic_shortlist_web_validated.csv')
 DEFINITIONS_PATH = Path('data/processed/definitions.db')
+DICT_SOURCES_PATH = Path('data/processed/dict_sources.db')
 OUT_PATH        = Path('public/data/ui.db')
 
 _ETYM_JUNK = {'vezi', 'cf.', 'după', 'după unii', 'probabil', 'cuvânt',
@@ -69,6 +75,46 @@ def _strip_diacritics(s: str) -> str:
     return s.lower().translate(_DIACRITIC_MAP)
 
 
+def merge_dict_sources(conn: sqlite3.Connection, sources_db: Path) -> None:
+    """Populate words.sources (pipe-delimited dictionary names) from dict_sources.db.
+
+    Matches on the exact headword first; for the ~2% of UI words with no exact
+    headword (mostly feminine / inflected forms), falls back to a diacritic-stripped
+    match — but only when that normalized form maps to a single dict_sources entry,
+    to avoid pulling in the wrong headword's dictionary list.
+    """
+    if not sources_db.exists():
+        print(f'  (dict sources DB not found, skipping: {sources_db})')
+        return
+    print(f'Merging dictionary sources from {sources_db}…')
+    sconn = sqlite3.connect(str(sources_db))
+    exact: dict[str, str] = {}
+    norm_index: dict[str, str] = {}
+    norm_dupes: set[str] = set()
+    for word, srcs in sconn.execute('SELECT word, sources FROM dict_sources'):
+        if not word or not srcs:
+            continue
+        exact[word] = srcs
+        n = _strip_diacritics(word)
+        if n in norm_index:
+            norm_dupes.add(n)
+        else:
+            norm_index[n] = srcs
+    sconn.close()
+
+    updated = 0
+    for (w,) in conn.execute('SELECT word FROM words').fetchall():
+        srcs = exact.get(w)
+        if srcs is None:
+            n = _strip_diacritics(w)
+            if n not in norm_dupes:
+                srcs = norm_index.get(n)
+        if srcs is not None:
+            conn.execute('UPDATE words SET sources=? WHERE word=?', (srcs, w))
+            updated += 1
+    print(f'  {updated} words matched to dictionary sources')
+
+
 def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None:
     if not shortlist.exists():
         sys.exit(f'Missing: {shortlist}')
@@ -104,7 +150,11 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             provider         TEXT,
             definition       TEXT,
             word_tier        TEXT DEFAULT 'forgotten',
-            dict_count       INTEGER
+            dict_count       INTEGER,
+            zipf_frequency   REAL,
+            en_zipf          REAL,
+            proper_noun_like INTEGER,
+            sources          TEXT
         )
     """)
 
@@ -198,6 +248,8 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     else:
         print(f'  (definitions DB not found, skipping: {defs})')
 
+    merge_dict_sources(conn, DICT_SOURCES_PATH)
+
     # Build vocab table for dropdown options
     print('Building vocab table…')
     conn.execute("""
@@ -232,6 +284,35 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     conn.create_function('strip_diacritics', 1, _strip_diacritics)
     conn.execute('UPDATE words SET word_normalized = strip_diacritics(word)')
 
+    # Populate zipf_frequency + en_zipf using wordfreq (optional)
+    if _zipf is not None:
+        print('Computing zipf frequencies…')
+        rows = conn.execute('SELECT word FROM words').fetchall()
+        batch = [(_zipf(r[0], 'ro'), _zipf(r[0], 'en'), r[0]) for r in rows]
+        conn.executemany('UPDATE words SET zipf_frequency=?, en_zipf=? WHERE word=?', batch)
+        print(f'  {len(batch)} rows updated')
+    else:
+        print('wordfreq not available — zipf_frequency/en_zipf left NULL')
+
+    # Populate proper_noun_like from lexemes.db (optional)
+    lexemes_path = Path('data/processed/lexemes.db')
+    if lexemes_path.exists():
+        print('Computing proper_noun_like…')
+        lconn = sqlite3.connect(str(lexemes_path))
+        caps = {r[0].lower() for r in lconn.execute(
+            "SELECT DISTINCT formNoAccent FROM Lexeme WHERE formNoAccent GLOB '[A-Z]*'"
+        ).fetchall()}
+        lconn.close()
+        conn.execute('UPDATE words SET proper_noun_like = 0')
+        if caps:
+            ph = ','.join('?' * len(caps))
+            conn.execute(
+                f'UPDATE words SET proper_noun_like = 1 WHERE word IN ({ph})', list(caps)
+            )
+        print(f'  {len(caps)} proper-noun candidates marked')
+    else:
+        print('lexemes.db not found — proper_noun_like left NULL')
+
     # Indexes
     conn.execute('CREATE INDEX idx_vocab_kind      ON vocab(kind)')
     conn.execute('CREATE INDEX idx_words_verdict   ON words(verdict)')
@@ -240,6 +321,7 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     conn.execute('CREATE INDEX idx_words_word      ON words(word COLLATE NOCASE)')
     conn.execute('CREATE INDEX idx_words_modern    ON words(modern_ppm)')
     conn.execute('CREATE INDEX idx_words_normalized ON words(word_normalized)')
+    conn.execute('CREATE INDEX idx_words_zipf       ON words(zipf_frequency)')
 
     conn.commit()
     conn.close()
