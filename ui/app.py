@@ -6,6 +6,11 @@ from urllib.parse import urlencode
 
 from flask import Flask, render_template, request
 
+try:
+    from wordfreq import zipf_frequency
+except ImportError:  # wordfreq optional — zipf columns and loanword filter degrade gracefully
+    zipf_frequency = None
+
 app = Flask(__name__)
 
 SHORTLIST_PATH = Path('data/processed/forgotten_words_shortlist.csv')
@@ -14,6 +19,8 @@ WEB_PATH = Path('data/processed/diachronic_shortlist_web_validated.csv')
 RESEARCH_DB_PATH = Path('data/research.db')
 DEFINITIONS_DB_PATH = Path('data/processed/definitions.db')
 DIACHRONIC_PATH = Path('data/processed/forgotten_words_diachronic.csv')
+LEXEMES_DB_PATH = Path('data/processed/lexemes.db')
+DICT_SOURCES_DB_PATH = Path('data/processed/dict_sources.db')
 
 _words_db: sqlite3.Connection | None = None
 _research_db: sqlite3.Connection | None = None
@@ -82,7 +89,11 @@ def load_words(
             provider         TEXT,
             definition       TEXT,
             word_tier        TEXT DEFAULT 'forgotten',
-            dict_count       INTEGER
+            dict_count       INTEGER,
+            zipf_frequency   REAL,
+            en_zipf          REAL,
+            proper_noun_like INTEGER,
+            dict_sources     TEXT
         )
     """)
 
@@ -166,14 +177,76 @@ def load_words(
     if defs_path.exists():
         dconn = sqlite3.connect(str(defs_path))
         for word, definition in dconn.execute('SELECT word, definition FROM definitions'):
-            conn.execute('UPDATE words SET definition=? WHERE word=?', (definition, word))
+            # Skip "[Fără definiție.]" placeholders (mirrors
+            # validate_diachronic.is_placeholder_definition / BACKLOG #17) so the
+            # has-definition filter and the panel text stay consistent. The word
+            # still appears in the list; it just has no local definition body.
+            if definition and not definition.strip().lower().startswith('[fără definiț'):
+                conn.execute('UPDATE words SET definition=? WHERE word=?', (definition, word))
         dconn.close()
 
     conn.create_function('strip_diacritics', 1, _strip_diacritics)
     conn.execute('UPDATE words SET word_normalized = strip_diacritics(word)')
     conn.execute('CREATE INDEX idx_words_normalized ON words(word_normalized)')
+
+    _enrich_words(conn)
+
     conn.commit()
     return conn
+
+
+def _enrich_words(conn: sqlite3.Connection) -> None:
+    """Attach exploration signals the pipeline drops: wordfreq Zipf (ro + en),
+    a proper-noun flag recovered from DEX casing, and dictionary names."""
+    # wordfreq Zipf — recompute uniformly so both tiers (incl. the rare tier, whose
+    # zipf the CSV load discards) get a value on the same scale. en_zipf is the
+    # loanword tell: words common in English (meeting, house) score high.
+    if zipf_frequency is not None:
+        rows = conn.execute('SELECT word FROM words').fetchall()
+        conn.executemany(
+            'UPDATE words SET zipf_frequency=?, en_zipf=? WHERE word=?',
+            [(zipf_frequency(r[0], 'ro'), zipf_frequency(r[0], 'en'), r[0]) for r in rows],
+        )
+
+    # proper-noun flag — the CSVs are lowercased, but lexemes.db preserves DEX casing.
+    # A capitalized headword (Jonathan, Coran) is a name/brand/place.
+    if LEXEMES_DB_PATH.exists():
+        lconn = sqlite3.connect(str(LEXEMES_DB_PATH))
+        try:
+            keys = {
+                _strip_diacritics(form.replace("'", ''))
+                for (form,) in lconn.execute("SELECT form FROM Lexeme WHERE form GLOB '[A-Z]*'")
+                if form
+            }
+        finally:
+            lconn.close()
+        conn.execute('CREATE TEMP TABLE _pn(key TEXT PRIMARY KEY)')
+        conn.executemany('INSERT OR IGNORE INTO _pn VALUES (?)', [(k,) for k in keys])
+        conn.execute(
+            'UPDATE words SET proper_noun_like=1 '
+            'WHERE word_normalized IN (SELECT key FROM _pn)'
+        )
+        conn.execute('DROP TABLE _pn')
+
+    # dictionary names — keyed by normalized headword (extract_dict_sources.py keeps ș/ț;
+    # strip to match word_normalized).
+    if DICT_SOURCES_DB_PATH.exists():
+        dconn = sqlite3.connect(str(DICT_SOURCES_DB_PATH))
+        try:
+            pairs = [
+                (_strip_diacritics(w), s)
+                for w, s in dconn.execute('SELECT word, sources FROM dict_sources')
+            ]
+        finally:
+            dconn.close()
+        conn.execute('CREATE TEMP TABLE _ds(key TEXT PRIMARY KEY, sources TEXT)')
+        conn.executemany('INSERT OR IGNORE INTO _ds VALUES (?,?)', pairs)
+        conn.execute(
+            'UPDATE words SET dict_sources = '
+            '(SELECT sources FROM _ds WHERE _ds.key = words.word_normalized) '
+            'WHERE word_normalized IN (SELECT key FROM _ds)'
+        )
+        conn.execute('DROP TABLE _ds')
 
 
 def open_research_db(path: Path) -> sqlite3.Connection:
@@ -289,6 +362,10 @@ def _now() -> str:
 
 PAGE_SIZE = 250
 
+# English Zipf at/above which a word is treated as a likely loanword (meeting≈5.2,
+# house≈6.4; genuine Romanian words score 0). Used by the "hide loanwords" filter.
+LOANWORD_EN_ZIPF = 4.0
+
 SORT_OPTIONS = {
     'rare':     'COALESCE(modern_ppm, -1) ASC',   # default — absent words first, then rarest
     'declined': 'log_ratio DESC NULLS LAST',
@@ -355,6 +432,18 @@ POS_OPTIONS = [
 
 
 _ETYM_JUNK = {'vezi', 'cf.', 'după', 'după unii', 'probabil', 'cuvânt', 'necunoscută', 'de la', 'sau'}
+
+_REGISTER_USAGE_NOTES = {
+    'figurat', 'adesea figurat', 'metaforic', 'popular', 'familiar', 'poetic',
+    'literar', 'ironic', 'glumeț', 'depreciativ', 'peiorativ', 'neobișnuit',
+    'în comparații / la comparativ', 'în superstiții', 'prin exagerare',
+    'prin metonimie', 'eliptic', 'repetat', 'personificat', 'pleonastic',
+    'impropriu', 'argou', 'argotic', 'eufemistic', 'hiperbolic', 'emfatic',
+    'alegoric', 'augmentativ', 'corelativ', 'vulgar', 'jargon',
+    'cu pronunțare regională', 'la vocativ', 'sens curent', 'personal',
+    'cu valoare de singular', 'cu valoare verbală',
+    'cu valoare de numeral cardinal', 'cu valoare de numeral distributiv',
+}
 
 
 def _distinct_split(column: str, sep: str = '|', limit: int | None = None, exclude: set | None = None) -> list[str]:
@@ -520,6 +609,12 @@ def search():
     has_def = request.args.get('has_def', '').strip()
     marks   = request.args.get('marks', 'all').strip()
     sort            = request.args.get('sort', '').strip()
+    zipf_min        = _float(request.args.get('zipf_min', '').strip())
+    zipf_max        = _float(request.args.get('zipf_max', '').strip())
+    dexfreq_min     = _float(request.args.get('dexfreq_min', '').strip())
+    dexfreq_max     = _float(request.args.get('dexfreq_max', '').strip())
+    hide_loanwords  = request.args.get('hide_loanwords', '').strip() == '1'
+    hide_proper     = request.args.get('hide_proper', '').strip() == '1'
     page   = max(1, int(request.args.get('page', 1) or 1))
     offset = (page - 1) * PAGE_SIZE
 
@@ -545,6 +640,24 @@ def search():
         conditions.append('definition IS NOT NULL')
     elif has_def == '0':
         conditions.append('definition IS NULL')
+    # exploration filters (reversible; only applied when the param is present)
+    if zipf_min is not None:
+        conditions.append('zipf_frequency >= ?')
+        params.append(zipf_min)
+    if zipf_max is not None:
+        conditions.append('zipf_frequency <= ?')
+        params.append(zipf_max)
+    if dexfreq_min is not None:  # UI uses the 0–100 displayed scale; storage is 0–1
+        conditions.append('dex_frequency >= ?')
+        params.append(dexfreq_min / 100.0)
+    if dexfreq_max is not None:
+        conditions.append('dex_frequency <= ?')
+        params.append(dexfreq_max / 100.0)
+    if hide_loanwords:  # drop words common in English (en_zipf high); keep unknowns
+        conditions.append('(en_zipf IS NULL OR en_zipf < ?)')
+        params.append(LOANWORD_EN_ZIPF)
+    if hide_proper:
+        conditions.append('(proper_noun_like IS NULL OR proper_noun_like = 0)')
 
     where = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
     order_by = SORT_OPTIONS.get(sort, SORT_OPTIONS['rare'])
@@ -631,13 +744,14 @@ def index():
         total=total,
         bookmark_count=bcount,
         pos_options          = POS_OPTIONS,
-        distinct_registers   = _distinct_split('dex_register'),
+        distinct_registers   = _distinct_split('dex_register', exclude=_REGISTER_USAGE_NOTES),
         distinct_domains     = _distinct_split('dex_domain'),
         distinct_etymologies = _distinct_split('dex_etymology', exclude=_ETYM_JUNK),
         tag_suggestions      = _all_used_tags(),
         quick_tags           = QUICK_TAGS,
         audit_mode           = audit_mode,
         audit_progress       = _audit_progress() if audit_mode else [],
+        loanword_en_zipf     = LOANWORD_EN_ZIPF,
     )
 
 

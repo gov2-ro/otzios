@@ -2,61 +2,36 @@
 declare(strict_types=1);
 require_once __DIR__ . '/_lib.php';
 
-$q         = trim($_GET['q']         ?? '');
-$word_tier = trim($_GET['word_tier'] ?? 'forgotten');
-$verdict   = trim($_GET['verdict']   ?? '');
-$tier      = trim($_GET['tier']      ?? '');
-$register  = trim($_GET['register']  ?? '');
-$domain    = trim($_GET['domain']    ?? '');
-$etym      = trim($_GET['etymology'] ?? '');
-$pos       = trim($_GET['pos']       ?? '');
-$has_def   = trim($_GET['has_def']   ?? '');
-$marks     = trim($_GET['marks']     ?? 'all');
 $sort      = trim($_GET['sort']      ?? '');
 $page      = max(1, (int)($_GET['page'] ?? 1));
 $offset    = ($page - 1) * PAGE_SIZE;
-
-// marked_words is a comma-separated list sent by client JS for marks filtering
+$marks     = trim($_GET['marks']     ?? 'all');
+$q         = trim($_GET['q']         ?? '');
 $marked_words_raw = trim($_GET['marked_words'] ?? '');
 $marked_words = $marked_words_raw !== ''
     ? array_filter(array_map('trim', explode(',', $marked_words_raw)))
     : [];
 
-$valid_tiers = ['forgotten', 'rare_in_use'];
-$word_tier   = in_array($word_tier, $valid_tiers, true) ? $word_tier : 'forgotten';
+$playlist_words_raw = trim($_GET['words'] ?? '');
+$playlist_words = $playlist_words_raw !== ''
+    ? array_filter(array_map('trim', explode(',', $playlist_words_raw)))
+    : [];
 
-$conditions = ['word_tier = ?'];
-$params     = [$word_tier];
+// Build shared server-side filters
+['conditions' => $conditions, 'params' => $params, 'word_tier' => $word_tier] = build_word_filter($_GET);
 
+// search-only: text search
 if ($q !== '') {
     $q_norm       = normalize_diacritics($q);
     $conditions[] = '(word LIKE ? OR word_normalized LIKE ?)';
     $params[]     = '%' . $q . '%';
     $params[]     = '%' . $q_norm . '%';
 }
-if ($verdict !== '') {
-    $conditions[] = 'verdict = ?';
-    $params[]     = $verdict;
-}
-if ($tier !== '') {
-    $conditions[] = 'confidence_tier = ?';
-    $params[]     = $tier;
-}
-foreach ([
-    ['dex_register', $register],
-    ['dex_domain',   $domain],
-    ['dex_etymology', $etym],
-    ['dex_pos',      $pos],
-] as [$col, $val]) {
-    if ($val !== '') {
-        $conditions[] = "('|'||{$col}||'|' LIKE ?)";
-        $params[]     = '%|' . $val . '|%';
-    }
-}
-if ($has_def === '1') {
-    $conditions[] = 'definition IS NOT NULL';
-} elseif ($has_def === '0') {
-    $conditions[] = 'definition IS NULL';
+// Playlist filter — restrict to specific words
+if ($playlist_words !== []) {
+    $placeholders = implode(',', array_fill(0, count($playlist_words), '?'));
+    $conditions[] = "word IN ($placeholders)";
+    $params       = array_merge($params, array_values($playlist_words));
 }
 
 // Client-driven marks filter

@@ -38,6 +38,28 @@ def normalize_romanian(text: str) -> str:
     )
 
 
+# DEX register tags that genuinely mark a word as archaic or explicitly rare —
+# as opposed to stylistic tags (figurat, popular, familiar, livresc, poetic,
+# ironic, argotic…) that everyday colloquial loanwords also carry. The
+# rare_in_use gate requires one of these so the "rare" tier isn't polluted by
+# modern borrowings that merely have a low DEX coverage score. See BACKLOG
+# "rare_in_use tier is polluted by modern loanwords + proper nouns".
+ARCHAIC_REGISTER_MARKERS = frozenset({
+    'învechit',
+    'arhaizant',
+    'rar',
+    'ieșit din uz',
+})
+
+
+def has_archaic_register(dex_register: str) -> bool:
+    """True if the semicolon-joined dex_register contains an archaic/rare marker."""
+    if not dex_register:
+        return False
+    tokens = {normalize_romanian(t.strip()) for t in dex_register.split(';')}
+    return bool(tokens & ARCHAIC_REGISTER_MARKERS)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description='Filter DEX forgotten-word candidates with wordfreq.',
@@ -88,6 +110,24 @@ def main() -> int:
         default=True,
         help='Lemmatize candidates before lookup (default: enabled)',
     )
+    parser.add_argument(
+        '--rare-register',
+        choices=('archaic', 'any'),
+        default='archaic',
+        help='Which dex_register tags qualify a word for the rare_in_use tier: '
+             '"archaic" (default) requires an archaic/rare marker '
+             f'({", ".join(sorted(ARCHAIC_REGISTER_MARKERS))}) so the tier is not '
+             'polluted by modern loanwords; "any" admits any non-empty register '
+             '(legacy behaviour).',
+    )
+    parser.add_argument(
+        '--dedup',
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help='Collapse rows sharing a word_no_accent to the first seen, so the '
+             'same headword does not appear once per part-of-speech '
+             '(default: enabled)',
+    )
     args = parser.parse_args()
 
     try:
@@ -114,9 +154,11 @@ def main() -> int:
     rows_in = 0
     counts = {'forgotten': 0, 'rare_in_use': 0, 'common': 0}
     zero_zipf = 0
+    deduped = 0
+    seen_words: set[str] = set()
 
     def _run(fout, frare):
-        nonlocal rows_in, zero_zipf
+        nonlocal rows_in, zero_zipf, deduped
         reader = csv.DictReader(fin)
         if not reader.fieldnames or 'word' not in reader.fieldnames:
             print(f'Input has no "word" column: {args.input}', file=sys.stderr)
@@ -141,14 +183,24 @@ def main() -> int:
             word = normalize_romanian(raw)
             if not word:
                 continue
+            if args.dedup:
+                if word in seen_words:
+                    deduped += 1
+                    continue
+                seen_words.add(word)
             lemma = lemmatize_fn(word) if lemmatize_fn else word
             zipf = zipf_frequency(lemma, 'ro')
             if zipf == 0.0:
                 zero_zipf += 1
 
+            if args.rare_register == 'archaic':
+                register_ok = has_archaic_register(row.get('dex_register', ''))
+            else:
+                register_ok = bool((row.get('dex_register') or '').strip())
+
             if zipf < args.threshold:
                 tier = 'forgotten'
-            elif zipf < args.upper_threshold and (row.get('dex_register') or '').strip():
+            elif zipf < args.upper_threshold and register_ok:
                 tier = 'rare_in_use'
             else:
                 tier = 'common'
@@ -183,6 +235,8 @@ def main() -> int:
     pct_forgotten = (counts['forgotten'] / rows_in * 100) if rows_in else 0.0
     pct_rare = (counts['rare_in_use'] / rows_in * 100) if rows_in else 0.0
     print(f'Read        : {rows_in:,} candidates')
+    if args.dedup:
+        print(f'Deduped     : {deduped:,} dropped (same word_no_accent)')
     print(f'Forgotten   : {counts["forgotten"]:,} ({pct_forgotten:.1f}%) zipf < {args.threshold}')
     print(f'Rare in use : {counts["rare_in_use"]:,} ({pct_rare:.1f}%) '
           f'{args.threshold} ≤ zipf < {args.upper_threshold}')

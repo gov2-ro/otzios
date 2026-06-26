@@ -772,13 +772,13 @@
     }
 
     /* ── Shortcuts overlay ── */
-    #shortcuts-overlay {
+    #shortcuts-overlay, #legend-overlay {
       position: fixed; inset: 0;
       background: rgba(24,21,15,.35);
       backdrop-filter: blur(2px);
       display: flex; align-items: center; justify-content: center; z-index: 100;
     }
-    #shortcuts-modal {
+    #shortcuts-modal, #legend-modal {
       background: var(--surface);
       border: 1.5px solid var(--border);
       border-radius: 8px;
@@ -786,6 +786,9 @@
       min-width: 380px;
       box-shadow: 0 16px 48px rgba(0,0,0,.18);
     }
+    #legend-modal { max-width: 560px; max-height: 80vh; overflow-y: auto; }
+    .legend-key { font-family: var(--mono); font-weight: 600; color: var(--text); }
+    .shortcuts-table td:first-child.legend-keycell { padding-right: 14px; vertical-align: top; }
     .shortcuts-header {
       font-family: var(--serif);
       font-size: 15px;
@@ -860,9 +863,7 @@
 
     /* ── Hover info box ── */
     #hover-box {
-      position: absolute;
-      top: 8px;
-      right: 8px;
+      position: fixed;
       width: 260px;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -873,7 +874,7 @@
       opacity: 0;
       transform: translateY(-4px);
       transition: opacity 120ms ease, transform 120ms ease;
-      z-index: 4;
+      z-index: 50;
     }
     #hover-box.visible {
       opacity: 1;
@@ -1028,17 +1029,37 @@
       </select>
     </div>
 
+    <!-- Row 4: exploration filters (reversible — no data regeneration) -->
+    <div class="filter-row">
+      <span class="flabel">explore</span>
+      <span style="font-size:11px;color:var(--text-2);" title="wordfreq Romanian Zipf range">zipf
+        <input type="number" name="zipf_min" step="0.1" min="0" max="8" placeholder="min" style="width:50px;">–<input type="number" name="zipf_max" step="0.1" min="0" max="8" placeholder="max" style="width:50px;">
+      </span>
+      <div class="fsep"></div>
+      <span style="font-size:11px;color:var(--text-2);" title="DEX editorial frequency band, 0–100">dex
+        <input type="number" name="dexfreq_min" step="1" min="0" max="100" placeholder="min" style="width:50px;">–<input type="number" name="dexfreq_max" step="1" min="0" max="100" placeholder="max" style="width:50px;">
+      </span>
+      <div class="fsep"></div>
+      <label class="pill" title="Hide words common in English (en Zipf ≥ {{ '%.1f'|format(loanword_en_zipf) }})">
+        <input type="checkbox" name="hide_loanwords" value="1"> hide loanwords
+      </label>
+      <label class="pill" title="Hide headwords capitalized in DEX (names/places/brands)">
+        <input type="checkbox" name="hide_proper" value="1"> hide proper nouns
+      </label>
+    </div>
+
   </form>
 
-  <div id="app">
-    <div id="hover-box">
-      <div id="hb-word"></div>
-      <div id="hb-verdict-row">
-        <span id="hb-verdict" class="verdict-badge"></span>
-        <span id="hb-meta"></span>
-      </div>
-      <div id="hb-def"></div>
+  <div id="hover-box">
+    <div id="hb-word"></div>
+    <div id="hb-verdict-row">
+      <span id="hb-verdict" class="verdict-badge"></span>
+      <span id="hb-meta"></span>
     </div>
+    <div id="hb-def"></div>
+  </div>
+
+  <div id="app">
     <div id="word-list-container">
       <div id="word-list"
            hx-get="/search"
@@ -1053,7 +1074,7 @@
 
   <div id="status-bar">
     <span class="status-left"><span id="status-word-count">{{ total }} words</span> · {{ bookmark_count }} bookmarked</span>
-    <span class="status-right"><a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">GitHub</a> &nbsp; <a href="/metodologie" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">metodologie</a> &nbsp; <a href="#" onclick="showShortcuts();return false;" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'"><kbd>?</kbd> shortcuts</a></span>
+    <span class="status-right"><a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">GitHub</a> &nbsp; <a href="/metodologie" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">metodologie</a> &nbsp; <a href="#" onclick="showLegend();return false;" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">ⓘ legend</a> &nbsp; <a href="#" onclick="showShortcuts();return false;" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'"><kbd>?</kbd> shortcuts</a></span>
   </div>
 
   <datalist id="tag-suggestions">
@@ -1085,6 +1106,39 @@
         <tr><td><kbd>n</kbd></td><td>Focus note field</td></tr>
         <tr><td><kbd>o</kbd></td><td>Open in dexonline.ro</td></tr>
         <tr><td><kbd>?</kbd></td><td>Show / hide this popup</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="legend-overlay" style="display:none">
+    <div id="legend-modal">
+      <div class="shortcuts-header">
+        <span>Legend — numbers &amp; tags</span>
+        <span class="shortcuts-esc">Esc to close</span>
+      </div>
+      <table class="shortcuts-table">
+        <tr><td colspan="2" class="shortcuts-group">The superscript on each word</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">listat<sup style="font-size:9px;color:#b3a99a;">²¹</span></span></td><td><strong>DEX frequency band</strong> (the small number), 0–100. DEX Online's editorial score for how central a word is to the dictionary — <em>lower = rarer in DEX</em>. <strong>0 = no data</strong>, not "rarest". It is a dictionary-internal score, <em>not</em> corpus frequency, so modern loanwords can score low here while still being common.</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Frequency scores (detail panel)</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">zipf</span></td><td>Romanian wordfreq Zipf. ~3 = rarity floor (≈1 per million words); higher = more common; <strong>0</strong> = unseen / below floor.</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">en</span></td><td>English wordfreq Zipf. High (≥ {{ '%.1f'|format(loanword_en_zipf) }}) means the word is common in English → <strong>likely a loanword</strong>. Genuine Romanian words score 0.</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">dex</span></td><td>Same DEX frequency band as the superscript, 0–100.</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Corpus evidence (per million tokens)</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">hist</span></td><td>Historical corpus (Wikisource).</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">mod</span></td><td>Modern corpus (CulturaX).</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">sub</span></td><td>Subtitle corpus (OpenSubtitles).</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">ratio</span></td><td>log₂(hist ÷ modern). <strong>Positive = used more in the past</strong> (declining/forgotten); negative = more modern.</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Dictionaries &amp; web</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">in N dict.</span></td><td>Number of DEX Online source dictionaries the headword appears in; the short-names follow (<em>DEX '98, DLRLC, MDA2, NODEX, Scriban, Șăineanu…</em> — see <a href="https://dexonline.ro/surse" target="_blank" rel="noopener">dexonline.ro/surse</a>).</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">web · results · in&nbsp;wild</span></td><td>Phase-3 web validation: result-count bucket, raw result count, and whether the word still appears online.</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">proper?</span></td><td>The DEX headword is capitalized — likely a name / place / brand.</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Verdict (colored badge)</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">extinct</span></td><td>Common historically, gone from the modern corpus.</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">declining</span></td><td>≥ 2× more frequent historically than today.</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">historical</span></td><td>Seen historically, absent now (corpus run may be partial).</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">absent</span></td><td>No corpus signal either way.</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Common DEX register tags</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">învechit</span></td><td>archaic / obsolete · <span class="legend-key">rar</span> rare · <span class="legend-key">reg.</span> regional · <span class="legend-key">pop.</span> popular · <span class="legend-key">fig.</span> figurative · <span class="legend-key">livresc</span> bookish</td></tr>
       </table>
     </div>
   </div>
@@ -1156,6 +1210,8 @@
 
     function showShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'flex'; }
     function hideShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'none'; }
+    function showLegend() { document.getElementById('legend-overlay').style.display = 'flex'; }
+    function hideLegend() { document.getElementById('legend-overlay').style.display = 'none'; }
     function closePanel() { document.getElementById('detail-panel').classList.remove('panel-open'); }
 
     document.addEventListener('keydown', function(e) {
@@ -1171,7 +1227,7 @@
         }
         return;
       }
-      if (e.key === 'Escape') { hideShortcuts(); closePanel(); return; }
+      if (e.key === 'Escape') { hideShortcuts(); hideLegend(); closePanel(); return; }
       if (e.key === '/') { e.preventDefault(); document.getElementById('search').focus(); return; }
       if (e.key === 'j' || e.key === 'ArrowDown')  { e.preventDefault(); navigateSpatial('down');  gPressed = false; return; }
       if (e.key === 'k' || e.key === 'ArrowUp')    { e.preventDefault(); navigateSpatial('up');    gPressed = false; return; }
@@ -1287,6 +1343,10 @@
       if (e.target === this) hideShortcuts();
     });
 
+    document.getElementById('legend-overlay').addEventListener('click', function(e) {
+      if (e.target === this) hideLegend();
+    });
+
     // Hover info box — event delegation on document, no per-row listeners needed
     (function() {
       var box    = document.getElementById('hover-box');
@@ -1313,6 +1373,15 @@
         } else {
           hbDef.style.display = 'none';
         }
+        var rect = row.getBoundingClientRect();
+        var bw = 274;
+        var left = rect.left;
+        if (left + bw > window.innerWidth) left = window.innerWidth - bw;
+        if (left < 4) left = 4;
+        var top = rect.bottom + 6;
+        if (top + 180 > window.innerHeight) top = rect.top - 180;
+        box.style.left = left + 'px';
+        box.style.top  = top  + 'px';
         box.classList.add('visible');
       });
 
@@ -1357,34 +1426,6 @@
         });
       });
 
-      // Definition tooltip on word-row hover
-      (function() {
-        var tip = document.createElement('div');
-        tip.id = 'def-tip';
-        tip.style.cssText = 'position:fixed;z-index:9999;max-width:320px;background:var(--bg-1);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:7px 10px;font-size:11px;line-height:1.5;pointer-events:none;opacity:0;transition:opacity .1s;box-shadow:0 2px 8px rgba(0,0,0,.18);';
-        document.body.appendChild(tip);
-
-        var hideTimer = null;
-        document.getElementById('word-list-container').addEventListener('mouseover', function(e) {
-          var row = e.target.closest('.word-row');
-          if (!row) return;
-          var def = (row.dataset.def || '').trim();
-          if (!def) return;
-          clearTimeout(hideTimer);
-          tip.textContent = def;
-          var r = row.getBoundingClientRect();
-          var top = r.bottom + 6;
-          if (top + 120 > window.innerHeight) top = r.top - 120;
-          tip.style.left = Math.min(r.left, window.innerWidth - 330) + 'px';
-          tip.style.top = top + 'px';
-          tip.style.opacity = '1';
-        });
-        document.getElementById('word-list-container').addEventListener('mouseout', function(e) {
-          var row = e.target.closest('.word-row');
-          if (!row) return;
-          hideTimer = setTimeout(function(){ tip.style.opacity = '0'; }, 80);
-        });
-      })();
 
       // Push current form state to URL after each /search request settles
       document.body.addEventListener('htmx:afterRequest', function(evt) {

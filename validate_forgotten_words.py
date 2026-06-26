@@ -20,6 +20,8 @@ import csv
 from collections import defaultdict
 from datetime import datetime
 
+from constants import MIN_FREQUENCY, MIN_FORM_LENGTH, VALIDATION_FREQ_CEILING
+
 DB_LEXEMES = "data/processed/lexemes.db"
 DB_CORPUS = "data/processed/corpus_frequencies.db"
 OUTPUT_VALIDATED = "data/processed/forgotten_words_validated.csv"
@@ -64,10 +66,10 @@ def validate_words(lexeme_conn, corpus_conn, corpus_stats):
     lexeme_cursor.execute('''
         SELECT form, frequency, description
         FROM Lexeme
-        WHERE frequency > 0.01 AND frequency < 0.60
-          AND LENGTH(form) > 3
+        WHERE frequency > ? AND frequency < ?
+          AND LENGTH(form) > ?
         ORDER BY frequency ASC
-    ''')
+    ''', (MIN_FREQUENCY, VALIDATION_FREQ_CEILING, MIN_FORM_LENGTH))
 
     candidates = lexeme_cursor.fetchall()
     print(f"Analyzing {len(candidates):,} forgotten word candidates...")

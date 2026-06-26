@@ -4,6 +4,142 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-06-26 — Beta-prep UX pass: dictionaries, play modes, design brief
+
+A UX-polish phase to get the app ready to share with friends as beta testers. Two tracks: durable, data-backed detail features + play/exploration mechanics (built now), and a written redesign brief (handed off later). Sharing/virality infrastructure and data-quality work were explicitly deferred to their own phases.
+
+**Detail panel (durable wins):**
+- **Dictionaries-in-info**: new `sources` column in `ui.db`, merged from `data/processed/dict_sources.db` (exact + diacritic-normalized fallback, 98.2% of words matched). Added `merge_dict_sources()` to `tools/build_ui_db.py` and a one-time backfill `tools/migrate_ui_db_sources.py`. Rendered as a "📚 N dicționare" chip list in `_partials/detail.php`.
+- **Synonyms placeholder**: "Sinonime: în curând" slot wired in the detail panel, ready for a future `synonyms` data source (none exists yet).
+- **Larger definition box**: detail drawer raised 130px → 210px (desktop), definition bumped to 16px/1.65.
+- **Shared-word focus**: opening `?word=X` now adds a `share-focus` class so the panel opens tall (50vh desktop / 80vh mobile) — the definition is the hero, the list secondary.
+
+**Usability:**
+- **Active-filter chips** (`#active-filters`): every non-default filter shows as a removable chip with an individual ✕ (plus "resetează tot"). `renderActiveFilters()` in `app.js`.
+- **ignore vs remove** clarified with tooltips + shortcuts-modal copy (ignore = not interesting to you; remove = not genuinely forgotten).
+
+**Play / exploration:**
+- **🎲 surprise** (`r`): random word respecting current filters — `api/random.php`.
+- **Cuvântul zilei**: deterministic daily word over a quality subset, dismissible banner, once/day via localStorage.
+- **📇 feed / swipe mode**: one-card-at-a-time keep/skip explorer (keyboard + touch swipe, soft daily count) — `api/feed.php`.
+- **🎮 joc** (`joc.php`): flashcards (word → reveal meaning) + multiple-choice quiz (meaning → pick the word, same-POS distractors, masked target), streak/record in localStorage — `api/quiz.php`.
+
+**Redesign brief:** `docs/design-brief.md` — fresh-identity, mobile-first spec for a designer, covering the table view, filter-bar redesign, calmer verdict palette, play modes, and the shared-word landing state.
+
+Verified end-to-end with Playwright (system Chrome): word list, surprise, active-filter add/remove, feed keep/advance/close, shared-word focus, and the joc flashcard + quiz flows all pass with no console errors from app code.
+
+## 2026-06-09 — Statistics page with sliceable filters
+
+Built a full statistics dashboard (`public/stats.php`) that mirrors the main word list's filter UI. Users can slice statistics by the same dimensions: tier, POS, register, domain, etymology, dict_count, definition status, and DEX frequency ceiling (rare tab).
+
+- **Refactored filter building**: Extracted `build_word_filter()` helper in `_lib.php` — shared by both `search.php` and the new `stats.php`, eliminates duplication and maintenance risk.
+- **`parse_multi()` + `split_pipe()` helpers**: Moved to `_lib.php`, handle multi-value checkbox arrays (tier[], pos[]) and pipe-delimited fields (etymology, register, domain, POS).
+- **API endpoint (`api/stats.php`)**: Single SQL scan per word, PHP-side aggregation: counts by confidence_tier (GROUP BY), then counts by etymology/register/domain/POS (split pipes, frequency maps). Generates top-15 etymologies, top-10 domains, all registers, top-8 POS.
+- **Stats panels (`api/_partials/stats_panels.php`)**: HTML-only bar charts, inline `width: X%` styling, no JS library. Shows summary strip (total, definition coverage %), then 5 cards: etymology (full-width 2-column), tier, POS, register, domain — all color-coded per verdict/category.
+- **CSS**: New `.stats-*` classes, grid layout for panels, mobile collapse of 2-column etymology to 1 on narrow screens.
+- **Filter form**: Reuses the same tier/POS checkboxes, register/domain/etymology/dict_min selects, dex_max (rare-only). Inline JS handles DEX-rare visibility, tax-select active highlight, and form reset re-dispatch.
+- **Navigation**: "📊 statistici" link in status bar, back-link ("← cuvinte") from stats page.
+
+No changes needed to existing `search.php` behavior — all filter logic is now centralized in `build_word_filter()`.
+
+## 2026-06-09 — Filter dedup, dict_count filter, URL deep-linking
+
+- **Removed verdict pills** (extinct / declining / historical / absent) — they duplicated the tier labels (corp. extinct / corp. declining / corp. historical) since `confidence_tier` is derived from `verdict`. Tier is more informative (adds `dex. absent` path) so it's the one to keep.
+- **Added missing `dex_absent_highfreq` tier** — 3,848 words had no tier pill to filter them until now.
+- **`dict_count` filter** — new "dicts: any / ≥3 / ≥6 / ≥10 / ≥15" select in filter row 3. Filters `dict_count >= N` in SQLite. Works as a quality gate: words attested in more dictionaries are more firmly established.
+- **URL deep-linking** — `applyUrlToForm()` reads `?q=&tier=&sort=…` on page load and pre-selects filters before HTMX fires its initial request. `syncUrlFromForm()` updates the URL (via `history.replaceState`) on every HTMX search, so every filter state is bookmarkable and shareable. Default values are omitted from the URL to keep links clean.
+
+## 2026-06-09 — Reversible DEX-rare filter on the rare tab (Phase 1)
+
+The rare tab still showed everyday words (credit, ecran, universitate, ceapă…). Root cause: the `rare_in_use` gate has no rarity requirement — it admits any `zipf ∈ [3.0, 4.5)` word with an archaic register tag, and DEX register tags are per-*headword*, so `învechit` fires on a long-dead *sense* of a common word. 112 of the 113 rare words are DEX `rarity_category = "standard"` (96% have `dex_frequency ≥ 0.80`).
+
+Phase 1 (reversible, no pipeline re-run): added a `dex_max` filter to the PHP UI, scoped to the rare tab. `public/api/search.php` applies `dex_frequency BETWEEN 0.01 AND <ceiling>` only when `word_tier = rare_in_use` (0.01 floor drops `frequency = 0` missing data). `public/index.php` adds a select (DEX: all / ≤0.60 / ≤0.50 / ≤0.30, default ≤0.60); `public/assets/app.js` shows it only on the rare tab. Default ≤0.60 collapses the rare tab to **1 word (`listat`)** — confirming the pool is ~entirely DEX-standard and that a useful rare tier needs re-sourcing (Phase 2: rarity-first gate in `validate_with_wordfreq.py`, drop the archaic requirement, lower zipf ceiling 4.5→3.5, drop English loanwords). See plan `rare-list-still-shows-lucky-mitten.md`.
+
+## 2026-06-07 — Archive dead MySQL→SQLite scripts (backlog #3)
+
+`extract_lexemes.py` is the only MySQL→SQLite path wired into the canonical pipeline. Moved the two abandoned alternatives — `mysql_to_sqlite.py` (silently swallows AUTOINCREMENT errors) and `convert_to_sqlite.sh` (mishandles multi-line MySQL directives) — into a new `archive/` directory with a `README.md` warning not to run/import them. Confirmed no script imports either (only self-references + docs). Updated the CLAUDE.md gotcha. `docs/scripts-guide.md` still lists `mysql_to_sqlite.py` as an "alternative" — flagged in BACKLOG for a separate docs pass.
+
+## 2026-06-07 — De-pollute the `rare_in_use` tier (archaic register gate + dedup)
+
+Addressed the bulk of the "rare_in_use tier is polluted by modern loanwords + proper nouns" bug in `validate_with_wordfreq.py` (pipeline options (a) + (d)).
+
+- **(a) Archaic register gate.** Added `ARCHAIC_REGISTER_MARKERS` (`învechit`, `arhaizant`, `rar`, `ieșit din uz`) + `has_archaic_register()`. The `rare_in_use` gate previously admitted any word with a *non-empty* `dex_register` — including stylistic tags (`figurat`, `popular`, `familiar`, `livresc`) that everyday loanwords carry. It now requires an archaic/rare marker. New `--rare-register {archaic,any}` flag (default `archaic`; `any` = legacy). Effect on the current curated CSV: `rare_in_use` 582 → 113; `screening`/`meeting`/`house`/`jonathan`/`sioux`/`zulu`/`viking` removed.
+- **(d) Dedup by `word_no_accent`.** New `--dedup` (default on) keeps the first row per normalized headword, collapsing POS duplicates (`house` s.n. + adj.). Dropped 10,133 duplicate rows on the current input; surfaced in the run summary.
+- **Verification.** `has_archaic_register()` unit-checked; ran new vs `--rare-register any --no-dedup` (legacy) side by side to confirm the 582→113 delta; spot-checked that 14/15 backlog noise words are gone. Residual noise is now sense-level homograph mismatches (`cannabis`/`spray`/`court`/`hagi` tagged `învechit` on a non-modern sense) — caught today by the UI `hide_loanwords`/`hide_proper` toggles; options (b)/(c) intentionally remain reversible UI toggles.
+- No `data/` artifacts regenerated (verified via /tmp outputs); takes effect on next `validate_with_wordfreq.py` run.
+
+## 2026-06-07 — Flag "[Fără definiție.]" placeholder entries (backlog #17)
+
+Closed the remaining gap in #17. The `has_definition` column already existed (in `forgotten_words_diachronic.csv` and the UI), and DEX headwords with no extractable definition already showed `has_definition=0` by being absent from `definitions.db`. The leak: dexonline's "[Fără definiție.]" placeholder rows (entry exists, only usage citations follow) counted as real definitions.
+
+- **`validate_diachronic.py`** — added `is_placeholder_definition(text)`: placeholder when text is missing/blank or "[Fără definiț…" *leads* the string. `_load_definition_words()` now excludes those, so the CSV `has_definition` is accurate. Mid-text placeholders in multi-sense words (`perină`, `spectacul`) correctly still count.
+- **`ui/app.py`** — definition load skips placeholder rows (matching inline check) so the `has_def` filter (`definition IS NULL`) and the panel text agree; placeholder words still appear in the list and link out to dexonline.
+- **Scale / verification** — predicate unit-checked (None/blank/leading/embedded/normal); against the live `definitions.db` (70,472 rows) it flags exactly 7 placeholder-only words: `animaltecă`, `apastop`, `fibrinactiv`, `magnetodiaflux`, `narcorublă`, `perfluorbutilamină`, `relin`. Both modules import cleanly. No `data/` artifacts regenerated — takes effect on next `validate_diachronic.py` run / `ui.db` rebuild.
+
+## 2026-06-07 — Centralize frequency thresholds in `constants.py` (backlog #5)
+
+Resolved the long-standing three-way disagreement on frequency bins (CLAUDE.md gotcha + BACKLOG #5).
+
+- **New `constants.py`** — single source of truth: `MIN_FREQUENCY` (0.01) and `MIN_FORM_LENGTH` (3) shared across stages; canonical rarity-bin edges `VERY_RARE_MAX` (0.30) / `RARE_MAX` (0.50) / `UNCOMMON_MAX` (0.60) plus a `rarity_category(freq)` helper; per-stage candidate ceilings `CURATED_FREQ_CEILING` (1.0) and the explicitly-marked legacy `ANALYZE_FREQ_THRESHOLD` (0.70) / `VALIDATION_FREQ_CEILING` (0.60).
+- **`create_curated_list.py`** (canonical) — candidate WHERE clause now parameterized from constants; the two duplicated inline binning blocks (categorization + CSV write) both collapse to `rarity_category()`.
+- **`analyze_forgotten_words.py`** / **`validate_forgotten_words.py`** (legacy) — import their floors/ceilings instead of hardcoding. Legacy display histogram bins left script-local (coupled to the 0.70 candidate threshold; documented as intentional in `constants.py`).
+- **Verification** — `rarity_category()` matches the old inline logic at every boundary (0.0/0.01/0.29/0.30/0.49/0.50/0.59/0.60/0.99); all four modules import cleanly. No `data/` artifacts regenerated — behaviour is unchanged, so existing CSVs remain valid.
+
+## 2026-05-28 — Richer detail panel + reversible UI filters for triage
+
+Follow-up to the rare-tab diagnosis: rather than baking filters into the pipeline, surface all
+per-word evidence in the UI and add reversible filter knobs so the data can be explored before
+committing to any permanent filter.
+
+- **New `extract_dict_sources.py`** — streams the DEX dump (mirrors `validate_diachronic.py::_load_dict_counts`), joining `Definition.sourceId → Source.shortName` to record the *names* of the dictionaries each headword appears in. Output `data/processed/dict_sources.db` (`dict_sources(word, sources, dict_count)`). Full run: 301,439 headwords, 113 sources (e.g. `meeting` → DEX '98|DLRLC|Scriban|Șăineanu; `criptare` → Neoficial).
+- **`ui/app.py::load_words`** — added a `_enrich_words()` pass: wordfreq Zipf for `ro` and `en` (recomputed uniformly; also restores the rare tier's zipf, which the CSV load drops), a `proper_noun_like` flag recovered from `lexemes.db` casing (the CSVs are lowercased, so the old `word[0].isupper()` filter was dead), and `dict_sources` joined by normalized headword. New columns: `zipf_frequency`, `en_zipf`, `proper_noun_like`, `dict_sources`.
+- **Detail panel (`partials/detail.html`)** — now shows zipf / en / dex band alongside hist/mod/sub/ratio, the dictionary-names list, web-validation signals (score/results/in-wild/provider/last-seen/top-url), and a proper-noun flag. The DEX-frequency superscript (the small number on each grid word = `dex_frequency × 100`) is now also rendered next to the word title in the panel.
+- **Legend popup (`base.html`)** — an "ⓘ legend" footer link opens a glossary modal (modeled on the shortcuts overlay) explaining every number and tag: the superscript/DEX band, zipf, en, hist/mod/sub/ratio, dict-count + source short-names, web signals, verdicts, and common DEX register tags.
+- **Four reversible filters** (`/search` + `base.html` row 4): zipf range, DEX-frequency range, hide-likely-loanwords (`en_zipf ≥ LOANWORD_EN_ZIPF`, default 4.0), exclude proper-noun-like. Server-side, applied only when present, preserved across pagination.
+
+Verified end-to-end (curl + browser screenshot): `hide_loanwords` drops `meeting`/`house`, `hide_proper` drops `jonathan`, `zipf_max=3.0` narrows to sub-floor words; detail panel renders all signals. No `data/` artifacts regenerated. wordfreq import is optional (graceful degrade).
+
+---
+
+## 2026-05-28 — Diagnosed rare-tab pollution (no code changes)
+
+Investigated why the UI "rare" tab (`?word_tier=rare_in_use`) shows non-rare words: English loanwords (`screening`, `meeting`, `house`, `short`, `golden`, `dolby`, `wild`, `trend`), variety/brand names (`jonathan`), and proper nouns (`sioux`, `zulu`, `hagi`, `viking`).
+
+Root cause: the `rare_in_use` tier rests on two failing signals. (1) Low DEX `frequency` is editorial-coverage, not corpus frequency, so recent borrowings sit in the `0.01–1.0` candidate band (`create_curated_list.py:127-129`) while still being everyday words. (2) The register gate in `validate_with_wordfreq.py:151` admits a word on `zipf < 4.5 AND dex_register non-empty` — *any* tag — but of 582 rows in `rare_words_wordfreq.csv` only ~124 are `învechit`; the rest are stylistic tags (`figurat`, `popular`, `familiar`, `livresc`) that colloquial loanwords carry. Compounding: no loanword filter, a dead proper-noun filter (`create_curated_list.py:69-72` checks `word[0].isupper()` on lowercased data), homograph mismatches (`cannabis`/`listat`→`învechit`), and 28 duplicate rows.
+
+Diagnose-only at the user's request; logged as a Bugs/Known-Issues entry in `docs/BACKLOG.md` (sharpens enhancement #12) with fix options for later.
+
+---
+
+## 2026-05-28 — Lemma dedup in shortlist (backlog #6)
+
+Added simplemma-based inflected-form deduplication to `make_shortlist.py`. After the classification loop, each word is lemmatized via `simplemma.lemmatize(word, lang='ro')` and grouped by lemma. Groups with multiple shortlist entries keep one canonical representative (the word whose form equals the lemma, else the highest-tier/highest-dex_frequency entry); the rest are dropped. Added `--no-dedup` flag to opt out.
+
+Result: 1,571 inflected forms collapsed, shortlist 26,788 → 25,217 words. Concrete improvements: `abecedare` dropped (→ `abecedar` kept); `murea` dropped (lemma `muri` not in shortlist, so it was alone in its group and correctly removed).
+
+Known remaining gap: simplemma does not reduce Romanian verb-derived nouns or participial adjectives (`bleui`/`bleuire`/`bleuit` stay as three separate entries). Corpus-level lemmatization (so `buclele` counts toward `buclă`) remains outstanding.
+
+Rebuilt `tools/build_ui_db.py`: 25,685 words in `ui.db`.
+
+---
+
+## 2026-05-28 — Data audit: corpus merge, Tier A guards, register filter cleanup
+
+**Corpus merge:** Fresh CulturaX run from VPN contained only `culturax_ro` (122,463 words). Merged `wikisource_ro` (45,218 words) and `subtitle_ro` (29,733 words) from the previous complete DB into the new `corpus_frequencies.db`. All three corpora now present and correct.
+
+**Tier A common-word guards (`make_shortlist.py`):** Tier A (`corpus_extinct`, `corpus_declining`, `corpus_historical_only`) now requires two additional conditions: `modern_ppm <= 5.0` (word is not still actively used in modern text) and `dex_frequency < 1.0` (not DEX core vocabulary). Without these guards, words like `lui` (2,750 ppm), `casă` (200 ppm), `dumnezeu` (562 ppm), `miel` (10 ppm) were passing because Wikisource (19th-century literary) simply uses these proportionally more than modern web text, triggering a "declining" verdict. 612 words removed from Tier A (993 by ppm, 133 by dex_frequency, some overlap). New `TIER_A_MODERN_PPM_MAX = 5.0` constant at module level. Legitimate archaic words in the 1–5 ppm range (e.g. `dară` 1.2 ppm, `sosi` 4.97 ppm `rar|învechit`) are kept.
+
+**Register dropdown cleanup (`tools/build_ui_db.py`, `ui/app.py`):** Added `_REGISTER_USAGE_NOTES` exclusion set (39 tags) shared between both apps. DEX register tags that describe usage style (`figurat`, `popular`, `familiar`, `metaforic`, `în comparații / la comparativ`, `ironic`, `argou`, etc.) are excluded from the register filter dropdown. The `dex_register` column in the DB is unchanged — these tags are still available as metadata on each word, they just don't appear as filter options. Register dropdown reduced from 52 noisy values to 17 true archaic/regional markers: `învechit`, `regional`, `rar`, `livresc`, `Moldova`, `ieșit din uz`, `arhaizant`, `Țara Românească`, `Transilvania`, `Țările Române`, `dialectal`, `Bucovina`, `Muntenia`, `Banat`, `Maramureș`, `Oltenia`.
+
+**Pipeline rebuilt:** `validate_diachronic.py` → `make_shortlist.py` → `tools/build_ui_db.py`. Shortlist: 26,788 words (was ~27,400 before guards). Verified: egregious common words gone, `oțios`/`tibișir`/`eleșteu` present, register dropdown clean.
+
+**Remaining 260519 audit items (not tackled today):**
+- Inflected/derived forms as separate entries (bleuit/bleuire/bleui, murea, abecedare) — requires lemmatization (backlog #6).
+- Missing definitions for feminine forms and spelling variants (mofluzită, cfartal etc.) — separate investigation needed.
+- `Maramureș` on `biodiversitate` — likely taxonomy artifact; re-check after pipeline rerun.
+
+---
+
 ## 2026-05-27 — Regex fix, dead code removal, BACKLOG housekeeping
 
 Fixed dead regex in `create_curated_list.py:80`: `r"^[a-z]+-[a-z]+'"` had a trailing apostrophe that caused the hyphenated-word filter to match zero words. Removed the apostrophe so compound/multi-word entries (chaise-longue, mai-mare, calea-valea, etc.) are now correctly excluded from the curated candidate list. Re-ran pipeline (`validate_diachronic.py` → `make_shortlist.py` → `build_ui_db.py`).

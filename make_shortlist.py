@@ -25,13 +25,19 @@ Usage:
 
 import argparse
 import csv
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
+
+import simplemma
 
 INPUT_CSV  = Path('data/processed/forgotten_words_diachronic.csv')
 OUTPUT_CSV = Path('data/processed/forgotten_words_shortlist.csv')
 
 TIER_A_VERDICTS = ('extinct', 'declining', 'historical_only')
+
+# Words still appearing this often in modern text are not forgotten, regardless of the
+# historical/modern ratio (e.g. common words that Wikisource just used more than modern web text).
+TIER_A_MODERN_PPM_MAX = 5.0
 
 EXCLUDED_POS = {
     'prefix', 'sufix', 'element de compunere',
@@ -72,7 +78,13 @@ def classify(
         if etym_tags & exclude_etym:
             return None
     verdict = row['verdict']
+    dex_freq   = float(row.get('dex_frequency') or 0)
+    modern_ppm = float(row.get('modern_ppm') or 0)
     if verdict in TIER_A_VERDICTS and float(row['hist_ppm']) > 0:
+        if dex_freq >= 1.0:              # core DEX vocabulary, not forgotten
+            return None
+        if modern_ppm > TIER_A_MODERN_PPM_MAX:  # still actively used in modern text
+            return None
         return f'corpus_{verdict}'
     if verdict == 'absent' and 'învechit' in (row.get('dex_register') or '').split('|'):
         return 'dex_invechit_absent'
@@ -101,6 +113,10 @@ def main() -> int:
     parser.add_argument(
         '--dex-freq-threshold', type=float, default=0.85, metavar='FREQ',
         help='Tier C: min dex_frequency for dex_absent_highfreq words (default: %(default)s)',
+    )
+    parser.add_argument(
+        '--no-dedup', action='store_true',
+        help='Skip simplemma lemma deduplication (keep all inflected forms as separate entries)',
     )
     args = parser.parse_args()
 
@@ -142,6 +158,32 @@ def main() -> int:
         return (order, -float(r['log_ratio'] or 0))
 
     selected.sort(key=sort_key)
+
+    # Lemma deduplication: collapse inflected/derived forms to their canonical lemma.
+    # Uses simplemma for Romanian. Covers regular inflections (murea→muri, abecedare→abecedar)
+    # but NOT verb-derived nouns/adjectives (bleui/bleuire/bleuit stay separate — simplemma gap).
+    if not args.no_dedup:
+        lemma_groups: dict[str, list[dict]] = defaultdict(list)
+        for row in selected:
+            lem = simplemma.lemmatize(row['word'], lang='ro')
+            lemma_groups[lem].append(row)
+
+        deduped: list[dict] = []
+        n_removed = 0
+        for lem, group in lemma_groups.items():
+            if len(group) == 1:
+                deduped.append(group[0])
+            else:
+                # Prefer: word IS the lemma (canonical form) > best tier+dex_freq (already sorted)
+                canonical = next((r for r in group if r['word'] == lem), group[0])
+                deduped.append(canonical)
+                n_removed += len(group) - 1
+
+        # Restore sort order (grouping scrambled it)
+        deduped.sort(key=sort_key)
+        selected = deduped
+        if n_removed:
+            print(f'  Lemma dedup: collapsed {n_removed} inflected forms into canonical entries')
 
     if args.limit:
         selected = selected[:args.limit]

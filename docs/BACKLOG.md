@@ -10,13 +10,24 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 - [ ] `dreadnought` nu e marcat ca `marină` (Mar.) in our UI but it is in dexonline web
 
+- [ ] **`rare_in_use` tier is polluted by modern loanwords + proper nouns** — the UI "rare" tab (`?word_tier=rare_in_use`) shows words that aren't rare: English borrowings (`screening`, `meeting`, `house`, `short`, `golden`, `dolby`, `wild`, `trend`, `scanner`, `cutter`), brand/variety names (`jonathan`), and proper nouns (`sioux`, `zulu`, `hagi`, `viking`). Two failing signals:
+  1. **Low DEX `frequency` ≠ rare.** `create_curated_list.py:127-129` selects `0.01 < frequency < 1.0`; DEX `frequency` is editorial-coverage, not corpus frequency, so recent borrowings land in that band (`screening` 0.27, `meeting` 0.71, `house` 0.81) while still being everyday words.
+  2. **Register gate too permissive** (`validate_with_wordfreq.py:151`): admits a word on `zipf < 4.5 AND dex_register non-empty` — *any* tag. Of 582 rows in `rare_words_wordfreq.csv` only ~124 are `învechit`; the rest are stylistic tags (`figurat` 172, `popular` 82, `familiar` 59, `livresc` 39) — exactly what colloquial loanwords carry. The gate was meant to require an *archaic* marker.
+
+  Compounding: no loanword filter (some borrowings hit zipf 4.0–4.5, e.g. `house` 4.36, `jonathan` 4.25; `dex_etymology` is empty in the CSV so etymology filtering needs re-extraction); the proper-noun filter `create_curated_list.py:69-72` checks `word[0].isupper()` but the data is lowercased so it never fires; even `învechit` rows are noisy from homograph mismatches (`cannabis`→`învechit`, `listat`→`învechit`); 28 duplicate `word_no_accent` rows (e.g. `house` as `s.n.` and `adj.`). Loaded by `ui/app.py:122-144` (tier set at `app.py:142`). Sharpens enhancement #12. Fix options: (a) restrict the register gate to archaic markers (`învechit` + combos); (b) add a cross-lingual English-zipf loanword filter; (c) fix the proper-noun filter to run on cased DEX forms; (d) dedup by `word_no_accent`. Regenerating `rare_words_wordfreq.csv` means re-running `validate_with_wordfreq.py`. **Exploratory UI path added 2026-05-28** (see activity-history): the detail panel now shows zipf/en/dex/dict-names per word, and reversible filters (zipf range, dex range, hide-loanwords via `en_zipf`, hide-proper-nouns via DEX casing) let us triage interactively before deciding what to make permanent. Options (b) and (c) are now prototyped as UI toggles in `ui/app.py::_enrich_words` / `extract_dict_sources.py`.
+
+  **Partially resolved 2026-06-07** — pipeline options (a) + (d) done in `validate_with_wordfreq.py`:
+  - **(a) Register gate restricted to archaic markers.** New `ARCHAIC_REGISTER_MARKERS` (`învechit`, `arhaizant`, `rar`, `ieșit din uz`) + `has_archaic_register()`; the `rare_in_use` gate now requires one of these instead of *any* non-empty register. New `--rare-register {archaic,any}` flag (default `archaic`; `any` restores legacy behaviour). On the current curated CSV this cut `rare_in_use` from **582 → 113** and removed `screening`/`meeting`/`house`/`jonathan`/`sioux`/`zulu`/`viking` etc.
+  - **(d) Dedup by `word_no_accent`.** New `--dedup` flag (default on) collapses same-headword rows that differ only by POS (e.g. `house` as `s.n.` + `adj.`); dropped 10,133 duplicate rows on the current input.
+  - **Still open:** (b) cross-lingual loanword filter and (c) cased proper-noun filter remain *deliberately* as reversible UI toggles (per the 2026-05-28 triage note) rather than permanent pipeline filters — promoting them is a product decision. Residual noise in the archaic-gated rare list is now dominated by **sense-level homograph mismatches** (`cannabis`/`listat`/`spray`/`court`/`hagi` carry an `învechit` tag on a different sense than the modern one); these are caught today by the UI's `hide_loanwords` (en_zipf) and `hide_proper` toggles. Takes effect on next `validate_with_wordfreq.py` run.
+
 - [ ] **P0 — Phase 2 candidate-set mismatch** (`process_corpus.py:56-67,187,292` vs `validate_forgotten_words.py:64-70`): `process_corpus.py` only counts tokens in `forgotten_words_curated.csv` (~1.9k words), but the validator queries `lexemes.db` with `frequency > 0.01 AND frequency < 0.60 AND LENGTH(form) > 3` (tens of thousands of lexemes). Words absent from the curated CSV silently get `total_occurrences = 0` and are classified as `confirmed_forgotten` with confidence ~0.99. The "159,543 validated, 1 false positive" headline in `docs/phase2-test-results.md` is an artefact. Fix: align the candidate source, or have `process_corpus.py` count every token.
 
-- [ ] **Three competing MySQL→SQLite paths** — only `extract_lexemes.py` is wired into the canonical pipeline. `convert_to_sqlite.sh` mishandles multi-line MySQL directives (lines 31, 42-50); `mysql_to_sqlite.py:97` silently swallows AUTOINCREMENT errors. Archive the other two.
+- [x] **Three competing MySQL→SQLite paths** — Fixed. `extract_lexemes.py` is the sole canonical path; `convert_to_sqlite.sh` + `mysql_to_sqlite.py` moved to `archive/` (with `archive/README.md` explaining why). Note: `docs/scripts-guide.md` still documents `mysql_to_sqlite.py` as an "alternative approach" — left for a separate docs pass.
 
 - [ ] **`explore_dex.py` is dead code** — imports `sqlite3` but never uses it; `__main__` points `db_path` at a `.sql` file that `sqlite3.connect()` cannot open. Content is narrative; move to `docs/` or delete.
 
-- [ ] **Frequency-bin definitions disagree across scripts** — `analyze_forgotten_words.py` uses 0.25/0.50/0.70; `create_curated_list.py:131-138` uses 0.30/0.50 with a 0.60 ceiling; `validate_forgotten_words.py:67` filters 0.01–0.60. No shared `constants.py`. Changing one requires hunting down the others.
+- [x] **Frequency-bin definitions disagree across scripts** — Fixed. Added `constants.py` as the single source of truth: `MIN_FREQUENCY`, `MIN_FORM_LENGTH`, the canonical rarity-bin edges (`VERY_RARE_MAX`/`RARE_MAX`/`UNCOMMON_MAX`) + a `rarity_category()` helper, plus the per-stage candidate ceilings (`CURATED_FREQ_CEILING`, and the clearly-marked legacy `ANALYZE_FREQ_THRESHOLD`/`VALIDATION_FREQ_CEILING`). `create_curated_list.py` now bins via `rarity_category()` (removed two duplicated inline binning blocks); `analyze_forgotten_words.py` and `validate_forgotten_words.py` import their floors/ceilings. Boundary-tested: new binning matches the old logic exactly at every edge. Legacy display histogram bins in `analyze_forgotten_words.py` are coupled to its 0.70 candidate threshold and left script-local (documented as intentional in `constants.py`).
 
 - [x] **Regex probable typo in `create_curated_list.py:28-32`** — Fixed: removed trailing apostrophe from `r"^[a-z]+-[a-z]+'"` so the hyphenation filter now actually fires. Was dead code (matched 0 words in the shortlist).
 
@@ -44,13 +55,13 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **#2 — [XS, Med] `pyproject.toml` with PEP 621 metadata** — `requirements.txt` exists but no install metadata.
 
-- [ ] **#3 — [S, Med] Pick one MySQL→SQLite path; archive the others** — `extract_lexemes.py` is canonical; archive `convert_to_sqlite.sh` + `mysql_to_sqlite.py`.
+- [x] **#3 — [S, Med] Pick one MySQL→SQLite path; archive the others** — Done. `extract_lexemes.py` is canonical; `convert_to_sqlite.sh` + `mysql_to_sqlite.py` moved to `archive/`.
 
 - [x] **#4 — [XS, Low] Delete `explore_dex.py`** — Deleted. Content was narrative documentation that couldn't run; the useful structural notes are covered by `docs/conceptual-roadmap.md` and `CLAUDE.md`.
 
-- [ ] **#5 — [S, Med] Centralize frequency bins in `constants.py`** — eliminates the three-way disagreement.
+- [x] **#5 — [S, Med] Centralize frequency bins in `constants.py`** — Done. Single source of truth for `MIN_FREQUENCY`, `MIN_FORM_LENGTH`, the canonical rarity bins + `rarity_category()` helper, and per-stage candidate ceilings. Canonical `create_curated_list.py` fully driven by it; legacy scripts import their floors/ceilings. Behaviour preserved (boundary-tested).
 
-- [ ] **#6 — [M, High] Add lemmatization with `simplemma`** — slots into `process_corpus.py:tokenize_romanian`; `bucle` would then match `buclele`.
+- [x] **#6 — [M, High] Add lemmatization with `simplemma`** — implemented as a post-classification dedup step in `make_shortlist.py` (2026-05-28). Collapsed 1,571 inflected/derived forms into their canonical lemmas (e.g. `abecedare`→`abecedar`, `murea` removed when alone). Shortlist: 26,788 → 25,217 words. **Remaining gap:** Romanian verb-derived nouns and participial adjectives (`bleui`/`bleuire`/`bleuit`) are not reduced by simplemma and still appear as separate entries. Full corpus-level lemmatization (`bucle`→`buclă` matching) still outstanding.
 
 - [ ] **#7 — [M, High] `tests/` with `pytest` + `ruff` + GitHub Actions CI** — cover normalization and curation heuristics at minimum.
 
@@ -85,12 +96,9 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
   Columns flow through `validate_with_wordfreq.py` automatically (DictReader/DictWriter preserves extra fields).
 
-- [ ] **#17 — [XS, Med] Flag words with no definition body** — Some DEX entries exist as a headword with POS and etymology but no actual meaning text (dexonline renders these as "[Fără definiție.]", e.g. *nombrilist*). In the `Meaning`/`DefinitionSimple` tables these have a null or empty `internalRep`. These words pass our Lexeme filter and appear in the candidate set, but their "forgotten" verdict rests purely on frequency with no semantic content to validate against. Two action items:
+- [x] **#17 — [XS, Med] Flag words with no definition body** — Done. The `has_definition` column already existed in `forgotten_words_diachronic.csv` (and flows into the UI via `validate_diachronic._load_definition_words` → `ui.db.words.has_definition`), and DEX headwords with no extractable definition already land as `has_definition=0` simply by being absent from `definitions.db`. The remaining leak: dexonline's "[Fără definiție.]" placeholder rows (where the entry exists but only usage citations follow) were counted as real definitions. Fixed with `is_placeholder_definition()` in `validate_diachronic.py` — a definition is a placeholder when missing/blank or when "[Fără definiț…" *leads* the text (mid-text occurrences in multi-sense words like *perină*/*spectacul* still count). Mirrored in `ui/app.py` definition load so the UI `has_def` filter and panel text stay consistent (placeholder words still appear, just with no local definition body, linking out to dexonline). Scale in the current `definitions.db`: 7 placeholder-only words (`animaltecă`, `apastop`, `fibrinactiv`, `magnetodiaflux`, `narcorublă`, `perfluorbutilamină`, `relin`). Takes effect on the next `validate_diachronic.py` run / `ui.db` rebuild.
 
-  1. Count them: `SELECT COUNT(DISTINCT l.form) FROM Lexeme l JOIN EntryLexeme el ... JOIN Meaning m ... WHERE m.internalRep IS NULL OR m.internalRep = ''` — gives the scale of the problem.
-  2. Add a `has_definition` boolean column to `forgotten_words_diachronic.csv` (and the curated list) so they can be filtered out of final results or treated as a lower-confidence subcategory.
-
-  Note: these words may still be worth keeping — a word documented only as a borrowing with no translation is itself a sign of marginal integration into Romanian.
+  Note: these words are kept, not dropped — a word documented only as a borrowing with no translation is itself a sign of marginal integration into Romanian.
 
 - [x] **#19 — [XS, Low] Annotation overlay overflow for heavily-annotated words** — Capped at 3 emojis + `+N` superscript in muted mono for the remainder. Template now builds `_ov.items` list instead of string; slices `[:3]` and appends `<span class="ann-more">+N</span>`.
 
@@ -158,15 +166,17 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] mobile, when scrolling, hide definition drawer. after focus moves on the list
 
-- [ ] in info window show which dictionaries this word is found in (incl wikitionary)
+- [x] in info window show which dictionaries this word is found in — `sources` column added to `ui.db` from `dict_sources.db` (98.2% of words matched, exact + diacritic-normalized fallback); rendered as a "📚 N dicționare" chip list in the detail panel. Build: `tools/build_ui_db.py merge_dict_sources()`; one-time backfill: `tools/migrate_ui_db_sources.py`. (Wiktionary membership not yet a data source — separate task.)
 
 - [x] desktop tooltip on hover with definition — floating `#def-tip` div populated from existing `data-def` attribute on `.word-row` via `mouseover`/`mouseout` on the word-list-container. Positioned below the chip (above if near bottom of viewport). No extra network requests.
 
-- [ ] top filter, the posibility to remove one attribute - now we can just select.
+- [x] top filter, the posibility to remove one attribute - now we can just select. — added an "active filters" chip bar (`#active-filters`) that lists each non-default filter (search, taxonomy selects, ranges, hide toggles, partial verdict/tier/POS groups) with an individual ✕ to clear just that one, plus a "resetează tot". See `renderActiveFilters()` in `app.js`.
 
 - [ ] create statistics by metadata. in the limited corpus and later in whole dexonline
 
-- [x] hide terms marked as `remove` — hidden by default; "show removed" pill in filter bar re-shows them. **Open question**: what's the semantic difference between `ignore` and `remove`? Clarify and add tooltip/docs so users know which to use.
+- [x] shareable word viewer url - focus on the word — `?word=<word>` already encoded in URL when panel opens (`syncUrlFromForm`). On page load: panel re-opens via HTMX (`/api/word.php`); after the word list swaps in, `htmx:afterSwap` now also calls `selectRow(idx, true)` to scroll to and highlight the word in the grid.
+
+- [x] hide terms marked as `remove` — hidden by default; "show removed" pill in filter bar re-shows them. ~~**Open question**: what's the semantic difference between `ignore` and `remove`?~~ Resolved: documented as *ignore = not interesting to you (skip)* vs *remove = not a genuinely forgotten word (exclude)*; tooltips added to the quick-tag buttons and the shortcuts modal.
 
 - [x] make .flabel bolder (negative). remove distance between .flabel and choices. Use narrow font for the filter bar — switched to mono 11px bold var(--text-2), removed min-width/excess padding.
 
@@ -176,7 +186,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] longer words break in the info box, make left panel responsive / flexible width — fp-word changed from fixed 170px to auto (min 140px, max 240px).
 
-- [ ] mark words that have attached notes or tags/flags. Filter words by tags — dot indicator done (blue ::after on .annotated); filter-by-tags in the filter bar still open.
+- [x] mark words that have attached notes or tags/flags. Filter words by tags — dot indicator done; quick-tag filter options (ignore/boring/funny/remove) already in marks select. Custom tags (user-defined via tag input) now also dynamically added to the marks `<select>` via `populateTagFilterOptions()` — called at init and whenever a custom tag is added or deleted.
 
 - [x] select word by typing — type-ahead navigation: unbound printable chars accumulate in a 1.2s buffer, jumping to the first visible word whose normalized text starts with the buffer. Diacritic-insensitive (ț→t etc). Documented in shortcuts modal.
 
@@ -184,9 +194,13 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] **Diacritic-insensitive search** — searching `otios` should find `oțios`; `stramosesc` should find `strămoșesc`. Normalize both the query and the indexed word by stripping diacritics before matching (ț→t, ș→s, ă→a, â→a, î→i). Implement in the SQL WHERE clause using a pre-computed `word_normalized` column in the `words` table (populated at build time), or a SQLite custom function. Both PHP and Flask search endpoints need updating.
 
+- [ ] **synonyms data** — the detail panel has a "Sinonime: în curând" placeholder slot wired up, but no synonym data exists in any source DB yet. Scrape synonyms (dexonline has `Sinonime`/`Sinonime82` dictionaries) into a `synonyms` column / table and populate the slot.
+
+- [ ] **UI redesign** — fresh-identity, mobile-first redesign spec written for a designer in `docs/design-brief.md` (covers table view, filter-bar redesign, calmer verdict palette, play modes, shared-word landing). Hand off when ready.
+
 - [ ] later show extended definition. everything in dexonline but compact
 
-- [ ] exploratory interface. to the point of screensaver. or like tiktok / Tinder feed, but limit per day
+- [x] exploratory interface. to the point of screensaver. or like tiktok / Tinder feed, but limit per day — shipped as **feed / swipe mode** (`📇 feed` button): one word-card at a time, keep (→ / swipe right → bookmark) or skip (← / swipe left), respects current filters, with a soft daily count (`FEED_DAILY_LIMIT`). Endpoint `api/feed.php`. Further "screensaver"-style auto-advance is a possible enhancement.
 
 - [ ] **Verdict palette saturation review** — four full-saturation colors (red/brown/blue/purple) in the word grid compete equally for attention; consider one dominant verdict color + three muted, or shift to a single-hue density encoding. Out of scope for the 2026-05-18 fine-tuning pass.
 
@@ -194,7 +208,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] **Mobile / narrow-viewport breakpoints** — `ui/templates/base.html` has no media queries; the 3-row filter bar and word grid are desktop-only. Add breakpoints for tablet (collapse filter rows into a single overflow menu) and phone (single column word grid, slide-up detail panel from bottom).
 
-- [ ] **Filter bar tooltips** — add `title` attributes (or custom CSS tooltips) to all controls in the filter bar: the uitate/rare toggle, verdict pills, tier pills, POS pills, sort select, marks select, def toggle, and taxonomy selects. Especially useful for the uitate/rare switch and the verdict color-coding which are non-obvious to new users.
+- [x] **Filter bar tooltips** — `title` attributes added to all filter bar controls: uitate/rare toggle, verdict pills (with per-verdict explanations), tier pills (with corpus/DEX logic notes), POS pills (full Romanian name as title), sort select, marks select, def toggle, domain/register/etymology/dict_min selects (domain tooltip flags the "any-sense" matching caveat), reset button.
 
 - [ ] **URL-encoded filter state** — encode all active filter values (word_tier, verdict, tier, sort, pos, register, domain, etymology, has_def, marks, q) into the URL query string on every filter change, so that the current view is bookmarkable and shareable. Use `history.replaceState` (no page reload) to update the URL as HTMX triggers fire; parse and restore from `window.location.search` on page load to pre-select the right controls. Both PHP and Flask apps should support this.
 
@@ -235,7 +249,11 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] **Garbled definitions from DEX dump extraction** — Root cause: `_parse_values` parsed `\n` as the literal letter `n`, leaving dump indentation spaces in the output. Fixed: added full escape table (`\n`, `\r`, `\t`) + `re.sub(r'\s+', ' ')` normalization in `_clean`. Re-ran `extract_definitions.py` + `--merge-only`. Garbled count: 3,152 → 0.
 
-- [ ] **domain taxonomy contains compound nodes with semicolons** — some DEX `dex_domain` values are compound strings from the source taxonomy: `'mineralogie; minerit'`, `'cinema; cinematografie'`, `'fonetică; fonologie'`, `'farmacie; farmacologie'`. These are stored and filtered as single pipe-delimited tokens (which is correct for exact-match filtering), but the UI dropdown shows the full compound string. Two open questions: (1) should the filter split on `;` to allow filtering by `mineralogie` alone? (2) are these compound nodes semantically intentional in DEX, or are they artifacts of how the tag hierarchy was imported? Check the `Tag` table: if `'mineralogie; minerit'` is a single row with that literal name, it's intentional; if it's two rows joined somewhere, the extraction is concatenating them incorrectly.
+- [ ] turn filters from the first row into checkboxes. all selected at first. so we can combine
+
+- [ ] create a statistics page. guide yourself by existing filters options. Maybe the statistics page could keep the existing filters - to create dynamic / sliceable statistics?
+
+- [x] **domain taxonomy contains compound nodes with semicolons** — resolved. `_normalize_sep()` in `build_ui_db.py` converts `'; '` → `'|'` before writing `dex_domain` to the DB; the `vocab` table then splits on `|` when counting. Result: `'mineralogie; minerit'` in the raw CSV becomes two separate vocab entries (`mineralogie`, `minerit`) and is filterable individually. Verified in current `ui.db`: no compound strings remain in vocab or in the `dex_domain` column.
 
 - [ ] **domain filter matches on any sub-sense, not primary meaning** — `dex_domain` is set at the word level by aggregating all per-meaning domain tags from DEX. This means a word like *simpatie* (meaning: emotional affinity) appears under medicină because DEX tags one secondary sense as medicină ("legătură între organe simetrice" = sympathetic nerve link); *scaon* appears because DEX tags the compound *scaun rulant* (wheelchair) as medicină; *pipăi* appears for its medical sense of "to palpate". The tags are correct in the source data — this is how DEX models domains. The UI filter is therefore "has at least one medicina meaning" rather than "is primarily a medical word", which can be confusing. Options: (1) show per-word domain count in the word card so the user can judge; (2) add a "strict" domain mode that only matches words whose *only* domain tag is the selected one; (3) document this in a filter tooltip. Related: compound-semicolon entry above.
 
@@ -248,6 +266,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] track synonyms. count synonyms
 
 - [ ] also filter by: masculin, feminin, neutru.
+
+- [ ] Meta: suggest versions, note in both activity log, chronology and readme.
 
 - [x] I also see on dexoline the tag 'rar' but in our interface filters I only see 'învechit' see [săhăstricesc](https://dexonline.ro/definitie/săhăstricesc) — Fixed: `rar` (id=6), `regional` (id=17), `ieșit din uz` (id=239) were root-level DEX tags missed by the `parentId IN (1,41,42)` filter. Extended taxonomy loader to capture them and their children (Banat, Moldova, etc.). `rar`: 2,463 words; `regional`: 3,202; `ieșit din uz`: 95.
 
@@ -264,8 +284,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 ### Extend
 
-- quizzes
-- flash cards
+- [x] quizzes — multiple-choice quiz (definition → pick the word, 4 same-POS choices, target word masked in the prompt) on `joc.php`, with streak/record in localStorage. Endpoint `api/quiz.php`.
+- [x] flash cards — word → reveal definition card on `joc.php` (shares `api/quiz.php`), with "păstrează" to bookmark.
 
 ## 260519 Data Audit
 
@@ -279,15 +299,16 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - differently spelled variations shouldn't be listed, it poisons word exploration - or listed separately?
 
 - [ ] why does the list contain `fost` -- this is a form of a very popular verb, `a fi`? See also other common words: `eleșteu`, `văr`, `nepot`, `coproducție`
+  - **Partially resolved**: `fost` and `coproducție` removed by the `modern_ppm > 5.0` Tier A guard (2026-05-28). `eleșteu` is correct — it's a genuine archaic word (fishpond, modern_ppm=0.055). `văr` (1.4 ppm) and `nepot` (3.1 ppm) remain as borderline cases; their inflected nature would be addressed by lemmatization (backlog #6).
 
 - [x] cuvinte rare has waay too many common words: manipulat, mediere, adițională, agravat, neurologie, organizatoare, cowboy, spitalizare – but still **not** `oțios`?!
   - **Resolved**: `validate_with_wordfreq.py` now gates `rare_in_use` on non-empty `dex_register` — words with Zipf 3.0–4.5 but no register tag fall to `common`. Rare list: 11,668 → 469. `oțios` addressed by Tier C in `make_shortlist.py` (`dex_absent_highfreq`, threshold dex_frequency ≥ 0.85); now appears in UI.
 
 - [ ] all forms of terms listed, ex: `bleuit`, `bleuire`, `bleui` – could we just show one entry (as a bundle)? Also `blehui`, `blehuire`, `blehuit` – root word, `bleau`. IF root word not in list we should also remove references? Most words in rare --> filter --> popular. 
 
-- [ ] `cimbru` appears at `rare` / filter: `în comparații / la comparativ`. 
+- [x] `cimbru` appears at `rare` / filter: `în comparații / la comparativ`. — **Fixed**: `în comparații / la comparativ` removed from register filter dropdown via `_REGISTER_USAGE_NOTES` exclusion set (2026-05-28). `cimbru` itself correctly stays in `rare_in_use`.
 
-- [ ] `uitate` / filter: `în comparații / la comparativ` - words that don't seem to have anything with comparații -- can you backtrack on how did that end-up there?
+- [x] `uitate` / filter: `în comparații / la comparativ` - words that don't seem to have anything with comparații -- can you backtrack on how did that end-up there? — **Fixed**: `în comparații / la comparativ` is a DEX usage-context note (word can be used in comparative phrases), not an archaic register. Removed from register filter dropdown via `_REGISTER_USAGE_NOTES` (2026-05-28). 38 other usage-style tags cleaned up at the same time.
 
 - [ ] rare / Filter: `Maramureș` lists 'biodiversitate'
 
