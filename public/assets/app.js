@@ -240,6 +240,14 @@ function dismissWotd() {
   if (seen !== wotdToday()) b.style.display = '';
 })();
 
+// Restore last view mode (cloud/table)
+(function initView() {
+  try {
+    var saved = localStorage.getItem('otios.view');
+    if (saved === 'table') setView('table');
+  } catch (_) {}
+})();
+
 // ── Feed / swipe mode ──────────────────────────────────────────────────────────
 
 var FEED_DAILY_LIMIT = 50;          // soft, friendly nudge — not a hard block
@@ -474,9 +482,18 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
       var idx = all.findIndex(function(r) { return r.dataset.word === openWord; });
       if (idx >= 0) selectRow(idx, true);
     }
+    // Update result count in filter sheet footer
+    var countEl = document.getElementById('result-count-sheet');
+    var mainCount = document.getElementById('result-count');
+    if (countEl && mainCount) countEl.textContent = mainCount.textContent;
   }
   if (target.id === 'detail-panel') {
     target.classList.add('panel-open');
+    // On desktop, switch #app to side-by-side row layout
+    if (window.innerWidth >= 769) {
+      var app = document.getElementById('app');
+      if (app) app.classList.add('has-panel');
+    }
     // Definition-as-hero when arriving from a shared link; normal height otherwise.
     if (arrivedViaShare) {
       target.classList.add('share-focus');
@@ -639,12 +656,42 @@ function navigateSpatial(direction) {
   if (best.idx >= 0) selectRow(best.idx);
 }
 
+function toggleFilterDrawer() {
+  const sheet = document.getElementById('filter-form');
+  const backdrop = document.getElementById('filter-backdrop');
+  if (!sheet) return;
+  const open = sheet.classList.toggle('open');
+  if (backdrop) backdrop.classList.toggle('visible', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+
+function setView(mode) {
+  const list = document.getElementById('word-list');
+  const btnCloud = document.getElementById('btn-cloud');
+  const btnTable = document.getElementById('btn-table');
+  if (!list) return;
+  if (mode === 'table') {
+    list.classList.add('word-list-table');
+    list.classList.remove('word-list-cloud');
+    if (btnCloud) btnCloud.classList.remove('vt-active');
+    if (btnTable) btnTable.classList.add('vt-active');
+  } else {
+    list.classList.remove('word-list-table');
+    list.classList.add('word-list-cloud');
+    if (btnCloud) btnCloud.classList.add('vt-active');
+    if (btnTable) btnTable.classList.remove('vt-active');
+  }
+  try { localStorage.setItem('otios.view', mode); } catch (_) {}
+}
+
 function showShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'flex'; }
 function hideShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'none'; }
 function closePanel() {
   var panel = document.getElementById('detail-panel');
   panel.classList.remove('panel-open');
   panel.classList.remove('share-focus');
+  var app = document.getElementById('app');
+  if (app) app.classList.remove('has-panel');
   openWord = null;
   syncUrlFromForm();
 }
