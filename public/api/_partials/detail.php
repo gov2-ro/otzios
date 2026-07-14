@@ -54,7 +54,7 @@ $meta_parts = array_filter([
     <?php foreach ($reg_parts as $r): ?><span class="detail-tag"><?= e($r) ?></span><?php endforeach; ?>
     <?php foreach ($dom_parts as $d): ?><span class="detail-tag" style="opacity:.85"><?= e($d) ?></span><?php endforeach; ?>
     <?php foreach ($etym_parts as $et): ?><span class="detail-tag" style="opacity:.7"><?= e($et) ?></span><?php endforeach; ?>
-    <?php if ($w['confidence_tier']): ?><span class="detail-tag" style="opacity:.5;font-size:9px;"><?= e($w['confidence_tier']) ?></span><?php endif; ?>
+    <?php if ($w['confidence_tier']): ?><span class="detail-tag" style="opacity:.5;font-size:0.5625rem;"><?= e($w['confidence_tier']) ?></span><?php endif; ?>
   </div>
   <?php endif; ?>
 

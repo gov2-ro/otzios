@@ -10,7 +10,7 @@
 <?php endif; ?>
 <?php foreach ($words as $w): include __DIR__ . '/word_row.php'; endforeach; ?>
 <?php if (empty($words)): ?>
-<p style="color:#555;padding:12px;">No words match.</p>
+<p style="color:var(--text-3);padding:12px;">No words match.</p>
 <?php endif; ?>
 <?php if ($next_url): ?>
 <div id="load-more"

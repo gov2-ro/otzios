@@ -684,6 +684,59 @@ function setView(mode) {
   try { localStorage.setItem('otios.view', mode); } catch (_) {}
 }
 
+// ── Theme + text-scale controls ─────────────────────────────────────────────
+
+var TEXT_SCALE_STEPS = [87.5, 100, 112.5, 125, 137.5];
+
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  try { localStorage.setItem('otios.theme', theme); } catch (_) {}
+  syncThemeButtons();
+}
+
+function syncThemeButtons() {
+  var theme = document.documentElement.getAttribute('data-theme') || 'light';
+  document.querySelectorAll('[data-theme-btn]').forEach(function(btn) {
+    btn.classList.toggle('tg-active', btn.dataset.themeBtn === theme);
+  });
+}
+
+function currentTextScale() {
+  return parseFloat(document.documentElement.style.fontSize) || 100;
+}
+
+function nearestScaleIdx(val) {
+  var idx = TEXT_SCALE_STEPS.indexOf(val);
+  if (idx !== -1) return idx;
+  var best = 0;
+  TEXT_SCALE_STEPS.forEach(function(v, i) {
+    if (Math.abs(v - val) < Math.abs(TEXT_SCALE_STEPS[best] - val)) best = i;
+  });
+  return best;
+}
+
+function stepTextScale(direction) {
+  var idx = nearestScaleIdx(currentTextScale());
+  var next = Math.max(0, Math.min(TEXT_SCALE_STEPS.length - 1, idx + direction));
+  var pct = TEXT_SCALE_STEPS[next];
+  document.documentElement.style.fontSize = pct + '%';
+  try { localStorage.setItem('otios.textscale', String(pct)); } catch (_) {}
+  syncScaleButtons();
+}
+
+function syncScaleButtons() {
+  var idx = nearestScaleIdx(currentTextScale());
+  document.querySelectorAll('[data-scale-btn]').forEach(function(btn) {
+    var dir = btn.dataset.scaleBtn === 'down' ? -1 : 1;
+    btn.disabled = (dir === -1 && idx <= 0) || (dir === 1 && idx >= TEXT_SCALE_STEPS.length - 1);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  syncThemeButtons();
+  syncScaleButtons();
+});
+
 function showShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'flex'; }
 function hideShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'none'; }
 function closePanel() {
@@ -973,6 +1026,7 @@ var URL_PARAM_DEFAULTS = {
   has_def:   '',
   sort:      'rare',
   marks:     'all',
+  dex_max:   '0.60',
 };
 
 function applyUrlToForm() {
@@ -1052,6 +1106,9 @@ function syncUrlFromForm() {
   if (!form) return;
   var params = new URLSearchParams();
 
+  // 'word' always comes first, when present — keeps shared word links clean
+  if (openWord) params.set('word', openWord);
+
   // Text input
   var q = form.querySelector('input[name=q]');
   if (q && q.value.trim()) params.set('q', q.value.trim());
@@ -1072,8 +1129,8 @@ function syncUrlFromForm() {
     }
   });
 
-  // Selects
-  ['sort', 'register', 'domain', 'etymology', 'dex_max', 'dict_min', 'marks'].forEach(function(name) {
+  // Selects (dex_max is handled separately below, appended at the very end)
+  ['sort', 'register', 'domain', 'etymology', 'dict_min', 'marks'].forEach(function(name) {
     var el = form.querySelector('select[name=' + name + ']');
     if (!el) return;
     var val = el.value;
@@ -1092,10 +1149,15 @@ function syncUrlFromForm() {
     if (el && el.checked) params.set(name, '1');
   });
 
-  // Preserve open word and playlist
-  if (openWord) params.set('word', openWord);
+  // Preserve playlist
   var pwInput = document.getElementById('playlist-words');
   if (pwInput && pwInput.value.trim()) params.set('words', pwInput.value.trim());
+
+  // dex_max: only when changed from its default, always appended last
+  var dexMaxEl = form.querySelector('select[name=dex_max]');
+  if (dexMaxEl && dexMaxEl.value && dexMaxEl.value !== URL_PARAM_DEFAULTS.dex_max) {
+    params.set('dex_max', dexMaxEl.value);
+  }
 
   var qs = params.toString();
   history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));

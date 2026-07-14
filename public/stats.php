@@ -21,13 +21,14 @@ $tiers = [
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <script>(function(){try{var t=localStorage.getItem('otios.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);var s=localStorage.getItem('otios.textscale')||'100';document.documentElement.style.fontSize=s+'%';}catch(e){}})();</script>
   <title>Oțios — Statistici</title>
   <meta property="og:title" content="Oțios — statistici">
   <meta property="og:description" content="Statistical breakdown of forgotten Romanian words: etymology, parts of speech, registers, domains, and more.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
 </head>
@@ -118,31 +119,78 @@ $tiers = [
          hx-trigger="load"
          hx-include="#filter-form"
          hx-swap="innerHTML">
-      <span class="htmx-indicator" style="opacity:1;display:block;padding:32px;text-align:center;font-family:var(--serif);font-style:italic;color:var(--text-3);font-size:13px;">loading…</span>
+      <span class="htmx-indicator" style="opacity:1;display:block;padding:32px;text-align:center;font-family:var(--serif);font-style:italic;color:var(--text-3);font-size:0.8125rem;">loading…</span>
     </div>
   </div>
 
   <div id="status-bar">
     <span class="status-left">
       <a href="<?= BASE ?>/"
-         style="color:var(--text-2);text-decoration:none;font-family:var(--serif);font-style:italic;font-size:13px;"
+         style="color:var(--text-2);text-decoration:none;font-family:var(--serif);font-style:italic;font-size:0.8125rem;"
          onmouseover="this.style.color='var(--text)'"
          onmouseout="this.style.color='var(--text-2)'">← cuvinte</a>
     </span>
     <span class="status-right">
+      <div class="scale-stepper scale-stepper--sm" role="group" aria-label="Mărime text">
+        <button type="button" class="scale-btn" data-scale-btn="down" onclick="stepTextScale(-1)" title="Text mai mic">A−</button>
+        <button type="button" class="scale-btn" data-scale-btn="up" onclick="stepTextScale(1)" title="Text mai mare">A+</button>
+      </div>
+      <div class="theme-toggle theme-toggle--sm" role="group" aria-label="Temă">
+        <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
+        <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')" title="Temă întunecată">☾</button>
+      </div>
       <a href="<?= BASE ?>/metodologie.html"
-         style="color:var(--text-3);text-decoration:none;font-size:12px;"
+         style="color:var(--text-3);text-decoration:none;font-size:0.75rem;"
          onmouseover="this.style.color='var(--text)'"
          onmouseout="this.style.color='var(--text-3)'">🧐 metodologie</a>
       &nbsp; &middot; &nbsp;
       <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener"
-         style="color:var(--text-3);text-decoration:none;font-size:12px;"
+         style="color:var(--text-3);text-decoration:none;font-size:0.75rem;"
          onmouseover="this.style.color='var(--text)'"
          onmouseout="this.style.color='var(--text-3)'">GitHub</a>
     </span>
   </div>
 
   <script>
+  // Theme + text-scale controls (same logic as app.js, no full app.js load needed)
+  var TEXT_SCALE_STEPS = [87.5, 100, 112.5, 125, 137.5];
+  function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('otios.theme', theme); } catch (_) {}
+    syncThemeButtons();
+  }
+  function syncThemeButtons() {
+    var theme = document.documentElement.getAttribute('data-theme') || 'light';
+    document.querySelectorAll('[data-theme-btn]').forEach(function(btn) {
+      btn.classList.toggle('tg-active', btn.dataset.themeBtn === theme);
+    });
+  }
+  function currentTextScale() { return parseFloat(document.documentElement.style.fontSize) || 100; }
+  function nearestScaleIdx(val) {
+    var idx = TEXT_SCALE_STEPS.indexOf(val);
+    if (idx !== -1) return idx;
+    var best = 0;
+    TEXT_SCALE_STEPS.forEach(function(v, i) { if (Math.abs(v - val) < Math.abs(TEXT_SCALE_STEPS[best] - val)) best = i; });
+    return best;
+  }
+  function stepTextScale(direction) {
+    var idx = nearestScaleIdx(currentTextScale());
+    var next = Math.max(0, Math.min(TEXT_SCALE_STEPS.length - 1, idx + direction));
+    var pct = TEXT_SCALE_STEPS[next];
+    document.documentElement.style.fontSize = pct + '%';
+    try { localStorage.setItem('otios.textscale', String(pct)); } catch (_) {}
+    syncScaleButtons();
+  }
+  function syncScaleButtons() {
+    var idx = nearestScaleIdx(currentTextScale());
+    document.querySelectorAll('[data-scale-btn]').forEach(function(btn) {
+      var dir = btn.dataset.scaleBtn === 'down' ? -1 : 1;
+      btn.disabled = (dir === -1 && idx <= 0) || (dir === 1 && idx >= TEXT_SCALE_STEPS.length - 1);
+    });
+  }
+  syncThemeButtons();
+  syncScaleButtons();
+
   // DEX-rare control visibility (same logic as app.js, no full app.js load needed)
   (function() {
     var ctrl = document.getElementById('dex-rare-control');
