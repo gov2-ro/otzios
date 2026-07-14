@@ -11,7 +11,7 @@ data/*
 _obsolete
 */_obsolete/*
 _obsolete*
-
+docs/reference/*
 .vscode/*
 .claude/*
 .github/*
