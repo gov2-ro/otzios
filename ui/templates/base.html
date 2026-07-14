@@ -2,49 +2,48 @@
 <html lang="ro">
 <head>
   <meta charset="utf-8">
-  <title>Oțios — Cuvinte Uitate</title>
+  <title>Oțios — Muzeul Cuvintelor Uitate</title>
   <meta property="og:title" content="Oțios — Cuvinte Uitate">
   <meta property="og:description" content="Exploratory tool to identify forgotten Romanian words from official dictionaries that have fallen out of modern usage.">
   <meta property="og:image" content="/screenshot-otzios.png">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Mona+Sans:wght@400..700&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
   <style>
-    /* ── Tokens ── */
+    /* ── Design Tokens ── */
     :root {
-      --bg:          #fcfbf7;
-      --surface:     #fdfcf9;
-      --surface-2:   #ffffff;
-      --border:      #ece6d6;
-      --border-2:    #d6d0bf;
-      --text:        #1a1812;
-      --text-2:      #5c5550;
-      --text-3:      #8a8378;
-      --accent:      #1a56db;
-      --accent-bg:   #d6e6ff;
-      --badge-bg:    #1f1d1a;
+      --bg:        #FAF7F1;
+      --surface:   #F4EFE5;
+      --surface-2: #FFFFFF;
+      --border:    #E2DBCB;
+      --border-2:  #D6CFBE;
+      --text:      #1C1916;
+      --text-2:    #6B635A;
+      --text-3:    #9A9388;
+      --text-4:    #B0A99B;
+      --accent:    #B14A2D;
+      --accent-bg: #F3E3DA;
 
-      --v-ext:       #b91c1c;  --v-ext-bg:  #fff1f0;  --v-ext-bd:  #f87171;
-      --v-dec:       #524035;  --v-dec-bg:  #f5efe5;  --v-dec-bd:  #a48870;
-      --v-hist:      #3d4763;  --v-hist-bg: #ebeef5;  --v-hist-bd: #8a96b8;
-      --v-abs:       #4b3d5a;  --v-abs-bg:  #f0ecf5;  --v-abs-bd:  #9b88b3;
+      --v-ext:      #B14A2D; --v-ext-bg:  #F3E3DA; --v-ext-bd: #CC8870; --v-ext-tx: #8a3a22;
+      --v-dec:      #B8893A; --v-dec-bg:  #F3EAD7; --v-dec-bd: #C9A870; --v-dec-tx: #856427;
+      --v-hist:     #5E7184; --v-hist-bg: #E6EAEE; --v-hist-bd: #8FA5BB; --v-hist-tx: #465563;
+      --v-abs:      #7C6A86; --v-abs-bg:  #ECE6F0; --v-abs-bd: #A893B4; --v-abs-tx: #5d4f66;
 
-      --chip-h: 26px;
-      --radius: 3px;
-      --sans:  'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --condensed: 'Mona Sans', -apple-system, sans-serif;
-      --mono:  'JetBrains Mono', monospace;
-      --serif: 'Lora', Georgia, serif;
+      --chip-h: 27px;
+      --radius: 4px;
+      --sans:   'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --mono:   'IBM Plex Mono', monospace;
+      --serif:  'Spectral', Georgia, serif;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: var(--sans);
-      font-size: 15px;
-      line-height: 1.25;
+      font-size: 14px;
+      line-height: 1.3;
       height: 100vh;
       display: flex;
       flex-direction: column;
@@ -55,188 +54,163 @@
     }
 
     /* ══════════════════════════════════════════
-       FILTER BAR
+       TOP BAR
     ══════════════════════════════════════════ */
-    #filter-form {
+    #top-bar {
       display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      box-shadow: 0 1px 4px rgba(0,0,0,.04);
-    }
-
-    .filter-row {
-      display: flex;
-      flex-wrap: wrap;
       align-items: center;
-      gap: 0;
-      padding: 4px 14px;
-      min-height: 30px;
-    }
-    .filter-row + .filter-row {
-      border-top: 1px solid var(--border);
-      background: var(--surface);
+      gap: 12px;
+      padding: 0 16px;
+      height: 46px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 10;
     }
 
-    /* Section labels */
-    .flabel {
-      font-family: var(--mono);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-      color: var(--bg);
-      background: var(--text-2);
-      border-radius: 2px;
-      padding: 1px 5px;
-      margin-right: 4px;
-      white-space: nowrap;
+    #logo {
+      font-family: var(--serif);
+      font-weight: 600;
+      font-size: 22px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      line-height: 1;
+      flex-shrink: 0;
       user-select: none;
     }
-    .fsep {
-      width: 1px;
-      height: 12px;
-      background: var(--border);
-      margin: 0 5px;
-      flex-shrink: 0;
+
+    #logo-sub {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-top: 2px;
     }
 
-    /* Search input */
-    #search {
+    #top-search-wrap {
       flex: 1;
-      min-width: 180px;
+      min-width: 160px;
+      max-width: 400px;
+      position: relative;
+    }
+
+    #search {
+      width: 100%;
       height: var(--chip-h);
-      background: #fafaf8;
+      background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       color: var(--text);
       padding: 0 11px;
-      font-family: var(--sans);
+      font-family: var(--serif);
+      font-style: italic;
       font-size: 15px;
-      font-weight: 500;
-      letter-spacing: -.01em;
-      transition: border-color .15s, box-shadow .15s, background .15s;
+      transition: border-color .15s, box-shadow .15s;
     }
-    #search::placeholder { color: var(--text-3); font-weight: 400; font-style: italic; font-family: var(--serif); }
+    #search::placeholder { color: var(--text-3); }
     #search:focus {
       outline: none;
       border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(177,74,45,.14);
+    }
+
+    .top-bar-nav {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .top-bar-link {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      text-decoration: none;
+      transition: color .12s;
+    }
+    .top-bar-link:hover { color: var(--text); }
+    .top-bar-sep { color: var(--border); font-size: 12px; }
+
+    .htmx-indicator { opacity: 0; transition: opacity .2s; color: var(--text-3); font-family: var(--mono); font-size: 10px; }
+    .htmx-request .htmx-indicator { opacity: 1; }
+
+    /* ══════════════════════════════════════════
+       MAIN LAYOUT — filter rail + word cloud
+    ══════════════════════════════════════════ */
+    #layout-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Filter Rail (left sidebar) ── */
+    #filter-form {
+      width: 218px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
       background: var(--surface);
-      box-shadow: 0 0 0 2px rgba(26,86,219,.15);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 16px 16px 24px;
+      gap: 0;
+    }
+    #filter-form::-webkit-scrollbar { width: 4px; }
+    #filter-form::-webkit-scrollbar-track { background: transparent; }
+    #filter-form::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .rail-section { margin-bottom: 20px; }
+    .rail-section:last-child { margin-bottom: 0; }
+
+    .rail-label {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 10px;
+      display: block;
     }
 
     /* Sort select */
     .sort-select {
+      width: 100%;
       height: var(--chip-h);
-      background: transparent;
-      border: 1px solid transparent;
-      border-radius: var(--radius);
-      color: var(--text-2);
-      padding: 0 6px;
-      font-family: var(--sans);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: border-color .15s, background .15s, color .15s, box-shadow .15s;
-    }
-    .sort-select:focus { outline: none; border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 2px rgba(26,86,219,.15); }
-    .sort-select:hover { background: #f4f1eb; color: var(--text); }
-    .sort-select:active { transform: scale(0.98); }
-
-    /* Taxonomy filter selects */
-    .tax-select {
-      height: var(--chip-h);
-      background: var(--surface);
+      background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       color: var(--text-2);
-      padding: 0 6px;
-      font-family: var(--sans);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: border-color .15s, background .15s, color .15s, box-shadow .15s;
-    }
-    .tax-select:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(26,86,219,.15);
-    }
-    .tax-select:hover { background: #f4f1eb; color: var(--text); }
-    .tax-select.active {
-      border-color: var(--accent);
-      color: var(--accent);
-      font-weight: 700;
-      box-shadow: 0 0 0 1px var(--accent);
-    }
-
-    /* Generic filter pill — borderless, condensed, text-driven */
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      height: var(--chip-h);
       padding: 0 8px;
-      border: 1px solid transparent;
-      border-radius: var(--radius);
       font-family: var(--sans);
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
-      letter-spacing: -.005em;
-      color: var(--text-2);
       cursor: pointer;
-      user-select: none;
-      background: transparent;
-      transition: background .1s, color .1s, border-color .1s, box-shadow .1s;
-      white-space: nowrap;
+      transition: border-color .15s;
     }
-    .pill:hover {
-      color: var(--text);
-      background: #f4f1eb;
-    }
-    .pill:active {
-      transform: scale(0.98);
-    }
-    .pill input { display: none; }
+    .sort-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(177,74,45,.14); }
 
-    /* Active pill — generic (non-verdict) */
-    .pill:has(input:checked) {
-      background: var(--accent-bg);
-      color: var(--accent);
-      font-weight: 700;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px var(--accent);
-    }
-
-    /* Verdict pills — colored at rest (acts as legend) */
-    .pill.pv-ext  { color: var(--v-ext);  }
-    .pill.pv-dec  { color: var(--v-dec);  }
-    .pill.pv-hist { color: var(--v-hist); }
-    .pill.pv-abs  { color: var(--v-abs);  }
-    .pill.pv-ext:hover  { background: var(--v-ext-bg);  }
-    .pill.pv-dec:hover  { background: var(--v-dec-bg);  }
-    .pill.pv-hist:hover { background: var(--v-hist-bg); }
-    .pill.pv-abs:hover  { background: var(--v-abs-bg);  }
-    .pill.pv-ext:has(input:checked)  { background:var(--v-ext-bg);  color:var(--v-ext);  font-weight:700; border-color:var(--v-ext-bd); box-shadow:0 0 0 1px var(--v-ext-bd); }
-    .pill.pv-dec:has(input:checked)  { background:var(--v-dec-bg);  color:var(--v-dec);  font-weight:700; border-color:var(--v-dec-bd); box-shadow:0 0 0 1px var(--v-dec-bd); }
-    .pill.pv-hist:has(input:checked) { background:var(--v-hist-bg); color:var(--v-hist); font-weight:700; border-color:var(--v-hist-bd); box-shadow:0 0 0 1px var(--v-hist-bd); }
-    .pill.pv-abs:has(input:checked)  { background:var(--v-abs-bg);  color:var(--v-abs);  font-weight:700; border-color:var(--v-abs-bd); box-shadow:0 0 0 1px var(--v-abs-bd); }
-
-    /* Segmented def control */
+    /* Word tier toggle */
     .seg {
       display: inline-flex;
       height: var(--chip-h);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       overflow: hidden;
-      background: var(--surface);
+      background: var(--surface-2);
+      width: 100%;
     }
     .seg-opt {
+      flex: 1;
       display: inline-flex;
       align-items: center;
-      padding: 0 10px;
+      justify-content: center;
       font-family: var(--sans);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       color: var(--text-3);
       cursor: pointer;
@@ -244,108 +218,299 @@
       white-space: nowrap;
     }
     .seg-opt + .seg-opt { border-left: 1px solid var(--border); }
-    .seg-opt:hover { background: #f4f1eb; color: var(--text-2); }
-    .seg-opt:active { transform: scale(0.98); }
+    .seg-opt:hover { background: var(--bg); color: var(--text-2); }
     .seg-opt input { display: none; }
     .seg-opt:has(input:checked) {
-      background: var(--accent);
-      color: #fff;
+      background: var(--text);
+      color: var(--bg);
       font-weight: 700;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3);
     }
 
-    /* Loading indicator */
-    .htmx-indicator { opacity: 0; transition: opacity .2s; color: var(--text-3); font-size: 11px; }
-    .htmx-request .htmx-indicator { opacity: 1; }
+    /* Verdict checkboxes with dots */
+    .verdict-checks { display: flex; flex-direction: column; gap: 7px; }
+    .verdict-check {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      cursor: pointer;
+      user-select: none;
+      padding: 4px 6px;
+      border-radius: var(--radius);
+      transition: background .1s;
+      border: 1px solid transparent;
+    }
+    .verdict-check:hover { background: rgba(28,25,22,.05); }
+    .verdict-check input { display: none; }
+    .verdict-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .verdict-check .vc-label {
+      font-family: var(--sans);
+      font-size: 13px;
+      color: var(--text-2);
+      flex: 1;
+    }
+    .verdict-check .vc-check {
+      width: 15px;
+      height: 15px;
+      border-radius: 3px;
+      border: 1.5px solid var(--border-2);
+      background: var(--surface-2);
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: transparent;
+      transition: background .1s, border-color .1s;
+    }
+    .verdict-check:has(input:checked) .vc-check {
+      background: var(--text);
+      border-color: var(--text);
+      color: var(--bg);
+    }
+    .verdict-check:has(input:checked) { border-color: transparent; }
+
+    .vcheck-ext  .verdict-dot { background: var(--v-ext); }
+    .vcheck-dec  .verdict-dot { background: var(--v-dec); }
+    .vcheck-hist .verdict-dot { background: var(--v-hist); }
+    .vcheck-abs  .verdict-dot { background: var(--v-abs); }
+
+    /* POS multi-select pills */
+    .pos-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-3);
+      cursor: pointer;
+      user-select: none;
+      background: var(--surface-2);
+      transition: background .1s, color .1s, border-color .1s;
+      white-space: nowrap;
+    }
+    .pill:hover { color: var(--text-2); border-color: var(--border-2); }
+    .pill input { display: none; }
+    .pill:has(input:checked) {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Taxonomy dropdowns */
+    .tax-select {
+      width: 100%;
+      height: var(--chip-h);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-2);
+      padding: 0 8px;
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color .15s;
+      margin-bottom: 6px;
+    }
+    .tax-select:last-child { margin-bottom: 0; }
+    .tax-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(177,74,45,.14); }
+    .tax-select.active { border-color: var(--accent); color: var(--accent); }
+
+    /* Marks / def segmented */
+    .marks-select {
+      width: 100%;
+      height: var(--chip-h);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-2);
+      padding: 0 8px;
+      font-family: var(--sans);
+      font-size: 12px;
+      cursor: pointer;
+      margin-bottom: 6px;
+    }
+    .marks-select:focus { outline: none; border-color: var(--accent); }
+
+    /* Exploration filters */
+    .explore-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .explore-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-3);
+      width: 28px;
+      flex-shrink: 0;
+    }
+    .explore-input {
+      height: 22px;
+      flex: 1;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 0 5px;
+      font-family: var(--mono);
+      font-size: 11px;
+      min-width: 0;
+    }
+    .explore-input:focus { outline: none; border-color: var(--accent); }
+    .explore-sep { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+
+    .explore-toggle {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      user-select: none;
+      margin-bottom: 5px;
+    }
+    .explore-toggle input { display: none; }
+    .toggle-track {
+      width: 28px;
+      height: 16px;
+      border-radius: 8px;
+      background: var(--border);
+      position: relative;
+      transition: background .15s;
+      flex-shrink: 0;
+    }
+    .toggle-thumb {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      top: 2px;
+      left: 2px;
+      transition: left .15s;
+      box-shadow: 0 1px 2px rgba(0,0,0,.2);
+    }
+    .explore-toggle:has(input:checked) .toggle-track { background: var(--text); }
+    .explore-toggle:has(input:checked) .toggle-thumb { left: 14px; }
+    .toggle-label {
+      font-family: var(--sans);
+      font-size: 12px;
+      color: var(--text-2);
+    }
+
+    /* Rail count */
+    .rail-count {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-4);
+      letter-spacing: 0.04em;
+      margin-top: 4px;
+    }
+
+    /* Audit mode */
+    .audit-row-bar { background: #fff7e6; border-bottom: 1px solid #d97706; padding: 6px 12px; }
+    .audit-strata-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; width: 100%; }
+    .audit-stratum-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 7px; border-radius: 3px; cursor: pointer;
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
+      user-select: none;
+    }
+    .audit-stratum-pill input { display: none; }
+    .audit-stratum-pill.audit-incl { border-left: 3px solid var(--accent); }
+    .audit-stratum-pill.audit-excl { border-left: 3px solid #6b7280; opacity: .85; }
+    .audit-stratum-pill:hover { background: #fffbeb; }
+    .audit-stratum-pill.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .audit-stratum-pill.active .audit-progress { color: var(--bg); opacity: .7; }
+    .audit-progress { font-size: 9px; opacity: .55; font-variant-numeric: tabular-nums; }
 
     /* ══════════════════════════════════════════
-       FULL-WIDTH WORD GRID + OVERLAY PANEL
+       WORD CLOUD
     ══════════════════════════════════════════ */
-    #app { display: flex; flex: 1; overflow: hidden; position: relative; }
+    #app {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
 
-    /* ── Word list — full width ── */
     #word-list-container {
-      width: 100%;
+      flex: 1;
       overflow-y: auto;
       background: var(--bg);
     }
     #word-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      column-gap: 9px;
-      row-gap: 9px;
-      padding: 11px 13px;
-      align-items: start;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 18px;
+      padding: 20px 22px 80px;
+      align-items: baseline;
     }
-    .word-wide { grid-column: span 2; }
 
-    /* Word chips — hug content via justify-self: start, not stretched to cell */
+    /* Word chip — serif with verdict dot */
     .word-row {
-      justify-self: start;
-      display: inline-block;
-      padding: 1px 5px 2px;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 5px;
       cursor: pointer;
-      font-family: var(--sans);
-      font-size: 18px;
-      font-weight: 600;
-      line-height: 1.2;
-      letter-spacing: -.005em;
-      color: var(--text-3);
-      background: transparent;
+      padding: 2px 4px;
       border-radius: var(--radius);
       white-space: nowrap;
-      transition: transform .14s ease, box-shadow .14s ease, background .12s ease;
+      transition: background .12s;
       position: relative;
     }
-    /* Verdict color — applied to word text */
-    .word-row.verdict-extinct         { color: var(--v-ext); }
-    .word-row.verdict-declining       { color: var(--v-dec); }
-    .word-row.verdict-historical_only { color: var(--v-hist); }
-    .word-row.verdict-absent          { color: var(--v-abs); }
-    .word-row.verdict-unknown         { color: var(--text-2); }
-
-    /* Hover — translucent blue tint, hugs word width, inset hairline */
-    .word-row:hover {
-      background: rgba(214, 230, 255, 0.9);
-      box-shadow: 0 0 0 1px rgba(112, 158, 235, 0.5) inset;
-    }
+    .word-row:hover { background: var(--accent-bg); }
     .word-row:active { transform: translateY(1px); }
-
-    /* Selected — solid charcoal at 90% opacity, lifts above grid via z-index */
     .word-row[data-selected] {
-      background: rgba(26, 24, 18, 0.9);
-      color: #fff;
-      transform: scale(1.06);
-      transform-origin: center;
-      box-shadow:
-        0 3px 10px rgba(26, 24, 18, 0.16),
-        0 1px 3px rgba(26, 24, 18, 0.10);
-      z-index: 5;
+      background: var(--text);
+      border-radius: var(--radius);
     }
-    .word-row[data-selected]:hover {
-      background: rgba(26, 24, 18, 0.9);
-      box-shadow:
-        0 3px 10px rgba(26, 24, 18, 0.16),
-        0 1px 3px rgba(26, 24, 18, 0.10);
+    .word-row[data-selected] .word-text { color: var(--bg); }
+    .word-row[data-selected] .chip-freq { color: rgba(250,247,241,.55); }
+    .word-row[data-selected] .verdict-dot { opacity: .65; }
+
+    /* Verdict dot */
+    .verdict-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      align-self: center;
+      background: var(--text-4);
+    }
+    .word-row.verdict-extinct         .verdict-dot { background: var(--v-ext); }
+    .word-row.verdict-declining       .verdict-dot { background: var(--v-dec); }
+    .word-row.verdict-historical_only .verdict-dot { background: var(--v-hist); }
+    .word-row.verdict-absent          .verdict-dot { background: var(--v-abs); }
+
+    /* Word text */
+    .word-text {
+      font-family: var(--serif);
+      font-weight: 500;
+      font-size: 21px;
+      line-height: 1;
+      color: var(--text);
+      letter-spacing: -0.01em;
     }
 
-    /* Învechit — red dotted underline on the word itself, no extra glyph */
-    .word-row.inv .word-text {
-      border-bottom: 1.5px dotted var(--v-ext);
-      padding-bottom: 1px;
-    }
-    /* Bookmarked: solid amber underline — coexists with inv border-bottom */
-    .word-row.bookmarked .word-text { text-decoration: underline solid #d97706; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
-    .word-row[data-selected].inv .word-text { border-bottom-color: rgba(255,255,255,.85); }
-    .word-row[data-selected].bookmarked .word-text { text-decoration-color: rgba(255,255,255,.85); }
-
-
-    /* Freq superscript — quiet mono metadata */
+    /* Freq superscript */
     .chip-freq {
       font-family: var(--mono);
-      font-size: 10px;
-      font-weight: 500;
-      color: #b3a99a;
+      font-size: 9px;
+      color: var(--text-4);
       font-variant-numeric: tabular-nums;
       letter-spacing: 0;
       vertical-align: baseline;
@@ -353,11 +518,9 @@
       top: -0.55em;
       line-height: 0;
       margin-left: 1px;
-      opacity: .8;
     }
-    .word-row[data-selected] .chip-freq { color: #c4beb1; opacity: .9; }
 
-    /* Annotation emoji overlay — absolute, hugs top-right corner of chip */
+    /* Annotation overlay */
     .ann-overlay {
       position: absolute;
       top: 1px;
@@ -368,54 +531,58 @@
       pointer-events: none;
       user-select: none;
     }
-    .ann-more {
-      font-size: 8px;
-      font-family: var(--mono);
-      color: var(--text-3);
-      letter-spacing: 0;
-      vertical-align: super;
-    }
-    .word-row[data-selected] .ann-overlay { opacity: .85; }
+    .ann-more { font-size: 8px; font-family: var(--mono); color: var(--text-3); letter-spacing: 0; vertical-align: super; }
 
-    /* ── Detail panel — compact footer drawer, slides up ── */
+    /* Bookmarked/inv underlines */
+    .word-row.inv .word-text { border-bottom: 1.5px dotted var(--v-ext); padding-bottom: 1px; }
+    .word-row.bookmarked .word-text { text-decoration: underline solid var(--v-dec); text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
+    .word-row[data-selected].inv .word-text { border-bottom-color: rgba(250,247,241,.7); }
+    .word-row[data-selected].bookmarked .word-text { text-decoration-color: rgba(250,247,241,.7); }
+
+    /* Audit dim */
+    .word-row.audit-labeled { opacity: .45; }
+
+    /* ══════════════════════════════════════════
+       DETAIL PANEL — bottom drawer
+    ══════════════════════════════════════════ */
     #detail-panel {
       flex-shrink: 0;
       height: 0;
       overflow: hidden;
-      background: var(--surface);
-      border-top: 2px solid var(--border);
-      box-shadow: 0 -3px 16px rgba(0,0,0,.08);
-      transition: height 180ms ease-out;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -4px 20px rgba(28,25,22,.10);
+      transition: height 200ms ease-out;
       display: flex;
       align-items: stretch;
+      position: relative;
     }
-    #detail-panel.panel-open { height: 130px; position: relative; }
+    #detail-panel.panel-open { height: 152px; }
 
-    /* Inner footer layout: [word col] | [def / actions] */
+    /* Left: word + verdict + chips */
     .fp-word {
       flex: 0 0 auto;
-      min-width: 140px;
-      max-width: 240px;
-      padding: 6px 10px;
+      width: 220px;
+      padding: 12px 14px;
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 6px;
       overflow: hidden;
     }
     .fp-title {
       display: flex;
-      align-items: baseline;
-      gap: 6px;
+      align-items: flex-start;
+      gap: 8px;
       flex-wrap: wrap;
     }
     .fp-word h2 {
       font-family: var(--serif);
-      font-size: 1.15em;
+      font-size: 28px;
       font-weight: 600;
       margin: 0;
-      line-height: 1.15;
-      letter-spacing: -.02em;
+      line-height: 1;
+      letter-spacing: -0.02em;
       color: var(--text);
       overflow-wrap: break-word;
       word-break: break-word;
@@ -423,9 +590,10 @@
     .fp-chips {
       display: flex;
       flex-wrap: wrap;
-      gap: 2px;
+      gap: 4px;
     }
-    /* Right side: definition on top, actions strip on bottom */
+
+    /* Right: definition + actions */
     .fp-right {
       flex: 1 1 auto;
       display: flex;
@@ -435,34 +603,32 @@
     }
     .fp-def {
       flex: 1 1 auto;
-      padding: 6px 10px 4px;
+      padding: 12px 14px 6px;
       overflow-y: auto;
       border-bottom: 1px solid var(--border);
       min-width: 0;
     }
     .fp-actions {
       flex: 0 0 auto;
-      padding: 4px 10px;
+      padding: 6px 14px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       overflow: hidden;
+      flex-wrap: wrap;
     }
     .fp-stats {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       font-size: 10px;
       color: var(--text-3);
       font-family: var(--mono);
       white-space: nowrap;
       flex-shrink: 0;
     }
-    .fp-stats em { font-style: normal; opacity: .65; margin-right: 1px; }
+    .fp-stats em { font-style: normal; opacity: .6; margin-right: 1px; }
     .fp-btns { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
-    .fp-note {
-      flex: 1 1 auto;
-      min-width: 80px;
-    }
+    .fp-note { flex: 1 1 auto; min-width: 80px; }
     .fp-note textarea {
       width: 100%;
       height: 22px;
@@ -474,21 +640,21 @@
       color: var(--text);
       resize: none;
       font-family: var(--sans);
-      box-sizing: border-box;
     }
     .fp-close {
       position: absolute;
-      right: 6px;
-      top: 4px;
+      right: 8px;
+      top: 6px;
       background: none;
       border: none;
       color: var(--text-3);
       cursor: pointer;
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1;
-      padding: 2px 4px;
+      padding: 3px 5px;
+      border-radius: var(--radius);
     }
-    .fp-close:hover { color: var(--text); }
+    .fp-close:hover { color: var(--text); background: var(--surface); }
 
     .placeholder {
       color: var(--text-3);
@@ -498,300 +664,260 @@
       padding: 32px 0;
     }
 
-    /* Word heading */
-    #detail-panel h2 {
-      font-family: var(--serif);
-      font-size: 2.2em;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 6px;
-      letter-spacing: -.02em;
-      line-height: 1.05;
-    }
-
-    /* Verdict badge in detail */
+    /* Verdict badge */
     .verdict-badge {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 500;
-      padding: 2px 8px;
-      border-radius: 20px;
-      border: 1px solid;
-      letter-spacing: .04em;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
+      padding: 3px 8px 3px 6px;
+      border-radius: 3px;
+      flex-shrink: 0;
     }
-    .vb-extinct         { color:var(--v-ext);  background:var(--v-ext-bg);  border-color:var(--v-ext-bd); }
-    .vb-declining       { color:var(--v-dec);  background:var(--v-dec-bg);  border-color:var(--v-dec-bd); }
-    .vb-historical_only { color:var(--v-hist); background:var(--v-hist-bg); border-color:var(--v-hist-bd); }
-    .vb-absent          { color:var(--v-abs);  background:var(--v-abs-bg);  border-color:var(--v-abs-bd); }
-    .vb-unknown         { color:var(--text-3); background:var(--surface-2); border-color:var(--border); }
-
-    #detail-panel hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
-
-    /* Detail table */
-    .detail-table { width: 100%; border-collapse: collapse; }
-    .detail-table th {
-      font-family: var(--serif);
-      font-size: 12px;
-      font-weight: 400;
-      font-style: italic;
-      text-align: right;
-      padding: 4px 14px 4px 0;
-      color: var(--text-3);
-      width: 110px;
-      vertical-align: top;
-    }
-    .detail-table td { color: var(--text); font-size: 14px; font-weight: 500; vertical-align: top; }
-    .detail-table a { color: var(--accent); text-decoration: none; }
-    .detail-table a:hover { text-decoration: underline; }
-
-    /* Inline tag pills in detail */
-    .detail-tag {
+    .verdict-badge::before {
+      content: '';
       display: inline-block;
-      font-size: 10px;
-      padding: 1px 6px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .vb-extinct         { color: var(--v-ext-tx);  background: var(--v-ext-bg);  }
+    .vb-extinct::before { background: var(--v-ext); }
+    .vb-declining         { color: var(--v-dec-tx);  background: var(--v-dec-bg);  }
+    .vb-declining::before { background: var(--v-dec); }
+    .vb-historical_only         { color: var(--v-hist-tx); background: var(--v-hist-bg); }
+    .vb-historical_only::before { background: var(--v-hist); }
+    .vb-absent         { color: var(--v-abs-tx);  background: var(--v-abs-bg);  }
+    .vb-absent::before { background: var(--v-abs); }
+    .vb-unknown { color: var(--text-3); background: var(--surface); }
+
+    /* Detail meta chip */
+    .detail-tag {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      padding: 2px 7px;
       border-radius: 3px;
       border: 1px solid var(--border);
       color: var(--text-2);
       background: var(--surface-2);
-      margin: 1px 2px 1px 0;
     }
 
-    /* Definition block */
-    .definition-block {
-      background: var(--surface-2);
-      border-left: 3px solid var(--border-2);
-      padding: 12px 16px;
-      margin-bottom: 14px;
-      border-radius: 0 var(--radius) var(--radius) 0;
-    }
-    .definition-label {
-      font-family: var(--serif);
-      font-size: 9px;
-      font-weight: 600;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--text-3);
-      margin-bottom: 6px;
-    }
+    /* Definition */
     .definition-text {
       font-family: var(--serif);
-      font-style: italic;
+      font-size: 14px;
       color: var(--text);
-      line-height: 1.6;
-      font-size: 15px;
+      line-height: 1.55;
     }
     .dex-link {
       color: var(--accent);
       font-size: 11px;
       text-decoration: none;
       display: inline-block;
-      margin-top: 8px;
+      margin-top: 5px;
+      font-family: var(--mono);
     }
     .dex-link:hover { text-decoration: underline; }
 
     /* Actions */
-    .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
     #bookmark-btn {
-      height: var(--chip-h);
-      padding: 0 12px;
+      height: 24px;
+      padding: 0 10px;
       background: var(--surface);
       border: 1.5px solid var(--border);
       border-radius: var(--radius);
       color: var(--text-2);
       cursor: pointer;
       font-family: var(--mono);
-      font-size: 12px;
-      transition: border-color .1s, background .1s, color .1s, box-shadow .1s;
+      font-size: 11px;
+      transition: border-color .1s, background .1s, color .1s;
       font-weight: 600;
     }
-    #bookmark-btn:hover { border-color: #d97706; color: #92400e; background: #fffbeb; }
-    #bookmark-btn:active { transform: scale(0.98); }
-    #bookmark-btn.active, #bookmark-btn[data-active] { border-color: #d97706; color: #92400e; background: #fffbeb; font-weight: 700; box-shadow: 0 0 0 1px #d97706; }
+    #bookmark-btn:hover { border-color: var(--v-dec); color: var(--v-dec-tx); background: var(--v-dec-bg); }
+    #bookmark-btn.active, #bookmark-btn[data-active] { border-color: var(--v-dec); color: var(--v-dec-tx); background: var(--v-dec-bg); font-weight: 700; }
 
     /* Tags */
-    #tags-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-    .quick-tags { display: inline-flex; gap: 4px; margin-right: 4px; }
+    #tags-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .quick-tags { display: inline-flex; gap: 3px; }
     .qt-btn {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      height: 24px;
-      padding: 0 8px 0 6px;
+      gap: 4px;
+      height: 22px;
+      padding: 0 7px 0 5px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 3px;
       color: var(--text-2);
       font-family: var(--mono);
-      font-size: 11px;
+      font-size: 10px;
       cursor: pointer;
-      transition: border-color .1s, background .1s, color .1s, box-shadow .1s;
+      transition: border-color .1s, background .1s, color .1s;
       font-weight: 600;
     }
     .qt-btn:hover { border-color: var(--border-2); background: var(--surface-2); color: var(--text); }
-    .qt-btn:active { transform: scale(0.96); }
     .qt-key {
       display: inline-block;
       min-width: 12px;
-      padding: 0 3px;
+      padding: 0 2px;
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: 2px;
       font-size: 9px;
       color: var(--text-3);
       text-align: center;
-      line-height: 14px;
+      line-height: 13px;
     }
-    .qt-btn.active { background: #fffbeb; border-color: #d97706; color: #92400e; font-weight: 700; box-shadow: 0 0 0 1px #d97706; }
-    .qt-btn.active .qt-key { background: #fef3c7; border-color: #d97706; color: #92400e; }
-    .qt-btn[data-qtkey="x"].active { background: #fef2f2; border-color: #dc2626; color: #991b1b; font-weight: 700; box-shadow: 0 0 0 1px #dc2626; }
-    .qt-btn[data-qtkey="x"].active .qt-key { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
+    .qt-btn.active { background: var(--v-dec-bg); border-color: var(--v-dec); color: var(--v-dec-tx); font-weight: 700; }
+    .qt-btn.active .qt-key { background: var(--v-dec-bg); border-color: var(--v-dec); color: var(--v-dec-tx); }
+    .qt-btn[data-qtkey="x"].active { background: var(--v-ext-bg); border-color: var(--v-ext); color: var(--v-ext-tx); font-weight: 700; }
+    .qt-btn[data-qtkey="x"].active .qt-key { background: var(--v-ext-bg); border-color: var(--v-ext); color: var(--v-ext-tx); }
 
-    /* Audit mode */
-    .audit-row-bar { background: #fff7e6 !important; border-bottom: 1px solid #d97706 !important; }
-    .audit-strata-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; width: 100%; }
-    .audit-stratum-pill {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 2px 7px; border-radius: 3px; cursor: pointer;
-      font-family: var(--mono); font-size: 10px; font-weight: 600;
-      border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
-      user-select: none;
-    }
-    .audit-stratum-pill input { display: none; }
-    .audit-stratum-pill.audit-incl { border-left: 3px solid #1a56db; }
-    .audit-stratum-pill.audit-excl { border-left: 3px solid #6b7280; opacity: .85; }
-    .audit-stratum-pill:hover { background: #fffbeb; }
-    .audit-stratum-pill.active { background: #1f1d1a; color: #fcfbf7; border-color: #1f1d1a; }
-    .audit-stratum-pill.active .audit-progress { color: #fcfbf7; opacity: .7; }
-    .audit-progress { font-size: 9px; opacity: .55; font-variant-numeric: tabular-nums; }
-    .audit-row {
-      display: inline-flex; flex-wrap: wrap; gap: 3px;
-      padding: 3px 6px; margin-right: 6px;
-      background: #fff7e6; border: 1px dashed #d97706; border-radius: 3px;
-    }
-    .audit-btn {
-      display: inline-flex; align-items: center; gap: 3px;
-      padding: 2px 6px; height: 22px;
-      border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
-      border-radius: 3px; cursor: pointer;
-      font-family: var(--sans); font-size: 11px; font-weight: 500;
-    }
-    .audit-btn:hover { border-color: #d97706; background: #fffbeb; color: var(--text); }
-    .audit-btn.active { background: #fffbeb; border-color: #d97706; color: #92400e; font-weight: 700; box-shadow: 0 0 0 1px #d97706; }
-    .audit-btn .qt-key {
-      background: var(--surface); border: 1px solid var(--border); border-radius: 2px;
-      padding: 0 4px; font-family: var(--mono); font-size: 9px; font-weight: 700;
-      color: var(--text-2);
-    }
-    .audit-btn.active .qt-key { background: #fef3c7; border-color: #d97706; color: #92400e; }
-    .word-row.audit-labeled { opacity: .55; }
     .tag {
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 2px 8px;
+      padding: 2px 7px;
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: 3px;
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-2);
     }
-    .tag button { background: none; border: none; color: var(--text-3); cursor: pointer; padding: 0; font-size: 11px; line-height: 1; }
+    .tag button { background: none; border: none; color: var(--text-3); cursor: pointer; padding: 0; font-size: 10px; line-height: 1; }
     .tag button:hover { color: var(--text); }
     #tag-input {
-      height: 24px;
+      height: 22px;
       padding: 0 7px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 3px;
       color: var(--text);
       font-family: var(--mono);
-      font-size: 11px;
-      width: 90px;
+      font-size: 10px;
+      width: 80px;
     }
     #tag-input:focus { outline: none; border-color: var(--accent); }
 
-    /* Note */
-    .note-section { margin-top: 16px; }
-    .note-section label {
-      display: block;
-      font-family: var(--serif);
-      font-size: 10px;
-      font-style: italic;
-      color: var(--text-3);
-      margin-bottom: 5px;
+    /* Audit buttons */
+    .audit-row {
+      display: inline-flex; flex-wrap: wrap; gap: 3px;
+      padding: 3px 6px; margin-right: 4px;
+      background: #fff7e6; border: 1px dashed #d97706; border-radius: 3px;
     }
+    .audit-btn {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 6px; height: 20px;
+      border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
+      border-radius: 3px; cursor: pointer;
+      font-family: var(--sans); font-size: 10px; font-weight: 500;
+    }
+    .audit-btn:hover { border-color: #d97706; background: #fffbeb; color: var(--text); }
+    .audit-btn.active { background: #fffbeb; border-color: #d97706; color: #92400e; font-weight: 700; }
+    .audit-btn .qt-key { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 0 3px; font-family: var(--mono); font-size: 9px; color: var(--text-3); }
+    .audit-btn.active .qt-key { background: #fef3c7; border-color: #d97706; color: #92400e; }
+
     #note-input {
       width: 100%;
       background: var(--surface-2);
       border: 1.5px solid var(--border);
       border-radius: var(--radius);
       color: var(--text);
-      padding: 8px 10px;
-      font-family: var(--mono);
-      font-size: 12px;
-      min-height: 60px;
+      padding: 6px 8px;
+      font-family: var(--sans);
+      font-size: 11px;
+      min-height: 50px;
       resize: vertical;
       transition: border-color .15s;
     }
     #note-input:focus { outline: none; border-color: var(--accent); }
-    #note-status { display: inline-block; margin-top: 4px; font-size: 11px; color: #15803d; min-height: 16px; }
+    #note-status { display: inline-block; margin-top: 3px; font-size: 10px; color: #15803d; min-height: 14px; font-family: var(--mono); }
     @keyframes fadeout { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
     .saved-notice { animation: fadeout 2s ease-in forwards; }
 
     /* ── Status bar ── */
     #status-bar {
-      padding: 4px 14px;
+      padding: 4px 16px;
       background: var(--surface);
       border-top: 1px solid var(--border);
-      font-size: 12px;
-      font-weight: 500;
+      font-size: 11px;
+      font-family: var(--mono);
       color: var(--text-3);
       flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
+      letter-spacing: 0.03em;
     }
-    #status-bar > span:first-child {
+    #status-bar a { color: var(--text-3); text-decoration: none; }
+    #status-bar a:hover { color: var(--text); }
+
+    /* ── Hover info box ── */
+    #hover-box {
+      position: fixed;
+      width: 270px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: 0 6px 24px rgba(28,25,22,.12);
+      padding: 14px 16px;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 120ms ease, transform 120ms ease;
+      z-index: 50;
+    }
+    #hover-box.visible { opacity: 1; transform: translateY(0); }
+    #hb-word {
+      font-family: var(--serif);
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+    }
+    #hb-verdict-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    #hb-meta { font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+    #hb-def {
       font-family: var(--serif);
       font-style: italic;
       font-size: 13px;
       color: var(--text-2);
-    }
-    #status-bar span { white-space: nowrap; }
-    .status-key {
-      display: inline-block;
-      background: var(--surface-2);
-      border: 1px solid var(--border-2);
-      border-radius: 3px;
-      padding: 0px 4px;
-      font-size: 10px;
-      color: var(--text-2);
-      vertical-align: middle;
+      line-height: 1.5;
+      -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+      mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+      max-height: 58px;
+      overflow: hidden;
     }
 
     /* ── Shortcuts overlay ── */
     #shortcuts-overlay, #legend-overlay {
       position: fixed; inset: 0;
-      background: rgba(24,21,15,.35);
+      background: rgba(28,25,22,.32);
       backdrop-filter: blur(2px);
       display: flex; align-items: center; justify-content: center; z-index: 100;
     }
     #shortcuts-modal, #legend-modal {
-      background: var(--surface);
-      border: 1.5px solid var(--border);
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 22px 30px;
+      padding: 22px 28px;
       min-width: 380px;
-      box-shadow: 0 16px 48px rgba(0,0,0,.18);
+      box-shadow: 0 20px 60px rgba(28,25,22,.18);
     }
     #legend-modal { max-width: 560px; max-height: 80vh; overflow-y: auto; }
     .legend-key { font-family: var(--mono); font-weight: 600; color: var(--text); }
-    .shortcuts-table td:first-child.legend-keycell { padding-right: 14px; vertical-align: top; }
     .shortcuts-header {
       font-family: var(--serif);
-      font-size: 15px;
+      font-size: 17px;
       font-weight: 600;
       color: var(--text);
       display: flex;
@@ -799,7 +925,7 @@
       align-items: center;
       margin-bottom: 18px;
     }
-    .shortcuts-esc { font-family: var(--mono); font-size: 11px; color: var(--text-3); font-weight: 400; }
+    .shortcuts-esc { font-family: var(--mono); font-size: 10px; color: var(--text-3); font-weight: 400; }
     .shortcuts-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .shortcuts-table td { padding: 3px 0; color: var(--text-2); }
     .shortcuts-table td:first-child { padding-right: 20px; white-space: nowrap; }
@@ -815,240 +941,237 @@
       font-family: var(--mono);
       font-size: 11px;
     }
+    .shortcuts-table td:first-child.legend-keycell { padding-right: 14px; vertical-align: top; }
 
-    /* ── Detail meta row (verdict + tier + POS inline) ── */
-    .detail-meta-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
-    }
+    /* ── Detail stats ── */
+    .detail-meta-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .detail-stats-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; font-weight: 500; color: var(--text); }
+    .stat-label { font-family: var(--serif); font-style: italic; font-size: 10px; color: var(--text-3); margin-right: 2px; }
+    .panel-close { position: absolute; top: 8px; right: 10px; background: none; border: none; font-size: 14px; color: var(--text-3); cursor: pointer; padding: 3px 6px; border-radius: var(--radius); line-height: 1; transition: color .1s, background .1s; font-weight: 600; }
+    .panel-close:hover { color: var(--text); background: var(--surface); }
 
-    /* ── Corpus stats row (hist / modern / ratio / dex inline) ── */
-    .detail-stats-row {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text);
-    }
-    .stat-label {
-      font-family: var(--serif);
-      font-style: italic;
-      font-size: 11px;
-      color: var(--text-3);
-      margin-right: 2px;
-    }
-
-    /* ── Panel close button ── */
-    .panel-close {
-      position: absolute;
-      top: 10px;
-      right: 12px;
-      background: none;
-      border: none;
-      font-size: 16px;
-      color: var(--text-3);
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: var(--radius);
-      line-height: 1;
-      transition: color .1s, background .1s;
-      font-weight: 600;
-    }
-    .panel-close:hover { color: var(--text); background: rgba(214, 230, 255, 0.9); }
-    .panel-close:active { transform: scale(0.92); }
-
-    /* ── Hover info box ── */
-    #hover-box {
-      position: fixed;
-      width: 260px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(0,0,0,.10);
-      padding: 12px 14px;
-      pointer-events: none;
-      opacity: 0;
-      transform: translateY(-4px);
-      transition: opacity 120ms ease, transform 120ms ease;
-      z-index: 50;
-    }
-    #hover-box.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    #hb-word {
-      font-family: var(--serif);
-      font-size: 1.4em;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 6px;
-      line-height: 1.1;
-    }
-    #hb-verdict-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    #hb-meta {
-      font-size: 12px;
-      color: var(--text-3);
-      font-family: var(--mono);
-    }
-    #hb-def {
-      font-family: var(--serif);
-      font-style: italic;
-      font-size: 12px;
-      color: var(--text-2);
-      line-height: 1.5;
-      -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-      mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-      max-height: 60px;
-      overflow: hidden;
-    }
-
-    /* scrollbar */
-    #word-list-container::-webkit-scrollbar { width: 6px; }
+    /* ── Scrollbar ── */
+    #word-list-container::-webkit-scrollbar { width: 5px; }
     #word-list-container::-webkit-scrollbar-track { background: transparent; }
     #word-list-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     #word-list-container::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
+    #filter-form::-webkit-scrollbar { width: 3px; }
+    #filter-form::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── fp-dicts ── */
+    .fp-dicts { display: flex; flex-wrap: wrap; gap: 3px; align-items: baseline; }
   </style>
 </head>
 <body>
-  <form id="filter-form"
-        hx-get="/search"
-        hx-trigger="change"
-        hx-target="#word-list"
-        hx-include="#filter-form">
 
-    {% if audit_mode %}
-    <input type="hidden" name="audit" value="1">
-    <div class="filter-row audit-row-bar">
-      {% set progress = audit_progress %}
-      {% set current = '' %}
-      {% include 'partials/audit_strata.html' %}
+  <!-- TOP BAR -->
+  <div id="top-bar">
+    <div>
+      <div id="logo">oțios</div>
     </div>
-    {% endif %}
+    <div id="top-search-wrap">
+      <input id="search" type="text"
+             placeholder="caută un cuvânt…"
+             autocomplete="off"
+             hx-get="/search"
+             hx-trigger="input changed delay:200ms"
+             hx-target="#word-list"
+             hx-include="#filter-form">
+    </div>
+    <span class="htmx-indicator">…</span>
+    <div class="top-bar-nav">
+      {% if not audit_mode %}
+      <a href="/statistici" class="top-bar-link" style="opacity:.4;pointer-events:none;" title="în curând">statistici</a>
+      <span class="top-bar-sep">·</span>
+      {% endif %}
+      <a href="/metodologie" class="top-bar-link">metodologie</a>
+      <span class="top-bar-sep">·</span>
+      <a href="#" onclick="showLegend();return false;" class="top-bar-link">ⓘ</a>
+      <span class="top-bar-sep">·</span>
+      <a href="#" onclick="showShortcuts();return false;" class="top-bar-link"><kbd>?</kbd></a>
+    </div>
+  </div>
 
-    <!-- Row 1: search + utility controls -->
-    <div class="filter-row">
-      <div class="seg">
-        <label class="seg-opt"><input type="radio" name="word_tier" value="forgotten" checked> uitate</label>
-        <label class="seg-opt"><input type="radio" name="word_tier" value="rare_in_use"> rare</label>
+  <!-- MAIN LAYOUT -->
+  <div id="layout-body">
+
+    <!-- LEFT FILTER RAIL -->
+    <form id="filter-form"
+          hx-get="/search"
+          hx-trigger="change"
+          hx-target="#word-list"
+          hx-include="#filter-form, #search">
+
+      {% if audit_mode %}
+      <input type="hidden" name="audit" value="1">
+      <div class="audit-row-bar">
+        {% set progress = audit_progress %}
+        {% set current = '' %}
+        {% include 'partials/audit_strata.html' %}
       </div>
-      <div class="fsep"></div>
-      <input id="search" type="text" name="q" placeholder="Search words…"
-             hx-get="/search" hx-trigger="input changed delay:200ms"
-             hx-target="#word-list" hx-include="#filter-form" autocomplete="off">
-      <select name="sort" class="sort-select">
-        <option value="rare">↓ rarest modern</option>
-        <option value="declined">↓ most declined</option>
-        <option value="dex_freq">↓ DEX frequency</option>
-        <option value="alpha">↕ alphabetical</option>
-      </select>
-      <div class="fsep"></div>
-      <select name="marks" class="tax-select" data-default="all" aria-label="Marks filter">
-        <option value="all">all words</option>
-        <option value="unmarked">unmarked only</option>
-        <option value="marked">marked only</option>
-        <option value="bookmarked">☆ bookmarked</option>
-        <option value="noted">has note</option>
-        {% for t, _ in quick_tags %}
-        <option value="tag:{{ t }}">tag: {{ t }}</option>
-        {% endfor %}
-        {% for t in tag_suggestions %}
-        <option value="tag:{{ t }}">tag: {{ t }}</option>
-        {% endfor %}
-      </select>
-      <div class="seg">
-        <label class="seg-opt"><input type="radio" name="has_def" value="" checked> any</label>
-        <label class="seg-opt"><input type="radio" name="has_def" value="1"> def ✓</label>
-        <label class="seg-opt"><input type="radio" name="has_def" value="0"> def ✗</label>
+      {% endif %}
+
+      <!-- Sort -->
+      <div class="rail-section">
+        <span class="rail-label">sortare</span>
+        <select name="sort" class="sort-select">
+          <option value="rare">↓ cele mai rare</option>
+          <option value="declined">↓ în declin</option>
+          <option value="dex_freq">↓ frecvență DEX</option>
+          <option value="alpha">↕ alfabetic</option>
+        </select>
       </div>
-      <span class="htmx-indicator">loading…</span>
+
+      <!-- Word tier -->
+      <div class="rail-section">
+        <span class="rail-label">categorie</span>
+        <div class="seg">
+          <label class="seg-opt"><input type="radio" name="word_tier" value="forgotten" checked> uitate</label>
+          <label class="seg-opt"><input type="radio" name="word_tier" value="rare_in_use"> rare</label>
+        </div>
+      </div>
+
+      <!-- Verdict -->
+      <div class="rail-section">
+        <span class="rail-label">verdict</span>
+        <div class="verdict-checks">
+          {% for v, cls, dot_cls, lbl in [
+              ('extinct',         'vcheck-ext',  'v-ext',  'dispărut din uz'),
+              ('declining',       'vcheck-dec',  'v-dec',  'în declin'),
+              ('historical_only', 'vcheck-hist', 'v-hist', 'doar istoric'),
+              ('absent',          'vcheck-abs',  'v-abs',  'absent'),
+          ] %}
+          <label class="verdict-check {{ cls }}">
+            <input type="radio" name="verdict" value="{{ v }}">
+            <span class="verdict-dot"></span>
+            <span class="vc-label">{{ lbl }}</span>
+            <span class="vc-check">✓</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- POS -->
+      <div class="rail-section">
+        <span class="rail-label">parte de vorbire</span>
+        <div class="pos-grid">
+          {% for val, lbl in pos_options %}
+          <label class="pill">
+            <input type="radio" name="pos" value="{{ val }}"> {{ lbl }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Taxonomy -->
+      <div class="rail-section">
+        <span class="rail-label">taxonomie</span>
+        <select name="register" class="tax-select" aria-label="Registru">
+          <option value="">registru: orice</option>
+          {% for r in distinct_registers %}
+          <option value="{{ r }}">{{ r }}</option>
+          {% endfor %}
+        </select>
+        <select name="domain" class="tax-select" aria-label="Domeniu">
+          <option value="">domeniu: orice</option>
+          {% for d in distinct_domains %}
+          <option value="{{ d }}">{{ d }}</option>
+          {% endfor %}
+        </select>
+        <select name="etymology" class="tax-select" aria-label="Etimologie">
+          <option value="">etimologie: orice</option>
+          {% for e in distinct_etymologies %}
+          <option value="{{ e }}">{{ e | replace('limba ', '') }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Marks + Def -->
+      <div class="rail-section">
+        <span class="rail-label">marcaje</span>
+        <select name="marks" class="marks-select" data-default="all" aria-label="Filtrare marcaje">
+          <option value="all">toate cuvintele</option>
+          <option value="unmarked">nemarcate</option>
+          <option value="marked">marcate</option>
+          <option value="bookmarked">☆ favorite</option>
+          <option value="noted">cu notă</option>
+          {% for t, _ in quick_tags %}
+          <option value="tag:{{ t }}">etichetă: {{ t }}</option>
+          {% endfor %}
+          {% for t in tag_suggestions %}
+          <option value="tag:{{ t }}">etichetă: {{ t }}</option>
+          {% endfor %}
+        </select>
+        <div class="seg">
+          <label class="seg-opt"><input type="radio" name="has_def" value="" checked> orice</label>
+          <label class="seg-opt"><input type="radio" name="has_def" value="1"> cu def ✓</label>
+          <label class="seg-opt"><input type="radio" name="has_def" value="0"> fără def ✗</label>
+        </div>
+      </div>
+
+      <!-- Exploration -->
+      <div class="rail-section">
+        <span class="rail-label">explorare</span>
+        <div class="explore-row">
+          <span class="explore-label">zipf</span>
+          <input type="number" name="zipf_min" class="explore-input" step="0.1" min="0" max="8" placeholder="min">
+          <span class="explore-sep">–</span>
+          <input type="number" name="zipf_max" class="explore-input" step="0.1" min="0" max="8" placeholder="max">
+        </div>
+        <div class="explore-row">
+          <span class="explore-label">dex</span>
+          <input type="number" name="dexfreq_min" class="explore-input" step="1" min="0" max="100" placeholder="min">
+          <span class="explore-sep">–</span>
+          <input type="number" name="dexfreq_max" class="explore-input" step="1" min="0" max="100" placeholder="max">
+        </div>
+        <label class="explore-toggle" title="Ascunde cuvinte comune în engleză (împrumuturi)">
+          <input type="checkbox" name="hide_loanwords" value="1">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">ascunde împrumuturi</span>
+        </label>
+        <label class="explore-toggle" title="Ascunde capete de intrare capitalizate (nume proprii)">
+          <input type="checkbox" name="hide_proper" value="1">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">ascunde nume proprii</span>
+        </label>
+      </div>
+
+      <div class="rail-count" id="rail-count">
+        <span id="status-word-count">{{ total }}</span> cuvinte
+      </div>
+
+    </form>
+
+    <!-- WORD CLOUD -->
+    <div id="app">
+      <div id="word-list-container">
+        <div id="word-list"
+             hx-get="/search"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <span class="htmx-indicator">se încarcă…</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Row 2: verdict + tier + POS -->
-    <div class="filter-row">
-      <span class="flabel">verdict</span>
-      {% for v, cls, lbl in [
-          ('extinct',        'pv-ext',  'extinct'),
-          ('declining',      'pv-dec',  'declining'),
-          ('historical_only','pv-hist', 'historical'),
-          ('absent',         'pv-abs',  'absent'),
-      ] %}
-      <label class="pill {{ cls }}">
-        <input type="radio" name="verdict" value="{{ v }}"> {{ lbl }}
-      </label>
-      {% endfor %}
-      <div class="fsep"></div>
-      <span class="flabel">tier</span>
-      {% for v, lbl in [
-          ('corpus_extinct',         'corp. extinct'),
-          ('corpus_declining',       'corp. declining'),
-          ('corpus_historical_only', 'corp. historical'),
-          ('dex_invechit_absent',    'dex. învechit'),
-      ] %}
-      <label class="pill">
-        <input type="radio" name="tier" value="{{ v }}"> {{ lbl }}
-      </label>
-      {% endfor %}
-      <div class="fsep"></div>
-      <span class="flabel">POS</span>
-      {% for val, lbl in pos_options %}
-      <label class="pill">
-        <input type="radio" name="pos" value="{{ val }}"> {{ lbl }}
-      </label>
-      {% endfor %}
-    </div>
+  </div><!-- #layout-body -->
 
-    <!-- Row 3: taxonomy selects -->
-    <div class="filter-row">
-      <span class="flabel">filter</span>
-      <select name="register" class="tax-select" aria-label="Filter by register">
-        <option value="">register: any</option>
-        {% for r in distinct_registers %}
-        <option value="{{ r }}">{{ r }}</option>
-        {% endfor %}
-      </select>
-      <select name="domain" class="tax-select" aria-label="Filter by domain">
-        <option value="">domain: any</option>
-        {% for d in distinct_domains %}
-        <option value="{{ d }}">{{ d }}</option>
-        {% endfor %}
-      </select>
-      <select name="etymology" class="tax-select" aria-label="Filter by etymology">
-        <option value="">etymology: any</option>
-        {% for e in distinct_etymologies %}
-        <option value="{{ e }}">{{ e | replace('limba ', '') }}</option>
-        {% endfor %}
-      </select>
-    </div>
+  <!-- DETAIL PANEL -->
+  <div id="detail-panel"></div>
 
-    <!-- Row 4: exploration filters (reversible — no data regeneration) -->
-    <div class="filter-row">
-      <span class="flabel">explore</span>
-      <span style="font-size:11px;color:var(--text-2);" title="wordfreq Romanian Zipf range">zipf
-        <input type="number" name="zipf_min" step="0.1" min="0" max="8" placeholder="min" style="width:50px;">–<input type="number" name="zipf_max" step="0.1" min="0" max="8" placeholder="max" style="width:50px;">
-      </span>
-      <div class="fsep"></div>
-      <span style="font-size:11px;color:var(--text-2);" title="DEX editorial frequency band, 0–100">dex
-        <input type="number" name="dexfreq_min" step="1" min="0" max="100" placeholder="min" style="width:50px;">–<input type="number" name="dexfreq_max" step="1" min="0" max="100" placeholder="max" style="width:50px;">
-      </span>
-      <div class="fsep"></div>
-      <label class="pill" title="Hide words common in English (en Zipf ≥ {{ '%.1f'|format(loanword_en_zipf) }})">
-        <input type="checkbox" name="hide_loanwords" value="1"> hide loanwords
-      </label>
-      <label class="pill" title="Hide headwords capitalized in DEX (names/places/brands)">
-        <input type="checkbox" name="hide_proper" value="1"> hide proper nouns
-      </label>
-    </div>
-
-  </form>
+  <!-- STATUS BAR -->
+  <div id="status-bar">
+    <span>{{ bookmark_count }} favorite</span>
+    <span>
+      <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="/metodologie">metodologie</a>
+      &nbsp;·&nbsp;
+      <a href="#" onclick="showLegend();return false;">ⓘ legendă</a>
+      &nbsp;·&nbsp;
+      <a href="#" onclick="showShortcuts();return false;"><kbd>?</kbd> scurtături</a>
+    </span>
+  </div>
 
   <div id="hover-box">
     <div id="hb-word"></div>
@@ -1059,24 +1182,6 @@
     <div id="hb-def"></div>
   </div>
 
-  <div id="app">
-    <div id="word-list-container">
-      <div id="word-list"
-           hx-get="/search"
-           hx-trigger="load"
-           hx-swap="innerHTML">
-        <span class="htmx-indicator">loading…</span>
-      </div>
-    </div>
-  </div>
-
-  <div id="detail-panel"></div>
-
-  <div id="status-bar">
-    <span class="status-left"><span id="status-word-count">{{ total }} words</span> · {{ bookmark_count }} bookmarked</span>
-    <span class="status-right"><a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">GitHub</a> &nbsp; <a href="/metodologie" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">metodologie</a> &nbsp; <a href="#" onclick="showLegend();return false;" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">ⓘ legend</a> &nbsp; <a href="#" onclick="showShortcuts();return false;" style="color:var(--text-3);text-decoration:none;font-size:12px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'"><kbd>?</kbd> shortcuts</a></span>
-  </div>
-
   <datalist id="tag-suggestions">
     {% for t in tag_suggestions %}<option value="{{ t }}">{% endfor %}
   </datalist>
@@ -1084,28 +1189,28 @@
   <div id="shortcuts-overlay" style="display:none">
     <div id="shortcuts-modal">
       <div class="shortcuts-header">
-        <span>Keyboard shortcuts</span>
-        <span class="shortcuts-esc">Esc to close</span>
+        <span>Scurtături tastatură</span>
+        <span class="shortcuts-esc">Esc pentru a închide</span>
       </div>
       <table class="shortcuts-table">
-        <tr><td colspan="2" class="shortcuts-group">Navigation</td></tr>
-        <tr><td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>l</kbd></td><td>Navigate grid (↓ ↑ ← →)</td></tr>
-        <tr><td><kbd>g</kbd><kbd>g</kbd></td><td>Jump to top</td></tr>
-        <tr><td><kbd>G</kbd></td><td>Jump to bottom</td></tr>
-        <tr><td><kbd>a</kbd>–<kbd>z</kbd></td><td>Type-ahead: jump to matching word</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Search</td></tr>
-        <tr><td><kbd>/</kbd></td><td>Focus search</td></tr>
-        <tr><td><kbd>Esc</kbd></td><td>Blur / close popup</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Actions</td></tr>
-        <tr><td><kbd>b</kbd></td><td>Toggle bookmark</td></tr>
-        <tr><td><kbd>i</kbd></td><td>Toggle <em>ignore</em> tag</td></tr>
-        <tr><td><kbd>B</kbd></td><td>Toggle <em>boring</em> tag</td></tr>
-        <tr><td><kbd>f</kbd></td><td>Toggle <em>funny</em> tag</td></tr>
-        <tr><td><kbd>x</kbd></td><td>Toggle <em>remove</em> tag</td></tr>
-        <tr><td><kbd>t</kbd></td><td>Focus tag input (autocomplete)</td></tr>
-        <tr><td><kbd>n</kbd></td><td>Focus note field</td></tr>
-        <tr><td><kbd>o</kbd></td><td>Open in dexonline.ro</td></tr>
-        <tr><td><kbd>?</kbd></td><td>Show / hide this popup</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Navigare</td></tr>
+        <tr><td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>l</kbd></td><td>Navigare în grilă (↓ ↑ ← →)</td></tr>
+        <tr><td><kbd>g</kbd><kbd>g</kbd></td><td>Salt la început</td></tr>
+        <tr><td><kbd>G</kbd></td><td>Salt la sfârșit</td></tr>
+        <tr><td><kbd>a</kbd>–<kbd>z</kbd></td><td>Type-ahead: salt la cuvântul potrivit</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Căutare</td></tr>
+        <tr><td><kbd>/</kbd></td><td>Focalizează căutarea</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Blur / închide popup</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Acțiuni</td></tr>
+        <tr><td><kbd>b</kbd></td><td>Comutare favorite</td></tr>
+        <tr><td><kbd>i</kbd></td><td>Etichetă <em>ignore</em></td></tr>
+        <tr><td><kbd>B</kbd></td><td>Etichetă <em>boring</em></td></tr>
+        <tr><td><kbd>f</kbd></td><td>Etichetă <em>funny</em></td></tr>
+        <tr><td><kbd>x</kbd></td><td>Etichetă <em>remove</em></td></tr>
+        <tr><td><kbd>t</kbd></td><td>Focalizează câmpul etichetă</td></tr>
+        <tr><td><kbd>n</kbd></td><td>Focalizează câmpul notă</td></tr>
+        <tr><td><kbd>o</kbd></td><td>Deschide în dexonline.ro</td></tr>
+        <tr><td><kbd>?</kbd></td><td>Arată / ascunde acest popup</td></tr>
       </table>
     </div>
   </div>
@@ -1113,47 +1218,39 @@
   <div id="legend-overlay" style="display:none">
     <div id="legend-modal">
       <div class="shortcuts-header">
-        <span>Legend — numbers &amp; tags</span>
-        <span class="shortcuts-esc">Esc to close</span>
+        <span>Legendă — cifre &amp; etichete</span>
+        <span class="shortcuts-esc">Esc pentru a închide</span>
       </div>
       <table class="shortcuts-table">
-        <tr><td colspan="2" class="shortcuts-group">The superscript on each word</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">listat<sup style="font-size:9px;color:#b3a99a;">²¹</span></span></td><td><strong>DEX frequency band</strong> (the small number), 0–100. DEX Online's editorial score for how central a word is to the dictionary — <em>lower = rarer in DEX</em>. <strong>0 = no data</strong>, not "rarest". It is a dictionary-internal score, <em>not</em> corpus frequency, so modern loanwords can score low here while still being common.</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Frequency scores (detail panel)</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">zipf</span></td><td>Romanian wordfreq Zipf. ~3 = rarity floor (≈1 per million words); higher = more common; <strong>0</strong> = unseen / below floor.</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">en</span></td><td>English wordfreq Zipf. High (≥ {{ '%.1f'|format(loanword_en_zipf) }}) means the word is common in English → <strong>likely a loanword</strong>. Genuine Romanian words score 0.</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">dex</span></td><td>Same DEX frequency band as the superscript, 0–100.</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Corpus evidence (per million tokens)</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">hist</span></td><td>Historical corpus (Wikisource).</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">mod</span></td><td>Modern corpus (CulturaX).</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">sub</span></td><td>Subtitle corpus (OpenSubtitles).</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">ratio</span></td><td>log₂(hist ÷ modern). <strong>Positive = used more in the past</strong> (declining/forgotten); negative = more modern.</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Dictionaries &amp; web</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">in N dict.</span></td><td>Number of DEX Online source dictionaries the headword appears in; the short-names follow (<em>DEX '98, DLRLC, MDA2, NODEX, Scriban, Șăineanu…</em> — see <a href="https://dexonline.ro/surse" target="_blank" rel="noopener">dexonline.ro/surse</a>).</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">web · results · in&nbsp;wild</span></td><td>Phase-3 web validation: result-count bucket, raw result count, and whether the word still appears online.</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">proper?</span></td><td>The DEX headword is capitalized — likely a name / place / brand.</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Verdict (colored badge)</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">extinct</span></td><td>Common historically, gone from the modern corpus.</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">declining</span></td><td>≥ 2× more frequent historically than today.</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">historical</span></td><td>Seen historically, absent now (corpus run may be partial).</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">absent</span></td><td>No corpus signal either way.</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Common DEX register tags</td></tr>
-        <tr><td class="legend-keycell"><span class="legend-key">învechit</span></td><td>archaic / obsolete · <span class="legend-key">rar</span> rare · <span class="legend-key">reg.</span> regional · <span class="legend-key">pop.</span> popular · <span class="legend-key">fig.</span> figurative · <span class="legend-key">livresc</span> bookish</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Superscriptul de pe fiecare cuvânt</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">listat<sup style="font-size:9px;color:#b3a99a;">²¹</span></span></td><td><strong>Banda de frecvență DEX</strong> (cifra mică), 0–100. Scorul editorial al DEX Online pentru cât de central este un cuvânt — <em>mai mic = mai rar în DEX</em>. <strong>0 = fără date</strong>, nu „cel mai rar".</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Scoruri de frecvență (panoul detaliu)</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">zipf</span></td><td>Zipf română (wordfreq). ~3 = prag raritate; mai mare = mai comun; <strong>0</strong> = nevăzut.</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">en</span></td><td>Zipf engleză. Mare (≥ {{ '%.1f'|format(loanword_en_zipf) }}) = comun în engleză → <strong>probabil împrumut</strong>.</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">dex</span></td><td>Aceeași bandă de frecvență DEX ca superscriptul, 0–100.</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Corpus (per milion de tokeni)</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">hist</span></td><td>Corpus istoric (Wikisource).</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">mod</span></td><td>Corpus modern (CulturaX).</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">sub</span></td><td>Corpus subtitrări (OpenSubtitles).</td></tr>
+        <tr><td class="legend-keycell"><span class="legend-key">ratio</span></td><td>log₂(hist ÷ modern). <strong>Pozitiv = folosit mai mult în trecut</strong>.</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Verdict</td></tr>
+        <tr><td class="legend-keycell"><span class="verdict-badge vb-extinct">extinct</span></td><td>Frecvent istoric, dispărut din corpus modern.</td></tr>
+        <tr><td class="legend-keycell"><span class="verdict-badge vb-declining">declining</span></td><td>De ≥ 2× mai frecvent istoric decât azi.</td></tr>
+        <tr><td class="legend-keycell"><span class="verdict-badge vb-historical_only">historical</span></td><td>Văzut istoric, absent acum.</td></tr>
+        <tr><td class="legend-keycell"><span class="verdict-badge vb-absent">absent</span></td><td>Niciun semnal în corpus.</td></tr>
       </table>
     </div>
   </div>
 
   <script>
-    // Allow deselecting a .pill radio by clicking it again.
-    // Inputs are display:none, so mousedown lands on the label — stash the
-    // input's pre-click state there, then check it in the input's click handler.
-    document.querySelectorAll('#filter-form label.pill').forEach(function(label) {
+    // Deselect radio filter by clicking it again
+    document.querySelectorAll('#filter-form label.verdict-check, #filter-form label.pill').forEach(function(label) {
       label.addEventListener('mousedown', function() {
         const input = this.querySelector('input[type=radio]');
         if (input) input.dataset.wasChecked = input.checked ? '1' : '';
       });
     });
-    document.querySelectorAll('#filter-form label.pill input[type=radio]').forEach(function(r) {
+    document.querySelectorAll('#filter-form label.verdict-check input[type=radio], #filter-form label.pill input[type=radio]').forEach(function(r) {
       r.addEventListener('click', function() {
         if (this.dataset.wasChecked === '1') {
           this.checked = false;
@@ -1248,20 +1345,17 @@
         if (btn) { e.preventDefault(); btn.click(); }
         return;
       }
-      // Audit mode: uppercase reserved keys → click matching audit-btn
       if ('KIVLDJMOX'.indexOf(e.key) !== -1) {
         const abtn = document.querySelector('#audit-row .audit-btn[data-akey="' + e.key + '"]');
         if (abtn) { e.preventDefault(); abtn.click(); }
         return;
       }
-      // Type-ahead: any other printable character jumps to the first matching word
       if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
         typeAhead(e.key);
       }
     });
 
-    // Type-ahead word navigation
     var _taBuffer = '', _taTimer = null;
     function _normTA(s) {
       return s.toLowerCase()
@@ -1282,8 +1376,6 @@
       _taTimer = setTimeout(function() { _taBuffer = ''; }, 1200);
     }
 
-    // Audit mode: append audit=1 to every /word/ request so the detail panel
-    // includes the audit-verdict button row.
     {% if audit_mode %}
     document.body.addEventListener('htmx:configRequest', function(evt) {
       const path = evt.detail.path || '';
@@ -1293,14 +1385,11 @@
     });
     {% endif %}
 
-    // Audit mode auto-advance: after a label is applied, jump to next unlabeled word
     document.body.addEventListener('audit-advance', function() {
       const all = rows();
       if (!all.length) return;
-      // Mark the current row as labeled so it won't be picked again
       const cur = (selectedIdx >= 0) ? all[selectedIdx] : null;
       if (cur) cur.classList.add('audit-labeled');
-      // Find next unlabeled row at or after current selection; fall back to wrap-around
       const start = selectedIdx >= 0 ? selectedIdx : 0;
       let next = -1;
       for (let off = 1; off <= all.length; off++) {
@@ -1308,7 +1397,6 @@
         if (!all[i].classList.contains('audit-labeled')) { next = i; break; }
       }
       if (next >= 0) selectRow(next);
-      // Refresh the stratum picker so its count ticks up
       const picker = document.getElementById('audit-strata');
       if (picker) {
         const checked = picker.querySelector('input[name=stratum]:checked');
@@ -1327,7 +1415,6 @@
       }
     });
 
-    // Sync selectedIdx when clicking a word with the mouse
     document.getElementById('word-list-container').addEventListener('click', function(e) {
       var row = e.target.closest('.word-row');
       if (!row) return;
@@ -1342,12 +1429,11 @@
     document.getElementById('shortcuts-overlay').addEventListener('click', function(e) {
       if (e.target === this) hideShortcuts();
     });
-
     document.getElementById('legend-overlay').addEventListener('click', function(e) {
       if (e.target === this) hideLegend();
     });
 
-    // Hover info box — event delegation on document, no per-row listeners needed
+    // Hover info box
     (function() {
       var box    = document.getElementById('hover-box');
       var hbWord = document.getElementById('hb-word');
@@ -1374,7 +1460,7 @@
           hbDef.style.display = 'none';
         }
         var rect = row.getBoundingClientRect();
-        var bw = 274;
+        var bw = 280;
         var left = rect.left;
         if (left + bw > window.innerWidth) left = window.innerWidth - bw;
         if (left < 4) left = 4;
@@ -1394,44 +1480,36 @@
       });
     })();
 
-    // Highlight tax-select when a non-"any" value is active
-    document.querySelectorAll('.tax-select').forEach(function(sel) {
+    // Highlight tax/marks select when non-default
+    document.querySelectorAll('.tax-select, .marks-select').forEach(function(sel) {
       var dflt = sel.dataset.default !== undefined ? sel.dataset.default : '';
-      function update() { sel.classList.toggle('active', sel.value !== dflt); }
+      function update() { sel.classList.toggle('active', sel.value !== dflt && sel.value !== ''); }
       sel.addEventListener('change', update);
-      sel.form && sel.form.addEventListener('reset', update);
       update();
     });
 
-    // ── Bookmarkable filter state ──────────────────────────────────────────
-    // 1. On page load: read URLSearchParams and pre-select matching controls.
-    // 2. After every /search request: sync URL with current form state.
+    // Bookmarkable filter state
     (function() {
       var form = document.getElementById('filter-form');
-
-      // Restore state from URL on load (before htmx fires its own requests)
       document.addEventListener('DOMContentLoaded', function() {
         var params = new URLSearchParams(window.location.search);
         params.forEach(function(value, key) {
           if (!value) return;
-          // Radio
           var radio = form.querySelector('input[type=radio][name="' + key + '"][value="' + CSS.escape(value) + '"]');
           if (radio) { radio.checked = true; return; }
-          // Text input
           var text = form.querySelector('input[type=text][name="' + key + '"]');
           if (text) { text.value = value; return; }
-          // Select
           var sel = form.querySelector('select[name="' + key + '"]');
           if (sel) { sel.value = value; }
         });
       });
 
-
-      // Push current form state to URL after each /search request settles
       document.body.addEventListener('htmx:afterRequest', function(evt) {
         var path = (evt.detail.pathInfo && evt.detail.pathInfo.requestPath) || evt.detail.path || '';
         if (path !== '/search') return;
         var params = new URLSearchParams();
+        var searchVal = document.getElementById('search').value;
+        if (searchVal) params.set('q', searchVal);
         for (var pair of new FormData(form)) {
           if (pair[1]) params.set(pair[0], pair[1]);
         }
