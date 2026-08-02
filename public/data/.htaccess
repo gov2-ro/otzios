@@ -1,0 +1,13 @@
+# ui.db holds public word data, but there is no reason to serve the raw SQLite file
+# (it is a 20 MB download and the -wal/-shm siblings leak in-flight writes).
+# User data lives in app.db outside the web root entirely — see api/_appdb.php.
+
+<FilesMatch "\.(db|db-wal|db-shm|sqlite|sqlite3)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>

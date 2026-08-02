@@ -1,42 +1,13 @@
-// ── localStorage research store ───────────────────────────────────────────────
-
-const STORE_KEY = 'otios.research';
+// ── Page state ────────────────────────────────────────────────────────────────
+//
+// The research store itself (getResearch / getWord / updateWord) lives in store.js,
+// which is loaded before this file and shared with joc.php.
 
 const QUICK_TAG_EMOJIS = { ignore: '🙈', boring: '💤', funny: '😄', remove: '❌' };
 const QUICK_TAG_KEYS   = Object.keys(QUICK_TAG_EMOJIS);
 
 let openWord = null;
 let arrivedViaShare = false;   // true while opening the panel from a shared ?word= link
-
-function getResearch() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    const obj = raw ? JSON.parse(raw) : null;
-    if (obj && obj.version === 1) return obj;
-  } catch (_) {}
-  return { version: 1, words: {} };
-}
-
-function saveResearch(obj) {
-  localStorage.setItem(STORE_KEY, JSON.stringify(obj));
-}
-
-function getWord(word) {
-  return getResearch().words[word] || { bookmarked: false, note: '', tags: [] };
-}
-
-function updateWord(word, patch) {
-  const r = getResearch();
-  const prev = r.words[word] || { bookmarked: false, note: '', tags: [] };
-  const next = Object.assign({}, prev, patch, { updated_at: new Date().toISOString() });
-  // prune empty entries
-  if (!next.bookmarked && !next.note && (!next.tags || next.tags.length === 0)) {
-    delete r.words[word];
-  } else {
-    r.words[word] = next;
-  }
-  saveResearch(r);
-}
 
 // ── Annotation hydration ───────────────────────────────────────────────────────
 
@@ -463,6 +434,13 @@ document.addEventListener('htmx:configRequest', function(e) {
   const base = (typeof OTIOS_BASE !== 'undefined' ? OTIOS_BASE : '');
   if (!url.startsWith(base + '/api/search.php')) return;
   const marks = e.detail.parameters['marks'] || 'all';
+
+  // Once the store has synced, the server filters from its own copy of the
+  // annotations and this parameter is dead weight — it is the thing that used to
+  // blow the URL length limit. Still sent before the first successful sync so the
+  // filter works offline and during migration.
+  if (getSyncState().since) return;
+
   const wordList = markedWordsForFilter(marks);
   if (wordList !== null) {
     e.detail.parameters['marked_words'] = wordList.join(',');
@@ -656,14 +634,60 @@ function navigateSpatial(direction) {
   if (best.idx >= 0) selectRow(best.idx);
 }
 
+// Above this width the filter form is docked as a persistent left rail;
+// below it, it is a bottom drawer. Keep in sync with the media query in app.css.
+const RAIL_BP = '(min-width: 1024px)';
+function filterRailDocked() { return window.matchMedia(RAIL_BP).matches; }
+
 function toggleFilterDrawer() {
   const sheet = document.getElementById('filter-form');
   const backdrop = document.getElementById('filter-backdrop');
   if (!sheet) return;
+
+  if (filterRailDocked()) {
+    // Docked: the button collapses/expands the rail. No backdrop, no scroll lock.
+    const collapsed = sheet.classList.toggle('rail-collapsed');
+    try { localStorage.setItem('otios.rail', collapsed ? 'collapsed' : 'open'); } catch (_) {}
+    syncFilterToggleBtn();
+    return;
+  }
+
   const open = sheet.classList.toggle('open');
   if (backdrop) backdrop.classList.toggle('visible', open);
   document.body.style.overflow = open ? 'hidden' : '';
+  syncFilterToggleBtn();
 }
+
+function syncFilterToggleBtn() {
+  const sheet = document.getElementById('filter-form');
+  const btn = document.getElementById('filter-toggle-btn');
+  if (!sheet || !btn) return;
+  const shown = filterRailDocked() ? !sheet.classList.contains('rail-collapsed')
+                                   : sheet.classList.contains('open');
+  btn.setAttribute('aria-expanded', shown ? 'true' : 'false');
+  btn.classList.toggle('filter-toggle-active', shown);
+}
+
+// Restore the rail's collapsed state; re-sync when crossing the breakpoint so a
+// drawer left open on a narrow window doesn't reappear as a collapsed rail.
+(function initFilterRail() {
+  const sheet = document.getElementById('filter-form');
+  if (!sheet) return;
+  try {
+    if (localStorage.getItem('otios.rail') === 'collapsed') sheet.classList.add('rail-collapsed');
+  } catch (_) {}
+  const mq = window.matchMedia(RAIL_BP);
+  const onChange = function() {
+    sheet.classList.remove('open');
+    const backdrop = document.getElementById('filter-backdrop');
+    if (backdrop) backdrop.classList.remove('visible');
+    document.body.style.overflow = '';
+    syncFilterToggleBtn();
+  };
+  if (mq.addEventListener) mq.addEventListener('change', onChange);
+  else if (mq.addListener) mq.addListener(onChange);
+  syncFilterToggleBtn();
+})();
 
 function setView(mode) {
   const list = document.getElementById('word-list');
@@ -750,6 +774,9 @@ function closePanel() {
 }
 
 document.addEventListener('keydown', function(e) {
+  // Never shadow a browser shortcut: Cmd/Ctrl+R was reaching the `r` handler and
+  // firing surpriseWord() instead of reloading the page.
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
   const tag     = document.activeElement.tagName;
   const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   // Feed mode captures navigation keys
@@ -1176,10 +1203,22 @@ document.getElementById('filter-form') && document.getElementById('filter-form')
 // Apply URL params to form before HTMX fires its initial load request
 applyUrlToForm();
 
-// Rehydrate open word from URL on page load — definition takes the spotlight
+// Rehydrate open word from URL on page load — definition takes the spotlight.
+// A reload is not a share: refreshing drops the word instead of re-opening the
+// panel, so you land back on the plain list. Following a ?word=… link still opens it.
 (function() {
   var w = new URLSearchParams(location.search).get('word');
   if (!w) return;
+
+  var nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
+  var isReload = nav ? nav.type === 'reload'
+                     : (performance.navigation && performance.navigation.type === 1);
+  if (isReload) {
+    openWord = null;              // stop syncUrlFromForm() from writing it back
+    syncUrlFromForm();            // drop ?word=… from the address bar
+    return;
+  }
+
   arrivedViaShare = true;
   var base = (typeof OTIOS_BASE !== 'undefined' ? OTIOS_BASE : '');
   htmx.ajax('GET', base + '/api/word.php?word=' + encodeURIComponent(w), { target: '#detail-panel', swap: 'innerHTML' });
@@ -1193,12 +1232,146 @@ document.addEventListener('htmx:configRequest', function(e) {
   syncUrlFromForm();
 });
 
+// ── Word lists ──────────────────────────────────────────────────────────────────
+//
+// Named, server-stored collections. Unlike the ?words=a,b,c playlist URLs these
+// survive, can be added to over time, and can be published at a stable address.
+
+function listsApi(body) {
+  const opts = body
+    ? { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    : { credentials: 'same-origin' };
+  return fetch(OTIOS_BASE + '/api/lists.php', opts).then(function(r) {
+    return r.json().then(function(d) { return { status: r.status, data: d }; });
+  });
+}
+
+function openLists() {
+  document.getElementById('lists-overlay').style.display = 'flex';
+  refreshLists();
+}
+
+function closeLists() {
+  document.getElementById('lists-overlay').style.display = 'none';
+}
+
+function refreshLists() {
+  listsApi(null).then(function(res) {
+    const box = document.getElementById('lists-container');
+    const lists = (res.data && res.data.lists) || [];
+    if (!lists.length) {
+      box.innerHTML = '<p class="lists-empty">Nicio listă încă. Creează una și adaugă-i favoritele.</p>';
+      return;
+    }
+    box.innerHTML = lists.map(function(l) {
+      const url = location.origin + OTIOS_BASE + '/lista.php?l=' + encodeURIComponent(l.slug);
+      return '<div class="list-card">' +
+        '<div class="list-card-top">' +
+          '<span class="list-name"></span>' +
+          '<span class="list-count">' + l.item_count + ' cuvinte</span>' +
+          (l.is_public ? '<span class="list-pub">publică</span>' : '') +
+        '</div>' +
+        '<div class="list-actions">' +
+          '<button class="playlist-btn" data-act="add" data-id="' + l.id + '">+ adaugă favoritele</button>' +
+          '<button class="playlist-btn" data-act="pub" data-id="' + l.id + '">' +
+            (l.is_public ? 'fă privată' : 'publică') + '</button>' +
+          (l.is_public ? '<button class="playlist-btn" data-act="copy" data-url="' + encodeURIComponent(url) + '">copiază link</button>' +
+                         '<a class="playlist-btn" href="' + url + '" target="_blank" rel="noopener">deschide ↗</a>' : '') +
+          '<button class="playlist-btn" data-act="del" data-id="' + l.id + '">șterge</button>' +
+        '</div></div>';
+    }).join('');
+    // Titles are user input — set as text, never interpolated into the HTML above.
+    box.querySelectorAll('.list-name').forEach(function(el, i) { el.textContent = lists[i].title; });
+  });
+}
+
+function createList() {
+  const input = document.getElementById('new-list-title');
+  const title = input.value.trim();
+  if (!title) { showToast('Dă-i un nume listei'); return; }
+  listsApi({ action: 'create', title: title }).then(function() {
+    input.value = '';
+    refreshLists();
+  });
+}
+
+function bookmarkedWords() {
+  const r = getResearch();
+  return Object.keys(r.words).filter(function(w) { return r.words[w].bookmarked; });
+}
+
+// Publishing is the one moment an anonymous visitor is asked for anything: a name to
+// attach to the list. Prompted here rather than at the door.
+function ensureNickname() {
+  return otiosMe().then(function(me) {
+    if (me && me.nickname) return me.nickname;
+    const name = prompt('Sub ce nume publici lista?');
+    if (!name || name.trim().length < 2) return null;
+    return fetch(OTIOS_BASE + '/api/profile.php', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: name.trim() })
+    }).then(function(r) { return r.json(); }).then(function(d) { return d.nickname || null; });
+  });
+}
+
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('#lists-container [data-act]');
+  if (!btn) return;
+  const id = parseInt(btn.dataset.id, 10);
+
+  if (btn.dataset.act === 'copy') {
+    navigator.clipboard.writeText(decodeURIComponent(btn.dataset.url))
+      .then(function() { showToast('Link copiat!'); });
+    return;
+  }
+  if (btn.dataset.act === 'add') {
+    const words = bookmarkedWords();
+    if (!words.length) { showToast('Nu ai favorite de adăugat'); return; }
+    listsApi({ action: 'add', id: id, words: words }).then(function(res) {
+      showToast((res.data.added || 0) + ' cuvinte adăugate');
+      refreshLists();
+    });
+    return;
+  }
+  if (btn.dataset.act === 'del') {
+    if (!confirm('Ștergi lista?')) return;
+    listsApi({ action: 'delete', id: id }).then(refreshLists);
+    return;
+  }
+  if (btn.dataset.act === 'pub') {
+    const makePublic = btn.textContent.trim() === 'publică';
+    if (!makePublic) {
+      listsApi({ action: 'update', id: id, is_public: false }).then(refreshLists);
+      return;
+    }
+    ensureNickname().then(function(name) {
+      if (!name) { showToast('Ai nevoie de un nume ca să publici'); return; }
+      listsApi({ action: 'update', id: id, is_public: true }).then(function(res) {
+        if (res.status !== 200) { showToast('Nu am putut publica lista'); return; }
+        showToast('Listă publicată');
+        refreshLists();
+      });
+    });
+  }
+});
+
 // ── Init ────────────────────────────────────────────────────────────────────────
 
 updateBookmarkCount();
 populateTagDatalist();
 populateTagFilterOptions();
 renderActiveFilters();
+
+// store.js fires this after a sync pulled changes made on another device.
+document.addEventListener('otios:synced', function() {
+  hydrateRows();
+  if (openWord) hydrateDetail();
+  updateBookmarkCount();
+  populateTagDatalist();
+  populateTagFilterOptions();
+});
 
 // ── Mobile Auto-Close on Scroll ─────────────────────────────────────────────────
 

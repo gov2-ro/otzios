@@ -234,9 +234,9 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] maybe we should also look in the dictionaries themselves. Are we including really old dictionaries? We could make a page with per dictionary `diff`? Does dexonline dump cover all dictionaries listed here: https://clre.solirom.ro/  https://clre.solirom.ro/content/ro/list-of-lexicographical-works.html https://clre.solirom.ro/content/ro/statistics.html 
 
-- [ ] handle in browser curration - choices saved in browser memory and can be exported as json
+- [x] handle in browser curration - choices saved in browser memory and can be exported as json — **partly done**: annotations now sync to `private/app.db` via `api/sync.php`, so curation survives a browser wipe and follows the user across devices on the same account. localStorage remains the offline-first cache. A JSON *export* button is still missing; the data is reachable at `api/sync.php` with `{"since":0}`.
 
-- [ ] publish favorites, custom lists even to a web server. make it a collaborative experience. Eventually publish these currated lists and showcase popular words on the main website.
+- [x] publish favorites, custom lists even to a web server. make it a collaborative experience. Eventually publish these currated lists and showcase popular words on the main website. — named lists (`api/lists.php`) with a public page at `lista.php?l=<slug>`, plus a streak leaderboard (`api/leaderboard.php`). Identity is an anonymous device token; a display name is requested only when publishing. **Still open**: showcasing popular/curated lists on the landing page, and aggregating which words are most-bookmarked across users.
 
 - [ ] metadata navigator - add wordfreq and scarcity - the result of this project. 
 
@@ -285,7 +285,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 ### Extend
 
 - [x] quizzes — multiple-choice quiz (definition → pick the word, 4 same-POS choices, target word masked in the prompt) on `joc.php`, with streak/record in localStorage. Endpoint `api/quiz.php`.
-- [x] flash cards — word → reveal definition card on `joc.php` (shares `api/quiz.php`), with "păstrează" to bookmark.
+- [x] flash cards — word → reveal definition card on `joc.php` (shares `api/quiz.php`), with "păstrează" to bookmark. Button removed from the mode bar 2026-08-01; still reachable at `joc.php?mode=flash`.
+- [x] sensuri — reverse quiz (word → pick among 4 definitions) on `joc.php`, now the default mode. `api/quiz.php` returns an `options[]` array of `{word, definition}`; definitions are cleaned server-side (first segment before `|`, ≤200 chars) and low-quality entries are filtered out of the pool.
 
 ## 260519 Data Audit
 
@@ -313,3 +314,22 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] rare / Filter: `Maramureș` lists 'biodiversitate'
 
 - [ ] remove _diminutive_, maybe?
+### UI follow-ups (2026-08-01)
+
+- [ ] 🎲 "la întâmplare" — hidden in the brand bar pending a manual-selection design (pick from the current filter set rather than pure random). `surpriseWord()` + `r` shortcut still live; unhide the button in `index.php` when the design lands.
+
+- [x] Cmd/Ctrl+R hijacked by the `r` shortcut — global keydown handlers now ignore events carrying meta/ctrl/alt (`app.js`, `joc.php`).
+
+- [ ] Note textarea: Enter saves, so Shift+Enter can't insert a newline (`app.js` capture-phase handler on `#note-input`). Decide whether multi-line notes matter; if so, save on Cmd/Ctrl+Enter or blur instead.
+
+
+## Server-side accounts — follow-ups (2026-08-02)
+
+- [ ] **Account claiming via Google OAuth** — the device token is the account today, so clearing cookies loses it and one person on two devices is two users. Schema is ready: `users.auth_provider` / `auth_subject` / `email` are nullable and `devices.user_id` is re-pointable, so this is ~120 lines of vanilla PHP plus a device-merge query, no migration.
+- [ ] **Spaced repetition off `game_events`** — every answer is logged with word, correctness and response time. Enough to resurface words a user got wrong, and to compute a real per-word difficulty score (which is also a research signal: which "forgotten" words are genuinely unrecognisable).
+- [ ] **Word difficulty stats** — aggregate `game_events` by word to show a global correct-rate. Feeds the stats page and could rank the shortlist by how forgotten a word actually is in practice, not just by corpus frequency.
+- [ ] **JSON export button** — the data is already reachable via `api/sync.php` with `{"since":0}`; only a download button is missing. Closes the older "exported as json" item properly.
+- [ ] **Moderation for public lists** — publishing requires a nickname and list creation is rate-limited, but there is no report/takedown path. Needs a `reports` table and a minimal admin page behind a token in `config.local.php` before any real promotion of public lists.
+- [ ] **Backups for `private/app.db`** — the only irreplaceable file in the deploy (`ui.db` is regenerable from the pipeline). Confirm the host's backup covers a path outside the web root, or add a dump-to-disk cron.
+- [ ] **Verify WAL on the production host** — `app_db()` falls back to `journal_mode=TRUNCATE` when WAL is unavailable, which some NFS-backed shared hosts require. Check which mode is actually active after deploy: `PRAGMA journal_mode`.
+- [ ] **`feed_decisions` is written by nobody yet** — the table exists for the swipe game's keep/skip record, but `app.js` `feedKeep()`/`feedSkip()` still only set a bookmark. Wire it up to get a second signal (explicit rejection) distinct from "never seen".

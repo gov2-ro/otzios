@@ -190,6 +190,31 @@ body {
 .vt-btn.vt-active { background: var(--text); color: var(--bg); }
 
 /* ── Filter toggle button (always visible) ── */
+/* Play modes in the brand bar (🎲 / 📇) */
+.play-group { display: inline-flex; gap: 6px; }
+.play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color .15s, color .15s;
+}
+.play-btn:hover { border-color: var(--accent); color: var(--accent); }
+/* the class sets display, so [hidden] needs to win explicitly */
+.play-btn[hidden] { display: none; }
+/* Below the rail breakpoint the bar is tight — emoji alone carries it */
+@media (max-width: 1023px) { .play-label { display: none; } }
+
 .filter-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -209,6 +234,7 @@ body {
   transition: border-color .15s, color .15s;
 }
 .filter-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+.filter-toggle-btn.filter-toggle-active { border-color: var(--accent); color: var(--accent); }
 .filter-count-badge {
   display: inline-flex;
   align-items: center;
@@ -258,7 +284,20 @@ body {
 .theme-toggle--sm .tg-btn, .scale-stepper--sm .scale-btn { padding: 0 6px; font-size: 0.6875rem; }
 
 /* ══════════════════════════════════════════
-   WORD AREA (full width, no sidebar)
+   LAYOUT ROW — filter rail + word area
+   Below --rail-bp the rail is out of flow (fixed bottom drawer), so this
+   collapses to a plain column wrapper.
+══════════════════════════════════════════ */
+.layout-row {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════
+   WORD AREA
 ══════════════════════════════════════════ */
 .word-area {
   flex: 1;
@@ -1241,25 +1280,6 @@ body {
 }
 .fs-input:focus { outline: none; border-color: var(--accent); }
 
-/* Play buttons in sheet */
-.fs-section-play { gap: 6px; }
-.fs-play-btn {
-  display: block;
-  width: 100%;
-  padding: 8px 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text-2);
-  font-family: var(--sans);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  transition: background .1s, border-color .1s, color .1s;
-}
-.fs-play-btn:hover { background: var(--bg); border-color: var(--border-2); color: var(--text); }
-
 /* Sheet footer (apply button) */
 .fs-footer {
   flex-shrink: 0;
@@ -1294,6 +1314,50 @@ body {
   backdrop-filter: blur(1px);
 }
 .filter-backdrop.visible { display: block; }
+
+/* ══════════════════════════════════════════
+   DESKTOP: the same form, docked as a persistent left rail.
+   Filters stay visible while the list refreshes behind them — no backdrop,
+   no scroll lock, no round trip through a button to see what's on offer.
+══════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  .layout-row { flex-direction: row; }
+
+  .filter-sheet {
+    position: static;
+    transform: none;
+    flex: 0 0 288px;
+    width: 288px;
+    max-height: none;
+    height: auto;
+    min-height: 0;
+    border: none;
+    border-right: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--surface);
+    transition: flex-basis 220ms cubic-bezier(0.2, 0.9, 0.3, 1),
+                width 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  /* .open is the drawer's state class — irrelevant once docked */
+  .filter-sheet.open { max-height: none; }
+
+  .filter-sheet.rail-collapsed {
+    flex-basis: 0;
+    width: 0;
+    border-right: none;
+  }
+
+  /* Drawer-only chrome */
+  .fs-handle-wrap,
+  .fs-footer,
+  .fs-close { display: none; }
+  .filter-backdrop,
+  .filter-backdrop.visible { display: none; }
+
+  .fs-header { padding-top: 12px; }
+  .fs-body { overflow-y: auto; padding-bottom: 12px; }
+}
 
 /* ── Segmented controls (generic) ── */
 .seg {
@@ -1567,7 +1631,10 @@ kbd {
     min-width: 0;
     font-size: 1rem;
   }
-  .brand-right { order: 1; margin-left: auto; }
+  /* Tight bar: shrink the gaps so the play buttons fit next to the toggles */
+  .brand-right { order: 1; margin-left: auto; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .play-btn { padding: 0 7px; }
+  .filter-toggle-btn { padding: 0 8px; }
   .result-count { display: none; }
   .brand-tag { display: none; }
   .view-toggle { display: none; }
@@ -1643,4 +1710,88 @@ kbd {
     .bar-chart--wide { grid-template-columns: 1fr; }
     .stat-n { font-size: 1.25rem; }
   }
+}
+
+/* ── Word lists modal ────────────────────────────────────────────────────────── */
+
+#lists-overlay {
+  position: fixed; inset: 0;
+  background: rgba(28,25,22,.32);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+#lists-modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 22px 28px;
+  min-width: 460px; max-width: 560px;
+  max-height: 80vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(28,25,22,.18);
+}
+.lists-x {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 0.875rem; padding: 2px 6px;
+}
+.lists-x:hover { color: var(--text); }
+.lists-body { overflow-y: auto; }
+.lists-new { display: flex; gap: 8px; margin-bottom: 16px; }
+.lists-new input {
+  flex: 1; font-family: var(--sans); font-size: 0.8125rem;
+  padding: 6px 10px; border: 1px solid var(--border-2); border-radius: 4px;
+  background: var(--surface); color: var(--text);
+}
+.lists-new input:focus { outline: none; border-color: var(--accent); }
+.lists-empty { color: var(--text-3); font-size: 0.8125rem; padding: 14px 0; }
+.list-card { border-top: 1px solid var(--border); padding: 12px 0; }
+.list-card-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.list-name { font-family: var(--serif); font-weight: 600; color: var(--text); font-size: 1rem; }
+.list-count { font-family: var(--mono); font-size: 0.6875rem; color: var(--text-3); }
+.list-pub {
+  font-family: var(--mono); font-size: 0.625rem; padding: 1px 6px; border-radius: 8px;
+  background: var(--accent-bg); color: var(--accent);
+}
+.list-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+/* ── Leaderboard (joc.php) ───────────────────────────────────────────────────── */
+
+#board-overlay {
+  position: fixed; inset: 0;
+  background: rgba(28,25,22,.32);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+#board-modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  min-width: 380px; max-width: 520px;
+  max-height: 80vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(28,25,22,.18);
+}
+.board-head {
+  font-family: var(--serif); font-size: 1rem; font-weight: 600; color: var(--text);
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
+}
+.board-x { background: none; border: none; cursor: pointer; color: var(--text-3); padding: 2px 6px; }
+.board-x:hover { color: var(--text); }
+#board-body { overflow-y: auto; }
+.board-empty { color: var(--text-3); font-size: 0.8125rem; padding: 14px 0; }
+.board-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.board-table td { padding: 6px 4px; border-bottom: 1px solid var(--border); }
+.board-rank { font-family: var(--mono); font-size: 0.75rem; color: var(--text-3); width: 2.5em; }
+.board-name { color: var(--text); }
+.board-best { font-family: var(--mono); font-weight: 600; color: var(--accent); text-align: right; width: 3em; }
+.board-tot  { font-family: var(--mono); font-size: 0.6875rem; color: var(--text-3); text-align: right; width: 5em; }
+.board-you  { background: var(--accent-bg); }
+.board-you .board-name { font-weight: 600; }
+.board-self {
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-size: 0.8125rem; color: var(--text-2);
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+
+@media (max-width: 560px) {
+  #board-modal, #lists-modal { min-width: 0; width: 92%; padding: 16px; }
 }

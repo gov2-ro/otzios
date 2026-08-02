@@ -7,15 +7,21 @@ $registers  = vocab('register');
 $domains    = vocab('domain');
 $etyms      = vocab('etymology');
 
+// Cuvântul zilei — disabled. Flip to true to bring the banner back; the markup
+// and the JS (openWotd/dismissWotd/initWotd) are still in place.
+const SHOW_WOTD = false;
+
 $WOTD_FILTER = "word_tier='forgotten' AND has_definition=1 "
              . "AND (proper_noun_like IS NULL OR proper_noun_like=0) AND dict_count >= 3";
-$wotd       = null;
-$wotd_total = (int)db()->query("SELECT COUNT(*) FROM words WHERE $WOTD_FILTER")->fetchColumn();
-if ($wotd_total > 0) {
-    $seed = (int)floor(time() / 86400) % $wotd_total;
-    $ws   = db()->prepare("SELECT word, definition FROM words WHERE $WOTD_FILTER ORDER BY word LIMIT 1 OFFSET ?");
-    $ws->execute([$seed]);
-    $wotd = $ws->fetch() ?: null;
+$wotd = null;
+if (SHOW_WOTD) {
+    $wotd_total = (int)db()->query("SELECT COUNT(*) FROM words WHERE $WOTD_FILTER")->fetchColumn();
+    if ($wotd_total > 0) {
+        $seed = (int)floor(time() / 86400) % $wotd_total;
+        $ws   = db()->prepare("SELECT word, definition FROM words WHERE $WOTD_FILTER ORDER BY word LIMIT 1 OFFSET ?");
+        $ws->execute([$seed]);
+        $wotd = $ws->fetch() ?: null;
+    }
 }
 
 global $QUICK_TAGS, $POS_OPTIONS;
@@ -67,6 +73,16 @@ $tiers = [
       <span class="htmx-indicator brand-spinner" aria-hidden="true">…</span>
       <span id="result-count" class="result-count"><?= number_format((int)$total) ?></span>
 
+      <!-- Play modes (moved out of the filter panel — always reachable) -->
+      <div class="play-group" role="group" aria-label="Moduri de joc">
+        <!-- 🎲 hidden pending a manual-selection design; surpriseWord() is still
+             bound to the `r` shortcut and can be re-enabled by unhiding this. -->
+        <button type="button" class="play-btn" onclick="surpriseWord()" hidden
+                title="Cuvânt aleator din selecția curentă (r)">🎲 <span class="play-label">la întâmplare</span></button>
+        <button type="button" class="play-btn" onclick="enterFeed()"
+                title="Mod card: cuvânt cu cuvânt (f)">📇 <span class="play-label">feed</span></button>
+      </div>
+
       <!-- View toggle: cloud ⊞ / table ≡ -->
       <div class="view-toggle" id="view-toggle" role="group" aria-label="Mod de afișare">
         <button type="button" class="vt-btn vt-active" id="btn-cloud"
@@ -101,66 +117,13 @@ $tiers = [
   </header>
 
   <!-- ═══════════════════════════════════════
-       WORD AREA (full width)
+       LAYOUT ROW — filter rail (desktop) + word area.
+       Below 1024px the rail leaves the flow and becomes a bottom drawer.
   ══════════════════════════════════════════ -->
-  <div class="word-area">
-
-    <div id="playlist-banner" style="display:none">
-      <span id="playlist-count"></span>
-      <button class="playlist-btn" onclick="copyPlaylistUrl()">copy URL</button>
-      <button class="playlist-btn playlist-btn-exit" onclick="exitPlaylist()">✕ exit playlist</button>
-    </div>
-
-    <div id="active-filters" aria-label="Active filters"></div>
-
-    <?php if ($wotd): ?>
-    <div id="wotd-banner" data-word="<?= e($wotd['word']) ?>" style="display:none">
-      <span class="wotd-label">cuvântul zilei</span>
-      <button type="button" class="wotd-word" onclick="openWotd()"><?= e($wotd['word']) ?></button>
-      <?php if (!empty($wotd['definition'])): ?>
-      <span class="wotd-def"><?= e(mb_strimwidth($wotd['definition'], 0, 110, '…')) ?></span>
-      <?php endif; ?>
-      <button type="button" class="wotd-dismiss" onclick="dismissWotd()" aria-label="închide">✕</button>
-    </div>
-    <?php endif; ?>
-
-    <div id="app">
-      <div id="hover-box">
-        <div id="hb-word"></div>
-        <div id="hb-verdict-row">
-          <span id="hb-verdict" class="verdict-badge"></span>
-          <span id="hb-meta"></span>
-        </div>
-        <div id="hb-def"></div>
-      </div>
-      <div id="word-list-container">
-        <div id="word-list"
-             hx-get="<?= BASE ?>/api/search.php"
-             hx-trigger="load"
-             hx-include="#filter-form, #search"
-             hx-swap="innerHTML">
-          <span class="htmx-indicator">loading…</span>
-        </div>
-      </div>
-      <div id="detail-panel"></div>
-    </div>
-
-  </div><!-- .word-area -->
-
-  <!-- Status bar -->
-  <div id="status-bar">
-    <span class="status-left"><span id="status-word-count"><?= (int)$total ?></span> cuvinte · <span id="bookmark-count">0</span> favorite <button id="share-bookmarks-btn" onclick="shareBookmarks()" title="Copiază URL playlist" style="display:none">share ↗</button></span>
-    <span class="status-right">
-      <a href="<?= BASE ?>/joc.php">🎮 joc</a>
-      <a href="<?= BASE ?>/stats.php">📊 statistici</a>
-      <a href="<?= BASE ?>/metodologie.html">metodologie</a>
-      <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">GitHub</a>
-      <a href="#" onclick="showShortcuts();return false;"><kbd>?</kbd></a>
-    </span>
-  </div>
+  <div class="layout-row">
 
   <!-- ═══════════════════════════════════════
-       FILTER SHEET (always a bottom drawer)
+       FILTER SHEET / RAIL
   ══════════════════════════════════════════ -->
   <form id="filter-form"
         class="filter-sheet"
@@ -169,7 +132,7 @@ $tiers = [
         hx-target="#word-list"
         hx-include="#filter-form, #search">
 
-    <!-- Drag handle -->
+    <!-- Drag handle (drawer only) -->
     <div class="fs-handle-wrap"><div class="fs-handle"></div></div>
 
     <!-- Header -->
@@ -338,16 +301,9 @@ $tiers = [
         <?php endif; ?>
       </div>
 
-      <!-- Play modes -->
-      <div class="fs-section fs-section-play">
-        <div class="fs-label">mod</div>
-        <button type="button" class="fs-play-btn" onclick="surpriseWord(); toggleFilterDrawer();" title="Cuvânt aleator din selecția curentă (r)">🎲 la întâmplare</button>
-        <button type="button" class="fs-play-btn" onclick="enterFeed(); toggleFilterDrawer();" title="Mod card: cuvânt cu cuvânt (f)">📇 feed</button>
-      </div>
-
     </div><!-- .fs-body -->
 
-    <!-- Apply button -->
+    <!-- Apply button (drawer only) -->
     <div class="fs-footer">
       <button type="button" class="fs-apply" onclick="toggleFilterDrawer()">
         Arată <span id="result-count-sheet"><?= number_format((int)$total) ?></span> cuvinte
@@ -356,6 +312,64 @@ $tiers = [
 
     <input type="hidden" id="playlist-words" name="words" value="">
   </form>
+
+  <div class="word-area">
+
+    <div id="playlist-banner" style="display:none">
+      <span id="playlist-count"></span>
+      <button class="playlist-btn" onclick="copyPlaylistUrl()">copy URL</button>
+      <button class="playlist-btn playlist-btn-exit" onclick="exitPlaylist()">✕ exit playlist</button>
+    </div>
+
+    <div id="active-filters" aria-label="Active filters"></div>
+
+    <?php if ($wotd): ?>
+    <div id="wotd-banner" data-word="<?= e($wotd['word']) ?>" style="display:none">
+      <span class="wotd-label">cuvântul zilei</span>
+      <button type="button" class="wotd-word" onclick="openWotd()"><?= e($wotd['word']) ?></button>
+      <?php if (!empty($wotd['definition'])): ?>
+      <span class="wotd-def"><?= e(mb_strimwidth($wotd['definition'], 0, 110, '…')) ?></span>
+      <?php endif; ?>
+      <button type="button" class="wotd-dismiss" onclick="dismissWotd()" aria-label="închide">✕</button>
+    </div>
+    <?php endif; ?>
+
+    <div id="app">
+      <div id="hover-box">
+        <div id="hb-word"></div>
+        <div id="hb-verdict-row">
+          <span id="hb-verdict" class="verdict-badge"></span>
+          <span id="hb-meta"></span>
+        </div>
+        <div id="hb-def"></div>
+      </div>
+      <div id="word-list-container">
+        <div id="word-list"
+             hx-get="<?= BASE ?>/api/search.php"
+             hx-trigger="load"
+             hx-include="#filter-form, #search"
+             hx-swap="innerHTML">
+          <span class="htmx-indicator">loading…</span>
+        </div>
+      </div>
+      <div id="detail-panel"></div>
+    </div>
+
+  </div><!-- .word-area -->
+  </div><!-- .layout-row -->
+
+  <!-- Status bar -->
+  <div id="status-bar">
+    <span class="status-left"><span id="status-word-count"><?= (int)$total ?></span> cuvinte · <span id="bookmark-count">0</span> favorite <button id="share-bookmarks-btn" onclick="shareBookmarks()" title="Copiază URL playlist" style="display:none">share ↗</button></span>
+    <span class="status-right">
+      <a href="#" onclick="openLists();return false;">📋 liste</a>
+      <a href="<?= BASE ?>/joc.php">🎮 joc</a>
+      <a href="<?= BASE ?>/stats.php">📊 statistici</a>
+      <a href="<?= BASE ?>/metodologie.html">metodologie</a>
+      <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">GitHub</a>
+      <a href="#" onclick="showShortcuts();return false;"><kbd>?</kbd></a>
+    </span>
+  </div>
 
   <!-- Filter backdrop -->
   <div class="filter-backdrop" id="filter-backdrop" onclick="toggleFilterDrawer()"></div>
@@ -375,6 +389,23 @@ $tiers = [
   </div>
 
   <datalist id="tag-suggestions"></datalist>
+
+  <!-- Word lists: named, server-stored collections that can be published -->
+  <div id="lists-overlay" style="display:none" onclick="if(event.target===this)closeLists()">
+    <div id="lists-modal">
+      <div class="shortcuts-header">
+        <span>Listele mele</span>
+        <button class="lists-x" onclick="closeLists()">✕</button>
+      </div>
+      <div class="lists-body">
+        <div class="lists-new">
+          <input type="text" id="new-list-title" placeholder="nume listă nouă…" maxlength="120">
+          <button class="playlist-btn" onclick="createList()">+ creează</button>
+        </div>
+        <div id="lists-container"><p class="lists-empty">se încarcă…</p></div>
+      </div>
+    </div>
+  </div>
 
   <div id="shortcuts-overlay" style="display:none">
     <div id="shortcuts-modal">
@@ -406,6 +437,7 @@ $tiers = [
   </div>
 
   <script>var OTIOS_BASE = '<?= BASE ?>';</script>
+  <script src="<?= BASE ?>/assets/store.js"></script>
   <script src="<?= BASE ?>/assets/app.js"></script>
   <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
   <noscript><img src="https://queue.simpleanalyticscdn.com/noscript.gif" alt="" referrerpolicy="no-referrer-when-downgrade"/></noscript>

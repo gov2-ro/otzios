@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/_lib.php';
+require_once __DIR__ . '/_auth.php';
 
 $sort      = trim($_GET['sort']      ?? '');
 $page      = max(1, (int)($_GET['page'] ?? 1));
@@ -34,23 +34,40 @@ if ($playlist_words !== []) {
     $params       = array_merge($params, array_values($playlist_words));
 }
 
-// Client-driven marks filter
-if (in_array($marks, ['bookmarked', 'noted', 'marked'], true) || str_starts_with($marks, 'tag:')) {
-    if ($marked_words !== []) {
-        $placeholders = implode(',', array_fill(0, count($marked_words), '?'));
-        $conditions[] = "word IN ($placeholders)";
-        $params       = array_merge($params, array_values($marked_words));
-    } else {
-        // Filter matches nothing — return empty
-        $conditions[] = '1=0';
+// Marks filter.
+//
+// This used to be driven entirely by the client, which sent its whole bookmark list
+// as a `marked_words` query parameter — fine for a handful of words, but it grows the
+// URL without bound and breaks outright past a few hundred bookmarks. Now the
+// annotations live server-side, so this is a subquery against the attached app.db.
+//
+// `marked_words` is still honoured as a fallback for a browser whose local store has
+// not synced yet (offline, or a first visit mid-migration), so the filter never
+// silently returns nothing.
+$is_mark_filter = in_array($marks, ['bookmarked', 'noted', 'marked', 'unmarked'], true)
+                  || str_starts_with($marks, 'tag:');
+
+if ($is_mark_filter) {
+    $negate = $marks === 'unmarked';
+    $sub    = null;
+
+    if (attach_app_db()) {
+        $user = current_user();
+        $sub  = annotated_words_subquery($marks, (int) $user['id']);
     }
-} elseif ($marks === 'unmarked') {
-    if ($marked_words !== []) {
+
+    if ($sub !== null) {
+        [$sql, $sub_params] = $sub;
+        $conditions[] = 'word ' . ($negate ? 'NOT IN' : 'IN') . " ($sql)";
+        $params       = array_merge($params, $sub_params);
+    } elseif ($marked_words !== []) {
         $placeholders = implode(',', array_fill(0, count($marked_words), '?'));
-        $conditions[] = "word NOT IN ($placeholders)";
+        $conditions[] = 'word ' . ($negate ? 'NOT IN' : 'IN') . " ($placeholders)";
         $params       = array_merge($params, array_values($marked_words));
+    } elseif (!$negate) {
+        $conditions[] = '1=0';      // nothing is marked, so nothing matches
     }
-    // If no marked words, unmarked = all words — no extra condition needed
+    // unmarked with no marks at all = every word, so no condition is added
 }
 
 $where    = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
@@ -58,8 +75,7 @@ global $SORT_OPTIONS;
 $order_by = $SORT_OPTIONS[$sort] ?? $SORT_OPTIONS['rare'];
 
 // Count total matching rows
-$count_sql = "SELECT COUNT(*) FROM words $where";
-$total     = (int)db()->prepare($count_sql)->execute($params) ? db()->prepare($count_sql)->execute($params) : 0;
+$count_sql  = "SELECT COUNT(*) FROM words $where";
 $count_stmt = db()->prepare($count_sql);
 $count_stmt->execute($params);
 $total = (int)$count_stmt->fetchColumn();

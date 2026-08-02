@@ -880,11 +880,39 @@ The PHP web interface lives under `public/` and is equivalent to the Flask UI (`
 **Deploy**:
 1. `python tools/build_ui_db.py` → `public/data/ui.db`
 2. Upload `public/` to the web root.
-3. PHP 7.4+ with SQLite3 extension (default on most shared hosts).
+3. **PHP 8.0+** with `pdo_sqlite`, `mbstring` and `openssl` (default on most shared hosts).
+   The earlier "7.4+" here was wrong — the code uses `str_starts_with()` (`api/search.php`)
+   and `mixed` type hints (`api/_lib.php`), both 8.0-only.
+4. Ensure a **writable directory one level above the web root**. On first request the app
+   creates `<web root>/../private/` containing `app.db` (all user data) and `secret.key`.
+   Override the location with `public/api/config.local.php`:
+   ```php
+   <?php define('OTIOS_PRIVATE_DIR', '/home/you/otios-private');
+   ```
+
+**Two databases, and why**:
+
+| File | Written by | Contents | Backup |
+|---|---|---|---|
+| `public/data/ui.db` | `tools/build_ui_db.py`, offline | words, definitions, taxonomy | not needed — regenerable |
+| `<web root>/../private/app.db` | the app, at runtime | accounts, annotations, lists, game results | **required — irreplaceable** |
+
+`ui.db` is replaced wholesale on every data refresh, so user data must never live in it.
+It is also opened `query_only`; writes go through a separate connection in
+`api/_appdb.php`. Keep `app.db` outside the web root: `public/data/` is directly
+fetchable over HTTP (`public/data/.htaccess` blocks `.db` on Apache, but that is a
+second line of defence, not the first).
 
 **Run locally**:
 ```bash
 php -S localhost:8000 -t public/
+```
+
+**Tests** (need a server running):
+```bash
+php -S localhost:8777 -t public/ &
+node tests/test_store_sync.js     # annotation sync, offline queue, cross-device merge
+node tests/test_game_api.js       # quiz secrecy, replay rejection, streak counters
 ```
 
 **Architecture**:

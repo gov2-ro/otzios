@@ -23,3 +23,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .playwright-mcp
+# Server-side user data (accounts, annotations, lists, game results)
+/private/
+public/api/config.local.php
+!public/data/.htaccess
