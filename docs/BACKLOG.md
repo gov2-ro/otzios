@@ -224,6 +224,12 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] SEO Audit. Including `/llms.txt` 
 
+#### joc.php
+- [ ] filter out too easy queries - word part/segment that repeats in definition
+- [ ] one word can have multiple definitions, include within the choices?
+- [ ] mark words as unworthym, too simple 
+- [ ] add bookmarking, favorites, add to list here - by using the game we create an audit tool
+
 ## Misc
 
 - [x] create methodology, including activity log, look at activity log and commit history
