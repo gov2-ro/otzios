@@ -29,14 +29,28 @@ function normalize_lite(string $s): string {
     return normalize_diacritics($s);
 }
 
+function common_prefix_len(string $a, string $b): int {
+    $n = min(mb_strlen($a), mb_strlen($b));
+    for ($i = 0; $i < $n; $i++) {
+        if (mb_substr($a, $i, 1) !== mb_substr($b, $i, 1)) break;
+    }
+    return $i;
+}
+
 function reveals_word(string $word, string $segment): bool {
     $w = normalize_lite($word);
     // Too short for a stem match to mean anything — would false-positive constantly.
     if (mb_strlen($w) < 5) return false;
-    $stem = mb_substr($w, 0, max(4, mb_strlen($w) - 2));
     $norm = normalize_lite($segment);
     foreach (preg_split('/[^\p{L}]+/u', $norm, -1, PREG_SPLIT_NO_EMPTY) as $tok) {
-        if (mb_strlen($tok) >= 4 && str_starts_with($tok, $stem)) return true;
+        if (mb_strlen($tok) < 4) continue;
+        // A literal-prefix cut misses regular Romanian inflection, where the
+        // stem's last vowel alternates (purcică -> purceaua, "purc" shared,
+        // "ică"/"ea" diverge). Requiring the shared prefix to cover all but the
+        // last ~3 characters of the shorter string catches that without needing
+        // real stemming.
+        $shared = common_prefix_len($w, $tok);
+        if ($shared >= 4 && $shared >= min(mb_strlen($w), mb_strlen($tok)) - 3) return true;
     }
     return false;
 }
@@ -80,16 +94,18 @@ $pdo = db();
 $BASE = "word_tier='forgotten' AND definition IS NOT NULL";
 $base_params = [];
 
-// A word tagged 'simple' ("too simple / not worth quizzing") by this player is
-// excluded from their own pool — the same per-device annotation store that backs
-// bookmarks/notes/other quick-tags (see _appdb.php), just enforced here instead of
-// staying purely informational.
+// A word tagged 'ascunde' or 'meh' (both mean "not interesting, too well known")
+// by this player is excluded from their own pool — the same per-device annotation
+// store that backs bookmarks/other quick-tags (see _appdb.php), just enforced here
+// instead of staying purely informational.
 if (attach_app_db()) {
-    $sub = annotated_words_subquery('tag:simple', (int) $user['id']);
-    if ($sub !== null) {
-        [$sub_sql, $sub_params] = $sub;
-        $BASE       .= " AND word NOT IN ($sub_sql)";
-        $base_params = $sub_params;
+    foreach (['tag:ascunde', 'tag:meh'] as $marks) {
+        $sub = annotated_words_subquery($marks, (int) $user['id']);
+        if ($sub !== null) {
+            [$sub_sql, $sub_params] = $sub;
+            $BASE          .= " AND word NOT IN ($sub_sql)";
+            $base_params    = array_merge($base_params, $sub_params);
+        }
     }
 }
 

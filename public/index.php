@@ -388,8 +388,6 @@ $tiers = [
     <div class="feed-hint">← sari · păstrează → &nbsp;·&nbsp; sau glisează stânga/dreapta</div>
   </div>
 
-  <datalist id="tag-suggestions"></datalist>
-
   <!-- Word lists: named, server-stored collections that can be published -->
   <div id="lists-overlay" style="display:none" onclick="if(event.target===this)closeLists()">
     <div id="lists-modal">
@@ -415,7 +413,7 @@ $tiers = [
       </div>
       <table class="shortcuts-table">
         <tr><td colspan="2" class="shortcuts-group">Navigare</td></tr>
-        <tr><td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>l</kbd></td><td>Navigare grilă (↓ ↑ ← →)</td></tr>
+        <tr><td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>→</kbd></td><td>Navigare grilă (↓ ↑ ← →) — <kbd>l</kbd> e liber pentru <em>lol</em></td></tr>
         <tr><td><kbd>g</kbd><kbd>g</kbd></td><td>Salt la început</td></tr>
         <tr><td><kbd>G</kbd></td><td>Salt la final</td></tr>
         <tr><td colspan="2" class="shortcuts-group">Căutare</td></tr>
@@ -423,14 +421,10 @@ $tiers = [
         <tr><td><kbd>r</kbd></td><td>Cuvânt aleator</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Închide</td></tr>
         <tr><td colspan="2" class="shortcuts-group">Acțiuni</td></tr>
-        <tr><td><kbd>b</kbd></td><td>Toggle favorite</td></tr>
-        <tr><td><kbd>i</kbd></td><td><em>ignore</em></td></tr>
-        <tr><td><kbd>B</kbd></td><td><em>boring</em></td></tr>
-        <tr><td><kbd>f</kbd></td><td><em>funny</em></td></tr>
-        <tr><td><kbd>x</kbd></td><td><em>remove</em></td></tr>
-        <tr><td><kbd>s</kbd></td><td><em>simple</em> — prea simplu, nu merită quiz</td></tr>
-        <tr><td><kbd>t</kbd></td><td>Focus tag input</td></tr>
-        <tr><td><kbd>n</kbd></td><td>Focus notă</td></tr>
+        <tr><td><kbd>f</kbd></td><td><em>fav</em> — păstrează</td></tr>
+        <tr><td><kbd>a</kbd></td><td><em>ascunde</em> — neinteresant, prea cunoscut</td></tr>
+        <tr><td><kbd>l</kbd></td><td><em>lol</em> — amuzant</td></tr>
+        <tr><td><kbd>m</kbd></td><td><em>meh</em> — ca <em>ascunde</em>, zis altfel</td></tr>
         <tr><td><kbd>o</kbd></td><td>Deschide dexonline.ro</td></tr>
         <tr><td><kbd>?</kbd></td><td>Arată / ascunde shortcut-uri</td></tr>
       </table>

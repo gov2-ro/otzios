@@ -18,18 +18,28 @@ $stmt = $pdo->prepare('SELECT COUNT(*) FROM lists WHERE user_id = ?');
 $stmt->execute([$user['id']]);
 $lists = (int) $stmt->fetchColumn();
 
-$stmt = $pdo->prepare("SELECT streak, best_streak, total, correct FROM game_stats WHERE user_id = ? AND mode = 'all'");
+// Per mode, not the merged 'all' bucket: joc.php's header shows correct/missed for
+// whichever game is currently active, so it needs both games' tallies up front to
+// hydrate before the player's first answer of the session.
+$stmt = $pdo->prepare("SELECT mode, streak, best_streak, total, correct FROM game_stats WHERE user_id = ? AND mode IN ('sense', 'quiz')");
 $stmt->execute([$user['id']]);
-$stats = $stmt->fetch() ?: ['streak' => 0, 'best_streak' => 0, 'total' => 0, 'correct' => 0];
+$by_mode = ['sense' => null, 'quiz' => null];
+foreach ($stmt->fetchAll() as $r) {
+    $by_mode[$r['mode']] = [
+        'streak'  => (int) $r['streak'],
+        'best'    => (int) $r['best_streak'],
+        'total'   => (int) $r['total'],
+        'correct' => (int) $r['correct'],
+    ];
+}
+$empty = ['streak' => 0, 'best' => 0, 'total' => 0, 'correct' => 0];
 
 json_out([
     'public_id' => $user['public_id'],
     'nickname'  => $user['nickname'],
     'counts'    => ['annotations' => $annotations, 'lists' => $lists],
     'stats'     => [
-        'streak'  => (int) $stats['streak'],
-        'best'    => (int) $stats['best_streak'],
-        'total'   => (int) $stats['total'],
-        'correct' => (int) $stats['correct'],
+        'sense' => $by_mode['sense'] ?? $empty,
+        'quiz'  => $by_mode['quiz']  ?? $empty,
     ],
 ]);

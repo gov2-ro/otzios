@@ -4,6 +4,44 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-06 — Quick-tag redesign: fav / ascunde / lol / meh
+
+Collapsed the five quick-tags (`ignore`/`boring`/`funny`/`remove`/`simple`) into four: `fav` (the existing bookmark star), `ascunde`, `lol`, `meh`. Prompted by noticing `ignore`/`remove`/`simple` all did the same job — confirmed in code that only `simple` had real backend behavior (`quiz.php` exclusion), the other three were free-form labels with no differentiated logic despite an earlier backlog note assigning them distinct meanings. Full analysis in `docs/BACKLOG.md` under "Quick-tag redesign (2026-08-06)".
+
+- **Split into two axes**: `ascunde`+`meh` are two flavors of the same hide/quality signal (word is too common or not worth quizzing), `fav`+`lol` are the keep/vibe signal (the project's shareable-favorites hook). Renamed rather than dropped where there was a direct descendant (`funny`→`lol`, `boring`→`meh`).
+- **`quiz.php`** exclusion now checks `tag:ascunde` OR `tag:meh` (was `tag:simple` only) — loops `annotated_words_subquery()` per tag and ANDs the `NOT IN` clauses.
+- **Custom tag input + note textarea removed from the detail panel** (`detail.php`) per the "keep it simple for now" call — still fully functional server-side (`sync.php`, `private/app.db`) for any already-stored data, just not exposed in the UI. The now-orphaned `#tag-suggestions` datalist was also removed from `index.php`.
+- **Dismissable explainer**: new `#qt-explainer` banner in `detail.php`, shown once and dismissed via `localStorage['otios.qtExplainerDismissed']` (`store.js`: `qtExplainerDismissed()`/`dismissQtExplainer()`, wired into `hydrateDetail()` and the shared click-delegation handler). Every quick-tag button also carries a `title` tooltip with the same explanation, for after the banner's gone.
+- **`app.css`**: the strong red "extinct" active color (previously `remove`-only) now applies to both `ascunde` and `meh`, visually distinguishing the hide pair from `lol`'s default amber "tagged" color.
+
+**Follow-up, same day — shortcuts remapped to `f`/`a`/`l`/`m`, star restyled.** Keyboard shortcuts changed to mirror each tag's own first letter: `f`=fav (was `b`), `a`=ascunde, `l`=lol (was `f`), `m`=meh — updated in `app.js`'s keydown handler, `_lib.php`'s `$QUICK_TAGS`, and `store.js`'s `qtKeyToTag`. This meant resolving a real collision: bare `l` was already vim-style "move right" in the word grid, checked earlier in the same keydown handler, so it would have shadowed the `lol` toggle. Fixed by dropping `l` as a grid-nav alias and keeping `ArrowRight` only — `h`/`j`/`k` remain letter shortcuts, right is now arrow-only. `index.php`'s shortcuts legend updated to match (Navigare row now shows `→` instead of `l`, with a note that `l` is freed for `lol`). Bookmark button now reads "★ fav" as a static label (`detail.php`) instead of toggling between `★`/`☆` glyphs — `hydrateDetail()` in `store.js` no longer overwrites the button's `textContent`, just toggles the `.active` class. New `--star` CSS variable (`#D4A017` light / `#F2C230` dark) colors just the star glyph via a `.fav-star` span, independent of the "fav" text and the button's existing active/hover border-and-background styling.
+
+**Second follow-up, same day — `[f]` key badge on the fav button.** The three quick-tag buttons show their shortcut letter as a small `.qt-key` badge before the label (`[a] ascunde`); the fav button didn't. Reused the same `.qt-key` span in front of the star (`<span class="qt-key">f</span><span class="fav-star">★</span> fav`) for visual parity, and gave `#bookmark-btn` the same `display: inline-flex; gap: 4px` layout `.qt-btn` already uses so the badge/star/label space out consistently.
+
+Verified: `php -l` on every touched PHP file, `node --check` on `store.js`/`app.js`, and a `curl` against `api/word.php?word=barabor` on a local `php -S` server to confirm the rendered panel HTML matches (buttons, tooltips, explainer markup, star and key-badge markup all present). No Chrome extension available this session for an in-browser click-through — recommend a manual pass (toggle each tag, confirm quiz exclusion, confirm banner dismiss persists across reload, confirm the yellow star and key badge render correctly in both themes) before considering this fully closed.
+
+---
+
+## 2026-08-05 — quiz.php: tighten reveals_word() stem match
+
+The stem-cut in `reveals_word()` (`public/api/quiz.php`) required a candidate
+token to literally start with a fixed-length prefix of the headword. That
+missed Romanian's regular vowel-alternation inflections, e.g. `purcică` vs.
+the idiom `purceaua de coadă` — both share the root `purc-`, but the cut used
+5 characters (`purci`) while the token diverges after 4 (`purce...`), so the
+question shipped with the answer's own root sitting in the correct option's
+text. Replaced the fixed-length-prefix check with a common-prefix comparison
+that tolerates up to ~3 trailing characters of divergence relative to the
+shorter of word/token, scaling stricter for longer words. Applies uniformly
+to both game modes (sense/quiz) since both route through the same
+`pick_sense()`/`reveals_word()` pair — no mode-specific change needed.
+Verified against the reported case plus `mătura`/`bolovan` (previously
+caught) and an unrelated pair (`cartof` vs. its real definition, not
+flagged) with a standalone PHP snippet — no automated test harness for
+`quiz.php` exists yet.
+
+---
+
 ## 2026-08-05 — joc.php: quality-filtered questions, multi-sense quiz, "simple" tag, in-game curation panel
 
 The two games are also the main tool for auditing word-list quality, but the audit signal was noisy and one-way: some questions were trivially easy because the correct definition literally reused a stem of the headword (`mătura` → "...cu mătura"), `quiz.php` always used the first `|`-segment of `definition` even though DEX entries often pack several distinct senses into that column (`bolovan` has ~5, interleaved with citations), and none of the existing per-device annotation tooling (bookmark/note/`ignore`/`boring`/`funny`/`remove` tags, synced via `store.js` + `private/app.db`) was reachable from the game.

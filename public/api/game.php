@@ -101,15 +101,18 @@ try {
     throw $e;
 }
 
-$stmt = $pdo->prepare("SELECT streak, best_streak, total FROM game_stats WHERE user_id = ? AND mode = 'all'");
-$stmt->execute([$user_id]);
-$stats = $stmt->fetch() ?: ['streak' => 0, 'best_streak' => 0, 'total' => 0];
+// Own-mode bucket, not 'all': the header shows correct/missed for whichever game is
+// currently being played, so it needs that game's tally, not the merged total.
+$stmt = $pdo->prepare('SELECT streak, best_streak, total, correct FROM game_stats WHERE user_id = ? AND mode = ?');
+$stmt->execute([$user_id, $mode]);
+$stats = $stmt->fetch() ?: ['streak' => 0, 'best_streak' => 0, 'total' => 0, 'correct' => 0];
 
 json_out([
-    'correct'    => $correct,
-    'correct_id' => $correct_id,
-    'answer'     => $word,
-    'streak'     => (int) $stats['streak'],
-    'best'       => (int) $stats['best_streak'],
-    'total'      => (int) $stats['total'],
+    'correct'       => $correct,
+    'correct_id'    => $correct_id,
+    'answer'        => $word,
+    'streak'        => (int) $stats['streak'],
+    'best'          => (int) $stats['best_streak'],
+    'total'         => (int) $stats['total'],
+    'total_correct' => (int) $stats['correct'],
 ]);

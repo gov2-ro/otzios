@@ -65,12 +65,21 @@ function updateWord(word, patch) {
 // carry the '.word-detail-panel' class instead, and handlers look up the nearest one
 // from the click/keydown target.
 
-var QUICK_TAG_EMOJIS = { ignore: '🙈', boring: '💤', funny: '😄', remove: '❌', simple: '🐣' };
+var QUICK_TAG_EMOJIS = { ascunde: '🙈', lol: '😂', meh: '😐' };
 var QUICK_TAG_KEYS   = Object.keys(QUICK_TAG_EMOJIS);
+var QT_EXPLAINER_KEY = 'otios.qtExplainerDismissed';
 
 function qtKeyToTag(key) {
-  var map = { i: 'ignore', B: 'boring', f: 'funny', x: 'remove', s: 'simple' };
+  var map = { a: 'ascunde', l: 'lol', m: 'meh' };
   return map[key] || null;
+}
+
+function qtExplainerDismissed() {
+  try { return localStorage.getItem(QT_EXPLAINER_KEY) === '1'; } catch (_) { return false; }
+}
+
+function dismissQtExplainer() {
+  try { localStorage.setItem(QT_EXPLAINER_KEY, '1'); } catch (_) {}
 }
 
 function escHtml(s) {
@@ -91,7 +100,6 @@ function hydrateDetail(root) {
   var state = getWord(word);
 
   if (bookEl) {
-    bookEl.textContent = state.bookmarked ? '★' : '☆';
     bookEl.classList.toggle('active', !!state.bookmarked);
   }
 
@@ -104,14 +112,16 @@ function hydrateDetail(root) {
     });
 
     tagsEl.querySelectorAll('.custom-tag').forEach(function(el) { el.remove(); });
-    var input = tagsEl.querySelector('#tag-input');
     (state.tags || []).filter(function(t) { return !QUICK_TAG_KEYS.includes(t); }).forEach(function(t) {
       var span = document.createElement('span');
       span.className = 'tag custom-tag';
       span.innerHTML = escHtml(t) + ' <button class="tag-delete" data-tag="' + escHtml(t) + '" data-word="' + escHtml(word) + '">×</button>';
-      tagsEl.insertBefore(span, input);
+      tagsEl.appendChild(span);
     });
   }
+
+  var explainer = panel.querySelector('#qt-explainer');
+  if (explainer) explainer.style.display = qtExplainerDismissed() ? 'none' : '';
 }
 
 // Delegated on document.body so it works no matter how the panel HTML was inserted
@@ -120,6 +130,15 @@ function hydrateDetail(root) {
 // tests/test_store_sync.js, whose fake `document` has no `body`.
 if (typeof document !== 'undefined' && document.body) {
   document.body.addEventListener('click', function(e) {
+    var explainerClose = e.target.closest('#qt-explainer-close');
+    if (explainerClose) {
+      e.preventDefault();
+      dismissQtExplainer();
+      var box = explainerClose.closest('.qt-explainer');
+      if (box) box.style.display = 'none';
+      return;
+    }
+
     var bookBtn = e.target.closest('#bookmark-btn');
     if (bookBtn) {
       e.preventDefault();

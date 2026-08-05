@@ -21,19 +21,15 @@ $SORT_OPTIONS = [
 ];
 
 $QUICK_TAGS = [
-    ['ignore', 'i'],
-    ['boring', 'B'],
-    ['funny',  'f'],
-    ['remove', 'x'],
-    ['simple', 's'],
+    ['ascunde', 'a'],
+    ['lol',     'l'],
+    ['meh',     'm'],
 ];
 
 $QUICK_TAG_EMOJIS = [
-    'ignore' => '🙈',
-    'boring' => '💤',
-    'funny'  => '😄',
-    'remove' => '❌',
-    'simple' => '🐣',
+    'ascunde' => '🙈',
+    'lol'     => '😂',
+    'meh'     => '😐',
 ];
 
 $POS_OPTIONS = [

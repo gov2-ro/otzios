@@ -86,23 +86,19 @@ $meta_parts = array_filter([
   </div>
 
   <div class="fp-btns">
-    <button id="bookmark-btn" data-word="<?= e($w['word']) ?>">☆</button>
+    <button id="bookmark-btn" data-word="<?= e($w['word']) ?>" title="fav (f) — păstrează, cuvânt de care ești mândru"><span class="qt-key">f</span><span class="fav-star">★</span> fav</button>
     <div id="tags-row" data-word="<?= e($w['word']) ?>">
       <div class="quick-tags">
-        <button type="button" class="qt-btn" data-qtkey="i" title="ignore (i)"><span class="qt-key">i</span>ignore</button>
-        <button type="button" class="qt-btn" data-qtkey="B" title="boring (B)"><span class="qt-key">B</span>boring</button>
-        <button type="button" class="qt-btn" data-qtkey="f" title="funny (f)"><span class="qt-key">f</span>funny</button>
-        <button type="button" class="qt-btn" data-qtkey="x" title="remove (x)"><span class="qt-key">x</span>remove</button>
-        <button type="button" class="qt-btn" data-qtkey="s" title="simple (s) — too simple, not worth quizzing"><span class="qt-key">s</span>simple</button>
+        <button type="button" class="qt-btn" data-qtkey="a" title="ascunde (a) — neinteresant, prea cunoscut. Dispare din listă, îl regăsești în settings"><span class="qt-key">a</span>ascunde</button>
+        <button type="button" class="qt-btn" data-qtkey="l" title="lol (l) — amuzant, de păstrat"><span class="qt-key">l</span>lol</button>
+        <button type="button" class="qt-btn" data-qtkey="m" title="meh (m) — la fel ca ascunde, doar zis altfel. Dispare din listă, îl regăsești în settings"><span class="qt-key">m</span>meh</button>
       </div>
-      <input id="tag-input" type="text" name="tag" placeholder="add tag…"
-             list="tag-suggestions" autocomplete="off">
     </div>
   </div>
 
-  <div class="fp-note">
-    <textarea id="note-input" data-word="<?= e($w['word']) ?>" placeholder="note…"></textarea>
-    <div id="note-status" style="display:none;"></div>
+  <div id="qt-explainer" class="qt-explainer">
+    <span>★ <strong>fav</strong> și <strong>lol</strong> = cuvinte de păstrat. <strong>ascunde</strong> și <strong>meh</strong> = prea cunoscut, dispare din listă (îl regăsești în <em>settings</em>).</span>
+    <button type="button" id="qt-explainer-close" title="ascunde acest mesaj">✕</button>
   </div>
 
   <a class="dex-link"

@@ -660,7 +660,9 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'j' || e.key === 'ArrowDown')  { e.preventDefault(); navigateSpatial('down');  gPressed = false; return; }
   if (e.key === 'k' || e.key === 'ArrowUp')    { e.preventDefault(); navigateSpatial('up');    gPressed = false; return; }
   if (e.key === 'h' || e.key === 'ArrowLeft')  { e.preventDefault(); navigateSpatial('left');  gPressed = false; return; }
-  if (e.key === 'l' || e.key === 'ArrowRight') { e.preventDefault(); navigateSpatial('right'); gPressed = false; return; }
+  // Bare 'l' is the lol quick-tag shortcut below, not grid nav — ArrowRight still
+  // covers the vim-style hjkl direction.
+  if (e.key === 'ArrowRight') { e.preventDefault(); navigateSpatial('right'); gPressed = false; return; }
   if (e.key === 'G') { e.preventDefault(); selectRow(rows().length - 1); gPressed = false; return; }
   if (e.key === 'g') {
     if (gPressed) { selectRow(0); gPressed = false; }
@@ -669,7 +671,7 @@ document.addEventListener('keydown', function(e) {
   }
   if (e.key === 'r') { e.preventDefault(); surpriseWord(); return; }
   // Actions — call localStorage handlers instead of HTMX
-  if (e.key === 'b') {
+  if (e.key === 'f') {
     const btn = document.getElementById('bookmark-btn');
     if (btn) { e.preventDefault(); btn.click(); }
     return;
@@ -689,7 +691,7 @@ document.addEventListener('keydown', function(e) {
     if (ti) { e.preventDefault(); ti.focus(); }
     return;
   }
-  if (e.key === 'i' || e.key === 'B' || e.key === 'f' || e.key === 'x') {
+  if (e.key === 'a' || e.key === 'l' || e.key === 'm') {
     const btn = document.querySelector('#detail-panel .qt-btn[data-qtkey="' + e.key + '"]');
     if (btn) { e.preventDefault(); btn.click(); }
     return;

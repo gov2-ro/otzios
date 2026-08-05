@@ -143,7 +143,7 @@ require_once __DIR__ . '/api/_lib.php';
   <div id="board-overlay" style="display:none" onclick="if(event.target===this)closeBoard()">
     <div id="board-modal">
       <div class="board-head">
-        <span>Clasament · cele mai lungi serii</span>
+        <span id="board-title">Clasament · cele mai lungi serii</span>
         <button class="board-x" onclick="closeBoard()">✕</button>
       </div>
       <div id="board-body"><p class="board-empty">se încarcă…</p></div>
@@ -206,23 +206,39 @@ require_once __DIR__ . '/api/_lib.php';
     var answered = false;
     var askedAt = 0;       // for the per-answer response time recorded server-side
 
-    // ── Bookmarks (shared store in store.js, synced to the server) + quiz streak ──
+    // ── Bookmarks (shared store in store.js, synced to the server) + per-mode score ──
     function isBookmarked(w) { return !!getWord(w).bookmarked; }
     function toggleBookmark(w) { updateWord(w, { bookmarked: !isBookmarked(w) }); }
-    // Local mirror of the server's streak, so the score is on screen immediately on
-    // load instead of waiting for a round trip. The server remains authoritative.
-    function getQuizStats() {
-      try { return JSON.parse(localStorage.getItem('otios.quiz') || '{}') || {}; } catch (_) { return {}; }
+    // Local mirror of the server's per-mode correct/total, keyed by mode, so the score
+    // is on screen immediately on load instead of waiting for a round trip. Sense and
+    // quiz are tracked separately — they test different skills, so a streak or tally
+    // built up in one shouldn't bleed into the other's readout. The server remains
+    // authoritative.
+    function getQuizStats(m) {
+      try {
+        var all = JSON.parse(localStorage.getItem('otios.quiz') || '{}') || {};
+        return all[m] || { correct: 0, total: 0 };
+      } catch (_) { return { correct: 0, total: 0 }; }
     }
-    function setQuizStats(s) { try { localStorage.setItem('otios.quiz', JSON.stringify(s)); } catch (_) {} }
+    function setQuizStats(m, s) {
+      try {
+        var all = JSON.parse(localStorage.getItem('otios.quiz') || '{}') || {};
+        all[m] = s;
+        localStorage.setItem('otios.quiz', JSON.stringify(all));
+      } catch (_) {}
+    }
 
     function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
     function renderScore() {
-      var s = getQuizStats();
       var el = document.getElementById('joc-score');
-      if (mode === 'quiz' || mode === 'sense') el.textContent = 'serie: ' + (s.streak || 0) + ' · record: ' + (s.best || 0);
-      else el.textContent = '';
+      if (mode === 'quiz' || mode === 'sense') {
+        var s = getQuizStats(mode);
+        var total = s.total || 0, correct = s.correct || 0;
+        el.textContent = 'corecte: ' + correct + ' · ratate: ' + (total - correct);
+      } else {
+        el.textContent = '';
+      }
     }
 
     function syncModeButtons() {
@@ -240,7 +256,7 @@ require_once __DIR__ . '/api/_lib.php';
     }
 
     // ── Word-detail pane (full widget from the main page — tags, dictionaries,
-    // note, "simple" mark — reused as-is via store.js's hydrateDetail/handlers) ──
+    // fav/ascunde/lol/meh quick-tags — reused as-is via store.js's hydrateDetail/handlers) ──
     // Always visible rather than opened on demand. In `quiz` mode the word is
     // deliberately withheld from the client until grading, so the pane shows a
     // placeholder until showVerdict() reveals it; every other mode knows the word
@@ -451,7 +467,7 @@ require_once __DIR__ . '/api/_lib.php';
         }
       }
 
-      setQuizStats({ streak: d.streak, best: d.best });
+      setQuizStats(mode, { correct: d.total_correct, total: d.total });
       renderScore();
     }
 
@@ -477,12 +493,17 @@ require_once __DIR__ . '/api/_lib.php';
     // ── Leaderboard ──
     // Nothing here is client-asserted: game.php recomputes streaks server-side, so a
     // rank reflects answers the server actually graded.
+    var BOARD_MODE_LABEL = { sense: 'sensuri', quiz: 'grilă' };
     function openBoard() {
+      // flash isn't graded and has no leaderboard of its own — fall back to sense,
+      // matching the clamp leaderboard.php already applies server-side.
+      var boardMode = BOARD_MODE_LABEL[mode] ? mode : 'sense';
       document.getElementById('board-overlay').style.display = 'flex';
+      document.getElementById('board-title').textContent = 'Clasament · ' + BOARD_MODE_LABEL[boardMode] + ' · cele mai lungi serii';
       var body = document.getElementById('board-body');
       body.innerHTML = '<p class="board-empty">se încarcă…</p>';
 
-      fetch(base + '/api/leaderboard.php', { credentials: 'same-origin' })
+      fetch(base + '/api/leaderboard.php?mode=' + encodeURIComponent(boardMode), { credentials: 'same-origin' })
         .then(function(r) { return r.json(); })
         .then(function(d) {
           var rows = d.entries || [];
@@ -543,12 +564,14 @@ require_once __DIR__ . '/api/_lib.php';
     syncModeButtons();
     load();
 
-    // Reconcile the local score mirror with the server's, so a streak survives a
+    // Reconcile the local score mirror with the server's, so the tally survives a
     // cleared browser the same way bookmarks now do.
     if (typeof otiosMe === 'function') {
       otiosMe().then(function(me) {
         if (!me || !me.stats) return;
-        setQuizStats({ streak: me.stats.streak, best: me.stats.best });
+        ['sense', 'quiz'].forEach(function(m) {
+          if (me.stats[m]) setQuizStats(m, me.stats[m]);
+        });
         renderScore();
       });
     }
