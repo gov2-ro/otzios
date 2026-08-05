@@ -1,10 +1,9 @@
 // ── Page state ────────────────────────────────────────────────────────────────
 //
 // The research store itself (getResearch / getWord / updateWord) lives in store.js,
-// which is loaded before this file and shared with joc.php.
-
-const QUICK_TAG_EMOJIS = { ignore: '🙈', boring: '💤', funny: '😄', remove: '❌' };
-const QUICK_TAG_KEYS   = Object.keys(QUICK_TAG_EMOJIS);
+// which is loaded before this file and shared with joc.php. QUICK_TAG_EMOJIS,
+// hydrateDetail() and the bookmark/tag/note click handlers also live there now, for
+// the same reason — joc.php's word-detail panel needs them too.
 
 let openWord = null;
 let arrivedViaShare = false;   // true while opening the panel from a shared ?word= link
@@ -58,56 +57,6 @@ function hydrateRows(root) {
       overlay.remove();
     }
   });
-}
-
-function hydrateDetail(root) {
-  const panel = root || document.getElementById('detail-panel');
-  if (!panel) return;
-
-  const noteEl = panel.querySelector('#note-input');
-  const bookEl = panel.querySelector('#bookmark-btn');
-  const tagsEl = panel.querySelector('#tags-row');
-  if (!noteEl && !bookEl) return;
-
-  const word  = (noteEl || bookEl).dataset.word;
-  if (!word) return;
-  const state = getWord(word);
-
-  // bookmark button
-  if (bookEl) {
-    bookEl.textContent = state.bookmarked ? '★' : '☆';
-    bookEl.classList.toggle('active', !!state.bookmarked);
-  }
-
-  // note textarea
-  if (noteEl) noteEl.value = state.note || '';
-
-  // quick-tag buttons
-  if (tagsEl) {
-    tagsEl.querySelectorAll('.qt-btn[data-qtkey]').forEach(function(btn) {
-      const tag = qtKeyToTag(btn.dataset.qtkey);
-      if (tag) btn.classList.toggle('active', (state.tags || []).includes(tag));
-    });
-
-    // custom tag chips (re-render)
-    tagsEl.querySelectorAll('.custom-tag').forEach(function(el) { el.remove(); });
-    const input = tagsEl.querySelector('#tag-input');
-    (state.tags || []).filter(function(t) { return !QUICK_TAG_KEYS.includes(t); }).forEach(function(t) {
-      const span = document.createElement('span');
-      span.className = 'tag custom-tag';
-      span.innerHTML = escHtml(t) + ' <button class="tag-delete" data-tag="' + escHtml(t) + '" data-word="' + escHtml(word) + '">×</button>';
-      tagsEl.insertBefore(span, input);
-    });
-  }
-}
-
-function qtKeyToTag(key) {
-  const map = { i: 'ignore', B: 'boring', f: 'funny', x: 'remove' };
-  return map[key] || null;
-}
-
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── Bookmark count ──────────────────────────────────────────────────────────────
@@ -492,96 +441,6 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
 document.body.addEventListener('htmx:oobAfterSwap', function() {
   hydrateRows(document.getElementById('word-list'));
 });
-
-// ── Click handlers (delegated) ─────────────────────────────────────────────────
-
-document.body.addEventListener('click', function(e) {
-  // Bookmark button
-  const bookBtn = e.target.closest('#bookmark-btn');
-  if (bookBtn) {
-    e.preventDefault();
-    const word = bookBtn.dataset.word;
-    if (!word) return;
-    const state = getWord(word);
-    updateWord(word, { bookmarked: !state.bookmarked });
-    hydrateDetail(document.getElementById('detail-panel'));
-    hydrateRows(document.getElementById('word-list'));
-    updateBookmarkCount();
-    return;
-  }
-
-  // Quick-tag button
-  const qtBtn = e.target.closest('.qt-btn[data-qtkey]');
-  if (qtBtn) {
-    e.preventDefault();
-    const tagsRow = qtBtn.closest('#tags-row');
-    const word = tagsRow ? tagsRow.dataset.word : null;
-    if (!word) return;
-    const tag = qtKeyToTag(qtBtn.dataset.qtkey);
-    if (!tag) return;
-    const state = getWord(word);
-    const tags  = state.tags || [];
-    const next  = tags.includes(tag) ? tags.filter(function(t) { return t !== tag; }) : [...tags, tag];
-    updateWord(word, { tags: next });
-    hydrateDetail(document.getElementById('detail-panel'));
-    hydrateRows(document.getElementById('word-list'));
-    return;
-  }
-
-  // Custom tag delete
-  const delBtn = e.target.closest('.tag-delete');
-  if (delBtn) {
-    e.preventDefault();
-    const word = delBtn.dataset.word;
-    const tag  = delBtn.dataset.tag;
-    if (!word || !tag) return;
-    const state = getWord(word);
-    updateWord(word, { tags: (state.tags || []).filter(function(t) { return t !== tag; }) });
-    hydrateDetail(document.getElementById('detail-panel'));
-    hydrateRows(document.getElementById('word-list'));
-    populateTagDatalist();
-    populateTagFilterOptions();
-    return;
-  }
-});
-
-// Tag input — add custom tag on Enter
-document.body.addEventListener('keydown', function(e) {
-  const input = e.target.closest('#tag-input');
-  if (!input || e.key !== 'Enter') return;
-  e.preventDefault();
-  const val = input.value.trim();
-  if (!val) return;
-  const tagsRow = input.closest('#tags-row');
-  const word = tagsRow ? tagsRow.dataset.word : null;
-  if (!word) return;
-  const state = getWord(word);
-  const tags  = state.tags || [];
-  if (!tags.includes(val)) {
-    updateWord(word, { tags: [...tags, val] });
-    hydrateDetail(document.getElementById('detail-panel'));
-    hydrateRows(document.getElementById('word-list'));
-    populateTagDatalist();
-    populateTagFilterOptions();
-  }
-  input.value = '';
-}, true);
-
-// Note — save on Enter
-document.body.addEventListener('keydown', function(e) {
-  const textarea = e.target.closest('#note-input');
-  if (!textarea || e.key !== 'Enter') return;
-  e.preventDefault();
-  const word = textarea.dataset.word;
-  if (!word) return;
-  updateWord(word, { note: textarea.value });
-  const status = document.getElementById('note-status');
-  if (status) {
-    status.innerHTML = '<span class="saved-notice">saved</span>';
-    status.style.display = '';
-  }
-  hydrateRows(document.getElementById('word-list'));
-}, true);
 
 // ── Grid navigation (preserved from base.html) ─────────────────────────────────
 

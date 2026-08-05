@@ -32,6 +32,8 @@ require_once __DIR__ . '/api/_lib.php';
     .joc-score { margin-left:auto; font-family:var(--mono); font-size:0.75rem; color:var(--text-3); }
     .joc-nav a { font-family:var(--mono); font-size:0.75rem; color:var(--text-3); text-decoration:none; margin-left:12px; }
     .joc-nav a:hover { color:var(--text); }
+    /* Game card + word-detail pane: stacked on mobile, side-by-side on desktop. */
+    .joc-layout { flex:1; display:flex; flex-direction:column; min-height:0; }
     .joc-main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:24px 16px; }
     .joc-card {
       width:100%; max-width:640px; margin:auto; background:var(--surface); border:1px solid var(--border-2);
@@ -83,7 +85,31 @@ require_once __DIR__ . '/api/_lib.php';
     .joc-feedback.no { color:var(--error); }
     .joc-reveal { font-family:var(--mono); font-size:0.75rem; color:var(--text-3); margin-top:8px; }
     .joc-dexlink { color:var(--accent); font-size:0.75rem; text-decoration:none; }
+
+    /* Always-visible word-detail pane (reuses .fp-* content styling from app.css). */
+    #panel-pane {
+      border-top:1px solid var(--border);
+      background:var(--surface);
+    }
+    .panel-placeholder { padding:20px 16px; color:var(--text-3); font-family:var(--mono); font-size:0.8125rem; text-align:center; }
+    #panel-pane .fp-close { display:none; }   /* nothing to close — the pane is always shown */
+
+    /* Read-only comparison card for a wrong 'grilă' guess — the word itself gets no
+       bookmark/tags/notes (that would mean a second widget sharing element ids). */
+    .panel-compare { padding:14px 16px; border-top:1px dashed var(--border); }
+    .panel-compare-label { font-family:var(--mono); font-size:0.6875rem; color:var(--text-3); margin-bottom:4px; }
+    .panel-compare-def { font-family:var(--serif); font-size:0.9375rem; line-height:1.5; color:var(--text-2); }
+
     @media (max-width:768px) { .joc-word { font-size:2.1em; } .joc-def { font-size:1.0625rem; } .joc-choice--def { font-size:0.9375rem; } }
+
+    @media (min-width:900px) {
+      .joc-layout { flex-direction:row; align-items:stretch; }
+      .joc-main { flex:1; min-width:0; }
+      #panel-pane {
+        width:380px; flex-shrink:0; border-top:none; border-left:1px solid var(--border);
+        overflow-y:auto;
+      }
+    }
   </style>
 </head>
 <body>
@@ -105,8 +131,13 @@ require_once __DIR__ . '/api/_lib.php';
     <span class="joc-nav"><a href="#" onclick="openBoard();return false;">🏆 clasament</a><a href="<?= BASE ?>/">← acasă</a><a href="<?= BASE ?>/stats.php">statistici</a></span>
   </div>
 
-  <div class="joc-main">
-    <div class="joc-card" id="joc-card">se încarcă…</div>
+  <div class="joc-layout">
+    <div class="joc-main">
+      <div class="joc-card" id="joc-card">se încarcă…</div>
+    </div>
+    <div id="panel-pane" class="word-detail-panel">
+      <p class="panel-placeholder">se încarcă…</p>
+    </div>
   </div>
 
   <div id="board-overlay" style="display:none" onclick="if(event.target===this)closeBoard()">
@@ -208,6 +239,69 @@ require_once __DIR__ . '/api/_lib.php';
       return '<a class="joc-dexlink" href="https://dexonline.ro/definitie/' + encodeURIComponent(w) + '" target="_blank" rel="noopener">↗ dexonline.ro</a>';
     }
 
+    // ── Word-detail pane (full widget from the main page — tags, dictionaries,
+    // note, "simple" mark — reused as-is via store.js's hydrateDetail/handlers) ──
+    // Always visible rather than opened on demand. In `quiz` mode the word is
+    // deliberately withheld from the client until grading, so the pane shows a
+    // placeholder until showVerdict() reveals it; every other mode knows the word
+    // immediately and can populate the pane right away.
+    function showDetailPlaceholder(text) {
+      document.getElementById('panel-pane').innerHTML = '<p class="panel-placeholder">' + esc(text) + '</p>';
+    }
+    // hideDefinition: in 'sense' mode the raw definition is the very thing being
+    // guessed among the four choices, so showing it in the pane would just hand the
+    // answer over — the rest of the widget (dictionaries, tags, notes) is still useful.
+    function showWordDetail(word, hideDefinition) {
+      if (!word) return;
+      var pane = document.getElementById('panel-pane');
+      pane.innerHTML = '<p class="panel-placeholder">se încarcă…</p>';
+      fetch(base + '/api/word.php?word=' + encodeURIComponent(word), { credentials: 'same-origin' })
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+          pane.innerHTML = html;
+          if (hideDefinition) {
+            var def = pane.querySelector('.definition-text, .fp-nodef');
+            if (def) def.style.display = 'none';
+          }
+          hydrateDetail(pane);
+        })
+        .catch(function() { pane.innerHTML = '<p class="panel-placeholder">Nu am putut încărca detaliile.</p>'; });
+    }
+    // Pull just the title + definition out of a word.php fragment, for the read-only
+    // "you picked X" comparison card — the wrong choice gets no bookmark/tags/notes of
+    // its own (that would mean two widgets sharing the same element ids), just enough
+    // to see why it wasn't the answer.
+    function extractWordSummary(html) {
+      var tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      var title = tmp.querySelector('.fp-title');
+      var def   = tmp.querySelector('.definition-text');
+      return { word: title ? title.textContent : '', definition: def ? def.textContent : '(fără definiție locală)' };
+    }
+    // Wrong 'quiz' answer: show the correct word's full widget plus a lightweight
+    // comparison card for the word the player actually picked, so both definitions are
+    // visible side by side.
+    function showWordDetailCompare(correctWord, wrongWord) {
+      var pane = document.getElementById('panel-pane');
+      pane.innerHTML = '<p class="panel-placeholder">se încarcă…</p>';
+      Promise.all([
+        fetch(base + '/api/word.php?word=' + encodeURIComponent(correctWord), { credentials: 'same-origin' }).then(function(r) { return r.text(); }),
+        fetch(base + '/api/word.php?word=' + encodeURIComponent(wrongWord), { credentials: 'same-origin' }).then(function(r) { return r.text(); })
+      ]).then(function(results) {
+        var wrongSummary = extractWordSummary(results[1]);
+        pane.innerHTML = results[0] +
+          '<div class="panel-compare">' +
+            '<div class="panel-compare-label">ai ales „' + esc(wrongSummary.word) + '”</div>' +
+            '<div class="panel-compare-def">' + esc(wrongSummary.definition) + '</div>' +
+          '</div>';
+        hydrateDetail(pane);
+      }).catch(function() { pane.innerHTML = '<p class="panel-placeholder">Nu am putut încărca detaliile.</p>'; });
+    }
+    // detail.php's markup still carries a "✕" close button (hidden here via CSS,
+    // since there's nothing to close) that calls this by name — keep it a harmless
+    // no-op rather than leaving the name undefined.
+    window.closePanel = function() {};
+
     function load() {
       answered = false;
       askedAt = 0;
@@ -252,6 +346,7 @@ require_once __DIR__ . '/api/_lib.php';
         };
         document.getElementById('flash-next').onclick = load;
       };
+      showWordDetail(cur.word);
     }
 
     // Both graded modes render the same shape: a prompt plus four opaque choices,
@@ -273,18 +368,24 @@ require_once __DIR__ . '/api/_lib.php';
       });
     }
 
-    // One word, four candidate definitions.
+    // One word, four candidate definitions. The word is known up front, so the
+    // detail pane can populate immediately — but the definition itself is the puzzle,
+    // so it stays hidden in the pane until the round is decided some other way.
     function renderSense() {
       renderChoices('sensuri · ce înseamnă acest cuvânt?',
         '<div class="joc-word">' + esc(cur.word) + '</div>' +
         (cur.pos ? '<div class="joc-pos">' + esc(cur.pos) + '</div>' : ''),
         true);
+      showWordDetail(cur.word, true);
     }
 
-    // One definition, four candidate words. The definition arrives already masked.
+    // One definition, four candidate words. The definition arrives already masked, so
+    // the target word — and its detail pane — stay unknown until showVerdict() grades
+    // the answer.
     function renderQuiz() {
       renderChoices('grilă · ce cuvânt are acest sens?',
         '<div class="joc-def">' + esc(cur.definition) + '</div>', false);
+      showDetailPlaceholder('răspunde ca să vezi detaliile cuvântului');
     }
 
     function answer(choiceId) {
@@ -335,6 +436,20 @@ require_once __DIR__ . '/api/_lib.php';
 
       document.getElementById('quiz-actions').innerHTML = '<button class="joc-btn" id="quiz-next">următoarea →</button>';
       document.getElementById('quiz-next').onclick = load;
+
+      // 'sense' already populated the detail pane before answering (the word was
+      // never secret there); 'quiz' only learns the word now, from the grading
+      // response, so the pane can only be filled in at this point. On a wrong guess,
+      // compare both: the correct word's full widget plus what the player picked.
+      if (mode === 'quiz') {
+        if (d.correct) {
+          showWordDetail(d.answer);
+        } else {
+          var chosen = (cur.options || []).find(function(o) { return o.id === choiceId; });
+          if (chosen) showWordDetailCompare(d.answer, chosen.text);
+          else showWordDetail(d.answer);
+        }
+      }
 
       setQuizStats({ streak: d.streak, best: d.best });
       renderScore();

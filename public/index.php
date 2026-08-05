@@ -352,7 +352,7 @@ $tiers = [
           <span class="htmx-indicator">loading…</span>
         </div>
       </div>
-      <div id="detail-panel"></div>
+      <div id="detail-panel" class="word-detail-panel"></div>
     </div>
 
   </div><!-- .word-area -->
@@ -428,6 +428,7 @@ $tiers = [
         <tr><td><kbd>B</kbd></td><td><em>boring</em></td></tr>
         <tr><td><kbd>f</kbd></td><td><em>funny</em></td></tr>
         <tr><td><kbd>x</kbd></td><td><em>remove</em></td></tr>
+        <tr><td><kbd>s</kbd></td><td><em>simple</em> — prea simplu, nu merită quiz</td></tr>
         <tr><td><kbd>t</kbd></td><td>Focus tag input</td></tr>
         <tr><td><kbd>n</kbd></td><td>Focus notă</td></tr>
         <tr><td><kbd>o</kbd></td><td>Deschide dexonline.ro</td></tr>

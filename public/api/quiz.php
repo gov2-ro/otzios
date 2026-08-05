@@ -18,29 +18,84 @@ require_once __DIR__ . '/_auth.php';
 // The mode matters to the payload: in `quiz` the target word IS the answer, so it
 // must not appear at top level, and the definition is masked server-side.
 
-// DEX definitions append citations after pipes; keep the first segment only and
-// cap the length so all four options read at a comparable size.
-function clean_def(?string $def): string {
-    $d = trim(explode('|', (string) $def)[0]);
+// DEX definitions pack citations (quoted usage + "AUTHOR, WORK page.") and often
+// several distinct senses into the same pipe-delimited `definition` column — see
+// "bolovan", which has ~5 real senses interleaved with citations. `word` is masked
+// only in the eventual full definition text, so what needs catching here is a
+// definition that reuses the word's own stem (e.g. "mătura" -> "...cu mătura",
+// "bolovan" -> "Bolovan de sare") — that makes a question trivial no matter which
+// option it lands on, target or distractor.
+function normalize_lite(string $s): string {
+    return normalize_diacritics($s);
+}
+
+function reveals_word(string $word, string $segment): bool {
+    $w = normalize_lite($word);
+    // Too short for a stem match to mean anything — would false-positive constantly.
+    if (mb_strlen($w) < 5) return false;
+    $stem = mb_substr($w, 0, max(4, mb_strlen($w) - 2));
+    $norm = normalize_lite($segment);
+    foreach (preg_split('/[^\p{L}]+/u', $norm, -1, PREG_SPLIT_NO_EMPTY) as $tok) {
+        if (mb_strlen($tok) >= 4 && str_starts_with($tok, $stem)) return true;
+    }
+    return false;
+}
+
+function truncate_def(string $d): string {
     if (mb_strlen($d) <= 200) return $d;
     $cut = mb_substr($d, 0, 200);
     $sp  = mb_strrpos($cut, ' ');
     return rtrim($sp !== false ? mb_substr($cut, 0, $sp) : $cut, " ,;:") . '…';
 }
 
+// Picks one usable sense at random out of every pipe segment (not just the first) so
+// the same word can surface a different, still-valid definition on a later question.
+// A segment qualifies as a standalone sense when it's long enough, isn't a bare
+// cross-reference or truncated header, isn't a citation (any run of 3+ uppercase
+// letters is an author marker like EMINESCU or CREANGĂ), and doesn't give the word
+// away. Returns null when the word has no usable sense at all.
+function pick_sense(string $word, ?string $raw): ?string {
+    $candidates = [];
+    foreach (explode('|', (string) $raw) as $seg) {
+        $seg = trim($seg);
+        if (mb_strlen($seg) < 12) continue;
+        if (str_starts_with(mb_strtolower($seg), 'vezi ')) continue;
+        if (str_ends_with($seg, ':')) continue;
+        if (preg_match('/^[A-Z][A-Z]/', $seg)) continue;    // unparsed dump header, e.g. "FLAIM U C sm."
+        if (preg_match('/\p{Lu}{3,}/u', $seg)) continue;     // citation / author marker
+        if (reveals_word($word, $seg)) continue;
+        $candidates[] = truncate_def($seg);
+    }
+    if (!$candidates) return null;
+    return $candidates[array_rand($candidates)];
+}
+
 require_method('GET');
-current_user();          // establish the device identity before the first answer
+$user = current_user();          // establish the device identity before the first answer
 
 $mode = (string) ($_GET['mode'] ?? 'sense');
 if (!in_array($mode, ['sense', 'quiz', 'flash'], true)) $mode = 'sense';
 
 $pdo = db();
 $BASE = "word_tier='forgotten' AND definition IS NOT NULL";
-// Distractor definitions are displayed too, so hold them to the target's bar.
-// The last four drop definitions that can't stand alone as a quiz option: bare
-// cross-references ("vezi jeț"), truncated headers ("Compus:") and unparsed DEX
-// entries, which start with the headword in caps ("FLAIM U C sm. Tont…").
-// All four test the same first segment clean_def() keeps, not the raw column.
+$base_params = [];
+
+// A word tagged 'simple' ("too simple / not worth quizzing") by this player is
+// excluded from their own pool — the same per-device annotation store that backs
+// bookmarks/notes/other quick-tags (see _appdb.php), just enforced here instead of
+// staying purely informational.
+if (attach_app_db()) {
+    $sub = annotated_words_subquery('tag:simple', (int) $user['id']);
+    if ($sub !== null) {
+        [$sub_sql, $sub_params] = $sub;
+        $BASE       .= " AND word NOT IN ($sub_sql)";
+        $base_params = $sub_params;
+    }
+}
+
+// Distractor definitions are displayed too, so hold them to the target's bar. This is
+// a cheap SQL-level pre-filter on segment 1 only — pick_sense() re-checks every
+// segment in PHP, so this just keeps the RANDOM() pool from being mostly junk.
 $SEG = "trim(substr(definition, 1, coalesce(nullif(instr(definition,'|'), 0) - 1, length(definition))))";
 $QUALITY = "(proper_noun_like IS NULL OR proper_noun_like = 0) AND dict_count >= 3
             AND length($SEG) >= 12
@@ -48,55 +103,78 @@ $QUALITY = "(proper_noun_like IS NULL OR proper_noun_like = 0) AND dict_count >=
             AND $SEG NOT LIKE '%:'
             AND $SEG NOT GLOB '[A-Z][A-Z]*'";
 
-$target = $pdo->query(
-    "SELECT word, definition, dex_pos FROM words
-     WHERE $BASE AND $QUALITY
-     ORDER BY RANDOM() LIMIT 1"
-)->fetch();
+// pick_sense() rejects a real chunk of rows (self-revealing, citation-only, etc.), so
+// candidate selection over-fetches and filters in PHP rather than trusting a single
+// RANDOM() LIMIT row/set to already be usable. One retry at a larger limit before
+// giving up.
+$target = null;
+foreach ([20, 40] as $limit) {
+    $st = $pdo->prepare(
+        "SELECT word, definition, dex_pos FROM words
+         WHERE $BASE AND $QUALITY
+         ORDER BY RANDOM() LIMIT ?"
+    );
+    $st->execute([...$base_params, $limit]);
+    foreach ($st->fetchAll() as $row) {
+        $sense = pick_sense($row['word'], $row['definition']);
+        if ($sense !== null) { $target = ['word' => $row['word'], 'sense' => $sense, 'dex_pos' => $row['dex_pos']]; break 2; }
+    }
+}
 
 if (!$target) {
     json_out(['error' => 'no words']);
 }
 
 $pos_first = trim(explode('|', $target['dex_pos'] ?? '')[0]);
-$options   = [['word' => $target['word'], 'definition' => clean_def($target['definition'])]];
+$options   = [['word' => $target['word'], 'definition' => $target['sense']]];
+$used_words = [$target['word']];
 
+// Same part of speech first — same-POS distractors read more plausibly.
 if ($pos_first !== '') {
-    $st = $pdo->prepare(
-        "SELECT word, definition FROM words
-         WHERE $BASE AND $QUALITY AND word != ? AND ('|'||dex_pos||'|' LIKE ?)
-         ORDER BY RANDOM() LIMIT 3"
-    );
-    $st->execute([$target['word'], '%|' . $pos_first . '|%']);
-    foreach ($st->fetchAll() as $row) {
-        $def = clean_def($row['definition']);
-        if ($def !== '') { $options[] = ['word' => $row['word'], 'definition' => $def]; }
+    foreach ([20, 40] as $limit) {
+        if (count($options) >= 4) break;
+        $ph = implode(',', array_fill(0, count($used_words), '?'));
+        $st = $pdo->prepare(
+            "SELECT word, definition FROM words
+             WHERE $BASE AND $QUALITY AND word NOT IN ($ph) AND ('|'||dex_pos||'|' LIKE ?)
+             ORDER BY RANDOM() LIMIT ?"
+        );
+        $st->execute([...$base_params, ...$used_words, '%|' . $pos_first . '|%', $limit]);
+        foreach ($st->fetchAll() as $row) {
+            if (count($options) >= 4) break;
+            $sense = pick_sense($row['word'], $row['definition']);
+            if ($sense === null) continue;
+            $options[]    = ['word' => $row['word'], 'definition' => $sense];
+            $used_words[] = $row['word'];
+        }
     }
 }
 
-// Fill from the general pool if same-POS distractors were scarce or cleaned away
+// Fill from the general pool if same-POS distractors were scarce.
 if (count($options) < 4) {
-    $words = array_column($options, 'word');
-    $ph    = implode(',', array_fill(0, count($words), '?'));
-    $need  = 4 - count($options);
-    $st = $pdo->prepare(
-        "SELECT word, definition FROM words
-         WHERE $BASE AND $QUALITY AND word NOT IN ($ph)
-         ORDER BY RANDOM() LIMIT ?"
-    );
-    // Over-fetch: some rows clean down to an empty definition
-    $st->execute(array_merge($words, [$need * 3]));
-    foreach ($st->fetchAll() as $row) {
+    foreach ([20, 40] as $limit) {
         if (count($options) >= 4) break;
-        $def = clean_def($row['definition']);
-        if ($def !== '') { $options[] = ['word' => $row['word'], 'definition' => $def]; }
+        $ph = implode(',', array_fill(0, count($used_words), '?'));
+        $st = $pdo->prepare(
+            "SELECT word, definition FROM words
+             WHERE $BASE AND $QUALITY AND word NOT IN ($ph)
+             ORDER BY RANDOM() LIMIT ?"
+        );
+        $st->execute([...$base_params, ...$used_words, $limit]);
+        foreach ($st->fetchAll() as $row) {
+            if (count($options) >= 4) break;
+            $sense = pick_sense($row['word'], $row['definition']);
+            if ($sense === null) continue;
+            $options[]    = ['word' => $row['word'], 'definition' => $sense];
+            $used_words[] = $row['word'];
+        }
     }
 }
 
 shuffle($options);
 
 $word     = $target['word'];
-$full_def = clean_def($target['definition']);
+$full_def = $target['sense'];
 
 // Flash cards aren't graded and show both sides, so there is nothing to protect.
 if ($mode === 'flash') {

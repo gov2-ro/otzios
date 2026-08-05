@@ -93,6 +93,7 @@ $meta_parts = array_filter([
         <button type="button" class="qt-btn" data-qtkey="B" title="boring (B)"><span class="qt-key">B</span>boring</button>
         <button type="button" class="qt-btn" data-qtkey="f" title="funny (f)"><span class="qt-key">f</span>funny</button>
         <button type="button" class="qt-btn" data-qtkey="x" title="remove (x)"><span class="qt-key">x</span>remove</button>
+        <button type="button" class="qt-btn" data-qtkey="s" title="simple (s) — too simple, not worth quizzing"><span class="qt-key">s</span>simple</button>
       </div>
       <input id="tag-input" type="text" name="tag" placeholder="add tag…"
              list="tag-suggestions" autocomplete="off">

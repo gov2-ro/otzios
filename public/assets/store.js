@@ -57,6 +57,154 @@ function updateWord(word, patch) {
   markDirty(word);
 }
 
+// ── Word-detail panel ────────────────────────────────────────────────────────────
+//
+// The panel markup (public/api/_partials/detail.php) and the annotation-editing
+// behaviour are identical on index.php (sliding #detail-panel) and joc.php (a modal)
+// — only the container differs, so nothing here hardcodes an id. Both containers
+// carry the '.word-detail-panel' class instead, and handlers look up the nearest one
+// from the click/keydown target.
+
+var QUICK_TAG_EMOJIS = { ignore: '🙈', boring: '💤', funny: '😄', remove: '❌', simple: '🐣' };
+var QUICK_TAG_KEYS   = Object.keys(QUICK_TAG_EMOJIS);
+
+function qtKeyToTag(key) {
+  var map = { i: 'ignore', B: 'boring', f: 'funny', x: 'remove', s: 'simple' };
+  return map[key] || null;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function hydrateDetail(root) {
+  var panel = root || document.querySelector('.word-detail-panel');
+  if (!panel) return;
+
+  var noteEl = panel.querySelector('#note-input');
+  var bookEl = panel.querySelector('#bookmark-btn');
+  var tagsEl = panel.querySelector('#tags-row');
+  if (!noteEl && !bookEl) return;
+
+  var word = (noteEl || bookEl).dataset.word;
+  if (!word) return;
+  var state = getWord(word);
+
+  if (bookEl) {
+    bookEl.textContent = state.bookmarked ? '★' : '☆';
+    bookEl.classList.toggle('active', !!state.bookmarked);
+  }
+
+  if (noteEl) noteEl.value = state.note || '';
+
+  if (tagsEl) {
+    tagsEl.querySelectorAll('.qt-btn[data-qtkey]').forEach(function(btn) {
+      var tag = qtKeyToTag(btn.dataset.qtkey);
+      if (tag) btn.classList.toggle('active', (state.tags || []).includes(tag));
+    });
+
+    tagsEl.querySelectorAll('.custom-tag').forEach(function(el) { el.remove(); });
+    var input = tagsEl.querySelector('#tag-input');
+    (state.tags || []).filter(function(t) { return !QUICK_TAG_KEYS.includes(t); }).forEach(function(t) {
+      var span = document.createElement('span');
+      span.className = 'tag custom-tag';
+      span.innerHTML = escHtml(t) + ' <button class="tag-delete" data-tag="' + escHtml(t) + '" data-word="' + escHtml(word) + '">×</button>';
+      tagsEl.insertBefore(span, input);
+    });
+  }
+}
+
+// Delegated on document.body so it works no matter how the panel HTML was inserted
+// (htmx swap on index.php, plain fetch+innerHTML on joc.php). Guarded on
+// `document.body` because this file also runs inside a Node `vm` stub in
+// tests/test_store_sync.js, whose fake `document` has no `body`.
+if (typeof document !== 'undefined' && document.body) {
+  document.body.addEventListener('click', function(e) {
+    var bookBtn = e.target.closest('#bookmark-btn');
+    if (bookBtn) {
+      e.preventDefault();
+      var bWord = bookBtn.dataset.word;
+      if (!bWord) return;
+      var bState = getWord(bWord);
+      updateWord(bWord, { bookmarked: !bState.bookmarked });
+      hydrateDetail(e.target.closest('.word-detail-panel'));
+      if (typeof hydrateRows === 'function') hydrateRows(document.getElementById('word-list'));
+      if (typeof updateBookmarkCount === 'function') updateBookmarkCount();
+      return;
+    }
+
+    var qtBtn = e.target.closest('.qt-btn[data-qtkey]');
+    if (qtBtn) {
+      e.preventDefault();
+      var tagsRow = qtBtn.closest('#tags-row');
+      var qWord = tagsRow ? tagsRow.dataset.word : null;
+      if (!qWord) return;
+      var tag = qtKeyToTag(qtBtn.dataset.qtkey);
+      if (!tag) return;
+      var qState = getWord(qWord);
+      var qTags  = qState.tags || [];
+      var next   = qTags.includes(tag) ? qTags.filter(function(t) { return t !== tag; }) : qTags.concat([tag]);
+      updateWord(qWord, { tags: next });
+      hydrateDetail(e.target.closest('.word-detail-panel'));
+      if (typeof hydrateRows === 'function') hydrateRows(document.getElementById('word-list'));
+      return;
+    }
+
+    var delBtn = e.target.closest('.tag-delete');
+    if (delBtn) {
+      e.preventDefault();
+      var dWord = delBtn.dataset.word;
+      var dTag  = delBtn.dataset.tag;
+      if (!dWord || !dTag) return;
+      var dState = getWord(dWord);
+      updateWord(dWord, { tags: (dState.tags || []).filter(function(t) { return t !== dTag; }) });
+      hydrateDetail(e.target.closest('.word-detail-panel'));
+      if (typeof hydrateRows === 'function') hydrateRows(document.getElementById('word-list'));
+      if (typeof populateTagDatalist === 'function') populateTagDatalist();
+      if (typeof populateTagFilterOptions === 'function') populateTagFilterOptions();
+      return;
+    }
+  });
+
+  // Tag input — add custom tag on Enter
+  document.body.addEventListener('keydown', function(e) {
+    var input = e.target.closest('#tag-input');
+    if (!input || e.key !== 'Enter') return;
+    e.preventDefault();
+    var val = input.value.trim();
+    if (!val) return;
+    var tagsRow = input.closest('#tags-row');
+    var word = tagsRow ? tagsRow.dataset.word : null;
+    if (!word) return;
+    var state = getWord(word);
+    var tags  = state.tags || [];
+    if (!tags.includes(val)) {
+      updateWord(word, { tags: tags.concat([val]) });
+      hydrateDetail(e.target.closest('.word-detail-panel'));
+      if (typeof hydrateRows === 'function') hydrateRows(document.getElementById('word-list'));
+      if (typeof populateTagDatalist === 'function') populateTagDatalist();
+      if (typeof populateTagFilterOptions === 'function') populateTagFilterOptions();
+    }
+    input.value = '';
+  }, true);
+
+  // Note — save on Enter
+  document.body.addEventListener('keydown', function(e) {
+    var textarea = e.target.closest('#note-input');
+    if (!textarea || e.key !== 'Enter') return;
+    e.preventDefault();
+    var word = textarea.dataset.word;
+    if (!word) return;
+    updateWord(word, { note: textarea.value });
+    var status = document.getElementById('note-status');
+    if (status) {
+      status.innerHTML = '<span class="saved-notice">saved</span>';
+      status.style.display = '';
+    }
+    if (typeof hydrateRows === 'function') hydrateRows(document.getElementById('word-list'));
+  }, true);
+}
+
 // ── Outbound queue ────────────────────────────────────────────────────────────
 //
 // The queue holds only the set of touched words, not an event log: the payload is

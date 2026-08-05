@@ -25,6 +25,7 @@ $QUICK_TAGS = [
     ['boring', 'B'],
     ['funny',  'f'],
     ['remove', 'x'],
+    ['simple', 's'],
 ];
 
 $QUICK_TAG_EMOJIS = [
@@ -32,6 +33,7 @@ $QUICK_TAG_EMOJIS = [
     'boring' => '💤',
     'funny'  => '😄',
     'remove' => '❌',
+    'simple' => '🐣',
 ];
 
 $POS_OPTIONS = [

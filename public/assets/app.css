@@ -1795,3 +1795,7 @@ kbd {
 @media (max-width: 560px) {
   #board-modal, #lists-modal { min-width: 0; width: 92%; padding: 16px; }
 }
+
+/* joc.php's always-visible word-detail pane lives entirely in joc.php's own <style>
+   block (it's game-page layout, not a shared component) — it reuses the .fp-* content
+   classes styled above in the DETAIL PANEL section. */
