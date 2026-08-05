@@ -160,12 +160,17 @@ if (typeof document !== 'undefined' && document.body) {
       if (!qWord) return;
       var tag = qtKeyToTag(qtBtn.dataset.qtkey);
       if (!tag) return;
-      var qState = getWord(qWord);
-      var qTags  = qState.tags || [];
-      var next   = qTags.includes(tag) ? qTags.filter(function(t) { return t !== tag; }) : qTags.concat([tag]);
+      var qState    = getWord(qWord);
+      var qTags     = qState.tags || [];
+      var wasTagged = qTags.includes(tag);
+      var next      = wasTagged ? qTags.filter(function(t) { return t !== tag; }) : qTags.concat([tag]);
       updateWord(qWord, { tags: next });
       hydrateDetail(e.target.closest('.word-detail-panel'));
       if (typeof hydrateRows === 'function') hydrateRows(document.getElementById('word-list'));
+      // Newly hidden — pop the chip out of the grid instead of waiting for a re-search.
+      if (!wasTagged && (tag === 'ascunde' || tag === 'meh') && typeof fadeOutRow === 'function') {
+        fadeOutRow(qWord);
+      }
       return;
     }
 

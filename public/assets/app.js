@@ -59,6 +59,18 @@ function hydrateRows(root) {
   });
 }
 
+// Pop a word chip out of the grid when it just got tagged ascunde/meh — called from
+// store.js's quick-tag click handler, right after the tag itself is persisted.
+function fadeOutRow(word) {
+  const rows = document.querySelectorAll('#word-list .word-row[data-word]');
+  for (const row of rows) {
+    if (row.dataset.word !== word) continue;
+    row.classList.add('row-hiding');
+    row.addEventListener('animationend', function() { row.remove(); }, { once: true });
+    return;
+  }
+}
+
 // ── Bookmark count ──────────────────────────────────────────────────────────────
 
 function updateBookmarkCount() {

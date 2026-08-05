@@ -506,6 +506,16 @@ body {
 .word-row[data-selected] .chip-freq { color: rgba(250,247,241,.45); }
 .word-row[data-selected] .verdict-dot { opacity: .55; }
 
+/* Row removal — word just tagged ascunde/meh, popping out of the list */
+.word-row.row-hiding {
+  animation: rowPopOut .18s ease-in forwards;
+  pointer-events: none;
+}
+@keyframes rowPopOut {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(.6); }
+}
+
 /* Verdict dot */
 .verdict-dot {
   width: 6px;
