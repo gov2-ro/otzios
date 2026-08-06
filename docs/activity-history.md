@@ -4,6 +4,59 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-06 — Verdict as colour on the word itself, and a legend for the cloud
+
+The verdict dot cost 8px of square plus a 5px gap on every word. Replaced in the beton
+skin by colouring the headword instead — measured effect: **13px saved per word, 125 →
+138 words fully visible per 1440×900 screen (+10%), and 27 rows instead of 30 for the
+same 200 words.** Paper keeps its dots, so the two can be compared live with the ▤/▩
+toggle. Table view is untouched: it hides the dot already and states the verdict in the
+IST/EXT badge, so colouring there would say it twice.
+
+Getting the colours right took three passes, and the first two were wrong in instructive
+ways.
+
+1. **Reusing the badge palette failed WCAG.** As a fill behind a badge these colours only
+   had to clear 3:1; as 23px text on bone they need 4.5:1. Extinct was 4.09:1 and
+   declining was **2.36:1** — the orange was effectively unreadable as a headword.
+2. **Fixing contrast alone was still wrong.** At ~4.6:1 against ink's 15.5:1 the coloured
+   words were visibly *lighter* than black ones, so verdict was encoded as weight as well
+   as hue. Worse, `historical_only` is 41.8% of the corpus and the default sort surfaces
+   it almost exclusively — so a screen of hyperlink-blue words read as "everything here
+   is a link".
+3. **Making the plurality plain ink was also wrong** — tried it, and the landing view then
+   carried no verdict encoding at all.
+
+Settled on fitting all four to a common **~8.5:1**: one family distinguished by hue alone,
+close enough to ink that a page made entirely of any one of them still reads as a page of
+words. `#841009 / #663300 / #073C8D / #5313AC`. Dark mode needed no refit — every colour
+already clears 4.5:1 on near-black — but the hover wash did: at `#4A4200` the brighter
+verdicts dropped to 3.0–3.4:1 against it, so it went to `#241F00`, where all four clear
+4.5:1 and bone text improves from 8.97 to 14.61. Hover is still legible as a state because
+beton draws a bone border on it; the wash was never carrying that alone.
+
+Removing the dots makes verdict colour-only in the cloud, so the cloud now needs a key:
+
+- The rail's four verdict swatches are repainted in the same `-word` ramp. Showing the
+  brighter badge fill next to a darker word would make the key wrong.
+- A **Legendă** block was added to the `?` modal covering both the verdict colours and the
+  superscript number, which had never been explained anywhere: it is the DEX frequency
+  score, 0–100, lower = rarer. The superscript also gained a `title`.
+- That made the modal a legend as well as a shortcut list, so its heading — still the only
+  English string on the page, next to entirely Romanian content — became
+  "Legendă și scurtături".
+
+Verified by measurement, not by eye: at one point a screenshot looked like the old bright
+blue and the computed value was `rgb(7, 60, 141)` — a saturated navy at 2× just reads
+brighter than it is.
+
+Also written up in `docs/BACKLOG.md`: filtering by *which* dictionary and by most-recent
+attestation. Counting them is already built (`dict_min`); the recency signal is blocked on
+a `dictionary → year` map that exists nowhere — `dict_sources.db` is only `(word, sources,
+dict_count)`, and while some of the 73 dictionary names embed a year, most do not.
+
+---
+
 ## 2026-08-06 — Typographic pass: real columns, one tracking scale, ink emoji
 
 Follow-up to the beton skin, on the same branch. The ask was "good taste" — rhythm,

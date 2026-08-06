@@ -108,7 +108,13 @@
   --ink:     #F4F1E6;
   --on-ink:  #0B0B0A;
   --hl:      #F5DC00;
-  --hl-soft: #4A4200;
+  /* Deeper than it looks like it should be. The hover wash now sits behind
+     verdict-coloured headwords, and at #4A4200 the brighter ones dropped to
+     3.0–3.4:1 against it; at this value every verdict clears 4.5:1 and bone
+     text improves from 8.97 to 14.61. Hover stays legible as a state because
+     beton also draws a bone border on it — the wash was never carrying that
+     signal alone. */
+  --hl-soft: #241F00;
   --on-hl:   #14120F;
 }
 
@@ -380,8 +386,7 @@
 [data-skin="brutal"] .word-text { font-size: 1.4375rem; }
 [data-skin="brutal"] .chip-freq { font-weight: 600; }
 
-/* Dots are squares. It is the cheapest possible tell that you're in the other
-   skin, and it survives every context the dot appears in. */
+/* Dots are squares wherever they survive (table view hides them anyway). */
 [data-skin="brutal"] .verdict-dot {
   width: 8px;
   height: 8px;
@@ -390,6 +395,73 @@
 [data-skin="brutal"] .word-row[data-selected] .verdict-dot {
   opacity: 1;
   border-color: var(--on-ink);
+}
+
+/* ── Verdict as the word's own colour, in cloud view ──────────────────────────
+   The dot cost 8px of square plus a 5px gap on every one of 25,217 words — a
+   13px tax per word for a mark the eye reads as punctuation before it reads as
+   data. Colouring the headword carries the same signal in zero horizontal
+   space, and the cloud tightens noticeably.
+
+   This is deliberately skin-scoped: paper keeps its dots, so the two can be
+   compared live with the ▤/▩ toggle rather than from memory.
+
+   The badge palette could not simply be reused. As a fill behind a badge these
+   colours only had to clear 3:1; as 23px text on bone they need 4.5:1, and two
+   missed outright — extinct at 4.09:1 and declining at 2.36:1, the orange being
+   effectively unreadable.
+
+   Clearing 4.5:1 was necessary but not sufficient. At ~4.6:1 against ink's
+   15.5:1 the coloured words were visibly *lighter* than the black ones, so
+   verdict was being encoded as weight as well as hue — and since one verdict
+   dominates any given screen, whole pages went pale or, worse, uniformly
+   hyperlink-blue. The set below is instead fitted to a common ~8.5:1: one
+   family, distinguished by hue alone, close enough to ink that a page made
+   entirely of any one of them still reads as a page of words. */
+[data-skin="brutal"] {
+  --v-ext-word:  #841009;  /* 8.48:1 on bone — from #DE1B0F (4.09) */
+  --v-dec-word:  #663300;  /* 8.56:1 — from #F07800 (2.36, unreadable) */
+  --v-hist-word: #073C8D;  /* 8.56:1 — from #0A5AD4 (5.10, read as a link) */
+  --v-abs-word:  #5313AC;  /* 8.49:1 — from #7A2BE8 (5.23) */
+}
+[data-skin="brutal"][data-theme="dark"] {
+  --v-ext-word:  #FF4B33;  /* 5.91:1 on #0B0B0A */
+  --v-dec-word:  #FF9A1F;  /* 9.28:1 */
+  --v-hist-word: #4B93FF;  /* 6.49:1 */
+  --v-abs-word:  #A97CFF;  /* 6.58:1 */
+}
+
+/* Cloud view only. Table view already hides the dot and states the verdict in
+   the IST/EXT badge, so colouring there would be saying it twice.
+   All four are coloured, including `historical_only` at 41.8% of the corpus.
+   Leaving the plurality as plain ink was tried and is worse: the default sort
+   surfaces historical_only almost exclusively, so the landing view lost verdict
+   encoding altogether. At this contrast the navy carries the signal without
+   shouting. */
+[data-skin="brutal"] #word-list:not(.word-list-table) .verdict-dot { display: none; }
+[data-skin="brutal"] #word-list:not(.word-list-table) .word-row.verdict-extinct         .word-text { color: var(--v-ext-word); }
+[data-skin="brutal"] #word-list:not(.word-list-table) .word-row.verdict-declining       .word-text { color: var(--v-dec-word); }
+[data-skin="brutal"] #word-list:not(.word-list-table) .word-row.verdict-historical_only .word-text { color: var(--v-hist-word); }
+[data-skin="brutal"] #word-list:not(.word-list-table) .word-row.verdict-absent          .word-text { color: var(--v-abs-word); }
+
+/* The rail's verdict swatches are the only key the cloud has now that the dots
+   are gone, so they have to be painted in the same ramp as the words — showing
+   the brighter badge fill next to a darker word would make the key wrong.
+   !important because index.php sets each swatch inline from the render loop. */
+[data-skin="brutal"] .fs-pill-v-ext  .fs-dot { background: var(--v-ext-word)  !important; }
+[data-skin="brutal"] .fs-pill-v-dec  .fs-dot { background: var(--v-dec-word)  !important; }
+[data-skin="brutal"] .fs-pill-v-hist .fs-dot { background: var(--v-hist-word) !important; }
+[data-skin="brutal"] .fs-pill-v-abs  .fs-dot { background: var(--v-abs-word)  !important; }
+
+/* Selection paints an ink block, so the word has to come back off the palette.
+   Needs the id to outrank the four rules above. */
+[data-skin="brutal"] #word-list .word-row[data-selected] .word-text { color: var(--on-ink); }
+
+/* The dotted "învechit" underline is drawn in the extinct red, which now reads
+   as a second, contradictory verdict under a blue or purple word. Match the
+   word instead. */
+[data-skin="brutal"] #word-list:not(.word-list-table) .word-row.inv .word-text {
+  text-decoration-color: currentColor;
 }
 
 /* Underline marks get thicker — they have to survive an 800-weight grotesque. */

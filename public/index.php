@@ -415,10 +415,24 @@ $tiers = [
   <div id="shortcuts-overlay" style="display:none">
     <div id="shortcuts-modal">
       <div class="shortcuts-header">
-        <span>Keyboard shortcuts</span>
-        <span class="shortcuts-esc">Esc to close</span>
+        <span>Legendă și scurtături</span>
+        <span class="shortcuts-esc">Esc pentru închidere</span>
       </div>
       <table class="shortcuts-table">
+        <!-- Legend first: the cloud encodes two things with no label on them —
+             the superscript number and (in the beton skin, which drops the
+             verdict dot) the colour of the word itself. -->
+        <tr><td colspan="2" class="shortcuts-group">Legendă</td></tr>
+        <tr><td><span class="legend-freq">42</span></td>
+            <td>Frecvență DEX, <strong>0–100</strong> — cu cât e mai mic, cu atât cuvântul e mai rar</td></tr>
+        <tr><td><span class="legend-sw" style="background:var(--v-ext-word,var(--v-ext))"></span></td>
+            <td><em>dispărut din uz</em> — niciun semnal modern</td></tr>
+        <tr><td><span class="legend-sw" style="background:var(--v-dec-word,var(--v-dec))"></span></td>
+            <td><em>în declin</em> — încă folosit, dar tot mai rar</td></tr>
+        <tr><td><span class="legend-sw" style="background:var(--v-hist-word,var(--v-hist))"></span></td>
+            <td><em>doar istoric</em> — apare doar în surse istorice</td></tr>
+        <tr><td><span class="legend-sw" style="background:var(--v-abs-word,var(--v-abs))"></span></td>
+            <td><em>absent</em> — niciun semnal în corpus, posibil cel mai uitat</td></tr>
         <tr><td colspan="2" class="shortcuts-group">Navigare</td></tr>
         <tr><td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>→</kbd></td><td>Navigare grilă (↓ ↑ ← →) — <kbd>l</kbd> e liber pentru <em>lol</em></td></tr>
         <tr><td><kbd>g</kbd><kbd>g</kbd></td><td>Salt la început</td></tr>

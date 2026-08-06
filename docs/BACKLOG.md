@@ -461,6 +461,42 @@ kept bumping into. Roughly in order of how much they cost a first-time visitor.
   "that's all" state and no way to jump — with 25,217 words there is no pagination, no
   alphabet index, and no scroll position indicator beyond the browser's own scrollbar.
 
+## Filter by dictionary — which one, and how recent (2026-08-06)
+
+Counting dictionaries is already done: `dict_min` in the filter rail offers ≥3 / ≥6 /
+≥10 / ≥15, backed by the `sources` column (pipe-separated) and `dict_count`. What's
+missing is *which* dictionary and *how recent* — and the second is the more interesting
+signal this project has not yet used.
+
+Measured against `public/data/ui.db`: **73 distinct dictionaries**. The head is broad
+(MDA2 23,235 words · DEX '09 18,097 · DOR 17,279 · DEX '98 16,740 · Ortografic 16,621 ·
+DOOM 2 16,158 · DOOM 3 16,092 · DLRLC 15,934) and there is a long tail — roughly 30
+dictionaries appear in fewer than 200 words each (DGL 2, Șăineanu ed. I 1, DEX '16 1).
+
+- [ ] **Filter by specific dictionary.** A multi-select over the ~15 head dictionaries,
+  with the tail collapsed or excluded. "Words in Șăineanu but not in DEX '09" is close to
+  a definition of *forgotten* and the data already supports it — no new columns needed,
+  just `sources LIKE` or a normalised join table. A join table is worth building at this
+  point anyway: 73 values × 25k words is small, and `LIKE '%DEX '09%'` will mis-hit
+  (`DEX '09` is a substring of nothing here, but `DOOM` is a prefix of `DOOM 2`/`DOOM 3`,
+  and `MDA` of `MDA2`).
+
+- [ ] **Most-recent-attestation filter — needs a year map that does not exist yet.** This
+  is the valuable one: a word whose newest dictionary is Șăineanu (1929) is far more
+  forgotten than one still in DOOM 3 (2021), and that is a lexicographic signal entirely
+  independent of the corpus-frequency work in Phase 2. Blocker: **no year metadata
+  anywhere.** `dict_sources.db` is only `(word, sources, dict_count)`. Some names embed a
+  year (`DEX '09`, `DEX '98`, `DRAM 2021`, `MDN '00`, `Sinonime82`, `DEX '75`) but most do
+  not (`MDA2`, `DOR`, `Ortografic`, `DLRLC`, `Scriban`, `Șăineanu, ed. VI`, `NODEX`). Needs
+  a hand-curated `dictionary → publication year` table — 73 rows, one-off, and the head 15
+  cover the overwhelming majority of words. Once it exists it yields a `last_attested_year`
+  per word, which is sortable, filterable, and probably a better headline number than the
+  DEX frequency score currently in the superscript.
+
+- [ ] **Consider surfacing `last_attested_year` in the UI once it exists.** The detail
+  panel already lists the dictionaries a word appears in; adding "ultima atestare: 1929"
+  would be a stronger and more legible claim than `zipf0.0 … ratio3.12`.
+
 ## Typographic pass — remaining findings (2026-08-06)
 
 Found while driving the pages through Playwright at 2× and measuring computed style
