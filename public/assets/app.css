@@ -25,6 +25,11 @@
 
   --bar-h:     48px;
   --chip-h:    26px;
+  /* Height reserved for the status bar, which is fixed to the bottom on mobile.
+     Three things have to agree on it — the body's bottom padding, the detail
+     sheet's offset and the toast's — so they read it from here instead of each
+     repeating a number. Grows when the bar wraps to two rows on narrow phones. */
+  --statusbar-h: 44px;
   --radius:    4px;
   --sans:   'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --mono:   'IBM Plex Mono', monospace;
@@ -541,6 +546,13 @@ body {
   color: var(--text);
   letter-spacing: -0.01em;
   transition: color .12s;
+}
+
+.word-list-empty {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--text-3);
+  padding: 20px 24px;
 }
 
 /* Freq superscript */
@@ -1257,7 +1269,13 @@ body {
   background: var(--bg);
   border-color: var(--bg);
 }
-.fs-pill:has(input:checked) .fs-check::after { opacity: 1; }
+/* The tick is drawn in --bg, which is also the checked box's fill — so it was
+   invisible and a ticked pill read as an empty light square. Ink it. */
+.fs-pill:has(input:checked) .fs-check::after {
+  opacity: 1;
+  border-left-color: var(--text);
+  border-bottom-color: var(--text);
+}
 
 .fs-pill-sm {
   font-size: 0.6875rem;
@@ -1435,6 +1453,100 @@ body {
 }
 .seg-sm .seg-opt { font-size: 0.6875rem; padding: 0 7px; }
 
+/* ══════════════════════════════════════════
+   STATS-PAGE FILTER STRIP
+
+   stats.php lays its filters out as horizontal rows rather than the index
+   page's rail/drawer, and its classes had no rules anywhere — the page shipped
+   with raw browser checkboxes and unstyled selects. Everything is scoped under
+   .filter-row so `.tax-select`, which stats.php shares with the index rail's
+   `.fs-select`, can't reach across and clobber the rail's sizing.
+══════════════════════════════════════════ */
+.filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 7px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.flabel {
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-4);
+  margin-right: 2px;
+}
+.fsep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-2);
+  margin: 0 5px;
+  flex-shrink: 0;
+}
+.filter-row .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  color: var(--text-3);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: border-color .1s, color .1s;
+}
+.filter-row .pill input[type="checkbox"] {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.filter-row .pill:has(input:checked) { border-color: var(--border-2); color: var(--text); }
+.filter-row .pill:hover { border-color: var(--accent); }
+
+.filter-row .tax-select {
+  height: 26px;
+  max-width: 180px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.filter-row .tax-select:focus { outline: none; border-color: var(--accent); }
+.filter-row .tax-select.active { border-color: var(--text); color: var(--text); }
+
+.reset-btn {
+  height: 26px;
+  padding: 0 10px;
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: border-color .1s, color .1s;
+}
+.reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
 /* ── Status bar ── */
 #status-bar {
   padding: 5px 16px;
@@ -1454,6 +1566,14 @@ body {
 .status-right { display: flex; gap: 12px; align-items: center; }
 #status-bar a { color: var(--text-3); text-decoration: none; font-size: 0.6875rem; }
 #status-bar a:hover { color: var(--text); }
+/* stats.php's "← cuvinte" back-link — was a pile of inline styles plus
+   onmouseover/onmouseout colour swapping; the hover is just CSS. */
+#status-bar .status-home {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
 #share-bookmarks-btn {
   background: transparent; border: none; color: var(--text-3); font-family: var(--mono);
   font-size: 0.6875rem; cursor: pointer; padding: 0;
@@ -1463,7 +1583,7 @@ body {
 /* ── Toast ── */
 .toast {
   position: fixed;
-  bottom: 52px;
+  bottom: calc(var(--statusbar-h) + 8px);
   left: 50%;
   transform: translateX(-50%);
   background: var(--badge-bg);
@@ -1656,7 +1776,7 @@ kbd {
 @media (max-width: 768px) {
   :root { --bar-h: 52px; }
 
-  body { overflow: visible; height: auto; min-height: 100vh; padding-bottom: 44px; }
+  body { overflow: visible; height: auto; min-height: 100vh; padding-bottom: var(--statusbar-h); }
 
   .brand-bar {
     position: sticky;
@@ -1676,8 +1796,20 @@ kbd {
     min-width: 0;
     font-size: 1rem;
   }
-  /* Tight bar: shrink the gaps so the play buttons fit next to the toggles */
-  .brand-right { order: 1; margin-left: auto; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  /* Tight bar: shrink the gaps so the play buttons fit next to the toggles.
+     flex-shrink must be re-enabled here (the base rule pins it to 0) — otherwise
+     the cluster's hypothetical size stays at max-content, it never narrows far
+     enough for its own flex-wrap to engage, and below ~330px it just runs off
+     the right edge instead of dropping the toggles onto a second line. */
+  .brand-right {
+    order: 1;
+    margin-left: auto;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex-shrink: 1;
+    min-width: 0;
+  }
   .play-btn { padding: 0 7px; }
   .filter-toggle-btn { padding: 0 8px; }
   .result-count { display: none; }
@@ -1694,7 +1826,7 @@ kbd {
   /* Detail panel on mobile: fixed bottom sheet */
   #detail-panel {
     position: fixed !important;
-    bottom: 44px !important;
+    bottom: var(--statusbar-h) !important;
     left: 0 !important;
     right: 0 !important;
     z-index: 50 !important;
@@ -1755,6 +1887,31 @@ kbd {
     .bar-chart--wide { grid-template-columns: 1fr; }
     .stat-n { font-size: 1.25rem; }
   }
+}
+
+/* ══════════════════════════════════════════
+   NARROW PHONES (≤ 480px)
+
+   The status bar's two groups stop fitting on one line around here — measured
+   at 360px the right-hand link group runs ~24px past the viewport, and because
+   the bar is fixed it clips silently instead of scrolling. Stack the two groups
+   instead, and grow --statusbar-h so the body padding, detail sheet and toast
+   move down with it.
+══════════════════════════════════════════ */
+@media (max-width: 480px) {
+  :root { --statusbar-h: 62px; }
+
+  #status-bar {
+    height: var(--statusbar-h);
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    gap: 3px 12px;
+    padding: 5px 12px;
+  }
+  .status-left,
+  .status-right { flex: 1 1 100%; justify-content: center; text-align: center; }
+  .status-right { flex-wrap: wrap; }
 }
 
 /* ── Word lists modal ────────────────────────────────────────────────────────── */

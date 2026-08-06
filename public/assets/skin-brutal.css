@@ -1,0 +1,930 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   BETON — the brutalist skin.
+
+   Every rule here is scoped under [data-skin="brutal"], so this file is inert
+   until the skin is switched on and app.css alone is still the whole "paper"
+   look. Loaded after app.css on every page; the toggle lives next to the
+   light/dark one, and the two axes are independent (beton has its own dark).
+
+   The idea: a dictionary of dead words should read like a specimen sheet, not
+   like a magazine. So — bone paper, ink rules, one screaming red for actions
+   and one electric yellow that behaves like a highlighter pen. Nothing is
+   rounded, nothing is blurred, and every shadow is a hard offset block. The
+   type hierarchy is inverted against app.css on purpose: the grotesque carries
+   the headwords (they're specimens), the serif carries the definitions
+   (they're prose).
+══════════════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════
+   TOKENS
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] {
+  /* Bone paper, black ink. --border is ink too: hairlines are meant to be seen. */
+  --bg:        #EDEAE1;
+  --surface:   #E1DDD1;
+  --surface-2: #FFFFFF;
+  --border:    #14120F;
+  --border-2:  #14120F;
+  --text:      #14120F;
+  --text-2:    #3B372F;
+  --text-3:    #6B6459;
+  --text-4:    #918A7D;
+
+  /* Vermilion acts; yellow marks. --accent-bg is the highlighter field, which
+     is why banners built on it come out loud — they are supposed to. */
+  --accent:    #DE1B0F;
+  --accent-bg: #FFE500;
+  --badge-bg:  #14120F;
+
+  /* Verdicts stop being tinted labels and become solid blocks of colour. */
+  --v-ext:  #DE1B0F; --v-ext-bg:  #DE1B0F; --v-ext-bd:  #14120F; --v-ext-tx:  #FFFFFF;
+  --v-dec:  #F07800; --v-dec-bg:  #F07800; --v-dec-bd:  #14120F; --v-dec-tx:  #14120F;
+  --v-hist: #0A5AD4; --v-hist-bg: #0A5AD4; --v-hist-bd: #14120F; --v-hist-tx: #FFFFFF;
+  --v-abs:  #7A2BE8; --v-abs-bg:  #7A2BE8; --v-abs-bd:  #14120F; --v-abs-tx:  #FFFFFF;
+
+  --success: #0B7A2E; --success-bg: #C8F0D2; --success-border: #14120F;
+  --error:   #C4140A; --error-bg:   #FFD4D0; --error-border:   #14120F;
+  --on-accent: #FFFFFF;
+  --star:      #14120F;
+
+  /* Skin-local. --ink is the heavy stroke, --on-ink what sits on top of it. */
+  --ink:      #14120F;
+  --on-ink:   #EDEAE1;
+  --hl:       #FFE500;   /* highlighter — selection, marks, hard shadows */
+  --hl-soft:  #FFF48F;   /* the same pen, hovering */
+  /* Text on the highlighter. Stays dark in BOTH themes — the pen does not
+     invert, so --ink can't be used here: it flips to bone at night and puts
+     cream text on a yellow field. */
+  --on-hl:    #14120F;
+
+  --stroke:    2px;
+  --stroke-lg: 3px;
+  --shadow:    4px 4px 0 var(--ink);
+  --shadow-sm: 3px 3px 0 var(--ink);
+
+  --bar-h:  54px;
+  --chip-h: 28px;
+  --radius: 0;
+}
+
+/* Beton at night: the same drawing, inverted. Ink becomes bone, and the yellow
+   — which barely lifts off paper — does most of the work against the black. */
+[data-skin="brutal"][data-theme="dark"] {
+  --bg:        #0B0B0A;
+  --surface:   #16150F;
+  --surface-2: #1E1D16;
+  --border:    #4A4740;
+  --border-2:  #6F6A5E;
+  --text:      #F4F1E6;
+  --text-2:    #C4BFB0;
+  --text-3:    #928C7E;
+  --text-4:    #6B665B;
+
+  --accent:    #FF4B33;
+  --accent-bg: #F5DC00;
+  --badge-bg:  #F4F1E6;
+
+  --v-ext:  #FF4B33; --v-ext-bg:  #FF4B33; --v-ext-bd:  #F4F1E6; --v-ext-tx:  #14120F;
+  --v-dec:  #FF9A1F; --v-dec-bg:  #FF9A1F; --v-dec-bd:  #F4F1E6; --v-dec-tx:  #14120F;
+  --v-hist: #4B93FF; --v-hist-bg: #4B93FF; --v-hist-bd: #F4F1E6; --v-hist-tx: #14120F;
+  --v-abs:  #A97CFF; --v-abs-bg:  #A97CFF; --v-abs-bd:  #F4F1E6; --v-abs-tx:  #14120F;
+
+  --success: #3ED96B; --success-bg: #10331B; --success-border: #F4F1E6;
+  --error:   #FF6B5B; --error-bg:   #3A1210; --error-border:   #F4F1E6;
+  --on-accent: #14120F;
+  --star:      #F5DC00;
+
+  --ink:     #F4F1E6;
+  --on-ink:  #0B0B0A;
+  --hl:      #F5DC00;
+  --hl-soft: #4A4200;
+  --on-hl:   #14120F;
+}
+
+/* ══════════════════════════════════════════
+   GLOBAL — the two invariants
+
+   One blunt rule for each, deliberately. "Nothing is rounded" is a property of
+   the skin, not of any component, so it is cheaper and more reliable to state
+   it once than to chase every radius in app.css and the four pages that carry
+   their own <style> blocks. Anything added later inherits it for free.
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] *,
+[data-skin="brutal"] *::before,
+[data-skin="brutal"] *::after { border-radius: 0 !important; }
+
+/* Soft drop shadows are replaced one by one further down — listed here so the
+   blur is gone even where a component isn't restyled. */
+[data-skin="brutal"] #hover-box,
+[data-skin="brutal"] #detail-panel,
+[data-skin="brutal"] .filter-sheet,
+[data-skin="brutal"] .feed-card,
+[data-skin="brutal"] #shortcuts-modal,
+[data-skin="brutal"] #lists-modal,
+[data-skin="brutal"] #board-modal,
+[data-skin="brutal"] .joc-card { box-shadow: none; }
+
+/* Focus is structural here, not an afterthought — app.css turns the native
+   outline off on inputs, so state it properly for keyboard users. */
+[data-skin="brutal"] :focus-visible {
+  outline: var(--stroke-lg) solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ══════════════════════════════════════════
+   TYPOGRAPHY
+
+   app.css: serif headwords, sans body. Beton flips it — the grotesque names
+   the specimen, the serif explains it.
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] body {
+  font-size: 0.9375rem;
+  line-height: 1.3;
+}
+
+[data-skin="brutal"] .brand-name,
+[data-skin="brutal"] .word-text,
+[data-skin="brutal"] .fp-title,
+[data-skin="brutal"] #hb-word,
+[data-skin="brutal"] .feed-word,
+[data-skin="brutal"] .joc-word,
+[data-skin="brutal"] .lista-title,
+[data-skin="brutal"] .list-name,
+[data-skin="brutal"] .wotd-word {
+  font-family: var(--sans);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  font-style: normal;
+}
+
+/* Micro-labels: mono, upper, wide. */
+[data-skin="brutal"] .fs-title,
+[data-skin="brutal"] .stat-card-title,
+[data-skin="brutal"] .joc-prompt-label,
+[data-skin="brutal"] .fp-extra-label,
+[data-skin="brutal"] .wotd-label { letter-spacing: 0.16em; font-weight: 700; }
+
+/* Serif is for prose only — italic captions read as apology, not authority. */
+[data-skin="brutal"] .stat-l,
+[data-skin="brutal"] .stat-card-sub,
+[data-skin="brutal"] .shortcuts-group,
+[data-skin="brutal"] .feed-empty,
+[data-skin="brutal"] .bar-empty,
+[data-skin="brutal"] .stats-empty {
+  font-family: var(--mono);
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ══════════════════════════════════════════
+   BRAND BAR
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] .brand-bar {
+  border-bottom: var(--stroke-lg) solid var(--ink);
+  gap: 12px;
+}
+[data-skin="brutal"] .brand-name { font-size: 1.5rem; text-transform: lowercase; }
+[data-skin="brutal"] .brand-sep { display: none; }
+[data-skin="brutal"] .brand-tag {
+  background: var(--ink);
+  color: var(--on-ink);
+  padding: 3px 6px 2px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+[data-skin="brutal"] #search {
+  height: var(--chip-h);
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  font-family: var(--sans);
+  font-style: normal;
+  font-weight: 500;
+}
+[data-skin="brutal"] #search::placeholder { color: var(--text-3); font-style: normal; }
+[data-skin="brutal"] #search:focus {
+  border-color: var(--ink);
+  box-shadow: var(--shadow-sm);
+  outline: none;
+}
+
+[data-skin="brutal"] .result-count {
+  font-weight: 700;
+  color: var(--text-2);
+  letter-spacing: 0.06em;
+}
+
+/* ══════════════════════════════════════════
+   CONTROLS — segmented groups, buttons, pills
+
+   All of them share one gesture: a hard block that sits on a shadow and drops
+   onto it when pressed.
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] .view-toggle,
+[data-skin="brutal"] .theme-toggle,
+[data-skin="brutal"] .scale-stepper,
+[data-skin="brutal"] .seg {
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  height: var(--chip-h);
+}
+[data-skin="brutal"] .theme-toggle--sm,
+[data-skin="brutal"] .scale-stepper--sm { height: 22px; }
+
+[data-skin="brutal"] .vt-btn + .vt-btn,
+[data-skin="brutal"] .tg-btn + .tg-btn,
+[data-skin="brutal"] .scale-btn + .scale-btn,
+[data-skin="brutal"] .seg-opt + .seg-opt { border-left: var(--stroke) solid var(--ink); }
+
+[data-skin="brutal"] .vt-btn,
+[data-skin="brutal"] .tg-btn,
+[data-skin="brutal"] .scale-btn,
+[data-skin="brutal"] .seg-opt { color: var(--text-2); font-weight: 700; }
+
+[data-skin="brutal"] .vt-btn:hover,
+[data-skin="brutal"] .tg-btn:hover,
+[data-skin="brutal"] .scale-btn:hover:not(:disabled),
+[data-skin="brutal"] .seg-opt:hover { background: var(--hl-soft); color: var(--text); }
+
+[data-skin="brutal"] .vt-btn.vt-active,
+[data-skin="brutal"] .tg-btn.tg-active,
+[data-skin="brutal"] .seg-opt:has(input:checked) { background: var(--ink); color: var(--on-ink); }
+
+[data-skin="brutal"] .play-btn,
+[data-skin="brutal"] .filter-toggle-btn {
+  height: var(--chip-h);
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: background .1s, transform .06s, box-shadow .06s;
+}
+[data-skin="brutal"] .play-btn:hover,
+[data-skin="brutal"] .filter-toggle-btn:hover { background: var(--hl); color: var(--on-hl); }
+[data-skin="brutal"] .play-btn:active,
+[data-skin="brutal"] .filter-toggle-btn:active { transform: translate(1px, 1px); }
+[data-skin="brutal"] .filter-toggle-btn.filter-toggle-active {
+  background: var(--ink);
+  color: var(--on-ink);
+  border-color: var(--ink);
+}
+[data-skin="brutal"] .filter-count-badge {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 1px solid var(--ink);
+  font-weight: 700;
+  min-width: 17px;
+}
+[data-skin="brutal"] .filter-toggle-btn.filter-toggle-active .filter-count-badge { border-color: var(--on-ink); }
+
+/* ── Active-filter chips: torn-off tags with a hard square dismiss ── */
+[data-skin="brutal"] #active-filters { border-bottom: var(--stroke) solid var(--ink); }
+[data-skin="brutal"] .af-chip {
+  border: var(--stroke) solid var(--ink);
+  background: var(--hl);
+  color: var(--on-hl);
+  font-weight: 700;
+  padding: 2px 5px 2px 8px;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+}
+[data-skin="brutal"] .af-chip button {
+  background: var(--on-hl);
+  color: var(--hl);
+  width: 15px;
+  height: 15px;
+  font-weight: 700;
+}
+[data-skin="brutal"] .af-clear-all {
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ══════════════════════════════════════════
+   WORD CLOUD
+
+   Rest state stays clean — the words are the picture. The pen only comes out
+   on hover; selection is a solid block of ink casting a yellow shadow.
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] #word-list { gap: 12px 22px; }
+
+[data-skin="brutal"] .word-row {
+  padding: 3px 7px;
+  border: var(--stroke) solid transparent;
+  transition: background .1s, border-color .1s;
+}
+[data-skin="brutal"] .word-row:hover {
+  background: var(--hl-soft);
+  border-color: var(--ink);
+}
+[data-skin="brutal"] .word-row[data-selected] {
+  background: var(--ink);
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--hl);
+}
+[data-skin="brutal"] .word-row[data-selected] .word-text { color: var(--on-ink); }
+[data-skin="brutal"] .word-row[data-selected] .chip-freq { color: var(--on-ink); opacity: .6; }
+
+[data-skin="brutal"] .word-list-empty {
+  font-family: var(--mono);
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+
+[data-skin="brutal"] .word-text { font-size: 1.4375rem; }
+[data-skin="brutal"] .chip-freq { font-weight: 600; }
+
+/* Dots are squares. It is the cheapest possible tell that you're in the other
+   skin, and it survives every context the dot appears in. */
+[data-skin="brutal"] .verdict-dot {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--ink);
+}
+[data-skin="brutal"] .word-row[data-selected] .verdict-dot {
+  opacity: 1;
+  border-color: var(--on-ink);
+}
+
+/* Underline marks get thicker — they have to survive an 800-weight grotesque. */
+[data-skin="brutal"] .word-row.inv .word-text,
+[data-skin="brutal"] .word-row.bookmarked .word-text {
+  text-decoration-thickness: 3px;
+  text-underline-offset: 3px;
+}
+[data-skin="brutal"] .word-row.bookmarked .word-text { text-decoration-style: solid; }
+[data-skin="brutal"] .word-row[data-selected].inv .word-text,
+[data-skin="brutal"] .word-row[data-selected].bookmarked .word-text { text-decoration-color: var(--on-ink); }
+
+/* ── Table view: a ledger ── */
+[data-skin="brutal"] #word-list.word-list-table .word-row {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 9px 16px;
+}
+[data-skin="brutal"] #word-list.word-list-table .word-row:hover { background: var(--hl-soft); }
+[data-skin="brutal"] #word-list.word-list-table .word-row[data-selected] {
+  background: var(--ink);
+  box-shadow: none;
+}
+[data-skin="brutal"] #word-list.word-list-table .word-text { font-size: 1.0625rem !important; }
+[data-skin="brutal"] #word-list.word-list-table .chip-vbadge {
+  border: 1px solid var(--ink);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 5px;
+}
+[data-skin="brutal"] .chip-vbadge::before { display: none; }
+[data-skin="brutal"] .word-row[data-selected] .chip-vbadge {
+  background: var(--on-ink);
+  color: var(--ink);
+  border-color: var(--on-ink);
+}
+[data-skin="brutal"] #word-list.word-list-table .word-row[data-selected] .chip-meta,
+[data-skin="brutal"] #word-list.word-list-table .word-row[data-selected] .chip-dict { color: var(--on-ink); }
+
+/* Chunky square scrollbars — the scroll position is part of the drawing. */
+[data-skin="brutal"] #word-list-container::-webkit-scrollbar { width: 10px; }
+[data-skin="brutal"] #word-list-container::-webkit-scrollbar-track {
+  background: var(--surface);
+  border-left: 1px solid var(--ink);
+}
+[data-skin="brutal"] #word-list-container::-webkit-scrollbar-thumb { background: var(--ink); }
+[data-skin="brutal"] #word-list-container::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+[data-skin="brutal"] .fp-body::-webkit-scrollbar { width: 8px; }
+[data-skin="brutal"] .fp-body::-webkit-scrollbar-thumb { background: var(--ink); }
+
+/* ══════════════════════════════════════════
+   BANNERS
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] #wotd-banner,
+[data-skin="brutal"] #playlist-banner {
+  background: var(--hl);
+  border-bottom: var(--stroke) solid var(--ink);
+  color: var(--on-hl);
+}
+[data-skin="brutal"] .wotd-label { color: var(--on-hl); }
+[data-skin="brutal"] .wotd-word { border-bottom: var(--stroke) solid var(--on-hl); color: var(--on-hl); }
+[data-skin="brutal"] .wotd-def { color: var(--on-hl); font-style: normal; }
+[data-skin="brutal"] #playlist-banner { color: var(--on-hl); font-weight: 700; text-transform: uppercase; }
+/* Sits on the yellow banner but carries its own surface, so it follows the
+   normal text colour rather than the on-highlighter one. */
+[data-skin="brutal"] .playlist-btn {
+  border: var(--stroke) solid var(--ink);
+  color: var(--text);
+  background: var(--surface-2);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+[data-skin="brutal"] .playlist-btn:hover { background: var(--ink); color: var(--on-ink); }
+
+/* ══════════════════════════════════════════
+   HOVER BOX + DETAIL PANEL
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] #hover-box {
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+  width: 280px;
+}
+[data-skin="brutal"] #hb-word { font-size: 1.5rem; }
+
+[data-skin="brutal"] #detail-panel {
+  border-top: var(--stroke-lg) solid var(--ink);
+  box-shadow: none;
+  background: var(--surface-2);
+}
+@media (min-width: 769px) {
+  [data-skin="brutal"] #app.has-panel #detail-panel {
+    border-left: var(--stroke-lg) solid var(--ink) !important;
+    box-shadow: none !important;
+    background: var(--surface-2) !important;
+  }
+}
+
+[data-skin="brutal"] .fp-head { border-bottom: var(--stroke) solid var(--ink); }
+[data-skin="brutal"] .fp-title { font-size: 2.25rem; line-height: 1; }
+[data-skin="brutal"] .fp-foot { border-top: var(--stroke) solid var(--ink); }
+[data-skin="brutal"] .fp-close {
+  border: var(--stroke) solid var(--ink);
+  color: var(--ink);
+  background: var(--surface-2);
+  padding: 1px 5px;
+}
+[data-skin="brutal"] .fp-close:hover { background: var(--accent); color: var(--on-accent); border-color: var(--ink); }
+
+[data-skin="brutal"] .definition-text { font-size: 0.9375rem; line-height: 1.6; }
+[data-skin="brutal"] .fp-nodef { font-family: var(--mono); font-style: normal; text-transform: uppercase; font-size: 0.6875rem; }
+
+[data-skin="brutal"] .verdict-badge {
+  border: 1px solid var(--ink);
+  font-weight: 700;
+  padding: 3px 7px;
+}
+[data-skin="brutal"] .verdict-badge::before { display: none; }
+[data-skin="brutal"] .vb-unknown { background: var(--surface); color: var(--text-2); }
+
+[data-skin="brutal"] .detail-tag,
+[data-skin="brutal"] .dict-chip,
+[data-skin="brutal"] .tag {
+  border: 1px solid var(--ink);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+}
+[data-skin="brutal"] .fp-extra-label { color: var(--ink); }
+[data-skin="brutal"] .fp-syns-placeholder { font-style: normal; font-family: var(--mono); text-transform: uppercase; font-size: 0.625rem; }
+
+/* Quick tags + fav: hard blocks, and the pressed one is filled solid. */
+[data-skin="brutal"] .qt-btn,
+[data-skin="brutal"] #bookmark-btn {
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  height: 24px;
+  transition: background .1s, transform .06s;
+}
+[data-skin="brutal"] .qt-btn:hover,
+[data-skin="brutal"] #bookmark-btn:hover { background: var(--hl); color: var(--on-hl); border-color: var(--ink); }
+[data-skin="brutal"] .qt-btn:active,
+[data-skin="brutal"] #bookmark-btn:active { transform: translate(1px, 1px); }
+/* Descendant-of-.qt-btn so this also beats app.css's `.qt-btn.active .qt-key`,
+   which repaints the badge to match each active tag's colour. */
+[data-skin="brutal"] .qt-btn .qt-key,
+[data-skin="brutal"] #bookmark-btn .qt-key {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  opacity: .65;
+  font-weight: 700;
+}
+[data-skin="brutal"] .qt-btn.active,
+[data-skin="brutal"] #bookmark-btn.active { border-color: var(--ink); }
+[data-skin="brutal"] .fav-star { color: inherit; }
+[data-skin="brutal"] #bookmark-btn.active .fav-star { color: inherit; }
+
+[data-skin="brutal"] .qt-explainer {
+  border: var(--stroke) solid var(--ink);
+  background: var(--hl);
+  color: var(--on-hl);
+}
+[data-skin="brutal"] .qt-explainer strong { color: var(--on-hl); }
+
+[data-skin="brutal"] .dex-link {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: var(--stroke) solid var(--ink);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: transform .06s, box-shadow .06s;
+  box-shadow: var(--shadow-sm);
+}
+[data-skin="brutal"] .dex-link:hover { opacity: 1; box-shadow: var(--shadow); }
+[data-skin="brutal"] .dex-link:active { transform: translate(3px, 3px); box-shadow: none; }
+
+[data-skin="brutal"] .fp-note textarea,
+[data-skin="brutal"] #tag-input {
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+}
+
+/* ══════════════════════════════════════════
+   FILTER SHEET / RAIL
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] .filter-sheet {
+  border: var(--stroke-lg) solid var(--ink);
+  border-bottom: none;
+  box-shadow: none;
+  background: var(--bg);
+}
+[data-skin="brutal"] .fs-handle { background: var(--ink); width: 48px; height: 5px; }
+[data-skin="brutal"] .fs-header { border-bottom: var(--stroke) solid var(--ink); }
+[data-skin="brutal"] .fs-title { color: var(--ink); }
+[data-skin="brutal"] .fs-reset {
+  font-family: var(--mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+[data-skin="brutal"] .fs-section { border-bottom: 1px solid var(--border); }
+
+/* Section labels become index tabs — inverted blocks that step down the rail. */
+[data-skin="brutal"] .fs-label {
+  align-self: flex-start;
+  background: var(--ink);
+  color: var(--on-ink);
+  padding: 3px 8px 2px;
+  margin-bottom: 8px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+}
+
+[data-skin="brutal"] .fs-pill {
+  border: 1.5px solid var(--ink);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 500;
+  padding: 4px 9px;
+}
+[data-skin="brutal"] .fs-pill:hover { background: var(--hl-soft); }
+[data-skin="brutal"] .fs-pill:has(input:checked) {
+  background: var(--ink);
+  color: var(--on-ink);
+  border-color: var(--ink);
+  font-weight: 700;
+}
+[data-skin="brutal"] .fs-dot { border: 1px solid var(--ink); opacity: 1; width: 9px; height: 9px; }
+[data-skin="brutal"] .fs-pill:has(input:checked) .fs-dot { border-color: var(--on-ink); filter: none; }
+[data-skin="brutal"] .fs-check { border: 1.5px solid var(--ink); }
+[data-skin="brutal"] .fs-pill:has(input:checked) .fs-check { background: var(--on-ink); border-color: var(--on-ink); }
+[data-skin="brutal"] .fs-pill:has(input:checked) .fs-check::after { border-color: var(--ink); }
+
+[data-skin="brutal"] .fs-select,
+[data-skin="brutal"] .fs-sort,
+[data-skin="brutal"] .fs-input,
+[data-skin="brutal"] .tax-select {
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 500;
+}
+[data-skin="brutal"] .fs-select.active,
+[data-skin="brutal"] .tax-select.active {
+  background: var(--hl);
+  color: var(--on-hl);
+  font-weight: 700;
+}
+
+[data-skin="brutal"] .fs-footer { border-top: var(--stroke) solid var(--ink); }
+[data-skin="brutal"] .fs-apply {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: var(--stroke) solid var(--ink);
+  box-shadow: var(--shadow-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: transform .06s, box-shadow .06s;
+}
+[data-skin="brutal"] .fs-apply:hover { opacity: 1; box-shadow: var(--shadow); }
+[data-skin="brutal"] .fs-apply:active { transform: translate(3px, 3px); box-shadow: none; }
+
+[data-skin="brutal"] .filter-backdrop { background: rgba(20,18,15,.55); backdrop-filter: none; }
+
+@media (min-width: 1024px) {
+  [data-skin="brutal"] .filter-sheet {
+    border: none;
+    border-right: var(--stroke-lg) solid var(--ink);
+    background: var(--surface);
+  }
+  [data-skin="brutal"] .filter-sheet.rail-collapsed { border-right: none; }
+}
+
+/* ══════════════════════════════════════════
+   STATUS BAR — a solid ink footer anchoring the page
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] #status-bar {
+  background: var(--ink);
+  color: var(--on-ink);
+  border-top: none;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 7px 16px;
+}
+[data-skin="brutal"] #status-bar .status-left { color: var(--on-ink); }
+[data-skin="brutal"] #status-bar .status-home {
+  font-family: var(--mono);
+  font-style: normal;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.6875rem;
+}
+[data-skin="brutal"] #status-bar a,
+[data-skin="brutal"] #status-bar #share-bookmarks-btn { color: var(--on-ink); opacity: .78; }
+/* The bar's fill is --ink, which inverts between themes — a yellow hover reads
+   on the black bar but not on the bone one, so the affordance is the underline. */
+[data-skin="brutal"] #status-bar a:hover,
+[data-skin="brutal"] #status-bar #share-bookmarks-btn:hover {
+  color: var(--on-ink);
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+[data-skin="brutal"] #status-bar kbd {
+  background: transparent;
+  border: 1px solid var(--on-ink);
+  color: var(--on-ink);
+}
+/* The bar is ink in both themes, so its own controls need the inverse palette. */
+[data-skin="brutal"] #status-bar .theme-toggle,
+[data-skin="brutal"] #status-bar .scale-stepper { border-color: var(--on-ink); background: transparent; }
+[data-skin="brutal"] #status-bar .tg-btn,
+[data-skin="brutal"] #status-bar .scale-btn { color: var(--on-ink); }
+[data-skin="brutal"] #status-bar .tg-btn + .tg-btn,
+[data-skin="brutal"] #status-bar .scale-btn + .scale-btn { border-left-color: var(--on-ink); }
+[data-skin="brutal"] #status-bar .tg-btn:hover,
+[data-skin="brutal"] #status-bar .scale-btn:hover:not(:disabled) { background: var(--hl); color: var(--on-hl); }
+[data-skin="brutal"] #status-bar .tg-btn.tg-active { background: var(--on-ink); color: var(--ink); }
+
+/* ══════════════════════════════════════════
+   OVERLAYS — feed, modals, toast
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] .toast {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: var(--stroke) solid var(--ink);
+  box-shadow: var(--shadow);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+[data-skin="brutal"] .feed-card {
+  border: var(--stroke-lg) solid var(--ink);
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+}
+[data-skin="brutal"] .feed-def { color: var(--text); }
+[data-skin="brutal"] .feed-exit,
+[data-skin="brutal"] .feed-skip,
+[data-skin="brutal"] .feed-keep {
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 700;
+  text-transform: uppercase;
+  transition: background .1s, transform .06s, box-shadow .06s;
+}
+[data-skin="brutal"] .feed-skip,
+[data-skin="brutal"] .feed-keep { box-shadow: var(--shadow-sm); }
+[data-skin="brutal"] .feed-skip:hover { background: var(--accent); color: var(--on-accent); border-color: var(--ink); }
+[data-skin="brutal"] .feed-keep:hover { background: var(--hl); color: var(--on-hl); border-color: var(--ink); }
+[data-skin="brutal"] .feed-skip:active,
+[data-skin="brutal"] .feed-keep:active { transform: translate(3px, 3px); box-shadow: none; }
+[data-skin="brutal"] .feed-exit:hover { background: var(--ink); color: var(--on-ink); }
+
+[data-skin="brutal"] #shortcuts-overlay,
+[data-skin="brutal"] #lists-overlay,
+[data-skin="brutal"] #board-overlay {
+  background: rgba(20,18,15,.55);
+  backdrop-filter: none;
+}
+[data-skin="brutal"] #shortcuts-modal,
+[data-skin="brutal"] #lists-modal,
+[data-skin="brutal"] #board-modal {
+  border: var(--stroke-lg) solid var(--ink);
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+}
+[data-skin="brutal"] .shortcuts-header,
+[data-skin="brutal"] .board-head {
+  font-family: var(--sans);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  border-bottom: var(--stroke) solid var(--ink);
+  padding-bottom: 10px;
+}
+[data-skin="brutal"] kbd {
+  border: 1.5px solid var(--ink);
+  border-bottom-width: 1.5px;
+  background: var(--hl);
+  color: var(--on-hl);
+  font-weight: 600;
+}
+[data-skin="brutal"] .list-card { border-top: var(--stroke) solid var(--ink); }
+[data-skin="brutal"] .list-pub {
+  background: var(--hl);
+  color: var(--on-hl);
+  border: 1px solid var(--ink);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+[data-skin="brutal"] .lists-new input { border: var(--stroke) solid var(--ink); background: var(--surface-2); }
+[data-skin="brutal"] .board-table td { border-bottom: 1px solid var(--border); }
+[data-skin="brutal"] .board-you { background: var(--hl); }
+[data-skin="brutal"] .board-you td { color: var(--on-hl); }
+[data-skin="brutal"] .board-best { font-weight: 700; }
+
+/* ══════════════════════════════════════════
+   STATS PAGE
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] .filter-row { border-bottom: var(--stroke) solid var(--ink); }
+[data-skin="brutal"] .flabel {
+  background: var(--ink);
+  color: var(--on-ink);
+  padding: 3px 7px 2px;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+[data-skin="brutal"] .fsep { background: var(--ink); width: var(--stroke); height: 18px; }
+[data-skin="brutal"] .filter-row .pill {
+  border: 1.5px solid var(--ink);
+  background: var(--surface-2);
+  color: var(--text);
+}
+[data-skin="brutal"] .filter-row .pill:hover { background: var(--hl-soft); border-color: var(--ink); }
+[data-skin="brutal"] .filter-row .pill:has(input:checked) {
+  background: var(--ink);
+  color: var(--on-ink);
+  border-color: var(--ink);
+  font-weight: 700;
+}
+[data-skin="brutal"] .filter-row .pill input[type="checkbox"] { accent-color: var(--hl); }
+[data-skin="brutal"] .reset-btn {
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 700;
+}
+[data-skin="brutal"] .reset-btn:hover { background: var(--accent); color: var(--on-accent); border-color: var(--ink); }
+
+[data-skin="brutal"] .stats-summary { border-bottom: var(--stroke-lg) solid var(--ink); }
+[data-skin="brutal"] .stat-num { border-right: var(--stroke) solid var(--ink); }
+[data-skin="brutal"] .stat-n { font-family: var(--sans); font-weight: 800; font-size: 2rem; }
+[data-skin="brutal"] .stat-l { font-size: 0.625rem; }
+[data-skin="brutal"] .stat-card {
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-sm);
+}
+[data-skin="brutal"] .stat-card-title { color: var(--ink); }
+[data-skin="brutal"] .bar-track { height: 12px; border: 1px solid var(--ink); background: var(--surface); }
+/* app.css hardcodes these two hexes rather than using a token, so they'd stay
+   the paper palette's indigo/teal while every other bar follows the skin. */
+[data-skin="brutal"] .bar-fill--pos { background: var(--v-abs); }
+[data-skin="brutal"] .bar-fill--dom { background: var(--v-hist); }
+[data-skin="brutal"] .bar-label { font-weight: 600; color: var(--text); }
+[data-skin="brutal"] .bar-count { font-weight: 700; color: var(--text-2); }
+
+/* ══════════════════════════════════════════
+   JOC — overrides joc.php's own <style> block via attribute specificity
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] .joc-head { border-bottom: var(--stroke-lg) solid var(--ink); }
+[data-skin="brutal"] .joc-title {
+  font-family: var(--sans);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-size: 1.125rem;
+}
+[data-skin="brutal"] .joc-mode {
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+[data-skin="brutal"] .joc-mode:hover { background: var(--hl); color: var(--on-hl); }
+[data-skin="brutal"] .joc-mode.active { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+[data-skin="brutal"] .joc-score { font-weight: 700; color: var(--text-2); }
+[data-skin="brutal"] .joc-nav a { font-weight: 600; }
+
+[data-skin="brutal"] .joc-card {
+  border: var(--stroke-lg) solid var(--ink);
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+}
+[data-skin="brutal"] .joc-prompt-label {
+  background: var(--ink);
+  color: var(--on-ink);
+  display: inline-block;
+  padding: 3px 8px 2px;
+}
+[data-skin="brutal"] .joc-def { font-style: normal; }
+[data-skin="brutal"] .joc-choice {
+  border: var(--stroke) solid var(--ink);
+  background: var(--surface-2);
+  transition: background .1s, transform .06s, box-shadow .06s;
+}
+[data-skin="brutal"] .joc-choice:hover:not(:disabled) {
+  background: var(--hl-soft);
+  border-color: var(--ink);
+  box-shadow: var(--shadow-sm);
+  transform: translate(-1px, -1px);
+}
+[data-skin="brutal"] .joc-choice.correct,
+[data-skin="brutal"] .joc-choice.wrong {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 var(--stroke) var(--ink);
+  transform: none;
+}
+[data-skin="brutal"] .joc-btn {
+  border: var(--stroke) solid var(--ink);
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: transform .06s, box-shadow .06s;
+}
+[data-skin="brutal"] .joc-btn.secondary { background: var(--surface-2); color: var(--text); }
+[data-skin="brutal"] .joc-btn:hover { box-shadow: var(--shadow); }
+[data-skin="brutal"] .joc-btn:active { transform: translate(3px, 3px); box-shadow: none; }
+[data-skin="brutal"] .joc-feedback { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+[data-skin="brutal"] #panel-pane { border-top: var(--stroke-lg) solid var(--ink); background: var(--surface-2); }
+[data-skin="brutal"] .panel-placeholder { text-transform: uppercase; letter-spacing: 0.08em; }
+[data-skin="brutal"] .panel-compare { border-top: var(--stroke) solid var(--ink); background: var(--surface); }
+
+@media (min-width: 900px) {
+  [data-skin="brutal"] #panel-pane { border-top: none; border-left: var(--stroke-lg) solid var(--ink); }
+}
+
+/* ══════════════════════════════════════════
+   LISTA — shared-list page
+══════════════════════════════════════════ */
+
+[data-skin="brutal"] .lista-head { border-bottom: var(--stroke-lg) solid var(--ink); }
+[data-skin="brutal"] .lista-title { font-size: 2.125rem; }
+[data-skin="brutal"] .lista-item { border-bottom: 1px solid var(--border); }
+[data-skin="brutal"] .lista-word { font-family: var(--sans); font-weight: 800; letter-spacing: -0.03em; }
+[data-skin="brutal"] .lista-word:hover { background: var(--hl); color: var(--on-hl); text-decoration: none; }
+[data-skin="brutal"] .lista-nav a { font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ══════════════════════════════════════════
+   MOBILE
+══════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  [data-skin="brutal"] .brand-name { font-size: 1.375rem; }
+  [data-skin="brutal"] .word-text { font-size: 1.3125rem !important; }
+  [data-skin="brutal"] .fp-title { font-size: 1.875rem !important; }
+  [data-skin="brutal"] #detail-panel.panel-open {
+    border-top: var(--stroke-lg) solid var(--ink) !important;
+    box-shadow: none !important;
+  }
+  /* The ink footer is fixed on mobile — give it an edge against the list. */
+  [data-skin="brutal"] #status-bar { border-top: var(--stroke) solid var(--ink) !important; }
+  [data-skin="brutal"] .filter-sheet { border: var(--stroke-lg) solid var(--ink); border-bottom: none; }
+}

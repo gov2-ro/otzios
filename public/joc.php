@@ -3,19 +3,20 @@ declare(strict_types=1);
 require_once __DIR__ . '/api/_lib.php';
 ?>
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="ro" data-skin="brutal">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <script>(function(){try{var t=localStorage.getItem('otios.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);var s=localStorage.getItem('otios.textscale')||'100';document.documentElement.style.fontSize=s+'%';}catch(e){}})();</script>
+  <script>(function(){try{var d=document.documentElement;var t=localStorage.getItem('otios.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');d.setAttribute('data-theme',t);d.setAttribute('data-skin',localStorage.getItem('otios.skin')||'brutal');var s=localStorage.getItem('otios.textscale')||'100';d.style.fontSize=s+'%';}catch(e){}})();</script>
   <title>Oțios — Joc</title>
   <meta property="og:title" content="Oțios — joc">
   <meta property="og:description" content="Învață cuvinte românești uitate: ghicește sensul sau cuvântul, în teste grilă.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
+  <link rel="stylesheet" href="<?= BASE ?>/assets/skin-brutal.css">
   <style>
     body { display:flex; flex-direction:column; min-height:100vh; }
     .joc-head {
@@ -124,6 +125,10 @@ require_once __DIR__ . '/api/_lib.php';
       <button type="button" class="scale-btn" data-scale-btn="down" onclick="stepTextScale(-1)" title="Text mai mic">A−</button>
       <button type="button" class="scale-btn" data-scale-btn="up" onclick="stepTextScale(1)" title="Text mai mare">A+</button>
     </div>
+    <div class="theme-toggle theme-toggle--sm skin-toggle" role="group" aria-label="Stil vizual">
+      <button type="button" class="tg-btn" data-skin-btn="paper" onclick="setSkin('paper')" title="Stil hârtie — editorial, cald">▤</button>
+      <button type="button" class="tg-btn" data-skin-btn="brutal" onclick="setSkin('brutal')" title="Stil beton — brutalist, contrast dur">▩</button>
+    </div>
     <div class="theme-toggle theme-toggle--sm" role="group" aria-label="Temă">
       <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
       <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')" title="Temă întunecată">☾</button>
@@ -151,47 +156,8 @@ require_once __DIR__ . '/api/_lib.php';
   </div>
 
   <script>var OTIOS_BASE = '<?= BASE ?>';</script>
+  <script src="<?= BASE ?>/assets/prefs.js"></script>
   <script src="<?= BASE ?>/assets/store.js"></script>
-  <script>
-  // Theme + text-scale controls (duplicated small logic, no full app.js load needed)
-  var TEXT_SCALE_STEPS = [87.5, 100, 112.5, 125, 137.5];
-  function setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    try { localStorage.setItem('otios.theme', theme); } catch (_) {}
-    syncThemeButtons();
-  }
-  function syncThemeButtons() {
-    var theme = document.documentElement.getAttribute('data-theme') || 'light';
-    document.querySelectorAll('[data-theme-btn]').forEach(function(btn) {
-      btn.classList.toggle('tg-active', btn.dataset.themeBtn === theme);
-    });
-  }
-  function currentTextScale() { return parseFloat(document.documentElement.style.fontSize) || 100; }
-  function nearestScaleIdx(val) {
-    var idx = TEXT_SCALE_STEPS.indexOf(val);
-    if (idx !== -1) return idx;
-    var best = 0;
-    TEXT_SCALE_STEPS.forEach(function(v, i) { if (Math.abs(v - val) < Math.abs(TEXT_SCALE_STEPS[best] - val)) best = i; });
-    return best;
-  }
-  function stepTextScale(direction) {
-    var idx = nearestScaleIdx(currentTextScale());
-    var next = Math.max(0, Math.min(TEXT_SCALE_STEPS.length - 1, idx + direction));
-    var pct = TEXT_SCALE_STEPS[next];
-    document.documentElement.style.fontSize = pct + '%';
-    try { localStorage.setItem('otios.textscale', String(pct)); } catch (_) {}
-    syncScaleButtons();
-  }
-  function syncScaleButtons() {
-    var idx = nearestScaleIdx(currentTextScale());
-    document.querySelectorAll('[data-scale-btn]').forEach(function(btn) {
-      var dir = btn.dataset.scaleBtn === 'down' ? -1 : 1;
-      btn.disabled = (dir === -1 && idx <= 0) || (dir === 1 && idx >= TEXT_SCALE_STEPS.length - 1);
-    });
-  }
-  syncThemeButtons();
-  syncScaleButtons();
-  </script>
   <script>
   (function() {
     var base = (typeof OTIOS_BASE !== 'undefined' ? OTIOS_BASE : '');

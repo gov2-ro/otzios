@@ -4,6 +4,85 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-06 — "Beton": a brutalist skin, switchable against the existing look
+
+Branch `feat/brutalist-skin`. Asked for a fresher, bolder, more brutalist UI, delivered as a
+CSS switch rather than a replacement — the original editorial look is untouched and one click
+away.
+
+**The switch.** A second axis, `data-skin` on `<html>`, orthogonal to the existing
+`data-theme`: `paper` (plain `app.css`, exactly as before) and `brutal` (`app.css` plus the
+new `assets/skin-brutal.css`, every rule scoped under `[data-skin="brutal"]`). Both skins
+define their own light *and* dark, so the two axes give four looks. Stored in
+`localStorage['otios.skin']` and applied by the existing pre-paint boot script in each
+`<head>`, so switching never flashes. `data-skin="brutal"` is also hardcoded on the `<html>`
+element, which makes beton the default and the correct fallback when localStorage throws or
+JS is off. Toggle sits next to the light/dark one on index, joc and stats (`▤` / `▩`), and
+was added to `lista.php` too — a shared list is often a visitor's first page on the site, and
+without it they'd be stuck with whatever the defaults happen to be.
+
+**The skin.** Bone paper, ink rules, one vermilion for actions and one electric yellow that
+behaves like a highlighter pen — hover washes a word in it, selection is a solid ink block
+casting a hard yellow shadow. Nothing rounded, nothing blurred, every shadow a hard offset.
+Two blunt global rules carry the invariants (`border-radius: 0 !important` on everything;
+soft shadows explicitly zeroed) rather than chasing every radius across `app.css` and the
+four pages that carry their own `<style>` blocks — that also means new components inherit the
+skin for free. Verdict dots become squares; verdict badges become solid blocks of colour;
+filter section labels become inverted index tabs; the status bar becomes a solid ink footer
+that inverts with the theme. The type hierarchy is deliberately flipped against `app.css`:
+grotesque (Public Sans 800) for headwords, serif for definitions — a type-specimen sheet
+rather than a magazine. Public Sans is now requested as a `400..800` variable range across
+all four pages to get the heavier weights.
+
+**Contrast trap worth remembering.** The first dark-mode pass put `--ink` on the highlighter
+yellow. `--ink` inverts (near-black by day, bone by night) but the yellow does not, so every
+yellow surface — the quick-tag explainer, active-filter chips, `kbd`, the WOTD/playlist
+banners, `.list-pub`, `.board-you` — turned into cream-on-yellow at night. Fixed with a
+dedicated `--on-hl` token that stays dark in both themes; same reasoning applied to `#fff`
+hardcoded on `--accent` surfaces, now `var(--on-accent)`.
+
+**Bugs found and fixed along the way** (all pre-existing, surfaced by looking hard at every
+screen):
+
+- **`stats.php`'s entire filter strip had no CSS.** `.filter-row`, `.flabel`, `.pill`,
+  `.fsep`, `.reset-btn` and the `.filter-row .tax-select` sizing existed in the markup but
+  matched no rule anywhere — the page shipped with raw browser checkboxes and unstyled
+  selects. Added to `app.css`, scoped under `.filter-row` specifically so `.tax-select`
+  (which stats shares with the index rail's `.fs-select`) can't reach across and clobber the
+  rail's `width: 100%`.
+- **The filter pills' checkmark was drawn invisible.** `.fs-pill:has(input:checked) .fs-check`
+  fills the box with `--bg` and the tick inside it was also `--bg`, so a ticked pill read as
+  an empty pale square. Ticks are now `--text`.
+- **`hx-swap-oob` was stripping a class and leaking English.** `word_list.php` re-rendered
+  `#result-count` without its `.result-count` class, so the brand-bar counter lost its mono
+  micro-styling on the first search; both OOB spans also appended "words" next to the
+  Romanian noun already in the status bar ("25217 words cuvinte"). Now they emit just the
+  number, and `#result-count` keeps its class. The list's empty state was English too.
+- **Horizontal overflow on small phones.** Measured with a throwaway iframe probe at
+  320/360/390/480: at 360px `.status-right` ran ~24px past the viewport and, being in a fixed
+  bar, clipped silently rather than scrolling; at 320px `.brand-right` overflowed by ~21px
+  because the base rule pins it to `flex-shrink: 0`, so it never narrowed enough for its own
+  `flex-wrap` to engage. Fixed by letting `.brand-right` shrink on mobile and by stacking the
+  status bar into two centred rows below 480px. The three magic numbers that had to agree on
+  the bar's height (body padding, detail-sheet offset, toast offset) now read a new
+  `--statusbar-h` token instead of each repeating `44px`/`52px`.
+
+**Cleanup.** `setTheme`/`stepTextScale` and friends existed in three near-identical copies
+(`app.js`, plus inline blocks in `joc.php` and `stats.php`) that had already started to
+drift; they're now one `assets/prefs.js` linked by every page, which is also where `setSkin`
+lives. `stats.php`'s status-bar links dropped their inline `style` attributes and
+`onmouseover`/`onmouseout` colour-swapping in favour of the CSS that already existed.
+
+Verified: `php -l` on all four pages, `node --check` on `prefs.js`/`app.js`, and headless
+Chrome screenshots of index (cloud + detail panel open), joc and stats in beton-light,
+beton-dark and paper-light, plus the overflow probe at four phone widths. The Chrome
+extension wasn't available this session, so **no real-device or interactive pass was done** —
+recommend a manual check of the filter drawer on touch, the feed overlay, and the two modals
+(liste, clasament) in beton before merging. Non-visual UI/UX findings collected during the
+pass are in `docs/BACKLOG.md` under "UI/UX findings from the beton skin pass".
+
+---
+
 ## 2026-08-06 — Quick-tag redesign: fav / ascunde / lol / meh
 
 Collapsed the five quick-tags (`ignore`/`boring`/`funny`/`remove`/`simple`) into four: `fav` (the existing bookmark star), `ascunde`, `lol`, `meh`. Prompted by noticing `ignore`/`remove`/`simple` all did the same job — confirmed in code that only `simple` had real backend behavior (`quiz.php` exclusion), the other three were free-form labels with no differentiated logic despite an earlier backlog note assigning them distinct meanings. Full analysis in `docs/BACKLOG.md` under "Quick-tag redesign (2026-08-06)".

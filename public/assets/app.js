@@ -579,58 +579,8 @@ function setView(mode) {
   try { localStorage.setItem('otios.view', mode); } catch (_) {}
 }
 
-// ── Theme + text-scale controls ─────────────────────────────────────────────
-
-var TEXT_SCALE_STEPS = [87.5, 100, 112.5, 125, 137.5];
-
-function setTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  try { localStorage.setItem('otios.theme', theme); } catch (_) {}
-  syncThemeButtons();
-}
-
-function syncThemeButtons() {
-  var theme = document.documentElement.getAttribute('data-theme') || 'light';
-  document.querySelectorAll('[data-theme-btn]').forEach(function(btn) {
-    btn.classList.toggle('tg-active', btn.dataset.themeBtn === theme);
-  });
-}
-
-function currentTextScale() {
-  return parseFloat(document.documentElement.style.fontSize) || 100;
-}
-
-function nearestScaleIdx(val) {
-  var idx = TEXT_SCALE_STEPS.indexOf(val);
-  if (idx !== -1) return idx;
-  var best = 0;
-  TEXT_SCALE_STEPS.forEach(function(v, i) {
-    if (Math.abs(v - val) < Math.abs(TEXT_SCALE_STEPS[best] - val)) best = i;
-  });
-  return best;
-}
-
-function stepTextScale(direction) {
-  var idx = nearestScaleIdx(currentTextScale());
-  var next = Math.max(0, Math.min(TEXT_SCALE_STEPS.length - 1, idx + direction));
-  var pct = TEXT_SCALE_STEPS[next];
-  document.documentElement.style.fontSize = pct + '%';
-  try { localStorage.setItem('otios.textscale', String(pct)); } catch (_) {}
-  syncScaleButtons();
-}
-
-function syncScaleButtons() {
-  var idx = nearestScaleIdx(currentTextScale());
-  document.querySelectorAll('[data-scale-btn]').forEach(function(btn) {
-    var dir = btn.dataset.scaleBtn === 'down' ? -1 : 1;
-    btn.disabled = (dir === -1 && idx <= 0) || (dir === 1 && idx >= TEXT_SCALE_STEPS.length - 1);
-  });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  syncThemeButtons();
-  syncScaleButtons();
-});
+// Theme, skin and text-scale controls live in prefs.js — every page carries
+// those toggles, this file is index-only.
 
 function showShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'flex'; }
 function hideShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'none'; }

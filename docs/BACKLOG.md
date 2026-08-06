@@ -283,6 +283,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] link to [straturi.mariuscomper.uk](https://straturi.mariuscomper.uk/) / [proiecte/?topic=language](https://mariuscomper.uk/proiecte/?topic=language)
 
+- [ ] sharing word lists, can we make them (the url) more compact? compress list of ascii, incl separators? see [gemini](https://share.gemini.google/cHCYz4WpYBrK), [chatgpt](https://chatgpt.com/share/6a746c7a-4150-83ec-96ca-771dc2e47cfa)
+
 ## Post launch
 
 - [ ] traffic analytics
@@ -341,6 +343,123 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] **Backups for `private/app.db`** — the only irreplaceable file in the deploy (`ui.db` is regenerable from the pipeline). Confirm the host's backup covers a path outside the web root, or add a dump-to-disk cron.
 - [ ] **Verify WAL on the production host** — `app_db()` falls back to `journal_mode=TRUNCATE` when WAL is unavailable, which some NFS-backed shared hosts require. Check which mode is actually active after deploy: `PRAGMA journal_mode`.
 - [ ] **`feed_decisions` is written by nobody yet** — the table exists for the swipe game's keep/skip record, but `app.js` `feedKeep()`/`feedSkip()` still only set a bookmark. Wire it up to get a second signal (explicit rejection) distinct from "never seen".
+
+## UI/UX findings from the "beton" skin pass (2026-08-06)
+
+Collected while building the brutalist skin (`feat/brutalist-skin`). Everything here is
+*beyond* visual styling — the skin itself is done, these are the structural things it
+kept bumping into. Roughly in order of how much they cost a first-time visitor.
+
+### Content and language
+
+- [ ] **The `verdict` enum is rendered raw to users.** `_partials/detail.php:26` prints
+  `historical_only` / `dex_absent_highfreq` / `corpus_historical_only` verbatim into the
+  verdict badge and the `confidence_tier` chip, in an otherwise fully-Romanian UI.
+  `index.php:166-171` already carries the human labels for exactly these four verdicts
+  (`dispărut din uz`, `în declin`, `doar istoric`, `absent`) — they're just trapped in the
+  filter-pill markup. Fix: one `verdict_label()` / `tier_label()` pair in `api/_lib.php`,
+  consumed by the filter pills, the detail badge, the hover box and `word_row.php`'s
+  `EXT`/`DEC`/`IST`/`ABS` abbreviations, so there's a single place to translate them.
+  Deliberately *not* fixed in the skin branch — it's copy, and the wording is the owner's
+  call. Note the brutal skin makes it more conspicuous: the badge is now a solid colour
+  block, so a raw enum sits second in the visual hierarchy after the headword itself.
+
+- [ ] **`stats.php` is half-English.** `register: any`, `domain: any`, `etymology: any`,
+  `dicts: any`, `TIER`, `POS`, `FILTER`, `reset`, `def ✓`, `loading…`, plus
+  `stats_panels.php`'s `no data` and `No words match the selected filters.` The index
+  page's equivalent rail is fully Romanian. (`word_list.php`'s two English strings were
+  fixed on this branch; the rest were left alone for the same copy-ownership reason.)
+
+### Navigation and information architecture
+
+- [ ] **There is no shared header, and no consistent way to move between the four pages.**
+  `index.php` puts navigation in the *bottom* status bar; `joc.php` has its own `.joc-nav`
+  in a top bar; `stats.php` has **no brand or title at all** — you land on a bare filter
+  strip with no indication you're still in Oțios; `lista.php` has a lone `← Oțios` link.
+  A single `_partials/header.php` carrying brand + nav + the three preference toggles
+  would fix identity, navigation and the toggle duplication in one move.
+
+- [ ] **`metodologie.html` is a separate product.** It links neither `app.css` nor
+  `prefs.js`, loads a *different* font stack (Inter Tight + JetBrains Mono vs the app's
+  Public Sans + IBM Plex Mono + Source Serif 4), and carries its own hand-copied theme and
+  text-scale JS. It will not follow the skin toggle at all, so switching skins on the app
+  and then clicking "metodologie" lands you somewhere visibly unrelated. Either fold it
+  into the shared stylesheet or convert it to `metodologie.php` using the shared header.
+
+### Filters
+
+- [ ] **Every filter box starts checked, so the rail reads as a wall of "on".** With all
+  verdicts, all five tiers and all eight parts of speech pre-selected, the selected state
+  carries no information — you cannot tell at a glance what is *filtering* versus what is
+  merely *available*, and the brutal skin's solid-ink checked pills make the wall literal.
+  Worth considering: treat "all selected" as an implicit unfiltered state rendered
+  neutrally, and only paint pills once the set is genuinely narrowed.
+
+- [ ] **No "solo" or "none" affordance on the pill groups.** Isolating a single part of
+  speech means unchecking seven boxes one at a time. A click-to-solo (like soloing a
+  layer) plus a "none/all" control per group would turn the rail's most common task from
+  seven clicks into one.
+
+- [ ] **Filter state is invisible from the keyboard.** `?` documents navigation and the
+  quick-tags but not the filter drawer; there's no shortcut to open/collapse the rail even
+  though `toggleFilterDrawer()` already exists and the desktop rail is collapsible.
+
+### Detail panel and reading flow
+
+- [ ] **On mobile there is no way to preview a definition without committing.** Desktop
+  gets `#hover-box` with a truncated preview; touch has no hover, so scanning 25k words
+  means open → read → close → open. The arrow keys already move selection and the panel
+  already follows it, so a compact "peek" row under each selected word — or making the
+  bottom sheet a short peek that expands on drag — would make browsing far cheaper.
+
+- [ ] **Dead UI surface: notes and custom tags.** `#tag-input`, `.tag`, `.fp-note textarea`
+  and `#note-status` are all still styled in `app.css` and `note_status.html` still exists,
+  but the controls were removed from `detail.php` on 2026-08-06. Meanwhile the `marks`
+  filter still offers `cu notă` and `tag: …` options that nothing in the UI can now
+  produce. Either restore the inputs or drop the filter options and the orphaned CSS.
+
+- [ ] **`ascunde` and `meh` are two buttons for one behaviour** (both hide the word and
+  both exclude it from quiz rotation — see the quick-tag entry below). Known and
+  deliberate, but it costs a button and an explainer paragraph; worth revisiting once
+  there's data on which one people actually press.
+
+### Accessibility
+
+- [ ] **`maximum-scale=1` blocks pinch-zoom on all four pages** (`index`, `joc`, `stats`,
+  and `lista` omits it — so the pages disagree). This is a straight WCAG 1.4.4 failure and
+  is especially unkind on a site whose whole content is unfamiliar words. The in-app A−/A+
+  stepper is a good feature but it is not a substitute for browser zoom.
+
+- [ ] **Word rows are non-focusable `<div>`s.** `word_row.php` emits a `div` with a click
+  handler — no `tabindex`, no `role`, no keyboard activation outside the app's private
+  `j`/`k` handler. To a screen reader the main content is an undifferentiated pile of
+  divs. `<button>` (or at minimum `role="button"` + `tabindex="0"` + Enter/Space) would
+  fix keyboard access and expose the list properly.
+
+- [ ] **Toggle buttons don't expose their state.** The view/theme/skin/scale groups use
+  `role="group"` and communicate the active option purely through a CSS class; none set
+  `aria-pressed`. Several icon-only buttons (`⊞ ≡ ☀ ☾ A− A+ ▤ ▩`) rely on `title` alone
+  with no `aria-label`.
+
+- [ ] **In cloud view, verdict is encoded only as colour.** The square is the sole signal;
+  table view additionally shows `EXT`/`DEC`/`IST`/`ABS`. Colour-blind users get nothing in
+  the default view.
+
+### Mobile
+
+- [ ] **The brand bar carries too much.** Brand + search + play + view + scale + skin +
+  theme + filters. Scale, skin and theme are all set-once preferences that could collapse
+  behind one "⚙" sheet, leaving the bar for the three things people actually use while
+  browsing (search, view, filters). The 320px overflow fixed on this branch was the
+  symptom; the cause is that the bar is a settings panel wearing a toolbar's clothes.
+
+- [ ] **The filter sheet's drag handle is decorative.** `.fs-handle` looks draggable and
+  sits exactly where a sheet gesture belongs, but nothing listens for touch — the sheet
+  only opens and closes via the button. Either wire it up or stop drawing it.
+
+- [ ] **No end-of-list affordance.** Infinite scroll (`hx-trigger="intersect once"`) has no
+  "that's all" state and no way to jump — with 25,217 words there is no pagination, no
+  alphabet index, and no scroll position indicator beyond the browser's own scrollbar.
 
 ## Quick-tag redesign (2026-08-06)
 
