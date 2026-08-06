@@ -4,6 +4,54 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-06 — Typographic pass: real columns, one tracking scale, ink emoji
+
+Follow-up to the beton skin, on the same branch. The ask was "good taste" — rhythm,
+type fine-tuning, alignment — so this pass was driven by measurement rather than by
+looking at screenshots, using a Playwright harness that scripts 30 states (4 pages ×
+2 skins × 2 themes × desktop/mobile, plus the drawer, feed overlay and both modals,
+which had never actually been opened).
+
+**Table view had no columns.** The one view whose entire purpose is a scannable list
+was laying out under flex with `.chip-meta { flex: 1 }` as the only growing item. A row
+that happened to carry a POS/register pushed its badges to the far right edge; a row
+without one collapsed them against the word. Measured: the verdict badge took 8 distinct
+left positions across 14 consecutive rows, a **1007px swing**. Replaced with a four-column
+grid, each chip pinned to an explicit `grid-column` because the freq/meta/dict chips are
+all conditionally rendered by `word_row.php` and auto-placement would reintroduce the
+drift whenever one was missing. Re-measured: **1 position, 0px spread**. Fixed in
+`app.css`, so the paper skin gets it too — it was never a skin-specific problem.
+
+**Tracking was seven values doing one job.** `0.04 / 0.06 / 0.08 / 0.10 / 0.12 / 0.14 /
+0.16em` scattered across uppercase mono micro-type at similar sizes, plus three separate
+negative values on display sans. Collapsed to three tokens assigned by optical size —
+`--tk-eyebrow` (9px uppercase labels), `--tk-ui` (10–12px uppercase UI), `--tk-display`
+(sans headwords). All 26 declarations now resolve through them.
+
+**Colour emoji drained to ink.** About a dozen (📚 📋 🎮 📊 🧐 🎲 📇 🔤 ❓ ✅ ❌) sit in
+markup. In a bone/ink/two-accent skin a full-colour cartoon is the loudest thing on the
+page, and one of them was decorating a dictionary count. Fixed with `filter: grayscale(1)`
+scoped to the skin rather than by editing seven templates — paper keeps them, where they
+read as warm rather than as noise. `grayscale()` alone, no brightness/contrast, so each
+element's colour still resolves from the theme and dark mode stays correct.
+
+Checked, not assumed: `.chip-freq { line-height: 0 }` looked like a bug and is a
+deliberate superscript technique — left alone. The wider tracking makes the mobile status
+bar wrap to three lines one breakpoint earlier than paper (≤390px vs ≤360px); measured at
+54px of content in a 62px box, so it fits and nothing clips. No horizontal overflow at
+320/360/390/480/768 on any of the three main pages.
+
+Remaining findings — debug metrics (`zipf0.0 en0.0 hist0.77…`) and raw enums reaching the
+page, a shipped `SINONIME — ÎN CURÂND` placeholder, triplicated definitions, the joc void,
+and the filter rail stating one control two different ways — are in `docs/BACKLOG.md`
+under "Typographic pass — remaining findings". They are content and data decisions, not
+styling, so they were written up rather than changed.
+
+Still not done: no real-device pass. The four interactive states are now verified in a
+real Chrome via Playwright, but only at synthetic viewports.
+
+---
+
 ## 2026-08-06 — "Beton": a brutalist skin, switchable against the existing look
 
 Branch `feat/brutalist-skin`. Asked for a fresher, bolder, more brutalist UI, delivered as a

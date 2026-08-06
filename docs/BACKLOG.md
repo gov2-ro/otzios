@@ -461,6 +461,46 @@ kept bumping into. Roughly in order of how much they cost a first-time visitor.
   "that's all" state and no way to jump — with 25,217 words there is no pagination, no
   alphabet index, and no scroll position indicator beyond the browser's own scrollbar.
 
+## Typographic pass — remaining findings (2026-08-06)
+
+Found while driving the pages through Playwright at 2× and measuring computed style
+rather than eyeballing screenshots. The table-column drift, the tracking scale and the
+colour emoji were fixed on this branch; these were measured or seen but left alone
+because they are content/data decisions, not styling.
+
+- [ ] **Debug metrics are shipping to users.** The detail panel's footer renders
+  `zipf0.0 en0.0 hist0.77 mod0.00 ratio3.12` — internal scoring fields, with no space
+  between label and value, in a UI otherwise written in Romanian. Either label them in
+  Romanian and space them properly, or put them behind a dev flag. Visible on both
+  `index.php` and `joc.php`.
+
+- [ ] **Raw enum values reach the page in three more places.** Beyond the `verdict` badge
+  already noted above: `corpus_historical_only` and `dex_invechit_absent` render as
+  literal chips in the detail panel. The beton skin makes this louder, not quieter —
+  these became solid blocks — but the fix is a label map, not CSS.
+
+- [ ] **`SINONIME — ÎN CURÂND` is a placeholder in production.** It occupies a full row of
+  the detail panel on every word. Either build it or drop the row until it exists.
+
+- [ ] **Definitions repeat verbatim.** `barabor` shows the same Ștețco 1990 citation three
+  times in one panel, because sources are concatenated on `|` and near-duplicate entries
+  aren't collapsed. Reads as a rendering bug even though it's a data-merge issue.
+
+- [ ] **The joc play area is mostly void at desktop width.** The card is bottom-heavy in a
+  tall empty column — roughly a third of the viewport is unused below it, with the card
+  top-anchored. Needs a vertical centring decision, or a second element (progress, streak,
+  the word's register) to justify the height.
+
+- [ ] **The filter rail states the same control two different ways.** `NIVEL` is five
+  full-width solid bars; `CATEGORIE` is a grid of small chips. Both are checkbox
+  multi-selects. Since every box also starts checked, `NIVEL` reads as a wall of solid
+  black that carries no information. Making them one control type would calm the rail
+  more than any colour change.
+
+- [ ] **`definiție` breaks the rail's label pattern.** Every other group has an uppercase
+  mono tab above it; this one is a lowercase inline label beside its buttons, so the last
+  row of the rail doesn't align with the twelve above it.
+
 ## Quick-tag redesign (2026-08-06)
 
 - [x] **Collapse quick-tags to `fav / ascunde / lol / meh`, one row** — prompted by noticing `ignore`, `remove`, and `simple` all serve the same "shouldn't be in the list" goal. Analysis: today only `simple` has real backend behavior (excludes a word from quiz rotation, `quiz.php:102`); `ignore`, `remove`, `boring`, `funny` are free-form labels with no differentiated logic, even though an earlier backlog resolution (line ~179 above) assigned `ignore`/`remove` distinct *meanings* (not interesting to you / not genuinely forgotten) that were never actually enforced in code — i.e. they're functionally identical today.

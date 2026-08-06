@@ -66,6 +66,16 @@
   --bar-h:  54px;
   --chip-h: 28px;
   --radius: 0;
+
+  /* Tracking, assigned by optical size rather than by feel. This started as
+     seven scattered values (0.04 → 0.16em) doing the same job at the same
+     sizes; uppercase micro-type genuinely needs more tracking than uppercase
+     UI type, and display sans wants negative, so three steps is the whole
+     honest range. Anything reaching for a fourth is a sign the type scale,
+     not the tracking, is off. */
+  --tk-eyebrow: 0.16em;   /* ~9px uppercase mono — section tabs, eyebrow labels */
+  --tk-ui:      0.08em;   /* 10–12px uppercase — buttons, badges, status bar    */
+  --tk-display: -0.035em; /* sans headwords, logo, panel titles                 */
 }
 
 /* Beton at night: the same drawing, inverted. Ink becomes bone, and the yellow
@@ -133,6 +143,27 @@
   outline-offset: 1px;
 }
 
+/* Emoji drained to ink.
+
+   The pages carry about a dozen colour emoji in markup (📚 📋 🎮 📊 🧐 🎲 📇 🔤
+   ❓ ✅ ❌). In the paper skin they read as warm and editorial and are left
+   alone — but this skin is bone, ink and two chosen accents, so a full-colour
+   cartoon glyph is the loudest thing on the page and it is decorating a
+   dictionary count. Draining rather than deleting keeps the fix inside the
+   skin: no template edits, and paper is untouched.
+
+   grayscale() only — no brightness/contrast. It neutralises the emoji while
+   leaving each element's own colour to resolve from the theme, so this stays
+   correct in dark, where forcing a value would paint text into the background. */
+[data-skin="brutal"] .chip-dict,
+[data-skin="brutal"] .fp-extra-label,
+[data-skin="brutal"] #status-bar a,
+[data-skin="brutal"] .joc-nav a,
+[data-skin="brutal"] .play-btn,
+[data-skin="brutal"] .joc-mode,
+[data-skin="brutal"] .joc-feedback,
+[data-skin="brutal"] .joc-choice::before { filter: grayscale(1); }
+
 /* ══════════════════════════════════════════
    TYPOGRAPHY
 
@@ -156,7 +187,7 @@
 [data-skin="brutal"] .wotd-word {
   font-family: var(--sans);
   font-weight: 800;
-  letter-spacing: -0.035em;
+  letter-spacing: var(--tk-display);
   font-style: normal;
 }
 
@@ -165,7 +196,7 @@
 [data-skin="brutal"] .stat-card-title,
 [data-skin="brutal"] .joc-prompt-label,
 [data-skin="brutal"] .fp-extra-label,
-[data-skin="brutal"] .wotd-label { letter-spacing: 0.16em; font-weight: 700; }
+[data-skin="brutal"] .wotd-label { letter-spacing: var(--tk-eyebrow); font-weight: 700; }
 
 /* Serif is for prose only — italic captions read as apology, not authority. */
 [data-skin="brutal"] .stat-l,
@@ -177,7 +208,7 @@
   font-family: var(--mono);
   font-style: normal;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tk-ui);
 }
 
 /* ══════════════════════════════════════════
@@ -195,7 +226,7 @@
   color: var(--on-ink);
   padding: 3px 6px 2px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tk-eyebrow);
 }
 
 [data-skin="brutal"] #search {
@@ -216,7 +247,7 @@
 [data-skin="brutal"] .result-count {
   font-weight: 700;
   color: var(--text-2);
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tk-ui);
 }
 
 /* ══════════════════════════════════════════
@@ -264,7 +295,7 @@
   color: var(--text);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tk-ui);
   transition: background .1s, transform .06s, box-shadow .06s;
 }
 [data-skin="brutal"] .play-btn:hover,
@@ -295,7 +326,7 @@
   padding: 2px 5px 2px 8px;
   text-transform: uppercase;
   font-size: 0.6875rem;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tk-ui);
 }
 [data-skin="brutal"] .af-chip button {
   background: var(--on-hl);
@@ -341,7 +372,7 @@
   font-family: var(--mono);
   font-style: normal;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tk-ui);
   font-size: 0.75rem;
   color: var(--text-2);
 }
@@ -386,7 +417,7 @@
 [data-skin="brutal"] #word-list.word-list-table .chip-vbadge {
   border: 1px solid var(--ink);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tk-ui);
   padding: 2px 5px;
 }
 [data-skin="brutal"] .chip-vbadge::before { display: none; }
@@ -501,7 +532,7 @@
   color: var(--text);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tk-ui);
   height: 24px;
   transition: background .1s, transform .06s;
 }
@@ -537,7 +568,7 @@
   border: var(--stroke) solid var(--ink);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tk-ui);
   transition: transform .06s, box-shadow .06s;
   box-shadow: var(--shadow-sm);
 }
@@ -568,7 +599,7 @@
   font-weight: 700;
   text-transform: uppercase;
   font-size: 0.625rem;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tk-ui);
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -582,7 +613,7 @@
   color: var(--on-ink);
   padding: 3px 8px 2px;
   margin-bottom: 8px;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--tk-eyebrow);
   font-weight: 700;
 }
 
@@ -630,7 +661,7 @@
   box-shadow: var(--shadow-sm);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tk-ui);
   transition: transform .06s, box-shadow .06s;
 }
 [data-skin="brutal"] .fs-apply:hover { opacity: 1; box-shadow: var(--shadow); }
@@ -656,7 +687,7 @@
   color: var(--on-ink);
   border-top: none;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tk-ui);
   padding: 7px 16px;
 }
 [data-skin="brutal"] #status-bar .status-left { color: var(--on-ink); }
@@ -665,7 +696,7 @@
   font-style: normal;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tk-ui);
   font-size: 0.6875rem;
 }
 [data-skin="brutal"] #status-bar a,
@@ -706,7 +737,7 @@
   box-shadow: var(--shadow);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tk-ui);
 }
 
 [data-skin="brutal"] .feed-card {
@@ -750,7 +781,7 @@
 [data-skin="brutal"] .board-head {
   font-family: var(--sans);
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--tk-display);
   border-bottom: var(--stroke) solid var(--ink);
   padding-bottom: 10px;
 }
@@ -784,7 +815,7 @@
   background: var(--ink);
   color: var(--on-ink);
   padding: 3px 7px 2px;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--tk-eyebrow);
   font-weight: 700;
 }
 [data-skin="brutal"] .fsep { background: var(--ink); width: var(--stroke); height: 18px; }
@@ -835,7 +866,7 @@
 [data-skin="brutal"] .joc-title {
   font-family: var(--sans);
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--tk-display);
   font-size: 1.125rem;
 }
 [data-skin="brutal"] .joc-mode {
@@ -844,7 +875,7 @@
   color: var(--text);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tk-ui);
 }
 [data-skin="brutal"] .joc-mode:hover { background: var(--hl); color: var(--on-hl); }
 [data-skin="brutal"] .joc-mode.active { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
@@ -886,15 +917,15 @@
   color: var(--on-accent);
   box-shadow: var(--shadow-sm);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tk-ui);
   transition: transform .06s, box-shadow .06s;
 }
 [data-skin="brutal"] .joc-btn.secondary { background: var(--surface-2); color: var(--text); }
 [data-skin="brutal"] .joc-btn:hover { box-shadow: var(--shadow); }
 [data-skin="brutal"] .joc-btn:active { transform: translate(3px, 3px); box-shadow: none; }
-[data-skin="brutal"] .joc-feedback { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+[data-skin="brutal"] .joc-feedback { font-weight: 700; text-transform: uppercase; letter-spacing: var(--tk-ui); }
 [data-skin="brutal"] #panel-pane { border-top: var(--stroke-lg) solid var(--ink); background: var(--surface-2); }
-[data-skin="brutal"] .panel-placeholder { text-transform: uppercase; letter-spacing: 0.08em; }
+[data-skin="brutal"] .panel-placeholder { text-transform: uppercase; letter-spacing: var(--tk-ui); }
 [data-skin="brutal"] .panel-compare { border-top: var(--stroke) solid var(--ink); background: var(--surface); }
 
 @media (min-width: 900px) {
@@ -908,9 +939,9 @@
 [data-skin="brutal"] .lista-head { border-bottom: var(--stroke-lg) solid var(--ink); }
 [data-skin="brutal"] .lista-title { font-size: 2.125rem; }
 [data-skin="brutal"] .lista-item { border-bottom: 1px solid var(--border); }
-[data-skin="brutal"] .lista-word { font-family: var(--sans); font-weight: 800; letter-spacing: -0.03em; }
+[data-skin="brutal"] .lista-word { font-family: var(--sans); font-weight: 800; letter-spacing: var(--tk-display); }
 [data-skin="brutal"] .lista-word:hover { background: var(--hl); color: var(--on-hl); text-decoration: none; }
-[data-skin="brutal"] .lista-nav a { font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+[data-skin="brutal"] .lista-nav a { font-weight: 700; text-transform: uppercase; letter-spacing: var(--tk-ui); }
 
 /* ══════════════════════════════════════════
    MOBILE

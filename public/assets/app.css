@@ -607,10 +607,22 @@ body {
   padding: 0;
   gap: 0;
 }
+/* Grid, not flex. Under flex the meta chip was the only growing item, so a row
+   that happened to carry a POS/register pushed its badges to the far right edge
+   while a row without one collapsed them up against the word — measured as an
+   1007px swing between adjacent rows, in the one view whose entire purpose is a
+   scannable column. The freq/meta/dict chips are all conditionally rendered by
+   word_row.php, so each chip is pinned to an explicit grid-column: auto-placement
+   would just reintroduce the drift whenever one is missing. */
 #word-list.word-list-table .word-row {
-  display: flex;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 16rem)   /* headword                */
+    minmax(0, 1fr)     /* pos · register          */
+    5rem               /* verdict badge           */
+    3.5rem;            /* dictionary count        */
   align-items: center;
-  gap: 0;
+  column-gap: 16px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
@@ -624,17 +636,21 @@ body {
 #word-list.word-list-table .verdict-dot { display: none; }
 #word-list.word-list-table .chip-freq   { display: none; }
 
-/* Word text in table: smaller, flex-shrink, left-anchored */
+/* Word text in table: smaller, left-anchored. Long headwords ellipsis rather
+   than widen the column — the column edge is the point. */
 #word-list.word-list-table .word-text {
   font-size: 1.0625rem !important;
-  flex-shrink: 0;
-  margin-right: 8px;
+  grid-column: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Meta column (POS · register) */
 #word-list.word-list-table .chip-meta {
   display: block;
-  flex: 1;
+  grid-column: 2;
   font-family: var(--mono);
   font-size: 0.625rem;
   color: var(--text-3);
@@ -656,8 +672,8 @@ body {
   letter-spacing: 0.08em;
   padding: 2px 6px;
   border-radius: 3px;
-  flex-shrink: 0;
-  margin-left: 8px;
+  grid-column: 3;
+  justify-self: start;
 }
 .chip-vbadge::before {
   content: '●';
@@ -675,8 +691,8 @@ body {
   font-family: var(--mono);
   font-size: 0.625rem;
   color: var(--text-3);
-  flex-shrink: 0;
-  margin-left: 8px;
+  grid-column: 4;
+  justify-self: start;
   white-space: nowrap;
 }
 #word-list.word-list-table .word-row[data-selected] .chip-dict { color: rgba(250,247,241,.5); }
