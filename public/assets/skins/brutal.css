@@ -784,6 +784,28 @@
   letter-spacing: var(--tk-ui);
   padding: 7px 16px;
 }
+
+/* Legend on the ink footer. The swatches already pick up the -word ramp from
+   their inline var(); what has to change is everything drawn in a --text-*
+   colour, which is invisible against ink. The dotted mark follows the word
+   colour here for the same reason it does in the cloud — the extinct red under
+   a navy word reads as a second, contradictory verdict. */
+[data-skin="brutal"] .status-legend { color: var(--on-ink); opacity: .82; }
+[data-skin="brutal"] .status-legend .lg-sep { background: var(--on-ink); opacity: .35; }
+[data-skin="brutal"] .status-legend .lg-inv,
+[data-skin="brutal"] .status-legend .lg-fav { text-decoration-color: currentColor; }
+[data-skin="brutal"] .status-legend .lg-sw { border: 1px solid var(--on-ink); }
+
+/* The footer is ink, the cloud is bone, so the swatches cannot use the same
+   values the words do: the -word ramp is fitted for 8.5:1 against bone and
+   collapses to 1.8:1 against ink — four near-black squares. These are the same
+   hues rendered for a dark ground, which is the honest mapping rather than a
+   different one. Absent lands at 2.97:1, a hair under the 3:1 for non-text; the
+   bone hairline above makes the shape legible independently of its fill. */
+[data-skin="brutal"] .status-legend .lg-sw-ext  { background: var(--v-ext);  }
+[data-skin="brutal"] .status-legend .lg-sw-dec  { background: var(--v-dec);  }
+[data-skin="brutal"] .status-legend .lg-sw-hist { background: var(--v-hist); }
+[data-skin="brutal"] .status-legend .lg-sw-abs  { background: var(--v-abs);  }
 [data-skin="brutal"] #status-bar .status-left { color: var(--on-ink); }
 [data-skin="brutal"] #status-bar .status-home {
   font-family: var(--mono);

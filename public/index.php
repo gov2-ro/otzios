@@ -365,6 +365,21 @@ $tiers = [
   <!-- Status bar -->
   <div id="status-bar">
     <span class="status-left"><span id="status-word-count"><?= (int)$total ?></span> cuvinte · <span id="bookmark-count">0</span> favorite <button id="share-bookmarks-btn" onclick="shareBookmarks()" title="Copiază URL playlist" style="display:none">share ↗</button></span>
+    <!-- Legend. The cloud encodes four things with no label anywhere on the
+         page: the word's colour (beton) or its dot (paper), two different
+         underlines, and the superscript. Hidden below 1280px, where the bar has
+         no room — the same legend is in the ? modal for narrow screens. -->
+    <span class="status-legend" aria-label="Legendă">
+      <span class="lg"><i class="lg-sw lg-sw-ext"></i>dispărut</span>
+      <span class="lg"><i class="lg-sw lg-sw-dec"></i>declin</span>
+      <span class="lg"><i class="lg-sw lg-sw-hist"></i>istoric</span>
+      <span class="lg"><i class="lg-sw lg-sw-abs"></i>absent</span>
+      <span class="lg-sep"></span>
+      <span class="lg"><i class="lg-mark lg-inv">abc</i>învechit</span>
+      <span class="lg"><i class="lg-mark lg-fav">abc</i>favorit</span>
+      <span class="lg"><i class="lg-freq">42</i>frecvență DEX</span>
+    </span>
+
     <span class="status-right">
       <a href="#" onclick="openLists();return false;">📋 liste</a>
       <a href="<?= BASE ?>/joc.php">🎮 joc</a>

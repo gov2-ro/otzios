@@ -1608,6 +1608,52 @@ body {
   gap: 16px;
 }
 .status-left { color: var(--text-2); }
+
+/* ── Footer legend ──
+   The swatches read their colour from an inline var() with a fallback, so a
+   skin that defines a separate text ramp for verdicts (beton does) shows the
+   value the words are actually painted in, and one that doesn't falls back to
+   the dot colour. The two underline samples reuse the real mark declarations
+   rather than approximating them. */
+.status-legend {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.625rem;
+  color: var(--text-3);
+}
+.status-legend .lg { display: inline-flex; align-items: center; gap: 4px; }
+.lg-sep { width: 1px; height: 11px; background: var(--border-2); flex-shrink: 0; }
+.lg-sw { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+/* Prefer a skin's dedicated text ramp, falling back to the dot colour. Kept as
+   classes rather than inline styles so a skin can restate them for its own
+   background — the footer is not necessarily the same ground as the cloud. */
+.lg-sw-ext  { background: var(--v-ext-word,  var(--v-ext));  }
+.lg-sw-dec  { background: var(--v-dec-word,  var(--v-dec));  }
+.lg-sw-hist { background: var(--v-hist-word, var(--v-hist)); }
+.lg-sw-abs  { background: var(--v-abs-word,  var(--v-abs));  }
+.lg-mark { font-family: var(--serif); font-style: normal; font-size: 0.75rem; }
+.lg-inv {
+  text-decoration: underline dotted var(--v-ext);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+.lg-fav {
+  text-decoration: underline solid var(--v-dec);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+.lg-freq { font-size: 0.5625rem; position: relative; top: -0.35em; }
+
+/* The legend needs 576px and the rest of the bar 603px, so it only actually
+   fits from 1280 up — at 1200 it was being clipped mid-word. Below this the ?
+   modal carries the same legend. */
+@media (max-width: 1279px) {
+  .status-legend { display: none; }
+}
 .status-right { display: flex; gap: 12px; align-items: center; }
 #status-bar a { color: var(--text-3); text-decoration: none; font-size: 0.6875rem; }
 #status-bar a:hover { color: var(--text); }

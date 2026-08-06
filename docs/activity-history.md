@@ -4,6 +4,43 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-06 — Footer legend; the collapsible rail already existed
+
+Added a legend to the status bar covering everything the cloud encodes without a label:
+the four verdict colours, the dotted underline (`învechit`), the solid underline
+(favourite) and the superscript (DEX frequency, 0–100, lower = rarer). The two underline
+samples reuse the real mark declarations rather than approximating them.
+
+The swatches could not simply reuse the values the words are painted in. The footer is
+ink and the cloud is bone, and beton's `-word` ramp is fitted for 8.5:1 against bone —
+against ink it collapses to **1.8:1**, four near-black squares. Measured, then switched to
+the brighter badge colours for the footer only: same hues rendered for a dark ground,
+which is the honest mapping rather than a different one. Absent lands at 2.97:1, a hair
+under the 3:1 for non-text UI, and the bone hairline round each swatch carries the shape
+independently of its fill.
+
+The swatch colours moved from inline `style=` to classes (`.lg-sw-ext` etc.) so a skin can
+restate them for its own background without `!important`. They resolve
+`var(--v-ext-word, var(--v-ext))`, so a tokens-only skin like `velin` or `paper` falls back
+to its dot colour and needs no legend rules at all — verified in all three.
+
+Breakpoint set by measurement, not by guess: the legend needs 576px and the rest of the bar
+603px, so at the first-chosen 1200px it was clipped mid-word. It shows from **1280** up;
+below that the `?` modal carries the same legend.
+
+**The collapsible filter rail already existed** and was left alone. `toggleFilterDrawer()`
+has handled the docked case since before this branch — the brand bar's "filtre" button
+collapses and expands the rail, the state persists to `otios.rail`, and it defaults to
+open. Verified rather than assumed: the toggle takes the rail 288px → 0, the preference
+round-trips, and sampling the rail's width every 25ms through a collapsed reload shows no
+flash of the open rail before JS applies the class.
+
+Skin ideas (GOV.UK, monitorul.ai, dictionary.com, Urban Dictionary, Wikipedia, Genius) are
+in `docs/BACKLOG.md` with a note on which of them will need component rules rather than
+tokens alone.
+
+---
+
 ## 2026-08-06 — Skins become a folder: drop in a CSS file, get a dropdown entry
 
 The two-button `▤`/`▩` toggle is replaced by a `<select>` whose options are discovered

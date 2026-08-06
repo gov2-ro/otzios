@@ -461,6 +461,32 @@ kept bumping into. Roughly in order of how much they cost a first-time visitor.
   "that's all" state and no way to jump — with 25,217 words there is no pagination, no
   alphabet index, and no scroll position indicator beyond the browser's own scrollbar.
 
+## Skin ideas (2026-08-06)
+
+Each is one file in `public/assets/skins/` — see the "Visual skins" section of CLAUDE.md
+and copy `_template.css`. `velin.css` shows that a skin can be tokens only, ~70 lines.
+
+- [ ] **GOV.UK** — Transport/GDS type, black on white, the yellow focus bar, 4px underlines
+  on links, no rounding. The most legible of the set and the closest in spirit to beton;
+  also the best test of whether the token contract is really sufficient, since GDS is
+  mostly type and spacing rather than colour.
+- [ ] **monitorul.ai** — house style; useful for a family resemblance across the projects.
+- [ ] **dictionary.com / thesaurus.com** — the reference-work look: big serif headword,
+  numbered senses, part-of-speech in italic, the thesaurus colour-strength ramp. The
+  closest to what the site actually *is*, so likely the most usable of these.
+- [ ] **Urban Dictionary** — bold sans, heavy blue links, that hard yellow accent, thumbs.
+  A joke skin that's also a good stress test: it wants a much denser, more cramped layout
+  than the tokens currently allow.
+- [ ] **Wikipedia** — Vector 2022: Linux Libertine headings, sans body, hairline rules, the
+  pale blue link colour, generous white. Very close to `paper`, so mostly a type exercise.
+- [ ] **Genius.com** — dark by default, the yellow-on-near-black, annotation highlights over
+  text. The annotation-highlight idea maps unusually well onto this project, where words
+  already carry marks (`inv`, `bookmarked`, quick-tags).
+
+Two of these (Urban Dictionary, Genius) will probably need component rules and not just
+tokens; if several skins end up reaching for the same missing hooks, that is a signal to
+add tokens for those rather than to let each skin restate them.
+
 ## Filter by dictionary — which one, and how recent (2026-08-06)
 
 Counting dictionaries is already done: `dict_min` in the filter rail offers ≥3 / ≥6 /
