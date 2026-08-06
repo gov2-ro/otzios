@@ -290,6 +290,35 @@ body {
 .theme-toggle--sm, .scale-stepper--sm { height: 20px; }
 .theme-toggle--sm .tg-btn, .scale-stepper--sm .scale-btn { padding: 0 6px; font-size: 0.6875rem; }
 
+/* Skin picker. A <select> rather than a toggle group because the option list is
+   discovered from assets/skins/ and has no fixed length — see api/_skins.php.
+   Sized to sit level with the 26px toggles beside it. */
+.skin-select {
+  height: 26px;
+  max-width: 190px;
+  padding: 0 22px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-3);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  /* Native arrow removed so the control matches the toggles; redrawn as a
+     caret in the background so it still reads as a menu. */
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 11px center, right 7px center;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  text-overflow: ellipsis;
+}
+.skin-select:hover { color: var(--text-2); background-color: var(--bg); }
+.skin-select--sm { height: 20px; font-size: 0.6875rem; max-width: 150px; }
+
 /* ══════════════════════════════════════════
    LAYOUT ROW — filter rail + word area
    Below --rail-bp the rail is out of flow (fixed bottom drawer), so this

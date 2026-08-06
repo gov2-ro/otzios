@@ -1,0 +1,81 @@
+/* @skin Numele stilului — o descriere scurtă
+
+   ══════════════════════════════════════════════════════════════════════════════
+   SKIN TEMPLATE — copy this file to <name>.css and it appears in the dropdown.
+
+   Files beginning with an underscore are skipped by the scanner, so this one is
+   never offered as a choice. The id is the filename without .css, and it must
+   match the attribute selector you scope with. Copy to `sepia.css` and every
+   rule must be scoped under [data-skin="sepia"].
+
+   Ids must be lowercase a–z, 0–9, hyphen or underscore, starting with a letter
+   or digit — anything else is ignored rather than silently half-working.
+
+   THE ONE RULE: scope everything. Every skin file is loaded on every page, so
+   an unscoped rule leaks into all the other skins including "paper".
+
+   Most of a skin is just re-declaring tokens; app.css is written against these
+   variables, so overriding them restyles the whole site without touching a
+   single component rule. Deleting this file's contents and setting only the
+   colours below is a complete, working skin.
+══════════════════════════════════════════════════════════════════════════════ */
+
+[data-skin="TEMPLATE"] {
+  /* Surfaces, back to front */
+  --bg:        #FAF7F1;   /* page                                   */
+  --surface:   #F2EEE6;   /* rails, cards, sunken areas             */
+  --surface-2: #FFFFFF;   /* inputs, raised areas                   */
+  --border:    #DDD6C8;
+  --border-2:  #C9C0AE;
+
+  /* Text, most to least prominent */
+  --text:   #1A1814;
+  --text-2: #4A453C;
+  --text-3: #7A7264;
+  --text-4: #A69C8A;
+
+  /* Accents. --accent is actions/links, --accent-bg the highlight field. */
+  --accent:    #A03020;
+  --accent-bg: #F6E8C8;
+  --on-accent: #FFFFFF;   /* text drawn ON an --accent fill         */
+  --badge-bg:  #1A1814;
+  --star:      #C8901A;
+
+  /* The four verdicts. -bg/-bd/-tx are the badge fill, border and label. */
+  --v-ext:  #B02A18; --v-ext-bg:  #F7DED8; --v-ext-bd:  #E0B0A4; --v-ext-tx:  #7A1C10;
+  --v-dec:  #B5761A; --v-dec-bg:  #FAEBCF; --v-dec-bd:  #E2C68C; --v-dec-tx:  #6E4708;
+  --v-hist: #2C5AA0; --v-hist-bg: #DCE6F6; --v-hist-bd: #A8BEE0; --v-hist-tx: #1B3A6B;
+  --v-abs:  #6B3FA0; --v-abs-bg:  #E8DFF5; --v-abs-bd:  #C2AEE0; --v-abs-tx:  #472A6B;
+
+  --success: #2E7D32; --success-bg: #E2F2E4; --success-border: #B6DCBA;
+  --error:   #C0392B; --error-bg:   #FBE4E1; --error-border:   #E8BAB3;
+
+  --radius: 3px;
+}
+
+/* Dark variant. Optional — without it the skin uses app.css's dark values,
+   which may not suit your palette. Theme and skin are independent axes. */
+[data-skin="TEMPLATE"][data-theme="dark"] {
+  --bg:        #14130F;
+  --surface:   #1C1B16;
+  --surface-2: #24221B;
+  --border:    #3A372F;
+  --text:      #F0EDE3;
+  --text-2:    #BFB9A9;
+  --text-3:    #8C8578;
+  --text-4:    #666055;
+  --on-accent: #14130F;
+}
+
+/* Anything beyond tokens goes here, still scoped. A few useful hooks:
+
+     .brand-bar          top bar
+     #word-list          the cloud / table container
+     .word-row           one word (add .word-text, .chip-freq inside)
+     .filter-sheet       the left rail / mobile drawer
+     #detail-panel       the right-hand definition panel
+     #status-bar         the footer strip
+
+   If a colour needs to differ between light and dark, define it as a token in
+   BOTH blocks above rather than hardcoding it here — that is the single most
+   common way a skin ends up unreadable at night. */

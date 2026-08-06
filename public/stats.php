@@ -17,11 +17,11 @@ $tiers = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="ro" data-skin="brutal">
+<html lang="ro" data-skin="<?= DEFAULT_SKIN ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <script>(function(){try{var d=document.documentElement;var t=localStorage.getItem('otios.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');d.setAttribute('data-theme',t);d.setAttribute('data-skin',localStorage.getItem('otios.skin')||'brutal');var s=localStorage.getItem('otios.textscale')||'100';d.style.fontSize=s+'%';}catch(e){}})();</script>
+  <?= otios_skin_boot() ?>
   <title>Oțios — Statistici</title>
   <meta property="og:title" content="Oțios — statistici">
   <meta property="og:description" content="Statistical breakdown of forgotten Romanian words: etymology, parts of speech, registers, domains, and more.">
@@ -31,7 +31,7 @@ $tiers = [
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
-  <link rel="stylesheet" href="<?= BASE ?>/assets/skin-brutal.css">
+  <?= otios_skin_links() ?>
 </head>
 <body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
 
@@ -133,10 +133,7 @@ $tiers = [
         <button type="button" class="scale-btn" data-scale-btn="down" onclick="stepTextScale(-1)" title="Text mai mic">A−</button>
         <button type="button" class="scale-btn" data-scale-btn="up" onclick="stepTextScale(1)" title="Text mai mare">A+</button>
       </div>
-      <div class="theme-toggle theme-toggle--sm skin-toggle" role="group" aria-label="Stil vizual">
-        <button type="button" class="tg-btn" data-skin-btn="paper" onclick="setSkin('paper')" title="Stil hârtie — editorial, cald">▤</button>
-        <button type="button" class="tg-btn" data-skin-btn="brutal" onclick="setSkin('brutal')" title="Stil beton — brutalist, contrast dur">▩</button>
-      </div>
+      <?= otios_skin_select("skin-select--sm") ?>
       <div class="theme-toggle theme-toggle--sm" role="group" aria-label="Temă">
         <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
         <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')" title="Temă întunecată">☾</button>

@@ -27,21 +27,27 @@ function syncThemeButtons() {
   });
 }
 
-/* ── Visual skin: brutal (beton) | paper (the original editorial look) ──
-   Orthogonal to light/dark — each skin defines both, so the two axes combine
-   into four looks. `paper` is plain app.css; `brutal` layers skin-brutal.css
-   on top, which is scoped entirely under [data-skin="brutal"]. */
+/* ── Visual skin ──
+   Orthogonal to light/dark — a skin defines both, so the two axes combine.
+   `paper` is plain app.css; every other option is a file in assets/skins/,
+   scoped entirely under its own [data-skin="<filename>"]. The dropdown's
+   options are discovered server-side by _skins.php, so nothing here needs to
+   know which skins exist. */
 
 function setSkin(skin) {
   document.documentElement.setAttribute('data-skin', skin);
   try { localStorage.setItem('otios.skin', skin); } catch (_) {}
-  syncSkinButtons();
+  syncSkinControls();
 }
 
-function syncSkinButtons() {
-  var skin = document.documentElement.getAttribute('data-skin') || 'brutal';
-  document.querySelectorAll('[data-skin-btn]').forEach(function(btn) {
-    btn.classList.toggle('tg-active', btn.dataset.skinBtn === skin);
+function syncSkinControls() {
+  var skin = document.documentElement.getAttribute('data-skin');
+  if (!skin) return;
+  document.querySelectorAll('[data-skin-select]').forEach(function(sel) {
+    // The boot script falls back to the default when a stored skin no longer
+    // has a file, so trust the attribute over localStorage — but don't force a
+    // value the <select> has no option for.
+    if (sel.querySelector('option[value="' + CSS.escape(skin) + '"]')) sel.value = skin;
   });
 }
 
@@ -82,7 +88,7 @@ function syncScaleButtons() {
    again on DOMContentLoaded in case a page ever moves this to the head. */
 function syncPrefButtons() {
   syncThemeButtons();
-  syncSkinButtons();
+  syncSkinControls();
   syncScaleButtons();
 }
 syncPrefButtons();

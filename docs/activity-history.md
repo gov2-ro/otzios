@@ -4,6 +4,47 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-06 — Skins become a folder: drop in a CSS file, get a dropdown entry
+
+The two-button `▤`/`▩` toggle is replaced by a `<select>` whose options are discovered
+from `public/assets/skins/*.css`. Adding a style is now one file — no registry, no build
+step, no PHP to edit.
+
+`public/api/_skins.php` does the discovery and is required from `_lib.php`, so all four
+pages get it. `skin-brutal.css` moved to `assets/skins/brutal.css` (`git mv`, so history
+follows) and the filename is now the id it scopes under. A skin declares its label with an
+`@skin <label>` tag near the top; without one the filename is used. Underscore-prefixed
+files are skipped, which is how `_template.css` can live in the same folder.
+
+This also killed four copies of the pre-paint boot script, four hardcoded `<link>` tags
+and four copies of the toggle markup — the skin machinery had been pasted into every page
+`<head>`, and adding a dropdown by hand would have multiplied that by three.
+
+Decisions worth recording:
+
+- **Every skin file loads on every page**, each inert until its attribute matches. Emitting
+  only the active skin's `<link>` needs either a cookie round-trip or a JS-injected
+  stylesheet, and the latter reintroduces exactly the flash the boot script exists to
+  prevent. The files are small; if the folder grows past a handful, revisit.
+- **Ids are validated, not trusted** (`^[a-z0-9][a-z0-9_-]*$`) — the id lands in a data
+  attribute, a CSS attribute selector and a URL. `Bad Name.css` and `UPPER.css` are
+  ignored rather than half-working; both were tested.
+- **`<link>`s carry `?v=<mtime>`** so editing a skin shows up on a plain reload. This
+  folder exists to be fiddled with.
+- **The valid skin list is baked into the boot script**, so a stored skin whose file has
+  been deleted falls back to the default instead of leaving `<html>` pointing at a
+  stylesheet that no longer exists.
+
+Added `velin.css` ("Velin — pergament") as a worked example: ~70 lines, tokens only, no
+component rules at all, proving that redeclaring the custom properties restyles the whole
+site. Delete it if it's not wanted.
+
+Verified: all three skins render; a deleted skin falls back cleanly; invalid filenames are
+skipped; `_template.css` never appears; no horizontal overflow at 320/360/390/480/768 —
+the select is wider than the toggle it replaced, so that needed re-checking on mobile.
+
+---
+
 ## 2026-08-06 — Verdict as colour on the word itself, and a legend for the cloud
 
 The verdict dot cost 8px of square plus a 5px gap on every word. Replaced in the beton

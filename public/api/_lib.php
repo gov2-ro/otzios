@@ -13,6 +13,10 @@ define('DB_PATH', __DIR__ . '/../data/ui.db');
 })();
 define('PAGE_SIZE', 250);
 
+// Skin discovery (assets/skins/*.css). Required here so every page that pulls
+// in _lib.php — index, joc, stats, lista — gets the dropdown for free.
+require_once __DIR__ . '/_skins.php';
+
 $SORT_OPTIONS = [
     'rare'     => 'COALESCE(modern_ppm, -1) ASC',
     'declined' => 'log_ratio DESC NULLS LAST',

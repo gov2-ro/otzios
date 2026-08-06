@@ -149,6 +149,42 @@ processing_stats(id, corpus_name, documents_processed, tokens_processed, ...)
 - **Generated artifacts go under `data/`** (gitignored). Never commit `*.db`, `*.csv`, or `data/` contents.
 - **`frequency = 0` means no data, not "rarest".** Filter with `frequency > 0` or `> 0.01`.
 
+## Visual skins
+
+The UI has two independent axes on `<html>`: `data-theme` (light/dark) and `data-skin`.
+A skin is a plain CSS file in `public/assets/skins/` — drop one in and it appears in the
+dropdown on the next request. There is no registry, no build step, and no PHP to edit.
+
+```
+public/assets/skins/
+  _template.css   # copy this; underscore-prefixed files are skipped by the scanner
+  brutal.css      # "Beton" — the full brutalist skin, ~950 lines
+  velin.css       # "Velin" — worked example, tokens only, ~70 lines
+```
+
+Discovery lives in `public/api/_skins.php` (required from `_lib.php`, so all four pages
+get it). Three rules:
+
+1. **The filename is the id.** `sepia.css` → every rule scoped under `[data-skin="sepia"]`.
+   Ids must match `^[a-z0-9][a-z0-9_-]*$`; anything else is ignored rather than
+   half-working.
+2. **Scope everything.** All skin files load on every page — the attribute decides which
+   applies. An unscoped rule leaks into every skin, including `paper`.
+3. **Name it** with an `@skin <label>` tag in a comment near the top, or the filename is
+   used as the label.
+
+`paper` is the built-in null skin: `app.css` with nothing on top. It has no file.
+`DEFAULT_SKIN` in `_skins.php` sets what a first-time visitor gets.
+
+Most of a skin is just redeclaring tokens — `app.css` is written against them, so
+`velin.css` restyles the whole site without touching one component rule. Colours that
+differ between light and dark must be tokens declared in **both** blocks; hardcoding one
+is the most common way a skin ends up unreadable at night.
+
+Skin files load with an mtime query string, so edits show on plain reload. A stored skin
+whose file has since been deleted falls back to `DEFAULT_SKIN` (the valid list is baked
+into the pre-paint boot script).
+
 ## Out of scope
 
 - **Web UI / API** — mentioned in roadmap Phase 5; do not start without explicit go-ahead.

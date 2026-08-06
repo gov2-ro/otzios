@@ -60,11 +60,11 @@ $desc  = $row && $row['description'] !== ''
     : ($row ? count($words) . ' cuvinte uitate, alese de ' . $owner : 'Această listă nu există sau nu este publică.');
 ?>
 <!DOCTYPE html>
-<html lang="ro" data-skin="brutal">
+<html lang="ro" data-skin="<?= DEFAULT_SKIN ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script>(function(){try{var d=document.documentElement;var t=localStorage.getItem('otios.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');d.setAttribute('data-theme',t);d.setAttribute('data-skin',localStorage.getItem('otios.skin')||'brutal');var s=localStorage.getItem('otios.textscale')||'100';d.style.fontSize=s+'%';}catch(e){}})();</script>
+  <?= otios_skin_boot() ?>
   <title><?= e($title) ?> — Oțios</title>
   <meta name="description" content="<?= e($desc) ?>">
   <meta property="og:title" content="<?= e($title) ?> — Oțios">
@@ -74,7 +74,7 @@ $desc  = $row && $row['description'] !== ''
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
-  <link rel="stylesheet" href="<?= BASE ?>/assets/skin-brutal.css">
+  <?= otios_skin_links() ?>
   <style>
     .lista-wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 64px; }
     .lista-head { border-bottom: 1px solid var(--border); padding-bottom: 18px; margin-bottom: 22px; }
@@ -93,9 +93,10 @@ $desc  = $row && $row['description'] !== ''
     }
     .lista-nav a { color: var(--text-3); text-decoration: none; }
     .lista-nav a:hover { color: var(--accent); }
-    /* .skin-toggle only — the theme toggle also carries .theme-toggle, and
-       giving both `margin-left:auto` splits the free space between them. */
-    .lista-nav .skin-toggle { margin-left: auto; }
+    /* Push the two display controls to the right of the "← Oțios" link. Only
+       the first of them gets the auto margin — giving it to both would split
+       the free space between them. */
+    .lista-nav .skin-select { margin-left: auto; }
     .lista-empty { color: var(--text-3); padding: 30px 0; }
   </style>
 </head>
@@ -106,10 +107,7 @@ $desc  = $row && $row['description'] !== ''
          whatever skin and theme happen to be the defaults. -->
     <div class="lista-nav">
       <a href="<?= BASE ?>/">← Oțios</a>
-      <div class="theme-toggle theme-toggle--sm skin-toggle" role="group" aria-label="Stil vizual">
-        <button type="button" class="tg-btn" data-skin-btn="paper" onclick="setSkin('paper')" title="Stil hârtie — editorial, cald">▤</button>
-        <button type="button" class="tg-btn" data-skin-btn="brutal" onclick="setSkin('brutal')" title="Stil beton — brutalist, contrast dur">▩</button>
-      </div>
+      <?= otios_skin_select("skin-select--sm") ?>
       <div class="theme-toggle theme-toggle--sm" role="group" aria-label="Temă">
         <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
         <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')" title="Temă întunecată">☾</button>

@@ -1,0 +1,68 @@
+/* @skin Velin — pergament
+
+   ══════════════════════════════════════════════════════════════════════════════
+   VELIN — a worked example of a tokens-only skin.
+
+   Nothing here touches a single component rule: app.css is written against these
+   custom properties, so redeclaring them restyles the entire site. That is the
+   whole file, and it is why adding a skin is cheap.
+
+   Delete this file if you don't want it — the dropdown updates on next load.
+══════════════════════════════════════════════════════════════════════════════ */
+
+[data-skin="velin"] {
+  --bg:        #F4EDDD;
+  --surface:   #EBE1CB;
+  --surface-2: #FBF7EC;
+  --border:    #D6C8AC;
+  --border-2:  #BFAE8C;
+
+  --text:   #2E241A;   /* 12.4:1 on --bg  */
+  --text-2: #574636;
+  --text-3: #857053;
+  --text-4: #A9926F;
+
+  --accent:    #8C2F1A;
+  --accent-bg: #F2DFA8;
+  --on-accent: #FBF7EC;
+  --badge-bg:  #2E241A;
+  --star:      #B07A18;
+
+  --v-ext:  #8C2F1A; --v-ext-bg:  #F2DDD4; --v-ext-bd:  #D4AC9C; --v-ext-tx:  #6B2314;
+  --v-dec:  #96650F; --v-dec-bg:  #F5E6C4; --v-dec-bd:  #D8BE84; --v-dec-tx:  #6B4708;
+  --v-hist: #2F5470; --v-hist-bg: #DCE6EE; --v-hist-bd: #A8BECE; --v-hist-tx: #1F394D;
+  --v-abs:  #5B3A70; --v-abs-bg:  #E7DDEE; --v-abs-bd:  #C0A8CE; --v-abs-tx:  #3E2650;
+
+  --success: #3F6B36; --success-bg: #E2EEDC; --success-border: #B4D0A8;
+  --error:   #A83B28; --error-bg:   #F6E0DA; --error-border:   #DCB0A4;
+
+  --radius: 2px;
+}
+
+/* Night vellum: the same warmth, lamp-lit rather than daylit. */
+[data-skin="velin"][data-theme="dark"] {
+  --bg:        #191410;
+  --surface:   #221B15;
+  --surface-2: #2B231B;
+  --border:    #3E332A;
+  --border-2:  #574636;
+
+  --text:   #F0E6D4;
+  --text-2: #C9BAA2;
+  --text-3: #94836C;
+  --text-4: #6B5D4B;
+
+  --accent:    #E0714F;
+  --accent-bg: #4A3A18;
+  --on-accent: #191410;
+  --badge-bg:  #F0E6D4;
+  --star:      #E0B24F;
+
+  --v-ext:  #E0714F; --v-ext-bg:  #3A1E16; --v-ext-bd:  #6B3A2A; --v-ext-tx:  #F5C8B8;
+  --v-dec:  #D9A03C; --v-dec-bg:  #3A2E12; --v-dec-bd:  #6B5424; --v-dec-tx:  #F2DCA8;
+  --v-hist: #6E9EC4; --v-hist-bg: #17242E; --v-hist-bd: #2F4A5E; --v-hist-tx: #C4DCEE;
+  --v-abs:  #A183C4; --v-abs-bg:  #241A2E; --v-abs-bd:  #47365E; --v-abs-tx:  #DCC8EE;
+
+  --success: #7FB06E; --success-bg: #1A2A16; --success-border: #35502C;
+  --error:   #E07A66; --error-bg:   #2E1613; --error-border:   #5E2E26;
+}

@@ -1,10 +1,13 @@
-/* ══════════════════════════════════════════════════════════════════════════════
+/* @skin Beton — brutalist
+
+   ══════════════════════════════════════════════════════════════════════════════
    BETON — the brutalist skin.
 
-   Every rule here is scoped under [data-skin="brutal"], so this file is inert
-   until the skin is switched on and app.css alone is still the whole "paper"
-   look. Loaded after app.css on every page; the toggle lives next to the
-   light/dark one, and the two axes are independent (beton has its own dark).
+   Every rule here is scoped under [data-skin="brutal"] — matching the filename,
+   which is what the dropdown uses as the id — so this file is inert until the
+   skin is selected, and app.css alone is still the whole "paper" look. Loaded
+   after app.css on every page; the picker sits next to the light/dark toggle,
+   and the two axes are independent (beton has its own dark).
 
    The idea: a dictionary of dead words should read like a specimen sheet, not
    like a magazine. So — bone paper, ink rules, one screaming red for actions
@@ -273,6 +276,25 @@
 }
 [data-skin="brutal"] .theme-toggle--sm,
 [data-skin="brutal"] .scale-stepper--sm { height: 22px; }
+
+/* Skin picker — same stroke and height as the toggles it sits beside. */
+[data-skin="brutal"] .skin-select {
+  border: var(--stroke) solid var(--ink);
+  background-color: var(--surface-2);
+  color: var(--text-2);
+  height: var(--chip-h);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tk-ui);
+  font-size: 0.6875rem;
+}
+[data-skin="brutal"] .skin-select--sm { height: 22px; font-size: 0.625rem; }
+[data-skin="brutal"] .skin-select:hover { background-color: var(--hl-soft); color: var(--text); }
+[data-skin="brutal"] #status-bar .skin-select {
+  border-color: var(--on-ink);
+  background-color: transparent;
+  color: var(--on-ink);
+}
 
 [data-skin="brutal"] .vt-btn + .vt-btn,
 [data-skin="brutal"] .tg-btn + .tg-btn,

@@ -35,11 +35,11 @@ $tiers = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="ro" data-skin="brutal">
+<html lang="ro" data-skin="<?= DEFAULT_SKIN ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <script>(function(){try{var d=document.documentElement;var t=localStorage.getItem('otios.theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');d.setAttribute('data-theme',t);d.setAttribute('data-skin',localStorage.getItem('otios.skin')||'brutal');var s=localStorage.getItem('otios.textscale')||'100';d.style.fontSize=s+'%';}catch(e){}})();</script>
+  <?= otios_skin_boot() ?>
   <title>Oțios — Cuvinte Uitate</title>
   <meta property="og:title" content="Oțios — cuvinte uitate">
   <meta property="og:description" content="Exploratory tool to identify forgotten Romanian words from official dictionaries that have fallen out of modern usage.">
@@ -50,7 +50,7 @@ $tiers = [
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
-  <link rel="stylesheet" href="<?= BASE ?>/assets/skin-brutal.css">
+  <?= otios_skin_links() ?>
 </head>
 <body>
 
@@ -98,11 +98,8 @@ $tiers = [
         <button type="button" class="scale-btn" data-scale-btn="up" onclick="stepTextScale(1)" title="Text mai mare">A+</button>
       </div>
 
-      <!-- Skin toggle: hârtie (editorial) / beton (brutalist) -->
-      <div class="theme-toggle skin-toggle" role="group" aria-label="Stil vizual">
-        <button type="button" class="tg-btn" data-skin-btn="paper" onclick="setSkin('paper')" title="Stil hârtie — editorial, cald">▤</button>
-        <button type="button" class="tg-btn" data-skin-btn="brutal" onclick="setSkin('brutal')" title="Stil beton — brutalist, contrast dur">▩</button>
-      </div>
+      <!-- Skin picker -- options are discovered from assets/skins/*.css -->
+      <?= otios_skin_select() ?>
 
       <!-- Theme toggle -->
       <div class="theme-toggle" role="group" aria-label="Temă">
