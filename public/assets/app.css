@@ -30,6 +30,14 @@
      sheet's offset and the toast's — so they read it from here instead of each
      repeating a number. Grows when the bar wraps to two rows on narrow phones. */
   --statusbar-h: 44px;
+  /* Minimum width of one cloud column. The cloud is a grid of equal cells, not
+     a ragged wrap, so this is the whole rhythm: raise it for more air, lower it
+     for more words per screen. Measured over all 25,305 headwords at 21px
+     Source Serif 4, the text alone needs 4.6rem at the median and 8.3rem at
+     p99; the dot, gap and freq superscript add ~2.5rem of chrome. 10.5rem is
+     therefore p98 — and since the track is minmax(…, 1fr) the real column is
+     usually wider, so in practice almost nothing clips. */
+  --word-col:  10.5rem;
   --radius:    4px;
   --sans:   'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --mono:   'IBM Plex Mono', monospace;
@@ -513,18 +521,46 @@ body {
 
 /* ══════════════════════════════════════════
    WORD CLOUD (default view)
-══════════════════════════════════════════ */
+
+   ── Going back to the ragged cloud ──
+   The columns are pure CSS and live entirely in this section. No JS, PHP or
+   skin file knows the cloud is a grid: setView() only toggles .word-list-table,
+   word_row.php emits the same markup either way, and the four skins touch only
+   `gap` / `align-items` on #word-list, which mean the same thing under both
+   layouts. So the revert is five local edits, all in this file:
+
+     1. #word-list      → display:flex; flex-wrap:wrap; gap:10px 20px;
+                          (drop grid-template-columns)
+     2. .word-row       → drop `min-width: 0`
+     3. .word-text      → drop min-width/overflow/text-overflow/white-space
+     4. .chip-freq      → drop `flex: none`
+     5. mobile @media   → drop the --word-col override, gap back to 10px 18px,
+                          padding back to 16px 16px 80px
+     6. :root           → drop --word-col (nothing else reads it; harmless left
+                          in place, but it is dead once step 1 is undone)
+
+   `display:flex` on .word-row can stay — a flex container blockifies its
+   children, so inline-flex and flex already rendered identically here.
+
+   Halfway house, if the columns are right but too rigid: keep the grid and just
+   raise --word-col for fewer, airier columns, or drop it for a denser page.
+   ══════════════════════════════════════════ */
+/* A grid of fixed columns, not a ragged flex wrap. Under wrap, every row began
+   at a different offset, so scanning 25k words meant re-finding the left edge
+   on every line. auto-fill + 1fr keeps one shared set of gridlines at any
+   container width and spends the slack widening the columns rather than
+   leaving it in the gutter. */
 #word-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--word-col), 1fr));
+  gap: 10px 8px;
   padding: 20px 24px 60px;
   align-items: baseline;
 }
 
 /* Word chip */
 .word-row {
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
   gap: 5px;
   cursor: pointer;
@@ -533,6 +569,7 @@ body {
   white-space: nowrap;
   transition: background .12s;
   position: relative;
+  min-width: 0;
 }
 .word-row:hover { background: var(--accent-bg); }
 .word-row:active { transform: translateY(1px); }
@@ -567,7 +604,10 @@ body {
 .word-row.verdict-absent          .verdict-dot { background: var(--v-abs); }
 .word-row.verdict-unknown         .verdict-dot { background: var(--text-4); }
 
-/* Word text */
+/* Word text. Ellipsis rather than a wider column: the ~2% of headwords that
+   outrun their cell would otherwise set the width for all 25k. Hovering any row
+   already puts the full word in #hover-box (app.js) and tapping opens the
+   detail panel, so a clipped word is never a dead end. */
 .word-text {
   font-family: var(--serif);
   font-weight: 500;
@@ -576,6 +616,10 @@ body {
   color: var(--text);
   letter-spacing: -0.01em;
   transition: color .12s;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .word-list-empty {
@@ -595,6 +639,7 @@ body {
   position: relative;
   top: -0.55em;
   line-height: 0;
+  flex: none;          /* the word absorbs the cell's slack, never the number */
 }
 
 /* Table-mode-only chips (hidden in cloud view) */
@@ -1928,10 +1973,14 @@ kbd {
   .brand-tag { display: none; }
   .view-toggle { display: none; }
 
-  /* Mobile word list */
+  /* Mobile word list. The desktop 10.5rem column needs 344px of content box for
+     two tracks, which a 375px phone does not have once the padding is off — it
+     would drop to a single column and waste half the screen. 8.75rem holds two
+     columns down to ~310px; the tighter padding buys back the gutter. */
   #word-list {
-    gap: 10px 18px;
-    padding: 16px 16px 80px;
+    --word-col: 8.75rem;
+    gap: 10px 8px;
+    padding: 16px 14px 80px;
   }
   .word-text { font-size: 1.25rem !important; }
 
