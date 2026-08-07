@@ -293,7 +293,7 @@ openssl rand -hex 24        # → 48 hex characters
 Put it in `config.local.php`:
 
 ```php
-define('OTIOS_ADMIN_TOKEN', 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718');
+define('OTIOS_ADMIN_TOKEN', '****}');
 ```
 
 Keep it in a password manager — it is the only credential, with no username and no
