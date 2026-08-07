@@ -158,8 +158,10 @@ dropdown on the next request. There is no registry, no build step, and no PHP to
 ```
 public/assets/skins/
   _template.css   # copy this; underscore-prefixed files are skipped by the scanner
-  brutal.css      # "Beton" — the full brutalist skin, ~950 lines
-  velin.css       # "Velin" — worked example, tokens only, ~70 lines
+  brutal.css      # "Beton"  — the full brutalist skin, ~1080 lines
+  govuk.css       # "Guvern" — GOV.UK Design System homage, ~330 lines
+  tezaur.css      # "Tezaur" — thesaurus.com homage, tinted word pills, ~210 lines
+  velin.css       # "Velin"  — worked example, tokens only, ~70 lines
 ```
 
 Discovery lives in `public/api/_skins.php` (required from `_lib.php`, so all four pages
@@ -176,14 +178,84 @@ get it). Three rules:
 `paper` is the built-in null skin: `app.css` with nothing on top. It has no file.
 `DEFAULT_SKIN` in `_skins.php` sets what a first-time visitor gets.
 
-Most of a skin is just redeclaring tokens — `app.css` is written against them, so
-`velin.css` restyles the whole site without touching one component rule. Colours that
-differ between light and dark must be tokens declared in **both** blocks; hardcoding one
-is the most common way a skin ends up unreadable at night.
+### What "token" means here
+
+A **token** is one of the ~40 CSS custom properties declared on `:root` at the top of
+`app.css`. They are the skinnable surface. `app.css` never hardcodes a colour, font or
+radius in a component rule — it says `background: var(--surface)`, never `background:
+#F4EFE5`. So redeclaring `--surface` inside `[data-skin="x"]` repaints every rail, card
+and sunken area across all four pages without the skin ever naming `.filter-sheet`.
+
+They are named for the **role**, not the value — `--surface`, not `--warm-grey`. That is
+the whole trick: a token can take any value in any skin because nothing downstream
+assumes what it looks like.
+
+The four groups:
+
+| group | tokens | notes |
+|---|---|---|
+| surfaces / text | `--bg --surface --surface-2 --border --border-2 --text --text-2 --text-3 --text-4` | `--text-4` is real 9px text (the freq superscript), so it needs 4.5:1 — not a throwaway |
+| accent / status | `--accent --accent-bg --on-accent --badge-bg --star --success* --error*` | `--on-accent` must flip to ink in dark blocks, where accents are light |
+| verdicts | `--v-{ext,dec,hist,abs}` × `{"" ,-bg,-bd,-tx}`, plus optional `-word` | `-word` only if the skin colours the headword instead of the dot |
+| type / metrics | `--sans --serif --mono --radius --bar-h --chip-h --statusbar-h` | `govuk` points all three fonts at one Arial stack and sets `--radius: 0` |
+
+The contrast is a **component rule** — `[data-skin="brutal"] .word-row { … }`. Those
+target one element on one page and break if the markup moves. Tokens are cheap and
+durable; component rules are neither. This is why `velin.css` is 68 lines and
+`brutal.css` is over a thousand: same site, opposite ends of that trade.
+
+Colours that differ between light and dark must be tokens declared in **both** blocks;
+hardcoding one is the most common way a skin ends up unreadable at night.
+
+`govuk.css` was built partly to find where the contract runs out. It did: the black
+masthead, the yellow focus state, square marks, dotless tags, the green button and the
+inset rule all needed component rules. That list, and the two hooks worth adding if a
+third skin wants them, is in `docs/BACKLOG.md`.
 
 Skin files load with an mtime query string, so edits show on plain reload. A stored skin
 whose file has since been deleted falls back to `DEFAULT_SKIN` (the valid list is baked
 into the pre-paint boot script).
+
+## Deploying to a subfolder
+
+The app runs at any URL depth. `BASE` (`api/_lib.php:8-13`) is derived by subtracting
+`DOCUMENT_ROOT` from the real path of the app folder, and everything — assets, links,
+htmx endpoints, `OTIOS_BASE` for JS — is prefixed with it.
+
+Copy the **contents of `public/`** into the target folder:
+
+```
+~/lab.gov2.ro/            ← document root
+└── oțios/                ← contents of public/   →  lab.gov2.ro/oțios/
+    ├── index.php  api/  assets/  data/ui.db
+    └── api/config.local.php
+~/otios-private/          ← OUTSIDE the web root
+└── app.db
+```
+
+Four things that bite:
+
+1. **Never deploy the repo itself**, only `public/`. With the repo mounted, `private/app.db`,
+   `.git/config` and the docs are all straight downloads — measured.
+2. **`app.db` defaults to inside the web root** on this layout. `OTIOS_PRIVATE_DIR` is one
+   level up from the app folder, which here is the document root. Create
+   `api/config.local.php` (gitignored, no template ships — `_appdb.php:18` loads it if
+   present):
+   ```php
+   <?php
+   declare(strict_types=1);
+   define('OTIOS_PRIVATE_DIR', '/home/you/otios-private');
+   ```
+3. **No `Alias`, no symlinks.** `__DIR__` resolves symlinks and `DOCUMENT_ROOT` does not, so
+   the subtraction silently produces garbage rather than failing — an Apache `Alias` was
+   measured yielding `BASE = "blic"`. The folder must sit physically inside the docroot.
+   Verify by viewing source and checking `var OTIOS_BASE`.
+4. **On nginx**, add `location ~ \.(db|db-wal|db-shm|sqlite3?)$ { deny all; }`. The
+   `public/data/.htaccess` that hides the 20 MB `ui.db` is Apache-only.
+
+Non-ASCII folder names work (`/oțios/`), but see `cookie_base_path()` in `_auth.php` for
+why the cookie path has to be percent-encoded — the cookie *is* the account, and a Path the
+request URI can't match means a new anonymous user on every request.
 
 ## Out of scope
 

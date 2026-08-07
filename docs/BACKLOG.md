@@ -285,6 +285,29 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] sharing word lists, can we make them (the url) more compact? compress list of ascii, incl separators? see [gemini](https://share.gemini.google/cHCYz4WpYBrK), [chatgpt](https://chatgpt.com/share/6a746c7a-4150-83ec-96ca-771dc2e47cfa)
 
+- [ ] also count synonyms! - filter by the number of synonyms.
+
+- [ ] filter words that appear in only a few dictionaries? – but maybe those words are not interesting as the main scope of the project – we could use a separate db for ancient words?
+
+- [ ] feed, does it hide words in the mainlist? - it should show all tagging options too. and up favorites. down = lol - or show more info?
+
+- [ ] top bar, show links to lists (favs, lol, more) fav, the rest are dropdowns if more than 1 
+
+  - [ ] allow users to submit / post lists - but use captcha? - implement but not activate, as a honeytrap?
+
+  - [ ] then maybe allow users to submit examples of rare words in the wild? - provide gSearch query - then let them submit
+
+- [ ] caută un cuvânt - what good is this for? - hide it at least under a magnifying icon
+
+- [ ] make initial view a grid, split by columns? and the table view, also on 2 or 3 colums on desktop?
+
+- [ ] infinte scrolling ok, but update the url bar each say, 100 words, so one can pick up from there - besides the filters?
+
+- [ ] mode in each selected words are hidden - for exploration
+
+- [ ] make a list with _*-ațiune_
+
+
 ## Post launch
 
 - [ ] traffic analytics
@@ -324,6 +347,13 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] rare / Filter: `Maramureș` lists 'biodiversitate'
 
 - [ ] remove _diminutive_, maybe?
+
+- [ ] how come psihoanaliză be a dex 4
+
+- [ ] remove old spellings, `giudecător` – can we check pronountiation - if it's too close to a popular word, flag it for removal
+
+- [ ] sort reverse 
+
 ### UI follow-ups (2026-08-01)
 
 - [ ] 🎲 "la întâmplare" — hidden in the brand bar pending a manual-selection design (pick from the current filter set rather than pure random). `surpriseWord()` + `r` shortcut still live; unhide the button in `index.php` when the design lands.
@@ -466,14 +496,16 @@ kept bumping into. Roughly in order of how much they cost a first-time visitor.
 Each is one file in `public/assets/skins/` — see the "Visual skins" section of CLAUDE.md
 and copy `_template.css`. `velin.css` shows that a skin can be tokens only, ~70 lines.
 
-- [ ] **GOV.UK** — Transport/GDS type, black on white, the yellow focus bar, 4px underlines
-  on links, no rounding. The most legible of the set and the closest in spirit to beton;
-  also the best test of whether the token contract is really sufficient, since GDS is
-  mostly type and spacing rather than colour.
+- [x] **GOV.UK** — done 2026-08-06 as `govuk.css` ("Guvern"). Answered the question it was
+  picked for: tokens got the palette, the radius and the fonts, but not the black masthead,
+  the yellow focus state, the square marks, the dotless tags, the green button's 2px edge,
+  the always-underlined links or the inset rule. Only one of those looks like a missing
+  token (a dot/mark radius, separate from `--radius`); the rest are genuinely
+  component-shaped. So the contract is about as complete as it can usefully be.
 - [ ] **monitorul.ai** — house style; useful for a family resemblance across the projects.
-- [ ] **dictionary.com / thesaurus.com** — the reference-work look: big serif headword,
-  numbered senses, part-of-speech in italic, the thesaurus colour-strength ramp. The
-  closest to what the site actually *is*, so likely the most usable of these.
+- [x] **dictionary.com / thesaurus.com** — done 2026-08-06 as `tezaur.css` ("Tezaur").
+  Tinted synonym pills, rounded, big serif headword, POS in italic. The pill fill replaces
+  the verdict dot. Was indeed the most usable of the set.
 - [ ] **Urban Dictionary** — bold sans, heavy blue links, that hard yellow accent, thumbs.
   A joke skin that's also a good stress test: it wants a much denser, more cramped layout
   than the tokens currently allow.
@@ -486,6 +518,25 @@ and copy `_template.css`. `velin.css` shows that a skin can be tokens only, ~70 
 Two of these (Urban Dictionary, Genius) will probably need component rules and not just
 tokens; if several skins end up reaching for the same missing hooks, that is a signal to
 add tokens for those rather than to let each skin restate them.
+
+Two hooks both new skins reached for, worth watching for a third taker:
+
+- [ ] **A radius token for round marks**, separate from `--radius`. The verdict dot, the
+  filter dot, the legend swatch and the checkbox are all hardcoded `50%` / `2px` in
+  `app.css`; `govuk` squares all four by hand. Cheap to add once a second skin wants it.
+- [ ] **Brand-bar-on-a-dark-ground tokens.** Both `brutal` (ink footer) and `govuk` (black
+  masthead) had to restate every control in the bar because `--surface` / `--border` /
+  `--text-*` are page-ground values. A `--bar-bg` / `--on-bar` pair would collapse ~25
+  lines in each. Note the trap: `.skin-select` draws its caret with two `background-image`
+  gradients, so anything touching it must set `background-color`, not `background`.
+
+## stats.php chart colours are hardcoded (2026-08-06)
+
+The TIER chart's bars pick up the verdict tokens and reskin correctly, but the
+`parte de vorbire` (indigo) and `domeniu` (green) bars are fixed hex in `stats.php` and
+stay the same under every skin. Noticed while checking `govuk`, which is otherwise
+strictly black/white/blue. Low priority — the page reads fine — but it is the one place a
+skin visibly does not reach.
 
 ## Filter by dictionary — which one, and how recent (2026-08-06)
 

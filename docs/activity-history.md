@@ -4,6 +4,91 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-07 — Subfolder deployment, and the cookie path bug it exposed
+
+First deployment to a subfolder: `lab.gov2.ro/oțios/`, served from `~/lab.gov2.ro/oțios`
+with the contents of `public/` copied in. It works — `BASE` is derived correctly and every
+asset, link and htmx endpoint follows it — but two things came out of doing it for real.
+
+**`app.db` defaults to inside the web root.** `OTIOS_PRIVATE_DIR` is one level up from the
+app folder, which on this layout is the document root itself, so `app.db` was a 364 KB
+download at `/private/app.db`. Fixed on the server with `api/config.local.php` pointing at
+`~/otios-private` — the override `_appdb.php:18` already supports. Nothing to change in
+the code, but it is the first thing to check on any subfolder install.
+
+**The device cookie never came back.** `_auth.php` set the cookie's `Path` to `BASE . '/'`,
+which for this install is `/oțios/` — raw UTF-8. A cookie `Path` is matched as a byte
+prefix of the request-URI, and browsers send that percent-encoded (`/o%C8%9Bios/`), so the
+two never matched. The cookie was set on every response and returned on none, and since
+the cookie *is* the account (`_auth.php:6`), **every request minted a fresh anonymous
+user**. Answers were being written — one each, scattered across hundreds of throwaway
+accounts — and the leaderboard then created another new user with no `game_stats` row, so
+it reported "Niciun scor încă" on a database that was filling up.
+
+`BASE` is now percent-encoded per segment for the cookie path (`cookie_base_path()`).
+ASCII installs are byte-identical to before. Verified in a real browser against both an
+ASCII and a diacritic install: identity held across four answered questions, `total` reached
+4, and the leaderboard returned the caller's standing.
+
+Worth recording how this was nearly missed. An earlier pass had already tested the
+diacritic path and passed it — BASE resolution, asset loading, htmx, all four pages, no
+console errors. All of that passes because browsers percent-encode those URLs
+transparently. The cookie round-trip was the one path that surfaced the raw bytes, and it
+was the only thing not exercised. The diagnostic that actually pointed at identity rather
+than at writes was a *negative* observation: the screenshot lacked the "Seria ta cea mai
+lungă … locul N dacă te înscrii" line that `joc.php:490` renders whenever a caller has a
+score but no nickname, so `you` had to be null — no stats row at all, not a filtered one.
+
+Notes for the next deploy are in CLAUDE.md: copy `public/`'s contents (never the repo —
+`.git/`, `private/` and the docs are all fetchable otherwise), keep the folder physically
+inside the document root (an `Alias` or symlink breaks the `BASE` subtraction, silently —
+measured one producing `BASE = "blic"`), and on nginx add a `deny` rule for `*.db`, since
+the bundled `.htaccess` guarding the 20 MB `ui.db` is Apache-only.
+
+## 2026-08-06 — Two skins from the backlog: Guvern (GOV.UK) and Tezaur (thesaurus)
+
+Built the two skin ideas most worth having, and used the first to test how far the token
+contract actually reaches.
+
+**`govuk.css` — "Guvern".** Palette, radius and type all came from tokens: the published
+GDS colour list, `--radius: 0`, and all three font tokens pointed at one Arial stack (GDS
+Transport is licensed to gov.uk only; GDS itself specifies Arial for everyone else, and a
+single family everywhere is the look). What tokens could *not* express, and so needed
+component rules: the black masthead with its 10px blue rule and every control in the bar
+re-tuned for a dark ground; the yellow focus state; square dots, swatches and checkboxes;
+tags without their leading dot; the green button's 2px sunken edge; always-underlined
+links thickening on hover; the definition as `govuk-inset-text`. Of those, only the square
+marks look like a missing token. Two deviations, both recorded in the file: GDS brown
+#b58840 is 2.86:1 on their own light-grey, under the 3:1 floor for an 8px dot, so it is
+darkened to #946218; and GOV.UK has no dark mode, so that block is invented.
+
+**`tezaur.css` — "Tezaur".** An homage to thesaurus.com/dictionary.com, no brand asset
+reproduced. The idea worth stealing was the tinted synonym pill: the cloud is already a
+dense field of words, so a tint per verdict is both recognisably that reference and a
+stronger encoding than a 6px dot — which the skin hides. Weak-match tint rather than
+strong-match solid fill, because several hundred saturated pills is a wall. The verdict
+colour goes on `.word-row`, not `.word-text`, so the freq superscript inherits it and
+stays legible on the tint instead of sitting there in `--text-4`.
+
+**Found a real bug that predates both.** `--on-accent` was declared in `app.css` and never
+once used — the two places that need it, `.fs-apply` and `.filter-count-badge`, hardcoded
+`white`. Dark accents are light, so the apply button's label was 3.06:1 in `paper`, 3.16:1
+in `velin` and 2.23:1 in `tezaur`. Fixed at the source (both call sites now read the token,
+and `:root[data-theme="dark"]` sets it to ink); verified across all five skins × both
+themes, worst case now 4.92:1.
+
+Everything was measured rather than eyeballed, via Playwright + computed style: all four
+verdicts forced into view under both skins and both themes (the default sort shows only
+two of the four); the 10px blue rule; every rail pill state; `joc`/`stats`/`lista` for
+skin application and horizontal overflow. Two defects of my own turned up that way — the
+`govuk` focus rule lost to `#status-bar a` on specificity and left a focused link light
+blue on yellow, and `tezaur` had no focus ring at all.
+
+Also documented the token contract properly. `_template.css` had never listed the font or
+metric tokens, or `--on-accent`'s dark-mode trap; CLAUDE.md now defines what a token *is*
+and why it differs from a component rule, since that distinction is the whole reason a
+skin can be 68 lines or 1000.
+
 ## 2026-08-06 — Footer legend; the collapsible rail already existed
 
 Added a legend to the status bar covering everything the cloud encodes without a label:
