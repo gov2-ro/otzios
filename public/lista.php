@@ -101,6 +101,12 @@ $desc  = $row && $row['description'] !== ''
     .lista-empty { color: var(--text-3); padding: 30px 0; }
     .lista-share { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
     .lista-share a.playlist-btn { text-decoration: none; display: inline-block; }
+    /* Deliberately the quietest control on the page — a plain link in muted text,
+       well below the share buttons. Reporting should be findable, not inviting. */
+    .lista-report { margin-top: 26px; font-size: 0.75rem; color: var(--text-3); }
+    .lista-report button { font: inherit; color: var(--text-3); background: none; border: none;
+                           padding: 0; cursor: pointer; text-decoration: underline; }
+    .lista-report button:hover { color: var(--text-2); }
   </style>
 </head>
 <body>
@@ -166,6 +172,17 @@ $desc  = $row && $row['description'] !== ''
           </p>
         </div>
       <?php endforeach; ?>
+
+      <?php // Public lists only — there is nothing to report about one that only you
+            // can read. Ownership is NOT checked here on purpose: that would mean
+            // calling current_user() on every public view, minting an identity for
+            // every passing crawler (see the note above). The API rejects a report on
+            // your own list, and the button reports that back.
+            if ($row['is_public']): ?>
+      <p class="lista-report">
+        Conținut nepotrivit? <button type="button" id="report-btn">raportează lista</button>
+      </p>
+      <?php endif; ?>
     <?php endif; ?>
   </div>
   <script src="<?= BASE ?>/assets/prefs.js"></script>
@@ -173,9 +190,10 @@ $desc  = $row && $row['description'] !== ''
   (function() {
     var copyBtn  = document.getElementById('copy-link-btn');
     var shareBtn = document.getElementById('share-btn');
-    if (!copyBtn) return;
+    var reportBtn = document.getElementById('report-btn');
 
     var title = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?> + ' — Oțios';
+    var slug  = <?= json_encode($slug, JSON_UNESCAPED_UNICODE) ?>;
 
     function toast(msg) {
       var t = document.createElement('div');
@@ -185,16 +203,44 @@ $desc  = $row && $row['description'] !== ''
       setTimeout(function() { t.remove(); }, 2200);
     }
 
-    copyBtn.addEventListener('click', function() {
+    if (copyBtn) copyBtn.addEventListener('click', function() {
       navigator.clipboard.writeText(location.href).then(
         function() { toast('Link copiat!'); },
         function() { toast('Nu am putut copia linkul'); }
       );
     });
 
+    if (reportBtn) reportBtn.addEventListener('click', function() {
+      var reason = prompt('Ce e în neregulă cu această listă? (opțional)');
+      if (reason === null) return;             // cancelled — not a report
+
+      reportBtn.disabled = true;
+      fetch(<?= json_encode(BASE . '/api/lists.php', JSON_UNESCAPED_SLASHES) ?>, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'report', slug: slug, reason: reason })
+      }).then(function(r) { return r.json().catch(function() { return {}; }); })
+        .then(function(res) {
+          if (res.reported) {
+            reportBtn.textContent = 'raportat';
+            toast('Mulțumim. Lista va fi verificată.');
+          } else if (res.error === 'own_list') {
+            reportBtn.disabled = false;
+            toast('Este lista ta.');
+          } else if (res.error === 'rate_limited') {
+            reportBtn.disabled = false;
+            toast('Prea multe raportări. Încearcă mai târziu.');
+          } else {
+            reportBtn.disabled = false;
+            toast('Nu am putut trimite raportarea.');
+          }
+        })
+        .catch(function() { reportBtn.disabled = false; toast('Nu am putut trimite raportarea.'); });
+    });
+
     // Only offered where the OS actually has a share sheet; elsewhere the copy button
     // is the whole story and a dead "trimite" would just be noise.
-    if (navigator.share) {
+    if (navigator.share && shareBtn) {
       shareBtn.hidden = false;
       shareBtn.addEventListener('click', function() {
         navigator.share({ title: title, url: location.href }).catch(function() {});

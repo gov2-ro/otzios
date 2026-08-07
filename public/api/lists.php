@@ -15,6 +15,7 @@ require_once __DIR__ . '/_auth.php';
 //   POST { action: remove, id, words: [...] }
 //   POST { action: publish_bucket, bucket, title?, description?, is_public? }
 //   POST { action: refresh, id }
+//   POST { action: report, slug, reason? }      flag a public list for review
 //
 // One endpoint with an `action` rather than REST verbs, matching the flat, router-free
 // style of the rest of api/.
@@ -118,8 +119,7 @@ $pdo = app_db();
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $slug = trim($_GET['slug'] ?? '');
 
-    // Directory of everyone's published lists. No moderation path exists yet — see
-    // "Moderation for public lists" in docs/BACKLOG.md.
+    // Directory of everyone's published lists.
     if (($_GET['public'] ?? '') === '1') {
         $per  = 30;
         $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -264,6 +264,37 @@ switch ($action) {
 
         $count = fill_from_bucket($pdo, (int) $row['id'], $user_id, (string) $row['source_tag'], $now);
         json_out(['list' => public_list_json(list_row($pdo, (int) $row['id'])), 'items' => $count]);
+    }
+
+    // Flag a public list for review. Addressed by slug because a reporter is a reader —
+    // the slug is all they have — and reporting must not require owning anything.
+    case 'report': {
+        // Tighter than the shared `lists` budget: reporting is the one write here a
+        // stranger can aim at someone else's content.
+        if (!rate_limit($user_id, 'reports', 10, 3600)) {
+            json_out(['error' => 'rate_limited'], 429);
+        }
+
+        $stmt = $pdo->prepare('SELECT * FROM lists WHERE slug = ?');
+        $stmt->execute([trim((string) ($in['slug'] ?? ''))]);
+        $row = $stmt->fetch();
+
+        // Same 404 for "no such list" and "private list": a report endpoint must not
+        // become an oracle for which private slugs exist.
+        if (!$row || !$row['is_public']) json_out(['error' => 'not_found'], 404);
+        if ((int) $row['user_id'] === $user_id) json_out(['error' => 'own_list'], 400);
+
+        $reason = mb_substr(trim(is_string($in['reason'] ?? null) ? $in['reason'] : ''), 0, MAX_REPORT_REASON_LEN);
+
+        // INSERT OR IGNORE against idx_reports_once: reporting twice is a no-op rather
+        // than an error, so the reporter gets the same confirmation either way and
+        // learns nothing about whether their first report landed.
+        $pdo->prepare(
+            'INSERT OR IGNORE INTO reports (list_id, user_id, reason, status, created_at)
+             VALUES (?, ?, ?, ?, ?)'
+        )->execute([(int) $row['id'], $user_id, $reason, 'open', $now]);
+
+        json_out(['reported' => true]);
     }
 
     case 'update': {

@@ -23,7 +23,7 @@ if (!defined('OTIOS_PRIVATE_DIR')) {
 }
 define('APP_DB_PATH', OTIOS_PRIVATE_DIR . '/app.db');
 
-const APP_DB_VERSION = 2;
+const APP_DB_VERSION = 3;
 
 // The four annotation buckets a user actually produces, and the annotated_words_subquery()
 // argument that selects each. A published list is a snapshot of one of these, which is why
@@ -42,6 +42,7 @@ const MAX_TAG_LEN       = 40;
 const MAX_WORDS_PER_USER = 20000;
 const MAX_LISTS_PER_USER = 50;
 const MAX_WORDS_PER_LIST = 1000;
+const MAX_REPORT_REASON_LEN = 500;
 
 function private_dir(): string {
     if (!is_dir(OTIOS_PRIVATE_DIR)) {
@@ -279,6 +280,31 @@ SQL);
             // Already added by a concurrent request; the column is what matters, not who won.
             if (!str_contains($e->getMessage(), 'duplicate column')) throw $e;
         }
+    }
+
+    if ($version < 3) {
+        // Takedown path for the public list directory. `status` is the whole workflow:
+        // a report is `open` until someone reviews it, then `dismissed` (the list was
+        // fine) or `removed` (the list was unpublished).
+        //
+        // Note there is deliberately NO auto-hide-on-N-reports rule. Identity here is an
+        // anonymous device token, so "three different users reported this" costs an
+        // abuser three cookie clears — a report threshold would be a cheaper way to
+        // censor a list than to publish one. Reports queue for a human instead.
+        $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS reports (
+    id          INTEGER PRIMARY KEY,
+    list_id     INTEGER NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reason      TEXT NOT NULL DEFAULT '',
+    status      TEXT NOT NULL DEFAULT 'open',
+    created_at  TEXT NOT NULL,
+    resolved_at TEXT
+);
+-- One report per person per list: re-reporting shouldn't inflate the queue.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_once ON reports(list_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_reports_queue ON reports(status, created_at);
+SQL);
     }
 
     $pdo->exec('PRAGMA user_version = ' . APP_DB_VERSION);

@@ -261,8 +261,71 @@ records which one:
 This is why there is no per-word "add to list", no grid multi-select and no inline list
 editing: you curate by marking words while browsing, and publishing is one button.
 
-The public directory (`GET api/lists.php?public=1`) has **no report/takedown path yet** —
-see `docs/BACKLOG.md`. `liste.php` is `noindex` until it does.
+### Moderation
+
+The public directory (`GET api/lists.php?public=1`) has a report/takedown path:
+
+- `POST {action:'report', slug, reason?}` — anyone can flag a **public** list that isn't
+  theirs. Addressed by slug, because a reporter is a reader. A private or missing list
+  both answer `404`, so the endpoint can't be used to probe which slugs exist. One report
+  per user per list (`idx_reports_once`); re-reporting is a silent no-op that returns the
+  same success, so a reporter learns nothing about whether their first one landed.
+- **`public/admin.php`** — the queue, grouped by list, most-reported first. Unpublish
+  (`is_public = 0`, reports → `removed`), dismiss (→ `dismissed`), or delete outright.
+  Unpublish is the default action and leaves the owner's data intact; delete is the only
+  irreversible one.
+
+Access is a shared token in `api/config.local.php`:
+
+```php
+define('OTIOS_ADMIN_TOKEN', '<48+ random hex chars>');   // openssl rand -hex 24
+```
+
+Two things about that page worth not undoing:
+
+1. **No token defined, or a wrong one, means `404` — not `403`.** An install that never
+   configured moderation gives nothing away when probed.
+2. **The token is passed once as `?token=`, then sealed into a cookie** (`seal_token()`,
+   8h) and the page redirects to the bare URL, so it leaves the address bar, history,
+   access log and any Referer. This is also why the page sets `referrer: same-origin`
+   rather than `no-referrer` — `no-referrer` serializes `Origin` as `null`, which is
+   exactly what `require_post_same_origin()` rejects, and its own forms POST back to it.
+
+**There is deliberately no auto-hide-after-N-reports rule.** Identity here is an anonymous
+device token, so "three different users reported this" costs an abuser three cookie
+clears — a report threshold would be a cheaper way to censor a list than to publish one.
+Reports queue for a human.
+
+`liste.php` is still `noindex`; lifting that is now a product decision rather than a
+blocker.
+
+### Backing up `app.db`
+
+`private/app.db` is the only irreplaceable file in a deploy — `ui.db` regenerates from the
+pipeline, but annotations, lists, nicknames and the game log exist nowhere else.
+
+```bash
+php api/_backup.php              # snapshot + prune, keeping the newest 14
+php api/_backup.php --keep 30    # keep more
+php api/_backup.php --dir /mnt/x # write somewhere else (an external mount)
+php api/_backup.php --list       # show what's there, write nothing
+```
+
+Nightly, from the deployed app folder:
+
+```cron
+17 3 * * * cd ~/lab.gov2.ro/oțios && php api/_backup.php >> ~/otios-private/backup.log 2>&1
+```
+
+It lives in `public/api/` because **only the contents of `public/` are deployed** — a
+script anywhere else in the repo is not on the server. It is CLI-only: `PHP_SAPI !== 'cli'`
+returns 404 before any include, so it is inert over HTTP. It uses `VACUUM INTO` rather
+than `copy()`, because in WAL mode the committed data is split across `app.db` and
+`app.db-wal` and a file copy can land mid-transaction; every snapshot is then reopened and
+`PRAGMA integrity_check`ed before old ones are pruned.
+
+This does not replace an off-machine backup. A snapshot beside the original survives a bad
+migration or a mistaken delete, not a lost disk.
 
 ## Deploying to a subfolder
 

@@ -375,9 +375,16 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] **Spaced repetition off `game_events`** — every answer is logged with word, correctness and response time. Enough to resurface words a user got wrong, and to compute a real per-word difficulty score (which is also a research signal: which "forgotten" words are genuinely unrecognisable).
 - [ ] **Word difficulty stats** — aggregate `game_events` by word to show a global correct-rate. Feeds the stats page and could rank the shortlist by how forgotten a word actually is in practice, not just by corpus frequency.
 - [ ] **JSON export button** — the data is already reachable via `api/sync.php` with `{"since":0}`; only a download button is missing. Closes the older "exported as json" item properly.
-- [ ] **Moderation for public lists** — publishing requires a nickname and list creation is rate-limited, but there is no report/takedown path. Needs a `reports` table and a minimal admin page behind a token in `config.local.php` before any real promotion of public lists.
-  **Now more urgent (2026-08-07):** the *Liste publice* directory on `liste.php` shipped without it — a deliberate, owner-approved call to get discovery working first. Two hedges are in place, neither a substitute for a takedown path: the page is `noindex` (a spam list can't be search-indexed while nothing can remove it), and the directory carries the line "Listele publice sunt scrise de vizitatori. Nu sunt verificate." Build the `reports` table before promoting the site anywhere.
-- [ ] **Backups for `private/app.db`** — the only irreplaceable file in the deploy (`ui.db` is regenerable from the pipeline). Confirm the host's backup covers a path outside the web root, or add a dump-to-disk cron.
+- [x] **Moderation for public lists** — Done 2026-08-07. `reports` table (app.db `user_version = 3`), `POST api/lists.php {action:'report', slug, reason?}`, a report link on `lista.php`, and `public/admin.php` as the review queue (unpublish / dismiss / delete) behind `OTIOS_ADMIN_TOKEN` in `config.local.php`. Covered by `tests/test_moderation.js`. See the "Moderation" section of CLAUDE.md for the two properties worth not undoing (404-not-403 for a bad token; token sealed into a cookie and redirected out of the URL).
+
+  Two decisions recorded here because they'll look like omissions later:
+  - **No auto-hide after N reports.** Identity is an anonymous device token, so N distinct reporters costs an abuser N cookie clears — a threshold would make censoring a list cheaper than publishing one. Reports queue for a human.
+  - **`lista.php` does not check list ownership before showing the report button**, because that would mean calling `current_user()` on every public view and minting an identity for every passing crawler. The API rejects `own_list` and the button surfaces that.
+
+  Still open: `liste.php` remains `noindex` — lifting it is now a product decision, not a blocker.
+- [x] **Backups for `private/app.db`** — Done 2026-08-07. `php api/_backup.php` takes a `VACUUM INTO` snapshot into `<private>/backups/`, integrity-checks it, and prunes to the newest `--keep N` (default 14). CLI-only (`PHP_SAPI !== 'cli'` → 404 before any include), and it lives in `public/api/` because only the contents of `public/` reach the server. Cron line in CLAUDE.md.
+
+  - [ ] **Still open: get a copy off the machine.** A snapshot beside the original survives a bad migration or a mistaken delete, not a lost disk. Either confirm the host's own backup covers `~/otios-private/`, or add an rsync/rclone step after the cron line.
 - [ ] **Verify WAL on the production host** — `app_db()` falls back to `journal_mode=TRUNCATE` when WAL is unavailable, which some NFS-backed shared hosts require. Check which mode is actually active after deploy: `PRAGMA journal_mode`.
 - [ ] **`feed_decisions` is written by nobody yet** — the table exists for the swipe game's keep/skip record, but `app.js` `feedKeep()`/`feedSkip()` still only set a bookmark. Wire it up to get a second signal (explicit rejection) distinct from "never seen".
 
@@ -389,7 +396,20 @@ kept bumping into. Roughly in order of how much they cost a first-time visitor.
 
 ### Content and language
 
-- [ ] **The `verdict` enum is rendered raw to users.** `_partials/detail.php:26` prints
+- [x] **The `verdict` enum is rendered raw to users.** Fixed 2026-08-07. `VERDICTS` and
+  `TIERS` in `api/_lib.php` are now the single source for label, abbreviation, tooltip and
+  (for tiers) bar-fill class, consumed by `verdict_label()` / `verdict_abbr()` /
+  `tier_label()`. Replaced **three** duplicated copies of the tier map (`index.php`,
+  `stats.php`, `stats_panels.php`) and the hard-coded verdict list in `index.php`'s pill
+  loop. The hover box was also printing the raw enum client-side; `word_row.php` now emits
+  `data-vlabel` so `app.js` reads the label instead of mapping it a second time. Verified
+  no enum survives in the visible text of `index` / `stats` / `joc` / the detail panel.
+  `tier_label()` returns `''` for an unmapped key rather than the key itself — a bare enum
+  on the page is worse than no chip.
+
+  <details><summary>original report</summary>
+
+  `_partials/detail.php:26` prints
   `historical_only` / `dex_absent_highfreq` / `corpus_historical_only` verbatim into the
   verdict badge and the `confidence_tier` chip, in an otherwise fully-Romanian UI.
   `index.php:166-171` already carries the human labels for exactly these four verdicts
@@ -400,6 +420,14 @@ kept bumping into. Roughly in order of how much they cost a first-time visitor.
   Deliberately *not* fixed in the skin branch — it's copy, and the wording is the owner's
   call. Note the brutal skin makes it more conspicuous: the badge is now a solid colour
   block, so a raw enum sits second in the visual hierarchy after the headword itself.
+
+  </details>
+
+  Labels used are the ones already written in `index.php`'s filter pills (`dispărut din
+  uz` / `în declin` / `doar istoric` / `absent`); the three previously-English tier labels
+  became `corp. dispărut` / `corp. în declin` / `corp. doar istoric`, keeping the existing
+  `corp.` / `dex.` prefix pattern. No new copy was invented — see the `stats.php` entry
+  below for the strings that were left alone precisely because they would need some.
 
 - [ ] **`stats.php` is half-English.** `register: any`, `domain: any`, `etymology: any`,
   `dicts: any`, `TIER`, `POS`, `FILTER`, `reset`, `def ✓`, `loading…`, plus
@@ -449,11 +477,22 @@ kept bumping into. Roughly in order of how much they cost a first-time visitor.
   already follows it, so a compact "peek" row under each selected word — or making the
   bottom sheet a short peek that expands on drag — would make browsing far cheaper.
 
-- [ ] **Dead UI surface: notes and custom tags.** `#tag-input`, `.tag`, `.fp-note textarea`
-  and `#note-status` are all still styled in `app.css` and `note_status.html` still exists,
-  but the controls were removed from `detail.php` on 2026-08-06. Meanwhile the `marks`
-  filter still offers `cu notă` and `tag: …` options that nothing in the UI can now
-  produce. Either restore the inputs or drop the filter options and the orphaned CSS.
+- [x] **Dead UI surface: notes and custom tags.** Partly fixed 2026-08-07 — the *notes*
+  half was genuinely dead and is now gone end to end: `.fp-note textarea` and
+  `#note-status` removed from `app.css`, and the `cu notă` option removed from the `marks`
+  filter. Nothing could create a note and nothing displayed one, so filtering to "cu notă"
+  showed words whose notes you couldn't read.
+
+  **The tags half was not dead and was left alone**, which the original entry got wrong:
+  `store.js:117` still renders `.tag custom-tag` chips for users who created custom tags
+  before the input was removed, so that CSS is load-bearing. The `tag: …` options in the
+  `marks` select are all live too — they come from `$QUICK_TAGS` (`ascunde`/`lol`/`meh`),
+  which the quick-tag buttons still produce, plus `populateTagFilterOptions()` for legacy
+  custom tags. Only `#tag-input`'s own rules are strictly orphaned, and they were kept
+  since restoring the input is still an open option.
+
+  Note server-side note storage is untouched: `sync.php` still round-trips `note`, so
+  nobody's existing data was dropped — it is just no longer surfaced.
 
 - [ ] **`ascunde` and `meh` are two buttons for one behaviour** (both hide the word and
   both exclude it from quiz rotation — see the quick-tag entry below). Known and
@@ -462,10 +501,10 @@ kept bumping into. Roughly in order of how much they cost a first-time visitor.
 
 ### Accessibility
 
-- [ ] **`maximum-scale=1` blocks pinch-zoom on all four pages** (`index`, `joc`, `stats`,
-  and `lista` omits it — so the pages disagree). This is a straight WCAG 1.4.4 failure and
-  is especially unkind on a site whose whole content is unfamiliar words. The in-app A−/A+
-  stepper is a good feature but it is not a substitute for browser zoom.
+- [x] **`maximum-scale=1` blocks pinch-zoom on all four pages** — Fixed 2026-08-07.
+  Removed from `index.php`, `joc.php` and `stats.php`; `lista.php` and `liste.php` never
+  had it, so all five now agree. The in-app A−/A+ stepper stays as an addition to browser
+  zoom, not a replacement.
 
 - [ ] **Word rows are non-focusable `<div>`s.** `word_row.php` emits a `div` with a click
   handler — no `tabindex`, no `role`, no keyboard activation outside the app's private
@@ -588,19 +627,22 @@ rather than eyeballing screenshots. The table-column drift, the tracking scale a
 colour emoji were fixed on this branch; these were measured or seen but left alone
 because they are content/data decisions, not styling.
 
-- [ ] **Debug metrics are shipping to users.** The detail panel's footer renders
-  `zipf0.0 en0.0 hist0.77 mod0.00 ratio3.12` — internal scoring fields, with no space
-  between label and value, in a UI otherwise written in Romanian. Either label them in
-  Romanian and space them properly, or put them behind a dev flag. Visible on both
-  `index.php` and `joc.php`.
+- [x] **Debug metrics are shipping to users.** Fixed 2026-08-07 by labelling rather than
+  hiding: `zipf ro` / `zipf en` / `istoric` / `modern` / `raport`, each with a Romanian
+  `title` explaining what it measures (ppm against which corpus, what the ratio is a ratio
+  of). `.fp-stats em` margin went 1px → 4px, which was the "no space between label and
+  value" half of the complaint. Kept visible rather than put behind a dev flag: this is a
+  research tool and the numbers are the point — they were just unreadable.
 
 - [ ] **Raw enum values reach the page in three more places.** Beyond the `verdict` badge
   already noted above: `corpus_historical_only` and `dex_invechit_absent` render as
   literal chips in the detail panel. The beton skin makes this louder, not quieter —
   these became solid blocks — but the fix is a label map, not CSS.
 
-- [ ] **`SINONIME — ÎN CURÂND` is a placeholder in production.** It occupies a full row of
-  the detail panel on every word. Either build it or drop the row until it exists.
+- [x] **`SINONIME — ÎN CURÂND` is a placeholder in production.** Dropped 2026-08-07, along
+  with `.fp-syns-placeholder` in `app.css` and `brutal.css`. The synonyms work itself is
+  still open — see the "synonyms data" entry under UI; the row comes back when there is
+  data to put in it.
 
 - [ ] **Definitions repeat verbatim.** `barabor` shows the same Ștețco 1990 citation three
   times in one panel, because sources are concatenated on `|` and near-duplicate entries

@@ -4,6 +4,83 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-07 — Raw enums out of the UI, and the two launch blockers
+
+Two batches. The first was everything a visitor could see and shouldn't; the second was
+the pair of items the backlog itself named as prerequisites to promoting the site.
+
+**One home for the classification labels.** `verdict` and `confidence_tier` are English
+identifiers written by the pipeline, and they were reaching the page verbatim —
+`historical_only` sat second in the visual hierarchy of the detail panel, right after the
+headword, in an otherwise fully-Romanian UI. The labels already existed, trapped in
+`index.php`'s filter-pill markup. `VERDICTS` and `TIERS` in `api/_lib.php` now hold label,
+abbreviation, tooltip and bar-fill class together, read through `verdict_label()` /
+`verdict_abbr()` / `tier_label()`.
+
+What made this worth doing properly rather than patching the one badge: the tier map
+existed in **three** places (`index.php`, `stats.php`, `stats_panels.php`), each with its
+own wording, and the hover box was mapping the enum a *fourth* time in JavaScript. That
+last one is why `word_row.php` now emits `data-vlabel` — the label is rendered server-side
+into the row and `app.js` just reads it, instead of keeping a parallel copy that can drift.
+Only three English strings needed translating (`corp. extinct` → `corp. dispărut`, and its
+two siblings); everything else reused copy the owner had already written. Verified by
+stripping tags from `index` / `stats` / `joc` / the detail panel and grepping: no enum
+survives in visible text.
+
+Alongside it: pinch-zoom unblocked on all three pages that still set `maximum-scale=1` (a
+WCAG 1.4.4 failure, and an unkind one on a site made of unfamiliar words); the debug
+metrics footer labelled in Romanian with real tooltips rather than hidden behind a flag,
+since on a research tool the numbers are the point and were merely unreadable
+(`zipf0.0 en0.0 hist0.77` → `zipf ro 0.0 · zipf en 0.0 · istoric 0.77`); and the
+`SINONIME — ÎN CURÂND` placeholder dropped until there is data for it.
+
+The "dead UI surface" cleanup turned out to be **half wrong in the backlog**, which is
+worth recording. Notes were genuinely dead — nothing created one, nothing displayed one,
+and the `marks` filter still offered "cu notă", which selected words whose notes you could
+not read. Gone. But the tag CSS is *not* orphaned: `store.js:117` still renders
+`.tag custom-tag` chips for anyone who made custom tags before the input was removed, and
+every `tag:` option in the filter is still produceable. Deleting it would have broken
+existing users' data display. Server-side note storage was left untouched, so nothing was
+destroyed — just no longer surfaced.
+
+**Moderation, the blocker the directory shipped without.** `reports` table (app.db
+`user_version = 3`), `POST api/lists.php {action:'report', slug, reason?}`, a deliberately
+quiet report link at the bottom of `lista.php`, and `public/admin.php` as the queue.
+
+Three decisions that will look like omissions later, so: **no auto-hide after N reports** —
+identity here is an anonymous device token, so "three different people reported this" costs
+an abuser three cookie clears, and a threshold would make censoring a list cheaper than
+publishing one. **A private or missing list both answer 404** to a report, so the endpoint
+can't be walked to discover which slugs exist. And **`lista.php` doesn't check ownership
+before drawing the report button**, because that would mean calling `current_user()` on
+every public view and minting an identity for every passing crawler — a property the page
+was explicitly built to have; the API rejects `own_list` and the button says so.
+
+The admin page is 404 rather than 403 without a valid token, so an install that never
+configured moderation gives nothing away when probed. The token is passed once as
+`?token=`, sealed into an 8-hour cookie via the existing `seal_token()`, and redirected
+out of the URL. That forced one non-obvious choice: the page sets `referrer: same-origin`,
+not `no-referrer`, because `no-referrer` serializes `Origin` as `null` and
+`require_post_same_origin()` rejects exactly that — the page's own forms POST back to it.
+Unpublish, not delete, is the default action: nothing of the owner's is destroyed on a
+stranger's say-so.
+
+**Backups.** `php api/_backup.php` — `VACUUM INTO` (not `copy()`: in WAL mode the
+committed data is split across `app.db` and `app.db-wal`, so a file copy can land
+mid-transaction and produce a torn file), then reopen the snapshot and
+`PRAGMA integrity_check` it before pruning to `--keep N`. It lives in `public/api/`
+because only the contents of `public/` reach the server, and it is CLI-only —
+`PHP_SAPI !== 'cli'` returns 404 before any include, verified over HTTP. What this does
+*not* do is get a copy off the machine; that stays open in the backlog.
+
+Verified with a new `tests/test_moderation.js` (18 checks: the report rules, the 404
+symmetry, token handling, and unpublish removing a list from the directory and the shared
+link while leaving the owner's copy intact), plus the three existing suites still passing
+(23 + 13 + 16). Browser-level visual confirmation wasn't possible — the Chrome extension
+wasn't connected — so the UI checks were made against rendered HTML rather than pixels.
+
+---
+
 ## 2026-08-07 — Lists hub, bucket publishing, packed share URLs
 
 Interactivity pass on lists: creating them, seeing them, sharing them. Three things were
