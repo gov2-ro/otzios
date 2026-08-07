@@ -17,11 +17,26 @@ function is_https(): bool {
         || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
 }
 
+/**
+ * BASE as a valid cookie Path.
+ *
+ * A Path is matched as a byte prefix of the request-URI, and the browser sends that
+ * percent-encoded. An install folder with a non-ASCII name — /oțios/ — therefore
+ * stores a Path the request path (/o%C8%9Bios/) can never match: the cookie is set,
+ * never returned, and every request mints a fresh anonymous identity. Symptom is a
+ * game that appears to save nothing, because each answer lands on a different user.
+ */
+function cookie_base_path(): string {
+    if (BASE === '') return '/';
+    // Per segment — rawurlencode would eat the separators.
+    return implode('/', array_map('rawurlencode', explode('/', BASE))) . '/';
+}
+
 function set_device_cookie(string $token): void {
     if (headers_sent()) return;
     setcookie(DEVICE_COOKIE, $token, [
         'expires'  => time() + DEVICE_TTL,
-        'path'     => (BASE === '' ? '/' : BASE . '/'),
+        'path'     => cookie_base_path(),
         'httponly' => true,
         'secure'   => is_https(),
         'samesite' => 'Lax',
