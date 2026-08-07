@@ -779,7 +779,9 @@ document.querySelectorAll('.tax-select').forEach(function(sel) {
     if (!row || panel.classList.contains('panel-open')) return;
     const verdict = row.dataset.verdict || 'unknown';
     hbWord.textContent = row.querySelector('.word-text').textContent;
-    hbVerd.textContent = verdict;
+    // The label is rendered into the row by word_row.php rather than mapped here, so
+    // verdict copy has exactly one home (VERDICTS in api/_lib.php).
+    hbVerd.textContent = row.dataset.vlabel || '';
     hbVerd.className   = 'verdict-badge vb-' + verdict.replace(/ /g, '_');
     const parts = [];
     if (row.dataset.pos)  parts.push(row.dataset.pos);

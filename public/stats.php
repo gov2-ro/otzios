@@ -8,19 +8,12 @@ $etyms     = vocab('etymology');
 
 global $POS_OPTIONS;
 
-$tiers = [
-    ['corpus_extinct',         'corp. extinct'],
-    ['corpus_declining',       'corp. declining'],
-    ['corpus_historical_only', 'corp. historical'],
-    ['dex_invechit_absent',    'dex. învechit'],
-    ['dex_absent_highfreq',    'dex. absent'],
-];
 ?>
 <!DOCTYPE html>
 <html lang="ro" data-skin="<?= DEFAULT_SKIN ?>">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
   <title>Oțios — Statistici</title>
   <meta property="og:title" content="Oțios — statistici">
@@ -59,9 +52,9 @@ $tiers = [
     <!-- Row 2: tier + POS checkboxes -->
     <div class="filter-row">
       <span class="flabel">tier</span>
-      <?php foreach ($tiers as [$v, $lbl]): ?>
-      <label class="pill">
-        <input type="checkbox" name="tier[]" value="<?= e($v) ?>" checked> <?= e($lbl) ?>
+      <?php foreach (TIERS as $v => $meta): ?>
+      <label class="pill" title="<?= e($meta['tip']) ?>">
+        <input type="checkbox" name="tier[]" value="<?= e($v) ?>" checked> <?= e($meta['label']) ?>
       </label>
       <?php endforeach; ?>
       <div class="fsep"></div>

@@ -47,6 +47,66 @@ $POS_OPTIONS = [
     ['interjecție',         'interj.'],
 ];
 
+// ── Classification labels ─────────────────────────────────────────────────────
+//
+// `verdict` and `confidence_tier` hold English identifiers because the pipeline
+// writes them — they are keys, not copy, and the CSS classes derived from them
+// (`vb-historical_only`, `verdict-extinct`, …) depend on the raw value. Every
+// user-facing rendering goes through the maps below instead, so a label is
+// translated in one place rather than in each of the five that draw one: the
+// filter pills, the detail badge, the hover box, the word row, and the stats bars.
+
+const VERDICTS = [
+    'extinct' => [
+        'label' => 'dispărut din uz', 'abbr' => 'EXT', 'dot' => 'v-ext',
+        'tip'   => 'Prezent în corpus istoric, absent din cel modern',
+    ],
+    'declining' => [
+        'label' => 'în declin', 'abbr' => 'DEC', 'dot' => 'v-dec',
+        'tip'   => 'Semnificativ mai comun istoric față de româneasca modernă',
+    ],
+    'historical_only' => [
+        'label' => 'doar istoric', 'abbr' => 'IST', 'dot' => 'v-hist',
+        'tip'   => 'Găsit doar în Wikisource (istoric), nu în CulturaX (modern)',
+    ],
+    'absent' => [
+        'label' => 'absent', 'abbr' => 'ABS', 'dot' => 'v-abs',
+        'tip'   => 'Niciun semnal în corpus — posibil cel mai uitat',
+    ],
+];
+
+const TIERS = [
+    'corpus_extinct' => [
+        'label' => 'corp. dispărut', 'fill' => 'bar-fill--ext',
+        'tip'   => 'modern_ppm = 0, hist_ppm > 0',
+    ],
+    'corpus_declining' => [
+        'label' => 'corp. în declin', 'fill' => 'bar-fill--dec',
+        'tip'   => 'scădere log-ratio deasupra pragului',
+    ],
+    'corpus_historical_only' => [
+        'label' => 'corp. doar istoric', 'fill' => 'bar-fill--hist',
+        'tip'   => 'Wikisource da, CulturaX nu',
+    ],
+    'dex_invechit_absent' => [
+        'label' => 'dex. învechit', 'fill' => 'bar-fill--abs',
+        'tip'   => '"învechit" în DEX + absent din corpus modern',
+    ],
+    'dex_absent_highfreq' => [
+        'label' => 'dex. absent', 'fill' => 'bar-fill--abs',
+        'tip'   => 'Frecvență editorială DEX ridicată, dar zero prezențe în corpus',
+    ],
+];
+
+function verdict_label(?string $v): string { return VERDICTS[$v ?? '']['label'] ?? 'neclasificat'; }
+function verdict_abbr(?string $v): string  { return VERDICTS[$v ?? '']['abbr']  ?? '?'; }
+
+/**
+ * '' for an unmapped tier, not the raw key: an unknown value means the pipeline grew
+ * one this build hasn't been taught, and a bare enum on the page is worse than no chip.
+ */
+function tier_label(?string $t): string { return TIERS[$t ?? '']['label'] ?? ''; }
+
 function db(): PDO {
     static $pdo = null;
     if ($pdo === null) {

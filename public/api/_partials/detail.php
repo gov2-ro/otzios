@@ -23,7 +23,7 @@ $meta_parts = array_filter([
 <div class="fp-head">
   <div class="fp-title"><?= e($w['word']) ?></div>
   <div class="fp-subtitle">
-    <span class="verdict-badge vb-<?= e($verdict_cls) ?>"><?= e($verdict) ?></span>
+    <span class="verdict-badge vb-<?= e($verdict_cls) ?>" title="<?= e(VERDICTS[$verdict]['tip'] ?? '') ?>"><?= e(verdict_label($verdict)) ?></span>
     <?php if ($meta_parts): ?>
     <span class="fp-pos-line"><?= implode(' · ', $meta_parts) ?></span>
     <?php endif; ?>
@@ -46,7 +46,8 @@ $meta_parts = array_filter([
       $dom_parts,
       $etym_parts
   ); ?>
-  <?php if ($all_tags || $w['confidence_tier']): ?>
+  <?php $tier_lbl = tier_label($w['confidence_tier'] ?? null); ?>
+  <?php if ($all_tags || $tier_lbl): ?>
   <div class="fp-chips">
     <?php if (count($pos_parts) > 1): ?>
       <?php foreach (array_slice($pos_parts, 1) as $p): ?><span class="detail-tag"><?= e($p) ?></span><?php endforeach; ?>
@@ -54,7 +55,7 @@ $meta_parts = array_filter([
     <?php foreach ($reg_parts as $r): ?><span class="detail-tag"><?= e($r) ?></span><?php endforeach; ?>
     <?php foreach ($dom_parts as $d): ?><span class="detail-tag" style="opacity:.85"><?= e($d) ?></span><?php endforeach; ?>
     <?php foreach ($etym_parts as $et): ?><span class="detail-tag" style="opacity:.7"><?= e($et) ?></span><?php endforeach; ?>
-    <?php if ($w['confidence_tier']): ?><span class="detail-tag" style="opacity:.5;font-size:0.5625rem;"><?= e($w['confidence_tier']) ?></span><?php endif; ?>
+    <?php if ($tier_lbl): ?><span class="detail-tag" style="opacity:.5;font-size:0.5625rem;" title="<?= e(TIERS[$w['confidence_tier']]['tip'] ?? '') ?>"><?= e($tier_lbl) ?></span><?php endif; ?>
   </div>
   <?php endif; ?>
 
@@ -66,23 +67,17 @@ $meta_parts = array_filter([
   </div>
   <?php endif; ?>
 
-  <!-- Sinonime placeholder -->
-  <div style="margin-top:2px;">
-    <span class="fp-extra-label">sinonime</span>
-    <span class="fp-syns-placeholder">în curând</span>
-  </div>
-
 </div>
 
 <!-- Footer: stats + actions + dexonline -->
 <div class="fp-foot">
 
   <div class="fp-stats">
-    <?php if ($w['zipf_frequency'] !== null): ?><span title="Zipf română — sub 3.0 = uitat"><em>zipf</em><?= number_format((float)$w['zipf_frequency'], 1) ?></span><?php endif; ?>
-    <?php if ($w['en_zipf'] !== null): ?><span title="Zipf engleză — mare = posibil împrumut"><em>en</em><?= number_format((float)$w['en_zipf'], 1) ?></span><?php endif; ?>
-    <span><em>hist</em><?= $w['hist_ppm'] !== null ? number_format((float)$w['hist_ppm'], 2) : '—' ?></span>
-    <span><em>mod</em><?= $w['modern_ppm'] !== null ? number_format((float)$w['modern_ppm'], 2) : '—' ?></span>
-    <span><em>ratio</em><?= $w['log_ratio'] !== null ? number_format((float)$w['log_ratio'], 2) : '—' ?></span>
+    <?php if ($w['zipf_frequency'] !== null): ?><span title="Frecvență Zipf în română — sub 3,0 înseamnă ieșit din uz"><em>zipf ro</em><?= number_format((float)$w['zipf_frequency'], 1) ?></span><?php endif; ?>
+    <?php if ($w['en_zipf'] !== null): ?><span title="Frecvență Zipf în engleză — o valoare mare sugerează un împrumut recent"><em>zipf en</em><?= number_format((float)$w['en_zipf'], 1) ?></span><?php endif; ?>
+    <span title="Apariții la un milion de cuvinte în corpusul istoric (Wikisource)"><em>istoric</em><?= $w['hist_ppm'] !== null ? number_format((float)$w['hist_ppm'], 2) : '—' ?></span>
+    <span title="Apariții la un milion de cuvinte în corpusul modern (CulturaX)"><em>modern</em><?= $w['modern_ppm'] !== null ? number_format((float)$w['modern_ppm'], 2) : '—' ?></span>
+    <span title="log2(istoric / modern) — cât de mult a scăzut folosirea"><em>raport</em><?= $w['log_ratio'] !== null ? number_format((float)$w['log_ratio'], 2) : '—' ?></span>
   </div>
 
   <div class="fp-btns">

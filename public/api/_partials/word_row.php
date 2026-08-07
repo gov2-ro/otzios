@@ -13,13 +13,9 @@ $inv_title = str_contains($w['dex_register'] ?? '', 'învechit') ? ' title="înv
 
 $dict_count = count(split_pipe($w['sources'] ?? ''));
 
-$verdict_abbr = match($w['verdict'] ?? '') {
-    'extinct'         => 'EXT',
-    'declining'       => 'DEC',
-    'historical_only' => 'IST',
-    'absent'          => 'ABS',
-    default           => '?',
-};
+$verdict_raw  = $w['verdict'] ?? '';
+$verdict_abbr = verdict_abbr($verdict_raw);
+$verdict_lbl  = verdict_label($verdict_raw);
 
 // Table mode meta: "pos · reg" or just pos or just reg
 $meta_parts = array_filter([$pos, $reg]);
@@ -28,6 +24,7 @@ $meta_str = implode(' · ', $meta_parts);
 <div class="<?= e($classes) ?>"
      data-word="<?= e($w['word']) ?>"
      data-verdict="<?= e($w['verdict'] ?? 'unknown') ?>"
+     data-vlabel="<?= e($verdict_lbl) ?>"
      data-pos="<?= e($pos) ?>"
      data-freq="<?= $freq !== null ? $freq : '' ?>"
      data-def="<?= e($def_preview) ?>"
@@ -39,6 +36,6 @@ $meta_str = implode(' · ', $meta_parts);
   <span class="word-text"><?= e($w['word']) ?></span>
   <?php if ($freq !== null): ?><span class="chip-freq" title="Frecvență DEX: <?= $freq ?>/100 — cu cât e mai mic, cu atât cuvântul e mai rar"><?= $freq ?></span><?php endif; ?>
   <?php if ($meta_str): ?><span class="chip-meta"><?= e($meta_str) ?></span><?php endif; ?>
-  <span class="chip-vbadge"><?= $verdict_abbr ?></span>
+  <span class="chip-vbadge" title="<?= e($verdict_lbl) ?>"><?= e($verdict_abbr) ?></span>
   <?php if ($dict_count > 0): ?><span class="chip-dict">📚<?= $dict_count ?></span><?php endif; ?>
 </div>

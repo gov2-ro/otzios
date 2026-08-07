@@ -615,7 +615,6 @@
   font-size: 0.625rem;
 }
 [data-skin="brutal"] .fp-extra-label { color: var(--ink); }
-[data-skin="brutal"] .fp-syns-placeholder { font-style: normal; font-family: var(--mono); text-transform: uppercase; font-size: 0.625rem; }
 
 /* Quick tags + fav: hard blocks, and the pressed one is filled solid. */
 [data-skin="brutal"] .qt-btn,

@@ -6,7 +6,7 @@ require_once __DIR__ . '/api/_lib.php';
 <html lang="ro" data-skin="<?= DEFAULT_SKIN ?>">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
   <title>Oțios — Joc</title>
   <meta property="og:title" content="Oțios — joc">

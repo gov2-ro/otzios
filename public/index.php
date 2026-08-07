@@ -26,19 +26,15 @@ if (SHOW_WOTD) {
 
 global $QUICK_TAGS, $POS_OPTIONS;
 
-$tiers = [
-    ['corpus_extinct',         'corp. extinct'],
-    ['corpus_declining',       'corp. declining'],
-    ['corpus_historical_only', 'corp. historical'],
-    ['dex_invechit_absent',    'dex. învechit'],
-    ['dex_absent_highfreq',    'dex. absent'],
-];
 ?>
 <!DOCTYPE html>
 <html lang="ro" data-skin="<?= DEFAULT_SKIN ?>">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <!-- No maximum-scale: blocking pinch-zoom fails WCAG 1.4.4, and this site is
+       nothing but unfamiliar words. The in-app A−/A+ stepper is an addition to
+       browser zoom, not a replacement for it. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
   <title>Oțios — Cuvinte Uitate</title>
   <meta property="og:title" content="Oțios — cuvinte uitate">
@@ -167,16 +163,11 @@ $tiers = [
       <div class="fs-section">
         <div class="fs-label">verdict</div>
         <div class="fs-pills">
-          <?php foreach ([
-              ['extinct',         'v-ext',  'dispărut din uz', 'Prezent în corpus istoric, absent din cel modern'],
-              ['declining',       'v-dec',  'în declin',       'Semnificativ mai comun istoric față de româneasca modernă'],
-              ['historical_only', 'v-hist', 'doar istoric',    'Găsit doar în Wikisource (istoric), nu în CulturaX (modern)'],
-              ['absent',          'v-abs',  'absent',          'Niciun semnal în corpus — posibil cel mai uitat'],
-          ] as [$v, $cls, $lbl, $tip]): ?>
-          <label class="fs-pill fs-pill-verdict fs-pill-<?= $cls ?>" title="<?= e($tip) ?>">
-            <span class="fs-dot" style="background:var(--<?= $cls ?>)"></span>
+          <?php foreach (VERDICTS as $v => $meta): ?>
+          <label class="fs-pill fs-pill-verdict fs-pill-<?= $meta['dot'] ?>" title="<?= e($meta['tip']) ?>">
+            <span class="fs-dot" style="background:var(--<?= $meta['dot'] ?>)"></span>
             <input type="checkbox" name="verdict[]" value="<?= e($v) ?>" checked>
-            <?= e($lbl) ?>
+            <?= e($meta['label']) ?>
           </label>
           <?php endforeach; ?>
         </div>
@@ -185,19 +176,11 @@ $tiers = [
       <!-- Nivel / Tier -->
       <div class="fs-section">
         <div class="fs-label">nivel</div>
-        <?php
-        $tier_tips = [
-            'corpus_extinct'         => 'modern_ppm = 0, hist_ppm > 0',
-            'corpus_declining'       => 'scădere log-ratio deasupra pragului',
-            'corpus_historical_only' => 'Wikisource da, CulturaX nu',
-            'dex_invechit_absent'    => '"învechit" în DEX + absent din corpus modern',
-            'dex_absent_highfreq'    => 'Frecvență editorială DEX ridicată, dar zero prezenți în corpus',
-        ];
-        foreach ($tiers as [$v, $lbl]): ?>
-        <label class="fs-pill" title="<?= e($tier_tips[$v] ?? $lbl) ?>">
+        <?php foreach (TIERS as $v => $meta): ?>
+        <label class="fs-pill" title="<?= e($meta['tip']) ?>">
           <span class="fs-check"></span>
           <input type="checkbox" name="tier[]" value="<?= e($v) ?>" checked>
-          <?= e($lbl) ?>
+          <?= e($meta['label']) ?>
         </label>
         <?php endforeach; ?>
       </div>
@@ -257,7 +240,6 @@ $tiers = [
           <option value="unmarked">neanotate</option>
           <option value="marked">annotate</option>
           <option value="bookmarked">☆ favorite</option>
-          <option value="noted">cu notă</option>
           <?php foreach ($QUICK_TAGS as [$tag, $key]): ?>
           <option value="tag:<?= e($tag) ?>">tag: <?= e($tag) ?></option>
           <?php endforeach; ?>

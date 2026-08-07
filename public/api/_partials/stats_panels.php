@@ -27,14 +27,6 @@ $render_bars = function(array $counts, string $fill_class, ?int $limit = null): 
     endforeach;
 };
 
-// Tier color mapping
-$TIER_META = [
-    'corpus_extinct'         => ['label' => 'corp. extinct',   'fill' => 'bar-fill--ext'],
-    'corpus_declining'       => ['label' => 'corp. declining',  'fill' => 'bar-fill--dec'],
-    'corpus_historical_only' => ['label' => 'corp. historical', 'fill' => 'bar-fill--hist'],
-    'dex_invechit_absent'    => ['label' => 'dex. învechit',    'fill' => 'bar-fill--abs'],
-    'dex_absent_highfreq'    => ['label' => 'dex. absent',      'fill' => 'bar-fill--abs'],
-];
 
 // Empty state guard
 if ($total === 0):
@@ -82,7 +74,10 @@ if ($total === 0):
 $max_t = $tier_rows ? max(array_column($tier_rows, 'cnt')) : 1;
 foreach ($tier_rows as $tr):
     $key  = $tr['confidence_tier'] ?? '';
-    $meta = $TIER_META[$key] ?? ['label' => $key ?: 'unknown', 'fill' => ''];
+    // Labels and bar colours both come from TIERS (api/_lib.php). An unmapped tier
+    // keeps its bar — the count is real — but is labelled "neclasificat" rather than
+    // leaking the raw enum onto the page.
+    $meta = TIERS[$key] ?? ['label' => 'neclasificat', 'fill' => ''];
     $pct  = $max_t > 0 ? round($tr['cnt'] / $max_t * 100, 1) : 0;
 ?>
       <div class="bar-row">
