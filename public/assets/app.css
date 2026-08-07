@@ -58,7 +58,8 @@
 
   --success:        #6FCF7C; --success-bg: #16301A; --success-border: #4A9E56;
   --error:          #E2695C; --error-bg:   #3A1E1B; --error-border: #A9463A;
-  --on-accent:      #fff;
+  /* Dark accents are light — white on them is 3.06:1. Ink, not paper. */
+  --on-accent:      #1A1613;
   --star:           #F2C230;
 }
 
@@ -250,7 +251,7 @@ body {
   height: 16px;
   padding: 0 4px;
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   border-radius: 8px;
   font-size: 0.5625rem;
   font-weight: 700;
@@ -1400,7 +1401,7 @@ body {
   width: 100%;
   padding: 12px;
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   border: none;
   border-radius: var(--radius);
   font-family: var(--sans);
