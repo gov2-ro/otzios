@@ -126,6 +126,30 @@ word, word_no_accent, frequency, rarity_category, description, model_type, notes
 
 `rarity_category ∈ {very_rare, rare, uncommon}`, bins at 0.30 and 0.50.
 
+### `data/word_ids.tsv` — permanent share-URL ids (`tools/word_ids.py`)
+
+`id<TAB>word`, 1-based, **append-only**. Tracked in git on purpose (`.gitignore` negates it
+out of the blanket `data/*` rule) because it is the only file that makes `?w=` links
+durable: `ui.db` is deleted and rebuilt on every data refresh, so an id derived from row
+order or a rowid would silently repoint every link ever shared.
+
+Three rules, all load-bearing:
+
+1. **Never renumber.** Ids are assigned once and keep their word forever.
+2. **Never remove.** A word that drops out of a later shortlist keeps its id, so old links
+   to it still resolve.
+3. **Only append.** `build_ui_db.py` calls `word_ids.apply_to_db()` at the end of a build,
+   which numbers unseen words (sorted, for a reproducible file) and writes `words.word_id`.
+
+`tools/migrate_ui_db_word_ids.py` backfills an already-built `ui.db` without a full rebuild.
+Both are idempotent — a second run must produce a byte-identical file, and that is the
+cheapest way to check the invariant holds.
+
+The codec is `pack_words()` / `unpack_words()` in `api/_lib.php` (`"1.4z.1f2"` — version
+prefix, then base36 ids, order preserved), exposed as `api/pack.php` so the browser never
+carries the dictionary. `search.php` accepts `w=` and still honours the legacy plaintext
+`words=`.
+
 ### `corpus_frequencies.db` (`process_corpus.py:69-105`)
 
 ```
@@ -215,6 +239,30 @@ third skin wants them, is in `docs/BACKLOG.md`.
 Skin files load with an mtime query string, so edits show on plain reload. A stored skin
 whose file has since been deleted falls back to `DEFAULT_SKIN` (the valid list is baked
 into the pre-paint boot script).
+
+## Lists
+
+**The four buckets are the lists.** `fav` / `lol` / `ascunde` / `meh` (declared once in
+`LIST_BUCKETS`, `api/_appdb.php`) are derived from `app.db.annotations` on every request via
+`bucket_words()` — never stored, so they cannot drift out of date. `liste.php` shows them
+alongside your published lists and a directory of everyone's.
+
+A row in the `lists` table is a **published snapshot** of a bucket. `lists.source_tag`
+records which one:
+
+- `POST {action:'publish_bucket', bucket}` — create-or-reuse the caller's list for that
+  bucket and fill it from their own annotations. One list per bucket per user. The client
+  never sends the words.
+- `POST {action:'refresh', id}` — re-read the bucket. Words already present keep their
+  `position` so a re-sync doesn't reshuffle a list someone has already read.
+- `source_tag = ''` means hand-assembled — every list created through `create` + `add`,
+  which still work unchanged. Those cannot be refreshed.
+
+This is why there is no per-word "add to list", no grid multi-select and no inline list
+editing: you curate by marking words while browsing, and publishing is one button.
+
+The public directory (`GET api/lists.php?public=1`) has **no report/takedown path yet** —
+see `docs/BACKLOG.md`. `liste.php` is `noindex` until it does.
 
 ## Deploying to a subfolder
 

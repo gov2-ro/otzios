@@ -7,11 +7,14 @@ require_once __DIR__ . '/_auth.php';
 //
 //   GET  ?                       → { lists: [...] }              own lists
 //   GET  ?slug=<slug>            → { list, items }               own list, or any public one
+//   GET  ?public=1&page=N        → { lists: [...] }              everyone's public lists
 //   POST { action: create, title, description }
 //   POST { action: update, id, title?, description?, is_public? }
 //   POST { action: delete, id }
 //   POST { action: add,    id, words: [...] }
 //   POST { action: remove, id, words: [...] }
+//   POST { action: publish_bucket, bucket, title?, description?, is_public? }
+//   POST { action: refresh, id }
 //
 // One endpoint with an `action` rather than REST verbs, matching the flat, router-free
 // style of the rest of api/.
@@ -59,9 +62,53 @@ function public_list_json(array $row): array {
         'description' => $row['description'],
         'is_public'   => (bool) $row['is_public'],
         'item_count'  => (int) $row['item_count'],
+        'source_tag'  => $row['source_tag'] ?? '',
         'created_at'  => $row['created_at'],
         'updated_at'  => $row['updated_at'],
     ];
+}
+
+/**
+ * Make a list's contents match one of the user's buckets.
+ *
+ * Words already present keep their `position`, so re-syncing a published list doesn't
+ * reshuffle it for people who have already read it; newcomers are appended. Words that
+ * left the bucket are dropped. Returns the resulting item count.
+ */
+function fill_from_bucket(PDO $pdo, int $list_id, int $user_id, string $bucket, string $now): int {
+    $words = bucket_words($user_id, $bucket);
+    $valid = filter_existing_words($words);
+    $words = array_slice(
+        array_values(array_filter($words, fn($w) => isset($valid[$w]))),
+        0, MAX_WORDS_PER_LIST
+    );
+
+    $pdo->beginTransaction();
+    try {
+        if ($words === []) {
+            $pdo->prepare('DELETE FROM list_items WHERE list_id = ?')->execute([$list_id]);
+        } else {
+            $ph = implode(',', array_fill(0, count($words), '?'));
+            $pdo->prepare("DELETE FROM list_items WHERE list_id = ? AND word NOT IN ($ph)")
+                ->execute(array_merge([$list_id], $words));
+
+            $stmt = $pdo->prepare('SELECT COALESCE(MAX(position), 0) FROM list_items WHERE list_id = ?');
+            $stmt->execute([$list_id]);
+            $pos = (int) $stmt->fetchColumn();
+
+            $ins = $pdo->prepare(
+                'INSERT OR IGNORE INTO list_items (list_id, word, position, note, added_at) VALUES (?, ?, ?, ?, ?)'
+            );
+            foreach ($words as $w) { $ins->execute([$list_id, $w, ++$pos, '', $now]); }
+        }
+        touch_list($pdo, $list_id);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+
+    return count($words);
 }
 
 $pdo = app_db();
@@ -70,6 +117,24 @@ $pdo = app_db();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $slug = trim($_GET['slug'] ?? '');
+
+    // Directory of everyone's published lists. No moderation path exists yet — see
+    // "Moderation for public lists" in docs/BACKLOG.md.
+    if (($_GET['public'] ?? '') === '1') {
+        $per  = 30;
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $stmt = $pdo->prepare(
+            'SELECT l.*, u.nickname FROM lists l JOIN users u ON u.id = l.user_id
+              WHERE l.is_public = 1 AND l.item_count > 0
+              ORDER BY l.updated_at DESC LIMIT ? OFFSET ?'
+        );
+        $stmt->execute([$per, ($page - 1) * $per]);
+
+        json_out(['lists' => array_map(
+            fn(array $r) => public_list_json($r) + ['owner_name' => $r['nickname'] ?: 'anonim'],
+            $stmt->fetchAll()
+        )]);
+    }
 
     if ($slug === '') {
         $stmt = $pdo->prepare('SELECT * FROM lists WHERE user_id = ? ORDER BY updated_at DESC');
@@ -131,6 +196,74 @@ switch ($action) {
         ]);
 
         json_out(['list' => public_list_json(list_row($pdo, (int) $pdo->lastInsertId()))]);
+    }
+
+    // Publish a bucket (fav / lol / ascunde / meh) as a named list. The words are read
+    // from the caller's own annotations server-side, so the client never has to send —
+    // or even hold — the list it is publishing.
+    case 'publish_bucket': {
+        $bucket = (string) ($in['bucket'] ?? '');
+        if (!isset(LIST_BUCKETS[$bucket])) json_out(['error' => 'unknown_bucket'], 400);
+
+        $want_public = array_key_exists('is_public', $in) ? !empty($in['is_public']) : true;
+        // Asked for up front rather than after the list exists, so a refusal leaves
+        // nothing half-created behind.
+        if ($want_public && ($user['nickname'] ?? '') === '') {
+            json_out(['error' => 'nickname_required'], 409);
+        }
+
+        // One list per bucket per user: publishing twice updates rather than piling up
+        // near-identical lists that all drift apart.
+        $stmt = $pdo->prepare('SELECT * FROM lists WHERE user_id = ? AND source_tag = ?');
+        $stmt->execute([$user_id, $bucket]);
+        $row = $stmt->fetch() ?: null;
+
+        if (!$row) {
+            $stmt = $pdo->prepare('SELECT COUNT(*) FROM lists WHERE user_id = ?');
+            $stmt->execute([$user_id]);
+            if ((int) $stmt->fetchColumn() >= MAX_LISTS_PER_USER) {
+                json_out(['error' => 'too_many_lists'], 409);
+            }
+
+            $meta  = LIST_BUCKETS[$bucket];
+            $title = trim(is_string($in['title'] ?? null) ? $in['title'] : '');
+            if ($title === '') {
+                $title = $meta['label'] . ' — ' . ($user['nickname'] ?: 'anonim');
+            }
+            $title = mb_substr($title, 0, 120);
+
+            $pdo->prepare(
+                'INSERT INTO lists (user_id, slug, title, description, is_public, item_count, source_tag, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)'
+            )->execute([
+                $user_id,
+                slugify($title),
+                $title,
+                mb_substr(is_string($in['description'] ?? null) ? $in['description'] : '', 0, 500),
+                $want_public ? 1 : 0,
+                $bucket,
+                $now,
+                $now,
+            ]);
+            $row = list_row($pdo, (int) $pdo->lastInsertId());
+        } elseif ($want_public && !$row['is_public']) {
+            $pdo->prepare('UPDATE lists SET is_public = 1, updated_at = ? WHERE id = ?')
+                ->execute([$now, $row['id']]);
+        }
+
+        $count = fill_from_bucket($pdo, (int) $row['id'], $user_id, $bucket, $now);
+        json_out(['list' => public_list_json(list_row($pdo, (int) $row['id'])), 'items' => $count]);
+    }
+
+    // Re-read a published list from the bucket it came from.
+    case 'refresh': {
+        $row = owned_list($pdo, (int) ($in['id'] ?? 0), $user_id);
+        if (!isset(LIST_BUCKETS[$row['source_tag'] ?? ''])) {
+            json_out(['error' => 'not_from_bucket'], 400);
+        }
+
+        $count = fill_from_bucket($pdo, (int) $row['id'], $user_id, (string) $row['source_tag'], $now);
+        json_out(['list' => public_list_json(list_row($pdo, (int) $row['id'])), 'items' => $count]);
     }
 
     case 'update': {

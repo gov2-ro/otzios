@@ -108,6 +108,75 @@ function db_has_column(string $col): bool {
     return in_array($col, $cols, true);
 }
 
+// ── Packed word lists ─────────────────────────────────────────────────────────
+//
+// A share URL carries base36 word ids rather than the words: Romanian diacritics
+// percent-encode to six characters each (ă → %C4%83), so twenty words run past 300
+// characters as `?words=`, versus about 70 as `?w=`.
+//
+// The ids come from data/word_ids.tsv via the word_id column (tools/word_ids.py) and
+// are append-only, so a link shared today still resolves after any number of data
+// rebuilds. The leading version segment is the escape hatch if that ever has to
+// change — an old client meeting a version it does not know decodes nothing rather
+// than decoding the wrong words.
+
+const WORD_PACK_VERSION = 1;
+const WORD_PACK_MAX     = 500;   // ceiling on one URL, so `?w=` can't force a huge query
+
+/** ['abacă','oțios'] → "1.1.396f". Unknown words are dropped; '' if none survive. */
+function pack_words(array $words): string {
+    $words = array_slice(array_values(array_unique(array_filter(
+        $words, fn($w) => is_string($w) && $w !== ''
+    ))), 0, WORD_PACK_MAX);
+    if ($words === [] || !db_has_column('word_id')) return '';
+
+    $ids = [];
+    foreach (array_chunk($words, 400) as $chunk) {
+        $ph   = implode(',', array_fill(0, count($chunk), '?'));
+        $stmt = db()->prepare("SELECT word, word_id FROM words WHERE word IN ($ph) AND word_id IS NOT NULL");
+        $stmt->execute($chunk);
+        foreach ($stmt->fetchAll() as $r) { $ids[$r['word']] = (int) $r['word_id']; }
+    }
+
+    $out = [];
+    foreach ($words as $w) {                       // caller's order is the payload
+        if (isset($ids[$w])) $out[] = base_convert((string) $ids[$w], 10, 36);
+    }
+    return $out === [] ? '' : WORD_PACK_VERSION . '.' . implode('.', $out);
+}
+
+/** "1.1.396f" → ['abacă','oțios'], in URL order. [] on any version or format problem. */
+function unpack_words(string $packed): array {
+    $parts = explode('.', trim($packed));
+    if (count($parts) < 2) return [];
+    if (array_shift($parts) !== (string) WORD_PACK_VERSION) return [];
+    if (!db_has_column('word_id')) return [];
+
+    $ids = [];
+    foreach (array_slice($parts, 0, WORD_PACK_MAX) as $seg) {
+        // base_convert() silently treats out-of-alphabet characters as zero, so a
+        // malformed segment would decode to id 0 rather than being rejected.
+        if (!preg_match('/^[0-9a-z]{1,6}$/', $seg)) continue;
+        $id = (int) base_convert($seg, 36, 10);
+        if ($id > 0) $ids[] = $id;
+    }
+    if ($ids === []) return [];
+
+    $by_id = [];
+    foreach (array_chunk(array_unique($ids), 400) as $chunk) {
+        $ph   = implode(',', array_fill(0, count($chunk), '?'));
+        $stmt = db()->prepare("SELECT word_id, word FROM words WHERE word_id IN ($ph)");
+        $stmt->execute($chunk);
+        foreach ($stmt->fetchAll() as $r) { $by_id[(int) $r['word_id']] = $r['word']; }
+    }
+
+    $out = [];
+    foreach ($ids as $id) {
+        if (isset($by_id[$id])) $out[] = $by_id[$id];
+    }
+    return $out;
+}
+
 function build_word_filter(array $p): array {
     global $POS_OPTIONS;
     static $TIER_TOTAL    = 5;

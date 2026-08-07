@@ -93,11 +93,14 @@ $desc  = $row && $row['description'] !== ''
     }
     .lista-nav a { color: var(--text-3); text-decoration: none; }
     .lista-nav a:hover { color: var(--accent); }
+    .lista-nav-sep { color: var(--text-4); }
     /* Push the two display controls to the right of the "← Oțios" link. Only
        the first of them gets the auto margin — giving it to both would split
        the free space between them. */
     .lista-nav .skin-select { margin-left: auto; }
     .lista-empty { color: var(--text-3); padding: 30px 0; }
+    .lista-share { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+    .lista-share a.playlist-btn { text-decoration: none; display: inline-block; }
   </style>
 </head>
 <body>
@@ -107,6 +110,8 @@ $desc  = $row && $row['description'] !== ''
          whatever skin and theme happen to be the defaults. -->
     <div class="lista-nav">
       <a href="<?= BASE ?>/">← Oțios</a>
+      <span class="lista-nav-sep">·</span>
+      <a href="<?= BASE ?>/liste.php">liste</a>
       <?= otios_skin_select("skin-select--sm") ?>
       <div class="theme-toggle theme-toggle--sm" role="group" aria-label="Temă">
         <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
@@ -127,6 +132,19 @@ $desc  = $row && $row['description'] !== ''
         </div>
         <?php if ($row['description'] !== ''): ?>
           <p class="lista-desc"><?= e($row['description']) ?></p>
+        <?php endif; ?>
+
+        <?php if ($words !== []):
+          // Packed here rather than in the browser: PHP already holds the words and the
+          // id map, so the explorer link works with JavaScript off.
+          $packed = pack_words(array_column($words, 'word')); ?>
+        <div class="lista-share">
+          <?php if ($packed !== ''): ?>
+            <a class="playlist-btn" href="<?= BASE ?>/?w=<?= e($packed) ?>">deschide toate în explorator</a>
+          <?php endif; ?>
+          <button type="button" class="playlist-btn" id="copy-link-btn">copiază link</button>
+          <button type="button" class="playlist-btn" id="share-btn" hidden>trimite</button>
+        </div>
         <?php endif; ?>
       </div>
 
@@ -151,5 +169,38 @@ $desc  = $row && $row['description'] !== ''
     <?php endif; ?>
   </div>
   <script src="<?= BASE ?>/assets/prefs.js"></script>
+  <script>
+  (function() {
+    var copyBtn  = document.getElementById('copy-link-btn');
+    var shareBtn = document.getElementById('share-btn');
+    if (!copyBtn) return;
+
+    var title = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?> + ' — Oțios';
+
+    function toast(msg) {
+      var t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(function() { t.remove(); }, 2200);
+    }
+
+    copyBtn.addEventListener('click', function() {
+      navigator.clipboard.writeText(location.href).then(
+        function() { toast('Link copiat!'); },
+        function() { toast('Nu am putut copia linkul'); }
+      );
+    });
+
+    // Only offered where the OS actually has a share sheet; elsewhere the copy button
+    // is the whole story and a dead "trimite" would just be noise.
+    if (navigator.share) {
+      shareBtn.hidden = false;
+      shareBtn.addEventListener('click', function() {
+        navigator.share({ title: title, url: location.href }).catch(function() {});
+      });
+    }
+  })();
+  </script>
 </body>
 </html>

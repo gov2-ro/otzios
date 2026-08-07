@@ -15,6 +15,9 @@ try:
 except ImportError:
     _zipf = None
 
+sys.path.insert(0, str(Path(__file__).parent))
+from word_ids import apply_to_db as _apply_word_ids
+
 SHORTLIST_PATH  = Path('data/processed/forgotten_words_shortlist.csv')
 RARE_PATH       = Path('data/processed/rare_words_wordfreq.csv')
 WEB_PATH        = Path('data/processed/diachronic_shortlist_web_validated.csv')
@@ -154,7 +157,8 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             zipf_frequency   REAL,
             en_zipf          REAL,
             proper_noun_like INTEGER,
-            sources          TEXT
+            sources          TEXT,
+            word_id          INTEGER
         )
     """)
 
@@ -313,7 +317,13 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     else:
         print('lexemes.db not found — proper_noun_like left NULL')
 
+    # Permanent word ids for the compact ?w= share URLs. Runs last, so every
+    # insert path (shortlist + rare-in-use) has landed and no word is missed.
+    print('Assigning permanent word ids…')
+    print(f'  {_apply_word_ids(conn)} rows carry a word_id')
+
     # Indexes
+    conn.execute('CREATE UNIQUE INDEX idx_words_word_id ON words(word_id)')
     conn.execute('CREATE INDEX idx_vocab_kind      ON vocab(kind)')
     conn.execute('CREATE INDEX idx_words_verdict   ON words(verdict)')
     conn.execute('CREATE INDEX idx_words_tier      ON words(confidence_tier)')

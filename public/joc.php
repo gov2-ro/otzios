@@ -130,7 +130,7 @@ require_once __DIR__ . '/api/_lib.php';
       <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
       <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')" title="Temă întunecată">☾</button>
     </div>
-    <span class="joc-nav"><a href="#" onclick="openBoard();return false;">🏆 clasament</a><a href="<?= BASE ?>/">← acasă</a><a href="<?= BASE ?>/stats.php">statistici</a></span>
+    <span class="joc-nav"><a href="#" onclick="openBoard();return false;">🏆 clasament</a><a href="<?= BASE ?>/">← acasă</a><a href="<?= BASE ?>/liste.php">📋 liste</a><a href="<?= BASE ?>/stats.php">statistici</a></span>
   </div>
 
   <div class="joc-layout">

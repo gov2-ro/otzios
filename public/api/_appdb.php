@@ -23,7 +23,17 @@ if (!defined('OTIOS_PRIVATE_DIR')) {
 }
 define('APP_DB_PATH', OTIOS_PRIVATE_DIR . '/app.db');
 
-const APP_DB_VERSION = 1;
+const APP_DB_VERSION = 2;
+
+// The four annotation buckets a user actually produces, and the annotated_words_subquery()
+// argument that selects each. A published list is a snapshot of one of these, which is why
+// `lists.source_tag` stores a key from here — it is what "actualizează" re-reads.
+const LIST_BUCKETS = [
+    'fav'     => ['marks' => 'bookmarked',   'emoji' => '★',  'label' => 'favorite'],
+    'lol'     => ['marks' => 'tag:lol',      'emoji' => '😂', 'label' => 'lol'],
+    'ascunde' => ['marks' => 'tag:ascunde',  'emoji' => '🙈', 'label' => 'ascunde'],
+    'meh'     => ['marks' => 'tag:meh',      'emoji' => '😐', 'label' => 'meh'],
+];
 
 // Input caps. Enforced server-side so the API can't be used as free storage.
 const MAX_NOTE_LEN      = 2000;
@@ -260,7 +270,41 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 SQL);
     }
 
+    if ($version < 2) {
+        // Which bucket a list was published from, so it can be re-synced later. '' is
+        // "assembled by hand" — every list that existed before this column did.
+        try {
+            $pdo->exec("ALTER TABLE lists ADD COLUMN source_tag TEXT NOT NULL DEFAULT ''");
+        } catch (PDOException $e) {
+            // Already added by a concurrent request; the column is what matters, not who won.
+            if (!str_contains($e->getMessage(), 'duplicate column')) throw $e;
+        }
+    }
+
     $pdo->exec('PRAGMA user_version = ' . APP_DB_VERSION);
+}
+
+/**
+ * The words in one of a user's four buckets, newest annotation first.
+ *
+ * Reads app.db directly rather than through attach_app_db(), because the caller may be a
+ * write path already holding the app_db() connection. Words are not filtered against
+ * ui.db here — filter_existing_words() does that where it matters.
+ */
+function bucket_words(int $user_id, string $bucket): array {
+    if (!isset(LIST_BUCKETS[$bucket])) return [];
+
+    $sub = annotated_words_subquery(LIST_BUCKETS[$bucket]['marks'], $user_id);
+    if ($sub === null) return [];
+
+    // annotated_words_subquery() names the table `app.annotations` for the attached
+    // read connection; on the direct write connection it is just `annotations`.
+    [$sql, $params] = $sub;
+    $sql = str_replace('app.annotations', 'annotations', $sql);
+
+    $stmt = app_db()->prepare("$sql ORDER BY updated_at DESC");
+    $stmt->execute($params);
+    return $stmt->fetchAll(PDO::FETCH_COLUMN);
 }
 
 // Fixed-width UTC with milliseconds, so timestamps compare correctly as plain strings

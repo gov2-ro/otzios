@@ -90,34 +90,71 @@ function showToast(msg) {
   setTimeout(function() { t.remove(); }, 2200);
 }
 
+// ── Playlist URLs ───────────────────────────────────────────────────────────────
+//
+// The word list travels as `?w=`, a version prefix plus one base36 word id per word
+// (pack_words() in api/_lib.php). The ids live in ui.db, not here, so the browser asks
+// api/pack.php to encode rather than carrying a 25k-word dictionary of its own.
+
+function packWords(words) {
+  return fetch(OTIOS_BASE + '/api/pack.php', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ words: words })
+  }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+}
+
+function playlistUrl(packed) {
+  return location.origin + location.pathname + '?w=' + packed;
+}
+
 function shareBookmarks() {
-  const r = getResearch();
-  const bookmarked = Object.entries(r.words)
-    .filter(function(entry) { return entry[1].bookmarked; })
-    .map(function(entry) { return entry[0]; });
-  if (!bookmarked.length) { showToast('No bookmarks yet'); return; }
-  const url = location.origin + location.pathname + '?words=' + bookmarked.map(encodeURIComponent).join(',');
-  navigator.clipboard.writeText(url).then(function() { showToast('Playlist URL copied!'); });
+  const bookmarked = bookmarkedWords();
+  if (!bookmarked.length) { showToast('Nu ai favorite încă'); return; }
+  packWords(bookmarked).then(function(res) {
+    if (!res || !res.w) { showToast('Nu am putut crea linkul'); return; }
+    navigator.clipboard.writeText(playlistUrl(res.w))
+      .then(function() { showToast('Link copiat — ' + res.count + ' cuvinte'); });
+  });
 }
 
 function copyPlaylistUrl() {
+  const packed = (document.getElementById('playlist-w') || {}).value;
+  if (packed) {
+    navigator.clipboard.writeText(playlistUrl(packed)).then(function() { showToast('Link copiat!'); });
+    return;
+  }
+  // Legacy `?words=` playlist still open in this tab — pack it on the way out, so the
+  // link that gets shared is the short one.
   const pwInput = document.getElementById('playlist-words');
   if (!pwInput || !pwInput.value) return;
-  const url = location.origin + location.pathname + '?words=' + pwInput.value;
-  navigator.clipboard.writeText(url).then(function() { showToast('Playlist URL copied!'); });
+  packWords(pwInput.value.split(',').filter(Boolean)).then(function(res) {
+    if (!res || !res.w) { showToast('Nu am putut crea linkul'); return; }
+    navigator.clipboard.writeText(playlistUrl(res.w)).then(function() { showToast('Link copiat!'); });
+  });
 }
 
 function exitPlaylist() {
-  const pwInput = document.getElementById('playlist-words');
-  if (pwInput) pwInput.value = '';
+  ['playlist-w', 'playlist-words'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   const banner = document.getElementById('playlist-banner');
   if (banner) banner.style.display = 'none';
   var params = new URLSearchParams(location.search);
+  params.delete('w');
   params.delete('words');
   var qs = params.toString();
   history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
   var form = document.getElementById('filter-form');
   if (form) htmx.trigger(form, 'change');
+}
+
+function showPlaylistBanner(count) {
+  const banner = document.getElementById('playlist-banner');
+  const countEl = document.getElementById('playlist-count');
+  if (banner) banner.style.display = '';
+  if (countEl) countEl.textContent = count + (count === 1 ? ' cuvânt în listă' : ' cuvinte în listă');
 }
 
 // ── Play / exploration ───────────────────────────────────────────────────────────
@@ -936,17 +973,20 @@ function applyUrlToForm() {
   var wordParam = params.get('word');
   if (wordParam) openWord = wordParam;
 
-  // Playlist words param
-  var wordsParam = params.get('words');
-  if (wordsParam) {
-    var pwInput = document.getElementById('playlist-words');
-    if (pwInput) pwInput.value = wordsParam;
-    var banner = document.getElementById('playlist-banner');
-    var countEl = document.getElementById('playlist-count');
-    if (banner) banner.style.display = '';
-    if (countEl) {
-      var wcount = wordsParam.split(',').filter(Boolean).length;
-      countEl.textContent = wcount + (wcount === 1 ? ' word' : ' words') + ' in playlist';
+  // Playlist param. Set synchronously — htmx fires the first search on load, and the
+  // hidden input has to be populated before it does.
+  var packedParam = params.get('w');
+  if (packedParam) {
+    var pkInput = document.getElementById('playlist-w');
+    if (pkInput) pkInput.value = packedParam;
+    // One segment is the version prefix; the rest are words.
+    showPlaylistBanner(Math.max(0, packedParam.split('.').filter(Boolean).length - 1));
+  } else {
+    var wordsParam = params.get('words');
+    if (wordsParam) {
+      var pwInput = document.getElementById('playlist-words');
+      if (pwInput) pwInput.value = wordsParam;
+      showPlaylistBanner(wordsParam.split(',').filter(Boolean).length);
     }
   }
 }
@@ -999,9 +1039,12 @@ function syncUrlFromForm() {
     if (el && el.checked) params.set(name, '1');
   });
 
-  // Preserve playlist
+  // Preserve playlist — the compact form when there is one, else a legacy plaintext
+  // playlist still open in this tab.
+  var pkInput = document.getElementById('playlist-w');
   var pwInput = document.getElementById('playlist-words');
-  if (pwInput && pwInput.value.trim()) params.set('words', pwInput.value.trim());
+  if (pkInput && pkInput.value.trim())      params.set('w', pkInput.value.trim());
+  else if (pwInput && pwInput.value.trim()) params.set('words', pwInput.value.trim());
 
   // dex_max: only when changed from its default, always appended last
   var dexMaxEl = form.querySelector('select[name=dex_max]');
@@ -1057,128 +1100,14 @@ document.addEventListener('htmx:configRequest', function(e) {
 
 // ── Word lists ──────────────────────────────────────────────────────────────────
 //
-// Named, server-stored collections. Unlike the ?words=a,b,c playlist URLs these
-// survive, can be added to over time, and can be published at a stable address.
-
-function listsApi(body) {
-  const opts = body
-    ? { method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-    : { credentials: 'same-origin' };
-  return fetch(OTIOS_BASE + '/api/lists.php', opts).then(function(r) {
-    return r.json().then(function(d) { return { status: r.status, data: d }; });
-  });
-}
-
-function openLists() {
-  document.getElementById('lists-overlay').style.display = 'flex';
-  refreshLists();
-}
-
-function closeLists() {
-  document.getElementById('lists-overlay').style.display = 'none';
-}
-
-function refreshLists() {
-  listsApi(null).then(function(res) {
-    const box = document.getElementById('lists-container');
-    const lists = (res.data && res.data.lists) || [];
-    if (!lists.length) {
-      box.innerHTML = '<p class="lists-empty">Nicio listă încă. Creează una și adaugă-i favoritele.</p>';
-      return;
-    }
-    box.innerHTML = lists.map(function(l) {
-      const url = location.origin + OTIOS_BASE + '/lista.php?l=' + encodeURIComponent(l.slug);
-      return '<div class="list-card">' +
-        '<div class="list-card-top">' +
-          '<span class="list-name"></span>' +
-          '<span class="list-count">' + l.item_count + ' cuvinte</span>' +
-          (l.is_public ? '<span class="list-pub">publică</span>' : '') +
-        '</div>' +
-        '<div class="list-actions">' +
-          '<button class="playlist-btn" data-act="add" data-id="' + l.id + '">+ adaugă favoritele</button>' +
-          '<button class="playlist-btn" data-act="pub" data-id="' + l.id + '">' +
-            (l.is_public ? 'fă privată' : 'publică') + '</button>' +
-          (l.is_public ? '<button class="playlist-btn" data-act="copy" data-url="' + encodeURIComponent(url) + '">copiază link</button>' +
-                         '<a class="playlist-btn" href="' + url + '" target="_blank" rel="noopener">deschide ↗</a>' : '') +
-          '<button class="playlist-btn" data-act="del" data-id="' + l.id + '">șterge</button>' +
-        '</div></div>';
-    }).join('');
-    // Titles are user input — set as text, never interpolated into the HTML above.
-    box.querySelectorAll('.list-name').forEach(function(el, i) { el.textContent = lists[i].title; });
-  });
-}
-
-function createList() {
-  const input = document.getElementById('new-list-title');
-  const title = input.value.trim();
-  if (!title) { showToast('Dă-i un nume listei'); return; }
-  listsApi({ action: 'create', title: title }).then(function() {
-    input.value = '';
-    refreshLists();
-  });
-}
+// The lists themselves live on liste.php — the four buckets (fav / lol / ascunde /
+// meh) plus whatever has been published from them. All this page needs is the fav
+// bucket, for the status-bar share button.
 
 function bookmarkedWords() {
   const r = getResearch();
   return Object.keys(r.words).filter(function(w) { return r.words[w].bookmarked; });
 }
-
-// Publishing is the one moment an anonymous visitor is asked for anything: a name to
-// attach to the list. Prompted here rather than at the door.
-function ensureNickname() {
-  return otiosMe().then(function(me) {
-    if (me && me.nickname) return me.nickname;
-    const name = prompt('Sub ce nume publici lista?');
-    if (!name || name.trim().length < 2) return null;
-    return fetch(OTIOS_BASE + '/api/profile.php', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: name.trim() })
-    }).then(function(r) { return r.json(); }).then(function(d) { return d.nickname || null; });
-  });
-}
-
-document.addEventListener('click', function(e) {
-  const btn = e.target.closest('#lists-container [data-act]');
-  if (!btn) return;
-  const id = parseInt(btn.dataset.id, 10);
-
-  if (btn.dataset.act === 'copy') {
-    navigator.clipboard.writeText(decodeURIComponent(btn.dataset.url))
-      .then(function() { showToast('Link copiat!'); });
-    return;
-  }
-  if (btn.dataset.act === 'add') {
-    const words = bookmarkedWords();
-    if (!words.length) { showToast('Nu ai favorite de adăugat'); return; }
-    listsApi({ action: 'add', id: id, words: words }).then(function(res) {
-      showToast((res.data.added || 0) + ' cuvinte adăugate');
-      refreshLists();
-    });
-    return;
-  }
-  if (btn.dataset.act === 'del') {
-    if (!confirm('Ștergi lista?')) return;
-    listsApi({ action: 'delete', id: id }).then(refreshLists);
-    return;
-  }
-  if (btn.dataset.act === 'pub') {
-    const makePublic = btn.textContent.trim() === 'publică';
-    if (!makePublic) {
-      listsApi({ action: 'update', id: id, is_public: false }).then(refreshLists);
-      return;
-    }
-    ensureNickname().then(function(name) {
-      if (!name) { showToast('Ai nevoie de un nume ca să publici'); return; }
-      listsApi({ action: 'update', id: id, is_public: true }).then(function(res) {
-        if (res.status !== 200) { showToast('Nu am putut publica lista'); return; }
-        showToast('Listă publicată');
-        refreshLists();
-      });
-    });
-  }
-});
 
 // ── Init ────────────────────────────────────────────────────────────────────────
 

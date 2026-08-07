@@ -12,10 +12,18 @@ $marked_words = $marked_words_raw !== ''
     ? array_filter(array_map('trim', explode(',', $marked_words_raw)))
     : [];
 
-$playlist_words_raw = trim($_GET['words'] ?? '');
-$playlist_words = $playlist_words_raw !== ''
-    ? array_filter(array_map('trim', explode(',', $playlist_words_raw)))
-    : [];
+// Playlist: `w` is the compact form (base36 word ids, see pack_words() in _lib.php);
+// `words` is the original plaintext form, still honoured so links shared before the
+// codec existed keep working.
+$packed = trim($_GET['w'] ?? '');
+if ($packed !== '') {
+    $playlist_words = unpack_words($packed);
+} else {
+    $playlist_words_raw = trim($_GET['words'] ?? '');
+    $playlist_words = $playlist_words_raw !== ''
+        ? array_filter(array_map('trim', explode(',', $playlist_words_raw)))
+        : [];
+}
 
 // Build shared server-side filters
 ['conditions' => $conditions, 'params' => $params, 'word_tier' => $word_tier] = build_word_filter($_GET);
@@ -32,6 +40,12 @@ if ($playlist_words !== []) {
     $placeholders = implode(',', array_fill(0, count($playlist_words), '?'));
     $conditions[] = "word IN ($placeholders)";
     $params       = array_merge($params, array_values($playlist_words));
+} elseif ($packed !== '') {
+    // A `w` that decodes to nothing (mangled, or a version this build doesn't know)
+    // must not fall through to "no playlist filter" — silently serving all 25k words
+    // under a playlist banner reads as a bug. An empty grid beside the banner and its
+    // exit button explains itself.
+    $conditions[] = '1=0';
 }
 
 // Marks filter.

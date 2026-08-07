@@ -2075,36 +2075,8 @@ kbd {
   .status-right { flex-wrap: wrap; }
 }
 
-/* ── Word lists modal ────────────────────────────────────────────────────────── */
+/* ── Word list cards (liste.php) ─────────────────────────────────────────────── */
 
-#lists-overlay {
-  position: fixed; inset: 0;
-  background: rgba(28,25,22,.32);
-  backdrop-filter: blur(2px);
-  display: flex; align-items: center; justify-content: center; z-index: 100;
-}
-#lists-modal {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 22px 28px;
-  min-width: 460px; max-width: 560px;
-  max-height: 80vh; display: flex; flex-direction: column;
-  box-shadow: 0 20px 60px rgba(28,25,22,.18);
-}
-.lists-x {
-  background: none; border: none; cursor: pointer;
-  color: var(--text-3); font-size: 0.875rem; padding: 2px 6px;
-}
-.lists-x:hover { color: var(--text); }
-.lists-body { overflow-y: auto; }
-.lists-new { display: flex; gap: 8px; margin-bottom: 16px; }
-.lists-new input {
-  flex: 1; font-family: var(--sans); font-size: 0.8125rem;
-  padding: 6px 10px; border: 1px solid var(--border-2); border-radius: 4px;
-  background: var(--surface); color: var(--text);
-}
-.lists-new input:focus { outline: none; border-color: var(--accent); }
 .lists-empty { color: var(--text-3); font-size: 0.8125rem; padding: 14px 0; }
 .list-card { border-top: 1px solid var(--border); padding: 12px 0; }
 .list-card-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -2156,7 +2128,7 @@ kbd {
 }
 
 @media (max-width: 560px) {
-  #board-modal, #lists-modal { min-width: 0; width: 92%; padding: 16px; }
+  #board-modal { min-width: 0; width: 92%; padding: 16px; }
 }
 
 /* joc.php's always-visible word-detail pane lives entirely in joc.php's own <style>

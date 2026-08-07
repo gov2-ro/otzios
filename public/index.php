@@ -314,6 +314,10 @@ $tiers = [
       </button>
     </div>
 
+    <!-- Playlist transport. `w` is the compact form (base36 word ids, pack_words() in
+         api/_lib.php) and is what new links use; `words` is the plaintext form, kept
+         so links shared before the codec still load. -->
+    <input type="hidden" id="playlist-w" name="w" value="">
     <input type="hidden" id="playlist-words" name="words" value="">
   </form>
 
@@ -381,7 +385,7 @@ $tiers = [
     </span>
 
     <span class="status-right">
-      <a href="#" onclick="openLists();return false;">📋 liste</a>
+      <a href="<?= BASE ?>/liste.php">📋 liste</a>
       <a href="<?= BASE ?>/joc.php">🎮 joc</a>
       <a href="<?= BASE ?>/stats.php">📊 statistici</a>
       <a href="<?= BASE ?>/metodologie.html">metodologie</a>
@@ -405,23 +409,6 @@ $tiers = [
       <button type="button" class="feed-keep" onclick="feedKeep()" title="păstrează la favorite (→ / l)">★ păstrează</button>
     </div>
     <div class="feed-hint">← sari · păstrează → &nbsp;·&nbsp; sau glisează stânga/dreapta</div>
-  </div>
-
-  <!-- Word lists: named, server-stored collections that can be published -->
-  <div id="lists-overlay" style="display:none" onclick="if(event.target===this)closeLists()">
-    <div id="lists-modal">
-      <div class="shortcuts-header">
-        <span>Listele mele</span>
-        <button class="lists-x" onclick="closeLists()">✕</button>
-      </div>
-      <div class="lists-body">
-        <div class="lists-new">
-          <input type="text" id="new-list-title" placeholder="nume listă nouă…" maxlength="120">
-          <button class="playlist-btn" onclick="createList()">+ creează</button>
-        </div>
-        <div id="lists-container"><p class="lists-empty">se încarcă…</p></div>
-      </div>
-    </div>
   </div>
 
   <div id="shortcuts-overlay" style="display:none">

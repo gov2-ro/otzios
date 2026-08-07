@@ -242,7 +242,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] handle in browser curration - choices saved in browser memory and can be exported as json — **partly done**: annotations now sync to `private/app.db` via `api/sync.php`, so curation survives a browser wipe and follows the user across devices on the same account. localStorage remains the offline-first cache. A JSON *export* button is still missing; the data is reachable at `api/sync.php` with `{"since":0}`.
 
-- [x] publish favorites, custom lists even to a web server. make it a collaborative experience. Eventually publish these currated lists and showcase popular words on the main website. — named lists (`api/lists.php`) with a public page at `lista.php?l=<slug>`, plus a streak leaderboard (`api/leaderboard.php`). Identity is an anonymous device token; a display name is requested only when publishing. **Still open**: showcasing popular/curated lists on the landing page, and aggregating which words are most-bookmarked across users.
+- [x] publish favorites, custom lists even to a web server. make it a collaborative experience. Eventually publish these currated lists and showcase popular words on the main website. — named lists (`api/lists.php`) with a public page at `lista.php?l=<slug>`, plus a streak leaderboard (`api/leaderboard.php`). Identity is an anonymous device token; a display name is requested only when publishing. **Showcasing done 2026-08-07**: `liste.php` carries a *Liste publice* directory — every `is_public` list with at least one word, newest first, with its owner's nickname (`GET api/lists.php?public=1`). Publishing itself moved server-side: `POST {action:'publish_bucket', bucket}` reads the words from the caller's own annotations, so the client no longer uploads the list it is publishing, and `{action:'refresh', id}` re-syncs a published list from its `source_tag` bucket. **Still open**: aggregating which words are most-bookmarked *across* users (a per-word popularity signal, distinct from per-user lists).
 
 - [ ] metadata navigator - add wordfreq and scarcity - the result of this project. 
 
@@ -283,7 +283,11 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] link to [straturi.mariuscomper.uk](https://straturi.mariuscomper.uk/) / [proiecte/?topic=language](https://mariuscomper.uk/proiecte/?topic=language)
 
-- [ ] sharing word lists, can we make them (the url) more compact? compress list of ascii, incl separators? see [gemini](https://share.gemini.google/cHCYz4WpYBrK), [chatgpt](https://chatgpt.com/share/6a746c7a-4150-83ec-96ca-771dc2e47cfa)
+- [x] sharing word lists, can we make them (the url) more compact? compress list of ascii, incl separators? see [gemini](https://share.gemini.google/cHCYz4WpYBrK), [chatgpt](https://chatgpt.com/share/6a746c7a-4150-83ec-96ca-771dc2e47cfa) (both saved under `docs/reference/`) — Done 2026-08-07 via **dictionary indexing**, the option both conversations converge on for a fixed vocabulary. `?words=școală,învățământ,…` became `?w=1.4z.1f2.…`: a version prefix plus one base36 word id per word. Measured 11 chars for 3 words vs 44, 38 vs ~120 for a whole-URL comparison. Neither LZ-string nor gzip was used — with a 25k closed vocabulary, ids beat generic compression and need no library on either side.
+
+  The ids come from `data/word_ids.tsv` (`tools/word_ids.py`), which is **append-only and force-tracked in git** despite the blanket `data/*` ignore. That is the load-bearing part: `ui.db` is deleted and rebuilt on every data refresh, so an id derived from row order would silently repoint every link ever shared. Words are never renumbered and never removed — a word dropped from a later shortlist keeps its id. `build_ui_db.py` assigns ids to new words at the end of a build; `tools/migrate_ui_db_word_ids.py` backfills an already-deployed `ui.db`.
+
+  Codec is `pack_words()` / `unpack_words()` in `api/_lib.php`, exposed to the browser as `api/pack.php` so the client never carries the dictionary. `search.php` accepts `w=` and still honours the old `words=`, so links shared before this keep working. A `w=` that decodes to nothing (mangled, or a future version) yields an empty grid rather than falling through to all 25k words.
 
 - [ ] also count synonyms! - filter by the number of synonyms.
 
@@ -291,7 +295,9 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] feed, does it hide words in the mainlist? - it should show all tagging options too. and up favorites. down = lol - or show more info?
 
-- [ ] top bar, show links to lists (favs, lol, more) fav, the rest are dropdowns if more than 1 
+- [x] top bar, show links to lists (favs, lol, more) fav, the rest are dropdowns if more than 1 — Done 2026-08-07, as a page rather than a dropdown. `📋 liste` in the status bar (and in `joc.php`'s nav, and on `lista.php`) now goes to **`liste.php`**, which lists all four buckets — `fav` / `lol` / `ascunde` / `meh` — with counts, an "open in explorer" link and a publish button each. The `#lists-overlay` modal it replaces was deleted along with ~125 lines of `app.js` and its CSS in `app.css`/`brutal.css`.
+
+  The framing that made this simple: **the buckets *are* the lists.** They are derived from `app.db.annotations` on every request (via the existing `annotated_words_subquery()`), never stored, so they cannot drift. A row in the `lists` table is a *published snapshot* of one — which is why publishing is one button and there is no list-building UI, no per-word "add to list", and no inline list editing.
 
   - [ ] allow users to submit / post lists - but use captcha? - implement but not activate, as a honeytrap?
 
@@ -370,6 +376,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] **Word difficulty stats** — aggregate `game_events` by word to show a global correct-rate. Feeds the stats page and could rank the shortlist by how forgotten a word actually is in practice, not just by corpus frequency.
 - [ ] **JSON export button** — the data is already reachable via `api/sync.php` with `{"since":0}`; only a download button is missing. Closes the older "exported as json" item properly.
 - [ ] **Moderation for public lists** — publishing requires a nickname and list creation is rate-limited, but there is no report/takedown path. Needs a `reports` table and a minimal admin page behind a token in `config.local.php` before any real promotion of public lists.
+  **Now more urgent (2026-08-07):** the *Liste publice* directory on `liste.php` shipped without it — a deliberate, owner-approved call to get discovery working first. Two hedges are in place, neither a substitute for a takedown path: the page is `noindex` (a spam list can't be search-indexed while nothing can remove it), and the directory carries the line "Listele publice sunt scrise de vizitatori. Nu sunt verificate." Build the `reports` table before promoting the site anywhere.
 - [ ] **Backups for `private/app.db`** — the only irreplaceable file in the deploy (`ui.db` is regenerable from the pipeline). Confirm the host's backup covers a path outside the web root, or add a dump-to-disk cron.
 - [ ] **Verify WAL on the production host** — `app_db()` falls back to `journal_mode=TRUNCATE` when WAL is unavailable, which some NFS-backed shared hosts require. Check which mode is actually active after deploy: `PRAGMA journal_mode`.
 - [ ] **`feed_decisions` is written by nobody yet** — the table exists for the swipe game's keep/skip record, but `app.js` `feedKeep()`/`feedSkip()` still only set a bookmark. Wire it up to get a second signal (explicit rejection) distinct from "never seen".

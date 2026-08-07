@@ -141,7 +141,6 @@
 [data-skin="brutal"] .filter-sheet,
 [data-skin="brutal"] .feed-card,
 [data-skin="brutal"] #shortcuts-modal,
-[data-skin="brutal"] #lists-modal,
 [data-skin="brutal"] #board-modal,
 [data-skin="brutal"] .joc-card { box-shadow: none; }
 
@@ -881,13 +880,11 @@
 [data-skin="brutal"] .feed-exit:hover { background: var(--ink); color: var(--on-ink); }
 
 [data-skin="brutal"] #shortcuts-overlay,
-[data-skin="brutal"] #lists-overlay,
 [data-skin="brutal"] #board-overlay {
   background: rgba(20,18,15,.55);
   backdrop-filter: none;
 }
 [data-skin="brutal"] #shortcuts-modal,
-[data-skin="brutal"] #lists-modal,
 [data-skin="brutal"] #board-modal {
   border: var(--stroke-lg) solid var(--ink);
   background: var(--surface-2);
@@ -916,7 +913,6 @@
   font-weight: 700;
   text-transform: uppercase;
 }
-[data-skin="brutal"] .lists-new input { border: var(--stroke) solid var(--ink); background: var(--surface-2); }
 [data-skin="brutal"] .board-table td { border-bottom: 1px solid var(--border); }
 [data-skin="brutal"] .board-you { background: var(--hl); }
 [data-skin="brutal"] .board-you td { color: var(--on-hl); }

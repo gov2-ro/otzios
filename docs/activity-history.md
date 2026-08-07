@@ -4,6 +4,65 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-07 — Lists hub, bucket publishing, packed share URLs
+
+Interactivity pass on lists: creating them, seeing them, sharing them. Three things were
+broken, and the fix for the first one made the other two much smaller than expected.
+
+**The lists already existed — we just weren't calling them that.** People fill four buckets
+while browsing (`fav`, `lol`, `ascunde`, `meh`) and those *are* their lists. Nothing was
+built on top of that: the only fill path was `+ adaugă favoritele`, which read
+`bookmarkedWords()` out of localStorage and POSTed the whole array — to a server that
+already held the same annotations. `lol`, `ascunde` and `meh` could not be published at all.
+
+So a list is now a **published snapshot of a bucket**. `lists.source_tag` records which one,
+`POST {action:'publish_bucket', bucket}` reads the words server-side from
+`annotated_words_subquery()` (the function `search.php`'s marks filter already used), and
+`{action:'refresh', id}` re-reads them later — keeping `position` for words that stayed, so
+re-syncing doesn't reshuffle a list someone has already read. The client never uploads, or
+even holds, the list it is publishing. That framing removed most of the planned work:
+no per-word "add to list", no grid multi-select, no inline list editing.
+
+**Seeing them: `liste.php`.** The buckets with counts and a publish button, your published
+lists, and a *Liste publice* directory of everyone's. The buckets are derived per request,
+never stored, so they cannot go stale. The `#lists-overlay` modal it replaces is gone, with
+~125 lines of `app.js` and its rules in `app.css` and `brutal.css`.
+
+**Sharing: `?words=` → `?w=`.** Romanian diacritics percent-encode to six characters each
+(`ă` → `%C4%83`), so a shared playlist was mostly escape sequences. Both reference
+conversations in `docs/reference/` land on dictionary indexing for a fixed vocabulary, and
+that is what shipped: a version prefix plus one base36 word id per word. Three words went
+from 44 characters to 11.
+
+The load-bearing part is not the codec, it is **`data/word_ids.tsv`** — append-only, and
+force-tracked in git against the blanket `data/*` ignore. `ui.db` is deleted and rebuilt on
+every data refresh, so an id derived from row order or a rowid would silently repoint every
+link ever shared. Words are never renumbered and never removed; a word that drops out of a
+later shortlist keeps its id so old links to it still resolve. Tracking the file means an
+accidental renumbering shows up as a 25k-line diff instead of as broken links six months
+later. `tools/word_ids.py` owns assignment, `build_ui_db.py` calls it at the end of a build,
+`tools/migrate_ui_db_word_ids.py` backfilled the deployed database (25,305 ids, no gaps or
+duplicates, byte-identical on a second run).
+
+`pack_words()`/`unpack_words()` live in `api/_lib.php` and are exposed as `api/pack.php`, so
+the browser never carries the 25k dictionary. Old `?words=` links still work. A `w=` that
+decodes to nothing — mangled, or a version this build doesn't know — returns an empty grid
+rather than falling through to all 25,305 words, which would have read as a bug.
+
+**Deliberately deferred.** The public directory shipped with no report/takedown path, which
+`docs/BACKLOG.md` had flagged as a blocker; the owner chose discovery first. Two hedges,
+neither a substitute: the page is `noindex`, and it says the lists are unverified. The
+backlog entry is now marked more urgent rather than closed.
+
+Verified with `tests/test_lists_api.js` (22 checks: pack round-trip, `search.php?w=`,
+publishing an empty bucket, refresh after unbookmarking, cross-user visibility, directory
+filtering) plus a Playwright pass over the browser-only paths — bookmarking, the share
+button, the playlist banner, publish, and the page in both the `beton` and `govuk` skins.
+`test_game_api.js` and `test_store_sync.js` still pass; `app.db` migrated to
+`user_version = 2`.
+
+---
+
 ## 2026-08-07 — Subfolder deployment, and the cookie path bug it exposed
 
 First deployment to a subfolder: `lab.gov2.ro/oțios/`, served from `~/lab.gov2.ro/oțios`

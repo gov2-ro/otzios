@@ -1,8 +1,12 @@
 data/*
 !data/ignore_sites.txt
+# Permanent word→id map behind the ?w= share URLs. Tracked on purpose: an id has
+# to mean the same word forever, so losing this file breaks every shared link.
+!data/word_ids.tsv
 /tmp
 /data/*
 !/data/ignore_sites.txt
+!/data/word_ids.tsv
 *.code-workspace
 */_obsolete
 */*.log
