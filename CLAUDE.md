@@ -344,24 +344,28 @@ Copy the **contents of `public/`** into the target folder:
 └── app.db
 ```
 
-Four things that bite:
+Five things that bite:
 
 1. **Never deploy the repo itself**, only `public/`. With the repo mounted, `private/app.db`,
    `.git/config` and the docs are all straight downloads — measured.
 2. **`app.db` defaults to inside the web root** on this layout. `OTIOS_PRIVATE_DIR` is one
-   level up from the app folder, which here is the document root. Create
-   `api/config.local.php` (gitignored, no template ships — `_appdb.php:18` loads it if
-   present):
+   level up from the app folder, which here is the document root. Copy
+   `api/config.local.example.php` → `api/config.local.php` (gitignored; `_appdb.php:18`
+   loads it if present) and set:
    ```php
-   <?php
-   declare(strict_types=1);
    define('OTIOS_PRIVATE_DIR', '/home/you/otios-private');
    ```
-3. **No `Alias`, no symlinks.** `__DIR__` resolves symlinks and `DOCUMENT_ROOT` does not, so
+3. **Never overwrite the server's `config.local.php` with yours.** It is per-install, and
+   local dev has one too — different private dir, different admin token. Always exclude it:
+   ```bash
+   rsync -av --exclude 'api/config.local.php' public/ you@host:~/lab.gov2.ro/oțios/
+   ```
+   The file being gitignored protects the repo, not a careless `rsync`.
+4. **No `Alias`, no symlinks.** `__DIR__` resolves symlinks and `DOCUMENT_ROOT` does not, so
    the subtraction silently produces garbage rather than failing — an Apache `Alias` was
    measured yielding `BASE = "blic"`. The folder must sit physically inside the docroot.
    Verify by viewing source and checking `var OTIOS_BASE`.
-4. **On nginx**, add `location ~ \.(db|db-wal|db-shm|sqlite3?)$ { deny all; }`. The
+5. **On nginx**, add `location ~ \.(db|db-wal|db-shm|sqlite3?)$ { deny all; }`. The
    `public/data/.htaccess` that hides the 20 MB `ui.db` is Apache-only.
 
 Non-ASCII folder names work (`/oțios/`), but see `cookie_base_path()` in `_auth.php` for
