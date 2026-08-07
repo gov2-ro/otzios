@@ -37,7 +37,10 @@
   /* Accents. --accent is actions/links, --accent-bg the highlight field. */
   --accent:    #A03020;
   --accent-bg: #F6E8C8;
-  --on-accent: #FFFFFF;   /* text drawn ON an --accent fill         */
+  /* Text drawn ON an --accent fill (the apply button, the filter count badge).
+     Easy to forget in the dark block, where accents are usually LIGHT and this
+     has to flip to ink — leaving it white is how the button label disappears. */
+  --on-accent: #FFFFFF;
   --badge-bg:  #1A1814;
   --star:      #C8901A;
 
@@ -50,7 +53,20 @@
   --success: #2E7D32; --success-bg: #E2F2E4; --success-border: #B6DCBA;
   --error:   #C0392B; --error-bg:   #FBE4E1; --error-border:   #E8BAB3;
 
-  --radius: 3px;
+  /* Type. These three are tokens like any other — `govuk` points all three at
+     one Arial stack, which flattens the whole site in a single declaration.
+     Whatever you name here must already be loaded by the page or be a system
+     font; skins cannot add a <link> to Google Fonts. */
+  --sans:  'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --serif: 'Source Serif 4', Georgia, serif;
+  --mono:  'IBM Plex Mono', monospace;
+
+  /* Metrics. --radius is the one with real reach: setting it to 0 squares most
+     of the site at once. */
+  --radius:      3px;
+  --bar-h:       48px;   /* brand bar          */
+  --chip-h:      26px;
+  --statusbar-h: 44px;   /* footer; three rules read it, keep them agreeing */
 }
 
 /* Dark variant. Optional — without it the skin uses app.css's dark values,
@@ -63,9 +79,18 @@
   --text:      #F0EDE3;
   --text-2:    #BFB9A9;
   --text-3:    #8C8578;
-  --text-4:    #666055;
-  --on-accent: #14130F;
+  --text-4:    #666055;   /* the 9px freq superscript reads this — keep it ≥4.5:1 */
+  --on-accent: #14130F;   /* ink, not white — see the light block */
 }
+
+/* Optional. Only `brutal` and `tezaur` define these: the colour the headword
+   itself is painted in, one per verdict. Define them if your skin drops the
+   verdict dot and encodes the verdict in the word instead — the footer legend
+   swatch reads this ramp first and falls back to --v-*. Leave them out and the
+   legend shows the dot colours, which is correct for a skin that keeps dots. */
+/* [data-skin="TEMPLATE"] {
+     --v-ext-word: …; --v-dec-word: …; --v-hist-word: …; --v-abs-word: …;
+   } */
 
 /* Anything beyond tokens goes here, still scoped. A few useful hooks:
 

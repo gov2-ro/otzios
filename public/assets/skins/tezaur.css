@@ -1,0 +1,238 @@
+/* @skin Tezaur — dicționar web
+
+   ══════════════════════════════════════════════════════════════════════════════
+   TEZAUR — in the manner of thesaurus.com / dictionary.com.
+
+   Picked because it is the closest reference to what this site actually is, so
+   its conventions are likely to be genuinely better here rather than merely
+   different: a big serif headword, roomy white cards, blue links, and — the one
+   idea worth stealing outright — synonyms shown as tinted pills whose colour
+   carries a grade, not just a category.
+
+   That grade maps onto the verdict almost exactly. The cloud is already a dense
+   field of words; giving each one a tinted fill is what thesaurus.com looks
+   like, and it also happens to be a stronger encoding than a 6px dot. Weak-match
+   tint rather than strong-match solid fill, because several hundred saturated
+   pills on one screen is a wall.
+
+   An homage, not a clone: no brand colour, mark or font is reproduced.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════
+   TOKENS
+══════════════════════════════════════════ */
+[data-skin="tezaur"] {
+  --bg:        #FFFFFF;
+  --surface:   #F5F7F9;
+  --surface-2: #FFFFFF;
+  --border:    #DCE2E8;
+  --border-2:  #B4BFC9;
+
+  --text:   #12181F;
+  --text-2: #46525E;
+  --text-3: #5A6672;
+  /* 4.76:1 on --surface. The freq superscript is 9px real text and reads this
+     token, so it cannot be the usual near-invisible fourth step. */
+  --text-4: #646F7C;
+
+  --accent:    #0B57D0;
+  --accent-bg: #E8F0FE;
+  --on-accent: #FFFFFF;
+  --badge-bg:  #12181F;
+  --star:      #E0A106;
+
+  /* Four hues, each as tint / edge / text — this is the pill ramp, and the -tx
+     values are what the headword is actually painted in. Every -tx on its own
+     -bg clears 6.2:1. */
+  --v-ext:  #C6362A; --v-ext-bg:  #FCEBE8; --v-ext-bd:  #F2C4BC; --v-ext-tx:  #92251B;
+  --v-dec:  #B07A0A; --v-dec-bg:  #FDF3DC; --v-dec-bd:  #EBD49A; --v-dec-tx:  #7A5205;
+  --v-hist: #1A6BC4; --v-hist-bg: #E7F1FC; --v-hist-bd: #B4D3F0; --v-hist-tx: #0F4C8F;
+  --v-abs:  #17796B; --v-abs-bg:  #E2F3F0; --v-abs-bd:  #A8D8D0; --v-abs-tx:  #0F5449;
+
+  /* The footer legend swatch reads this ramp when a skin defines it, so it
+     shows the colour the headword is really painted in rather than the dot
+     colour — which this skin hides. */
+  --v-ext-word:  var(--v-ext-tx);
+  --v-dec-word:  var(--v-dec-tx);
+  --v-hist-word: var(--v-hist-tx);
+  --v-abs-word:  var(--v-abs-tx);
+
+  --success: #146C43; --success-bg: #E3F2E9; --success-border: #A7D4BC;
+  --error:   #C6362A; --error-bg:   #FCEBE8; --error-border:   #F2C4BC;
+
+  --radius: 8px;
+}
+
+[data-skin="tezaur"][data-theme="dark"] {
+  --bg:        #10151B;
+  --surface:   #182029;
+  --surface-2: #1F2933;
+  --border:    #2E3A46;
+  --border-2:  #46545F;
+
+  --text:   #EDF1F5;
+  --text-2: #B4C0CC;
+  --text-3: #8695A3;
+  --text-4: #7B8996;
+
+  --accent:    #7FB0F5;
+  --accent-bg: #17293F;
+  --on-accent: #10151B;
+  --badge-bg:  #EDF1F5;
+  --star:      #E8BC48;
+
+  --v-ext:  #F08476; --v-ext-bg:  #331915; --v-ext-bd:  #6B342C; --v-ext-tx:  #F7BCB2;
+  --v-dec:  #E0B04A; --v-dec-bg:  #2E2611; --v-dec-bd:  #5E4E20; --v-dec-tx:  #F0D69A;
+  --v-hist: #6FA8E8; --v-hist-bg: #142334; --v-hist-bd: #2C4763; --v-hist-tx: #B4D2F2;
+  --v-abs:  #4FBBA8; --v-abs-bg:  #102B26; --v-abs-bd:  #235349; --v-abs-tx:  #A5DDD4;
+
+  --success: #5FC08D; --success-bg: #10291D; --success-border: #23543C;
+  --error:   #F08476; --error-bg:   #331915; --error-border:   #6B342C;
+}
+
+/* ══════════════════════════════════════════
+   COMPONENT RULES
+══════════════════════════════════════════ */
+
+/* ── The cloud as a field of synonym pills ──────────────────────────────────
+   Scoped with :not(.word-list-table) throughout — table view is a column
+   layout and pills would wreck it. */
+[data-skin="tezaur"] #word-list:not(.word-list-table) {
+  gap: 9px 9px;
+  padding: 22px 24px 60px;
+  align-items: center;
+}
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-row {
+  padding: 5px 13px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  transition: box-shadow .12s, border-color .12s;
+}
+/* The fill is the signal now; the dot would be saying it twice. */
+[data-skin="tezaur"] #word-list:not(.word-list-table) .verdict-dot { display: none; }
+
+/* Colour goes on the row, not the headword, so the superscript inherits it and
+   stays legible on the tint instead of sitting there in --text-4. */
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-row.verdict-extinct {
+  background: var(--v-ext-bg);  border-color: var(--v-ext-bd);  color: var(--v-ext-tx);
+}
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-row.verdict-declining {
+  background: var(--v-dec-bg);  border-color: var(--v-dec-bd);  color: var(--v-dec-tx);
+}
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-row.verdict-historical_only {
+  background: var(--v-hist-bg); border-color: var(--v-hist-bd); color: var(--v-hist-tx);
+}
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-row.verdict-absent {
+  background: var(--v-abs-bg);  border-color: var(--v-abs-bd);  color: var(--v-abs-tx);
+}
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-text  { color: inherit; }
+/* 0.8 alpha of the -tx over its own tint: 4.80:1 at the worst of the four
+   (extinct). Full strength competed with the headword. */
+[data-skin="tezaur"] #word-list:not(.word-list-table) .chip-freq  { color: currentColor; opacity: .8; }
+
+/* app.css's :hover and [data-selected] rules are two-class selectors and lose
+   to the four-class verdict rules above, so both are restated here. The
+   selected pair MUST stay below the verdict block: it ties on specificity and
+   wins only on source order. */
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-row:hover {
+  box-shadow: 0 1px 5px rgba(18, 24, 31, .16);
+}
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-row[data-selected] {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-row[data-selected] .word-text { color: var(--bg); }
+
+/* The two underline marks are drawn in --v-ext / --v-dec by app.css, which is
+   invisible on the red and amber pills. They take the word's own colour here;
+   dotted vs solid is what separates them, and the footer legend is restated to
+   match below. */
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-row.inv .word-text,
+[data-skin="tezaur"] #word-list:not(.word-list-table) .word-row.bookmarked .word-text {
+  text-decoration-color: currentColor;
+}
+[data-skin="tezaur"] .lg-inv,
+[data-skin="tezaur"] .lg-fav { text-decoration-color: currentColor; }
+
+/* ── Rounded everything ─────────────────────────────────────────────────────
+   These four carry a hardcoded 3px in app.css rather than reading --radius. */
+[data-skin="tezaur"] .verdict-badge,
+[data-skin="tezaur"] #word-list.word-list-table .chip-vbadge,
+[data-skin="tezaur"] .detail-tag,
+[data-skin="tezaur"] .dict-chip { border-radius: 999px; }
+
+/* ── Detail panel: the dictionary entry ─────────────────────────────────────
+   Big serif headword, part of speech in italic underneath, definition set at
+   reading size with real leading. This is the part the reference does best. */
+[data-skin="tezaur"] .fp-title {
+  font-size: 2.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+[data-skin="tezaur"] .fp-pos-line {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+  letter-spacing: 0;
+}
+[data-skin="tezaur"] .definition-text {
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+[data-skin="tezaur"] #hb-word { letter-spacing: -0.02em; }
+
+/* ── Chrome ─────────────────────────────────────────────────────────────── */
+[data-skin="tezaur"] .brand-bar {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+[data-skin="tezaur"] .brand-name { font-weight: 600; }
+[data-skin="tezaur"] #search {
+  background: var(--surface);
+  border-radius: 999px;
+  font-style: normal;
+  font-family: var(--sans);
+  padding: 0 14px;
+}
+[data-skin="tezaur"] #search:focus {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+[data-skin="tezaur"] .fs-pill:has(input:checked) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+[data-skin="tezaur"] .fs-pill:has(input:checked) .fs-check {
+  background: var(--on-accent);
+  border-color: var(--on-accent);
+}
+[data-skin="tezaur"] .fs-pill:has(input:checked) .fs-check::after {
+  border-left-color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+/* Without this the skin falls back to the UA's 1px ring, which all but
+   disappears on the rounded controls. A soft halo suits the shapes and clears
+   3:1 against both grounds in either theme. */
+[data-skin="tezaur"] a:focus-visible,
+[data-skin="tezaur"] button:focus-visible,
+[data-skin="tezaur"] select:focus-visible,
+[data-skin="tezaur"] input:focus-visible,
+[data-skin="tezaur"] textarea:focus-visible,
+[data-skin="tezaur"] .fs-pill:has(input:focus-visible),
+[data-skin="tezaur"] #status-bar a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+[data-skin="tezaur"] #status-bar a { color: var(--text-2); }
+[data-skin="tezaur"] #status-bar a:hover { color: var(--accent); text-decoration: underline; }
+[data-skin="tezaur"] .dex-link { border-radius: 999px; font-weight: 600; }

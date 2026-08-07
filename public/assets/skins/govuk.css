@@ -1,0 +1,383 @@
+/* @skin Guvern — GOV.UK
+
+   ══════════════════════════════════════════════════════════════════════════════
+   GUVERN — an homage to the GOV.UK Design System, not a copy of it.
+
+   Picked as a skin because it is the hardest test of the token contract: GDS is
+   almost entirely type, spacing and state, with colour doing very little work.
+   A skin that can only repaint surfaces cannot produce it. What it needs beyond
+   tokens is listed at the top of the component section below — that list is the
+   useful output of the exercise.
+
+   Not authentic, deliberately:
+     · GDS Transport is licensed to gov.uk only. GDS itself specifies Arial for
+       everyone else, so that is what this uses — for all three font tokens,
+       because a single family everywhere is the look.
+     · The palette is the published GDS colour list, with one deviation noted
+       inline (brown).
+     · GOV.UK has no dark mode. The dark block here is invented; it keeps the
+       black-and-yellow logic and re-fits every colour for a dark ground.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════
+   TOKENS
+══════════════════════════════════════════ */
+[data-skin="govuk"] {
+  --bg:        #ffffff;
+  --surface:   #f3f2f1;   /* govuk light-grey  */
+  --surface-2: #ffffff;
+  --border:    #b1b4b6;   /* govuk mid-grey    */
+  --border-2:  #505a5f;   /* govuk dark-grey   */
+
+  /* GDS has two text greys, not four — black and #505a5f. The bottom two steps
+     of the ramp collapse onto the lightest value that still clears 4.5:1 on
+     white (4.56), because the freq superscript is 9px and is real text. */
+  --text:   #0b0c0c;
+  --text-2: #505a5f;
+  --text-3: #6f777b;
+  --text-4: #6f777b;
+
+  --accent:    #1d70b8;   /* link blue         */
+  --accent-bg: #d2e2f1;
+  --on-accent: #ffffff;
+  --badge-bg:  #0b0c0c;
+  --star:      #946218;
+
+  /* The four verdicts map onto four govuk-tag colours: red / brown / blue /
+     purple, each as fill + text pair. -bd is the saturated colour so bordered
+     contexts get a solid GDS edge rather than a tint.
+
+     Deviation: GDS brown is #b58840, which is 2.86:1 on their own light-grey —
+     under the 3:1 floor for a non-text mark, and the verdict dot is 8px. It is
+     darkened to #946218 (4.67:1 there, 5.22:1 on white). */
+  --v-ext:  #d4351c; --v-ext-bg:  #f6d7d2; --v-ext-bd:  #d4351c; --v-ext-tx:  #942514;
+  --v-dec:  #946218; --v-dec-bg:  #fcd6c3; --v-dec-bd:  #946218; --v-dec-tx:  #6e3619;
+  --v-hist: #1d70b8; --v-hist-bg: #d2e2f1; --v-hist-bd: #1d70b8; --v-hist-tx: #0c2d4a;
+  --v-abs:  #4c2c92; --v-abs-bg:  #dbd5e9; --v-abs-bd:  #4c2c92; --v-abs-tx:  #3d2375;
+
+  --success: #00703c; --success-bg: #cce2d8; --success-border: #00703c;
+  --error:   #d4351c; --error-bg:   #f6d7d2; --error-border:   #d4351c;
+
+  /* No radius anywhere in GDS. This one token does a lot of the work. */
+  --radius: 0;
+
+  --sans:  Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --serif: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --mono:  Arial, "Helvetica Neue", Helvetica, sans-serif;
+
+  /* Skin-private. The masthead is black in BOTH themes — GOV.UK has no light
+     header — so these four are declared once and not restated in the dark
+     block. Everything else that differs by theme is a token above. */
+  --gv-bar:      #0b0c0c;
+  --gv-on-bar:   #ffffff;
+  --gv-on-bar-2: #b1b4b6;
+  --gv-bar-hov:  #2b2d2e;
+  --gv-focus:    #ffdd00;
+  --gv-green:    #00703c;
+  --gv-green-2:  #005a30;
+  --gv-green-sh: #002d18;
+  --gv-link-hov: #003078;
+}
+
+/* Invented — see the header. Black stays black; the yellow focus and the
+   masthead carry over unchanged, which is most of the identity. */
+[data-skin="govuk"][data-theme="dark"] {
+  --bg:        #0b0c0c;
+  --surface:   #1d1f20;
+  --surface-2: #26282a;
+  --border:    #565b5e;
+  --border-2:  #8e9294;
+
+  --text:   #ffffff;
+  --text-2: #c8ccce;
+  --text-3: #a1a5a7;
+  --text-4: #a1a5a7;
+
+  --accent:    #5694ca;   /* GDS's own on-dark link blue */
+  --accent-bg: #17293a;
+  --on-accent: #0b0c0c;
+  --badge-bg:  #ffffff;
+  --star:      #ffdd00;
+
+  --v-ext:  #f47a68; --v-ext-bg:  #3a1712; --v-ext-bd:  #f47a68; --v-ext-tx:  #f9b8ad;
+  --v-dec:  #d9a441; --v-dec-bg:  #33260f; --v-dec-bd:  #d9a441; --v-dec-tx:  #ecc98a;
+  --v-hist: #5694ca; --v-hist-bg: #16283a; --v-hist-bd: #5694ca; --v-hist-tx: #a8cbe6;
+  --v-abs:  #a690d6; --v-abs-bg:  #241c3a; --v-abs-bd:  #a690d6; --v-abs-tx:  #ccbdea;
+
+  --success: #71c295; --success-bg: #12291d; --success-border: #71c295;
+  --error:   #f47a68; --error-bg:   #3a1712; --error-border:   #f47a68;
+
+  --gv-bar-hov:  #2b2d2e;
+  --gv-green:    #00703c;
+  --gv-green-2:  #008147;
+  --gv-link-hov: #a8cbe6;
+}
+
+/* ══════════════════════════════════════════
+   COMPONENT RULES
+
+   Everything below is what tokens could NOT express, which was the question
+   this skin was built to answer:
+
+     1. the black masthead with its blue rule, and the whole brand bar
+        re-tuned for a dark ground while the page stays white
+     2. the yellow focus state — the single most recognisable GDS behaviour
+     3. squared marks: the verdict dot, tag corners, checkbox
+     4. tags without their leading dot, in bold caps
+     5. the green button with its 2px bottom edge
+     6. links underlined, thickening on hover
+     7. the definition as govuk-inset-text
+
+   Of those, only (3) is arguably a missing token (a --dot-radius). The rest are
+   genuinely component-shaped.
+══════════════════════════════════════════ */
+
+/* ── 1. Masthead ────────────────────────────────────────────────────────────
+   Black bar, 10px blue rule under it. The bar grows by exactly the rule so
+   nothing inside gets squashed — box-sizing is border-box globally. */
+[data-skin="govuk"] .brand-bar {
+  background: var(--gv-bar);
+  border-bottom: 10px solid #1d70b8;
+  height: calc(var(--bar-h) + 10px);
+}
+[data-skin="govuk"] .brand-name {
+  color: var(--gv-on-bar);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+[data-skin="govuk"] .brand-tag     { color: var(--gv-on-bar-2); letter-spacing: 0.06em; }
+[data-skin="govuk"] .brand-sep     { background: var(--gv-on-bar-2); }
+[data-skin="govuk"] .result-count,
+[data-skin="govuk"] .brand-spinner { color: var(--gv-on-bar-2); }
+
+[data-skin="govuk"] #search {
+  background: #ffffff;
+  color: #0b0c0c;
+  border: 2px solid #ffffff;
+  font-family: var(--sans);
+  font-style: normal;
+  font-size: 0.875rem;
+}
+[data-skin="govuk"] #search::placeholder { color: #505a5f; }
+
+/* Every control in the bar sits on black. --border/--text-* are page-ground
+   values and would vanish here, so the bar's own two greys are used instead.
+   background-COLOR only on the select: the shorthand would wipe out the caret,
+   which app.css draws as two background-image gradients. */
+[data-skin="govuk"] .brand-bar .view-toggle,
+[data-skin="govuk"] .brand-bar .theme-toggle,
+[data-skin="govuk"] .brand-bar .scale-stepper,
+[data-skin="govuk"] .brand-bar .play-btn,
+[data-skin="govuk"] .brand-bar .filter-toggle-btn {
+  background: transparent;
+  border-color: var(--gv-on-bar-2);
+  color: var(--gv-on-bar);
+}
+[data-skin="govuk"] .brand-bar .skin-select {
+  background-color: transparent;
+  border-color: var(--gv-on-bar-2);
+  color: var(--gv-on-bar);
+}
+/* The option list is drawn by the OS on its own ground, so it needs the page's
+   colours back or it renders white-on-white. */
+[data-skin="govuk"] .brand-bar .skin-select option {
+  background: var(--surface-2);
+  color: var(--text);
+}
+[data-skin="govuk"] .brand-bar .vt-btn,
+[data-skin="govuk"] .brand-bar .tg-btn,
+[data-skin="govuk"] .brand-bar .scale-btn { color: var(--gv-on-bar-2); }
+[data-skin="govuk"] .brand-bar .vt-btn + .vt-btn,
+[data-skin="govuk"] .brand-bar .tg-btn + .tg-btn,
+[data-skin="govuk"] .brand-bar .scale-btn + .scale-btn { border-left-color: var(--gv-on-bar-2); }
+[data-skin="govuk"] .brand-bar .vt-btn:hover,
+[data-skin="govuk"] .brand-bar .tg-btn:hover,
+[data-skin="govuk"] .brand-bar .scale-btn:hover { background: var(--gv-bar-hov); color: var(--gv-on-bar); }
+[data-skin="govuk"] .brand-bar .skin-select:hover { background-color: var(--gv-bar-hov); color: var(--gv-on-bar); }
+[data-skin="govuk"] .brand-bar .vt-btn.vt-active,
+[data-skin="govuk"] .brand-bar .tg-btn.tg-active { background: var(--gv-on-bar); color: var(--gv-bar); }
+[data-skin="govuk"] .brand-bar .play-btn:hover,
+[data-skin="govuk"] .brand-bar .filter-toggle-btn:hover,
+[data-skin="govuk"] .brand-bar .filter-toggle-btn.filter-toggle-active {
+  border-color: var(--gv-on-bar);
+  color: var(--gv-on-bar);
+}
+[data-skin="govuk"] .brand-bar .scale-btn:disabled:hover {
+  background: transparent;
+  color: var(--gv-on-bar-2);
+}
+
+/* ── 2. Focus ───────────────────────────────────────────────────────────────
+   The GDS focus state, and the reason this skin is worth having: yellow block,
+   black text, 4px black underline, no radius. It is not decoration — it is how
+   the design system meets WCAG 2.4.7, and it works on any ground including the
+   black masthead (14.55:1).
+
+   Split in two because GDS treats them differently: links and buttons take the
+   yellow fill, text fields keep their own fill and take a yellow outline with a
+   black inner rule. */
+[data-skin="govuk"] a:focus-visible,
+[data-skin="govuk"] button:focus-visible,
+[data-skin="govuk"] .fs-pill:has(input:focus-visible),
+[data-skin="govuk"] summary:focus-visible,
+/* #status-bar a and .lista-nav a colour their links from an id selector, which
+   outranks the rule above and left the focused link light-blue on yellow
+   (3.7:1). Repeated at matching weight rather than reached for !important. */
+[data-skin="govuk"] #status-bar a:focus-visible,
+[data-skin="govuk"] .brand-bar button:focus-visible {
+  outline: 3px solid transparent;
+  background: var(--gv-focus);
+  color: #0b0c0c;
+  box-shadow: 0 -2px var(--gv-focus), 0 4px #0b0c0c;
+  text-decoration: none;
+  border-radius: 0;
+}
+[data-skin="govuk"] input:focus-visible,
+[data-skin="govuk"] select:focus-visible,
+[data-skin="govuk"] textarea:focus-visible,
+[data-skin="govuk"] .brand-bar .skin-select:focus-visible {
+  outline: 3px solid var(--gv-focus);
+  outline-offset: 0;
+  box-shadow: inset 0 0 0 2px #0b0c0c;
+  border-color: #0b0c0c;
+}
+
+/* ── 3. Square marks ────────────────────────────────────────────────────── */
+[data-skin="govuk"] .verdict-dot { border-radius: 0; width: 8px; height: 8px; }
+[data-skin="govuk"] .fs-dot      { border-radius: 0; }
+[data-skin="govuk"] .fs-check    { border-radius: 0; border-color: var(--text); }
+[data-skin="govuk"] .lg-sw       { border-radius: 0; }
+[data-skin="govuk"] .legend-sw   { border-radius: 0; }
+[data-skin="govuk"] .filter-count-badge { border-radius: 0; }
+
+/* ── 4. Tags ────────────────────────────────────────────────────────────────
+   govuk-tag: square, bold, uppercase, tinted fill, and no leading dot — the
+   fill is the status signal. */
+[data-skin="govuk"] .verdict-badge,
+[data-skin="govuk"] #word-list.word-list-table .chip-vbadge,
+[data-skin="govuk"] .detail-tag,
+[data-skin="govuk"] .dict-chip {
+  border-radius: 0;
+  font-family: var(--sans);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+[data-skin="govuk"] .verdict-badge::before,
+[data-skin="govuk"] .chip-vbadge::before { display: none; }
+[data-skin="govuk"] .verdict-badge { padding: 3px 8px; }
+
+/* ── 5. Buttons ─────────────────────────────────────────────────────────────
+   govuk-button: green, square, and a 2px darker edge that the button sinks
+   into when pressed. */
+[data-skin="govuk"] .fs-apply,
+[data-skin="govuk"] .dex-link {
+  background: var(--gv-green);
+  color: #ffffff;
+  border: 2px solid transparent;
+  border-radius: 0;
+  box-shadow: 0 2px 0 var(--gv-green-sh);
+  font-family: var(--sans);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-decoration: none;
+}
+[data-skin="govuk"] .fs-apply:hover,
+[data-skin="govuk"] .dex-link:hover { background: var(--gv-green-2); opacity: 1; }
+[data-skin="govuk"] .fs-apply:active,
+[data-skin="govuk"] .dex-link:active { box-shadow: none; transform: translateY(2px); }
+
+/* ── 6. Links ───────────────────────────────────────────────────────────────
+   GDS underlines links always and thickens the underline on hover rather than
+   changing much else. */
+[data-skin="govuk"] #status-bar a,
+[data-skin="govuk"] .lista-nav a,
+[data-skin="govuk"] .joc-nav a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+[data-skin="govuk"] #status-bar a:hover,
+[data-skin="govuk"] .lista-nav a:hover,
+[data-skin="govuk"] .joc-nav a:hover {
+  color: var(--gv-link-hov);
+  text-decoration-thickness: 3px;
+}
+
+/* ── 7. Inset text ──────────────────────────────────────────────────────────
+   govuk-inset-text: a 5px grey rule down the left of quoted content. The
+   definition is the one place on the page that is genuinely quoted material. */
+[data-skin="govuk"] .definition-text {
+  border-left: 5px solid var(--border);
+  padding-left: 15px;
+}
+
+/* Colour emoji are the loudest thing on an otherwise black-and-white page and
+   there is no emoji anywhere in GDS. Drained rather than hidden — they still
+   carry shape, and hiding them would strip the only mark some controls have.
+
+   Deliberately NOT applied to #status-bar a / .joc-nav a, even though those
+   carry the most emoji: filter greys the whole element including its text, and
+   those links are #1d70b8. Blue underlined links are more GDS than dead emoji
+   are un-GDS, so the emoji stay in colour there. */
+[data-skin="govuk"] .chip-dict,
+[data-skin="govuk"] .fp-extra-label,
+[data-skin="govuk"] .play-btn,
+[data-skin="govuk"] .joc-mode,
+[data-skin="govuk"] .joc-choice::before { filter: grayscale(1); }
+
+/* ── Rail and chrome ────────────────────────────────────────────────────── */
+[data-skin="govuk"] .fs-pill {
+  border-radius: 0;
+  border: 2px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--sans);
+}
+[data-skin="govuk"] .fs-pill:has(input:checked) {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+/* GDS section headings are bold sans at reading size, never letterspaced caps. */
+[data-skin="govuk"] .fs-label,
+[data-skin="govuk"] .fp-extra-label {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+}
+[data-skin="govuk"] .fs-title {
+  font-family: var(--sans);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+[data-skin="govuk"] #status-bar {
+  font-family: var(--sans);
+  letter-spacing: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Word cloud ─────────────────────────────────────────────────────────────
+   Bold Arial. GDS would never colour body text, so the verdict stays on the
+   (now square) dot and the words are all --text — which is also why this skin
+   defines no --v-*-word ramp: the footer legend swatch should show the dot
+   colour, because that is what the reader is being asked to match. */
+[data-skin="govuk"] .word-text {
+  font-family: var(--sans);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+[data-skin="govuk"] .fp-title {
+  font-family: var(--sans);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+[data-skin="govuk"] .brand-name,
+[data-skin="govuk"] .word-list-empty,
+[data-skin="govuk"] .lista-word,
+[data-skin="govuk"] #hb-word { font-family: var(--sans); font-style: normal; }
