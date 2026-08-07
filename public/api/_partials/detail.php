@@ -11,6 +11,13 @@ $etym_parts   = array_map(fn($e) => str_replace('limba ', '', $e), $etym_parts);
 $sources = split_pipe($w['sources'] ?? '');
 $dict_count = count($sources);
 
+// Comma-separated, unlike the pipe-delimited taxonomy columns — they come from prose in
+// the Sinonime dictionaries, where a comma is the separator the source itself uses.
+$synonyms = array_values(array_filter(array_map('trim',
+    explode(',', $w['synonyms'] ?? '')), fn($s) => $s !== ''));
+$antonyms = array_values(array_filter(array_map('trim',
+    explode(',', $w['antonyms'] ?? '')), fn($s) => $s !== ''));
+
 $meta_parts = array_filter([
     $pos_parts   ? e($pos_parts[0])   : null,
     $reg_parts   ? e($reg_parts[0])   : null,
@@ -56,6 +63,25 @@ $meta_parts = array_filter([
     <?php foreach ($dom_parts as $d): ?><span class="detail-tag" style="opacity:.85"><?= e($d) ?></span><?php endforeach; ?>
     <?php foreach ($etym_parts as $et): ?><span class="detail-tag" style="opacity:.7"><?= e($et) ?></span><?php endforeach; ?>
     <?php if ($tier_lbl): ?><span class="detail-tag" style="opacity:.5;font-size:0.5625rem;" title="<?= e(TIERS[$w['confidence_tier']]['tip'] ?? '') ?>"><?= e($tier_lbl) ?></span><?php endif; ?>
+  </div>
+  <?php endif; ?>
+
+  <!-- Synonyms / antonyms (scrape_synonyms.py; absent until a word has been scraped) -->
+  <?php
+    $syns = array_slice($synonyms, 0, 12);
+    $ants = array_slice($antonyms, 0, 8);
+  ?>
+  <?php if ($syns): ?>
+  <div class="fp-syn">
+    <span class="fp-extra-label">≡ sinonime</span>
+    <?php foreach ($syns as $s): ?><a class="syn-chip" href="<?= BASE ?>/?q=<?= urlenc($s) ?>"><?= e($s) ?></a><?php endforeach; ?>
+    <?php if (count($synonyms) > count($syns)): ?><span class="syn-more">+<?= count($synonyms) - count($syns) ?></span><?php endif; ?>
+  </div>
+  <?php endif; ?>
+  <?php if ($ants): ?>
+  <div class="fp-syn">
+    <span class="fp-extra-label">≠ antonime</span>
+    <?php foreach ($ants as $a): ?><a class="syn-chip syn-chip--ant" href="<?= BASE ?>/?q=<?= urlenc($a) ?>"><?= e($a) ?></a><?php endforeach; ?>
   </div>
   <?php endif; ?>
 

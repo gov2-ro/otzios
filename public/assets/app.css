@@ -957,6 +957,30 @@ body {
   color: var(--text-2);
   white-space: nowrap;
 }
+/* Synonyms / antonyms. Chips are links: a synonym of a forgotten word is very often
+   another word on the list, so this is the one place the UI invites wandering sideways.
+   Styled off the same tokens as .dict-chip so every skin picks them up for free. */
+.fp-syn { line-height: 2; margin-top: 6px; }
+.syn-chip {
+  display: inline-block;
+  font-size: 0.6875rem;
+  padding: 1px 7px;
+  margin: 1px 3px 1px 0;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.syn-chip:hover { background: var(--accent-bg); border-color: var(--accent); }
+.syn-chip--ant { color: var(--text-2); font-style: italic; }
+.syn-more {
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  color: var(--text-3);
+  margin-left: 2px;
+}
 .fp-nodef { color: var(--text-3); font-family: var(--serif); font-style: italic; font-size: 0.8125rem; }
 
 /* Footer: stats + actions */

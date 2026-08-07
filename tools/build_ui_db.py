@@ -23,6 +23,7 @@ RARE_PATH       = Path('data/processed/rare_words_wordfreq.csv')
 WEB_PATH        = Path('data/processed/diachronic_shortlist_web_validated.csv')
 DEFINITIONS_PATH = Path('data/processed/definitions.db')
 DICT_SOURCES_PATH = Path('data/processed/dict_sources.db')
+SYNONYMS_PATH     = Path('data/processed/synonyms.db')
 OUT_PATH        = Path('public/data/ui.db')
 
 _ETYM_JUNK = {'vezi', 'cf.', 'după', 'după unii', 'probabil', 'cuvânt',
@@ -185,6 +186,34 @@ def merge_dict_sources(conn: sqlite3.Connection, sources_db: Path) -> None:
     print(f'  {updated} words matched to dictionary sources')
 
 
+def merge_synonyms(conn: sqlite3.Connection, syn_db: Path) -> None:
+    """Populate words.synonyms / words.antonyms from synonyms.db (scrape_synonyms.py).
+
+    Optional: the app renders the slot only when a word has data, so a partial scrape is
+    fine and the page simply omits the section for words not reached yet.
+    """
+    if not syn_db.exists():
+        print(f'  (synonyms DB not found, skipping: {syn_db})')
+        return
+    print(f'Merging synonyms from {syn_db}…')
+    sconn = sqlite3.connect(str(syn_db))
+    try:
+        rows = sconn.execute(
+            'SELECT word, synonyms, antonyms FROM synonyms').fetchall()
+    except sqlite3.OperationalError:
+        print('  (no synonyms table yet)')
+        return
+    finally:
+        sconn.close()
+    n = 0
+    for word, syns, ants in rows:
+        cur = conn.execute(
+            'UPDATE words SET synonyms = ?, antonyms = ? WHERE word = ?',
+            (syns or None, ants or None, word))
+        n += cur.rowcount
+    print(f'  {n:,} words given synonyms/antonyms')
+
+
 def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None:
     if not shortlist.exists():
         sys.exit(f'Missing: {shortlist}')
@@ -242,7 +271,13 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             seam             TEXT DEFAULT 'relevant',
             regional_only    INTEGER,
             variant_like     INTEGER,
-            variant_of       TEXT
+            variant_of       TEXT,
+            -- Scraped from dexonline.ro by scrape_synonyms.py. Not in the dump: the
+            -- Litera dictionaries (Sinonime, Sinonime82, Antonime) are redacted to 23
+            -- characters there, so `dict_count` knows a word is in them but not what
+            -- they say.
+            synonyms         TEXT,
+            antonyms         TEXT
         )
     """)
 
@@ -355,6 +390,7 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
         print(f'  (definitions DB not found, skipping: {defs})')
 
     merge_dict_sources(conn, DICT_SOURCES_PATH)
+    merge_synonyms(conn, SYNONYMS_PATH)
 
     # Must run before the vocab table is built, or the POS dropdown lists the old
     # taxonomy-derived values that almost nothing matches.
