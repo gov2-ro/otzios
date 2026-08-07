@@ -73,6 +73,73 @@ def _normalize_sep(val):
 
 _DIACRITIC_MAP = str.maketrans('țșţşăâî', 'tstsaai')
 
+# ── Part of speech ───────────────────────────────────────────────────────────────
+#
+# `dex_pos` used to come only from meaning-level taxonomy tags, which covered 2.9% of
+# the list and were wrong when they did fire: `visternic` (modelType M, masculine) came
+# out as "substantiv feminin", because the DEX entry also covers the feminine form
+# `vistiernică` and the tag bled across. With coverage that low the POS filter matched
+# almost nothing — picking `vb.` returned zero words.
+#
+# `Lexeme.modelType` is the inflection model DEX actually conjugates the word with. It is
+# present on all 317,721 lexemes and says what the word *is*, so it is the primary source
+# now; taxonomy tags are kept only for things a model cannot express (locuțiuni, simbol).
+# Mapping verified by sampling high-frequency words in each class.
+_MODEL_POS = {
+    'F':  'substantiv feminin',
+    'M':  'substantiv masculin',
+    'N':  'substantiv neutru',
+    'A':  'adjectiv', 'AF': 'adjectiv', 'AM': 'adjectiv', 'AN': 'adjectiv',
+    'V':  'verb',     'VT': 'verb',     'VI': 'verb',
+    'PT': 'participiu',
+    'P':  'pronume',
+    'SP': 'nume propriu',
+}
+
+# 'T' (strămoși, cii, eți) and 'IL' (contrare, militare) are inflected forms rather than
+# headwords, and 'I' means "invariable" — for those, only `description` says anything.
+_DESC_POS = {
+    'adv.':    'adverb',
+    'interj.': 'interjecție',
+    'adj.':    'adjectiv',
+    'prep.':   'prepoziție',
+    'conj.':   'conjuncție',
+    'pron.':   'pronume',
+    's.f.':    'substantiv feminin',
+    's.m.':    'substantiv masculin',
+    's.n.':    'substantiv neutru',
+    'vb.':     'verb',
+    'part.':   'participiu',
+}
+
+
+def _pos_from_lexeme(model_type: str | None, description: str | None) -> str | None:
+    """POS for one lexeme row, preferring the inflection model over the description."""
+    pos = _MODEL_POS.get((model_type or '').strip())
+    if pos:
+        return pos
+    return _DESC_POS.get((description or '').strip().lower())
+
+
+def load_pos_from_lexemes(lexemes_db: Path) -> dict[str, set[str]]:
+    """{normalized headword: {pos, ...}} — a word can legitimately have several.
+
+    `abate` is both a masculine noun (the abbot) and a verb, as two separate lexemes;
+    both belong on the word.
+    """
+    if not lexemes_db.exists():
+        return {}
+    conn = sqlite3.connect(str(lexemes_db))
+    out: dict[str, set[str]] = {}
+    for form, model_type, description in conn.execute(
+            'SELECT formNoAccent, modelType, description FROM Lexeme '
+            " WHERE formNoAccent IS NOT NULL AND formNoAccent != ''"):
+        pos = _pos_from_lexeme(model_type, description)
+        if pos:
+            out.setdefault(form.lower(), set()).add(pos)
+    conn.close()
+    return out
+
 
 def _strip_diacritics(s: str) -> str:
     return s.lower().translate(_DIACRITIC_MAP)
@@ -158,7 +225,24 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             en_zipf          REAL,
             proper_noun_like INTEGER,
             sources          TEXT,
-            word_id          INTEGER
+            word_id          INTEGER,
+            -- Added in the 2026-08-07 rescore. Paradigm-level counts replace the ppm
+            -- columns above for every filtering decision; the ppm ones stay so the two
+            -- can be compared.
+            hist_occ         INTEGER,
+            hist_docs        INTEGER,
+            modern_occ       INTEGER,
+            modern_docs      INTEGER,
+            modern_occ_loose INTEGER,
+            family_ratio     REAL,
+            rank_shift       REAL,
+            newest_dict_year INTEGER,
+            in_current_dict  INTEGER,
+            quality_score    INTEGER,
+            seam             TEXT DEFAULT 'relevant',
+            regional_only    INTEGER,
+            variant_like     INTEGER,
+            variant_of       TEXT
         )
     """)
 
@@ -171,8 +255,12 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
                     hist_ppm, modern_ppm, subtitle_ppm,
                     dex_pos, dex_register, dex_domain,
                     dex_etymology, is_forgotten, has_definition, word_tier,
-                    dict_count)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    dict_count,
+                    hist_occ, hist_docs, modern_occ, modern_docs, modern_occ_loose,
+                    family_ratio, rank_shift, newest_dict_year, in_current_dict,
+                    quality_score, seam, regional_only, variant_like, variant_of)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+                           ?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     row['word'],
                     _float(row.get('dex_frequency', '')),
@@ -190,6 +278,20 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
                     _bool(row.get('has_definition', '')),
                     'forgotten',
                     _int(row.get('dict_count', '')),
+                    _int(row.get('hist_occ', '')),
+                    _int(row.get('hist_docs', '')),
+                    _int(row.get('modern_occ', '')),
+                    _int(row.get('modern_docs', '')),
+                    _int(row.get('modern_occ_loose', '')),
+                    _float(row.get('family_ratio', '')),
+                    _float(row.get('rank_shift', '')),
+                    _int(row.get('newest_dict_year', '')),
+                    _int(row.get('in_current_dict', '')),
+                    _int(row.get('quality_score', '')),
+                    row.get('seam') or 'relevant',
+                    _int(row.get('regional_only', '')),
+                    _int(row.get('variant_like', '')),
+                    row.get('variant_of') or None,
                 ),
             )
 
@@ -254,6 +356,25 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
 
     merge_dict_sources(conn, DICT_SOURCES_PATH)
 
+    # Must run before the vocab table is built, or the POS dropdown lists the old
+    # taxonomy-derived values that almost nothing matches.
+    lexemes_for_pos = Path('data/processed/lexemes.db')
+    if lexemes_for_pos.exists():
+        print('Deriving dex_pos from Lexeme.modelType…')
+        pos_map = load_pos_from_lexemes(lexemes_for_pos)
+        updated = 0
+        for (w,) in conn.execute('SELECT word FROM words').fetchall():
+            pos = pos_map.get(w.lower())
+            if pos:
+                conn.execute('UPDATE words SET dex_pos = ? WHERE word = ?',
+                             ('|'.join(sorted(pos)), w))
+                updated += 1
+        covered, total = conn.execute(
+            "SELECT SUM(dex_pos IS NOT NULL AND dex_pos != ''), COUNT(*) FROM words"
+        ).fetchone()
+        print(f'  {updated:,} words given a model-derived POS '
+              f'({covered:,}/{total:,} now carry one)')
+
     # Build vocab table for dropdown options
     print('Building vocab table…')
     conn.execute("""
@@ -298,22 +419,38 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     else:
         print('wordfreq not available — zipf_frequency/en_zipf left NULL')
 
-    # Populate proper_noun_like from lexemes.db (optional)
+    # Populate proper_noun_like from lexemes.db (optional).
+    #
+    # Flag a word only when DEX knows it *exclusively* as a capitalised headword. The
+    # earlier version flagged anything that merely collided with one, which hid ordinary
+    # nouns that happen to share a spelling with a surname or a place: `gheb` ("cocoașă")
+    # was hidden because DEX also lists the name `Gheb`. Since these words are hidden by
+    # default now, a false positive costs a real word rather than just a filter option.
     lexemes_path = Path('data/processed/lexemes.db')
     if lexemes_path.exists():
         print('Computing proper_noun_like…')
         lconn = sqlite3.connect(str(lexemes_path))
-        caps = {r[0].lower() for r in lconn.execute(
-            "SELECT DISTINCT formNoAccent FROM Lexeme WHERE formNoAccent GLOB '[A-Z]*'"
-        ).fetchall()}
+        caps, lower = set(), set()
+        for form, model_type in lconn.execute(
+                'SELECT formNoAccent, modelType FROM Lexeme '
+                " WHERE formNoAccent IS NOT NULL AND formNoAccent != ''"):
+            # str.isupper() on the first character, not GLOB '[A-Z]*' — the latter is
+            # ASCII-only and misses Ș/Ă/Î (Șerban, Ăst-, Împărat). modelType 'SP' is
+            # DEX's own proper-noun model (America, Carpați, Alexandria).
+            is_proper = form[0].isupper() or (model_type or '').strip() == 'SP'
+            (caps if is_proper else lower).add(form.lower())
         lconn.close()
+        proper_only = caps - lower
         conn.execute('UPDATE words SET proper_noun_like = 0')
-        if caps:
-            ph = ','.join('?' * len(caps))
+        if proper_only:
+            ph = ','.join('?' * len(proper_only))
             conn.execute(
-                f'UPDATE words SET proper_noun_like = 1 WHERE word IN ({ph})', list(caps)
-            )
-        print(f'  {len(caps)} proper-noun candidates marked')
+                f'UPDATE words SET proper_noun_like = 1 WHERE word IN ({ph})',
+                list(proper_only))
+        marked = conn.execute(
+            'SELECT COUNT(*) FROM words WHERE proper_noun_like = 1').fetchone()[0]
+        print(f'  {len(proper_only):,} proper-only headwords in DEX → {marked} words marked '
+              f'({len(caps & lower):,} capitalised forms ignored as ordinary words too)')
     else:
         print('lexemes.db not found — proper_noun_like left NULL')
 
@@ -332,6 +469,11 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     conn.execute('CREATE INDEX idx_words_modern    ON words(modern_ppm)')
     conn.execute('CREATE INDEX idx_words_normalized ON words(word_normalized)')
     conn.execute('CREATE INDEX idx_words_zipf       ON words(zipf_frequency)')
+    # The default listing is (word_tier, seam) filtered and quality_score ordered, so it
+    # gets a covering composite rather than three separate indexes.
+    conn.execute('CREATE INDEX idx_words_default    '
+                 'ON words(word_tier, seam, quality_score DESC)')
+    conn.execute('CREATE INDEX idx_words_modern_occ ON words(modern_occ)')
 
     conn.commit()
     conn.close()

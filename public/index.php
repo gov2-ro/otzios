@@ -152,12 +152,28 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <label class="seg-opt"><input type="radio" name="word_tier" value="rare_in_use"> rare</label>
         </div>
         <select name="sort" class="fs-sort">
+          <?php if (db_has_column('quality_score')): ?>
+          <option value="quality">↓ cele mai potrivite</option>
+          <?php endif; ?>
           <option value="rare">↓ rarest modern</option>
           <option value="declined">↓ most declined</option>
           <option value="dex_freq">↓ DEX frequency</option>
           <option value="alpha">↕ alphabetical</option>
         </select>
       </div>
+
+      <?php if (db_has_column('seam')): ?>
+      <!-- Seam: which of the two lists you are browsing. Hidden on the rare tab (JS) —
+           those words are not split into seams. -->
+      <div class="fs-section" id="seam-control">
+        <div class="fs-label">listă</div>
+        <div class="seg seg-sm">
+          <label class="seg-opt"><input type="radio" name="seam" value="relevant" checked> relevante</label>
+          <label class="seg-opt"><input type="radio" name="seam" value="curiosity"> curiozități</label>
+          <label class="seg-opt"><input type="radio" name="seam" value="all"> toate</label>
+        </div>
+      </div>
+      <?php endif; ?>
 
       <!-- Verdict -->
       <div class="fs-section">
@@ -228,9 +244,9 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <option value="15">≥ 15 dicționare</option>
         </select>
         <span id="dex-rare-control" class="dex-rare-control" style="display:none">
-          <select name="dex_max" class="fs-select tax-select" data-default="0.60">
-            <option value="all">DEX: toate</option>
-            <option value="0.60" selected>DEX-rar ≤0.60</option>
+          <select name="dex_max" class="fs-select tax-select" data-default="all">
+            <option value="all" selected>DEX: toate</option>
+            <option value="0.60">DEX-rar ≤0.60</option>
             <option value="0.50">DEX-rar ≤0.50</option>
             <option value="0.30">DEX-rar ≤0.30</option>
           </select>
@@ -279,10 +295,24 @@ global $QUICK_TAGS, $POS_OPTIONS;
         </label>
         <?php endif; ?>
         <?php if (db_has_column('proper_noun_like')): ?>
-        <label class="fs-pill fs-pill-sm" title="Ascunde headword-urile cu majusculă în DEX (nume, locuri, branduri)">
+        <label class="fs-pill fs-pill-sm" title="Headword-uri cu majusculă în DEX (nume, locuri, branduri). Ascunse implicit.">
           <span class="fs-check"></span>
-          <input type="checkbox" name="hide_proper" value="1">
-          ascunde nume proprii
+          <input type="checkbox" name="show_proper" value="1">
+          arată nume proprii
+        </label>
+        <?php endif; ?>
+        <?php if (db_has_column('regional_only')): ?>
+        <label class="fs-pill fs-pill-sm" title="Cuvinte marcate doar regional/dialectal, fără să fie și învechite. Ascunse implicit.">
+          <span class="fs-check"></span>
+          <input type="checkbox" name="show_regional" value="1">
+          arată regionalisme
+        </label>
+        <?php endif; ?>
+        <?php if (db_has_column('variant_like')): ?>
+        <label class="fs-pill fs-pill-sm" title="Grafii vechi ale unor cuvinte încă folosite (politeță/politețe, uleu/ulei). Ascunse implicit.">
+          <span class="fs-check"></span>
+          <input type="checkbox" name="show_variants" value="1">
+          arată variante vechi
         </label>
         <?php endif; ?>
       </div>

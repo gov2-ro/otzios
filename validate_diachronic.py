@@ -2,22 +2,35 @@
 """
 Diachronic comparison: historical (Wikisource) vs modern (CulturaX) corpus frequencies.
 
-For each DEX candidate, computes normalized frequencies in each corpus and a log
-ratio (positive = historically skewed = likely forgotten).
+For each DEX candidate, compares how much of the historical corpus it accounts for
+against how much of the modern one it does, and returns a verdict.
 
-    log_ratio = log2( (hist_ppm + S) / (modern_ppm + S) )
+Two things make the comparison honest, and both were added in the 2026-08-07 rescore:
 
-where S = smoothing constant (default 0.1 per million), hist_ppm / modern_ppm are
-occurrences per million tokens in each corpus.
+1. **Counts, not ppm.** The corpora differ by 1,187× in size (14.3M vs 17.0B tokens),
+   so the old shared `0.1 ppm` floor meant "fewer than 1,697 modern hits" on one side
+   and "at least 1.43 historical hits" on the other. `zapciu`, with 1,322 modern
+   occurrences, was classified `extinct`. Thresholds are now occurrence counts.
 
-Verdicts:
-  extinct          hist_ppm >= 1.0  AND  modern_ppm < 0.1
-  declining        log_ratio >= 1.0 (at least 2× more historical than modern)
-  stable           |log_ratio| < 1.0
-  emerging         log_ratio <= -1.0 (at least 2× more modern)
-  historical_only  hist_ppm >= 0.1  AND  modern_ppm < 0.1  (corpus run may be partial)
-  modern_only      modern_ppm >= 0.1 AND  hist_ppm < 0.1
-  absent           both < 0.1 (no corpus signal — run may be partial)
+2. **Paradigms, not citation forms.** The corpus processors count raw tokens, so an
+   inflected lemma was only credited with the one form that happens to be its headword
+   (`înmărmuri` 317, while `înmărmurit` alone is 5,846). Counts are now rolled up over
+   `InflectedForm` paradigms — see `aggregate_by_family`.
+
+The historical-vs-modern comparison itself uses `rank_shift`: the word's percentile rank
+within each corpus, subtracted. A rank is scale-free, so the smaller corpus's resolution
+floor no longer decides the outcome. `log_ratio` is still emitted for comparison.
+
+Verdicts (all from paradigm-level counts):
+  alive            modern_occ >= 1000 — in use today, whatever the history says
+  emerging         alive, and relatively more prominent now than historically
+  absent           no historical footing (< 3 occurrences or < 2 documents), not common now
+  extinct          historically attested, zero modern occurrences
+  historical_only  historically attested, fewer than 200 modern occurrences
+  declining        historically attested, 200–999 modern, and fell >= 0.15 in rank
+
+Only `extinct`, `historical_only`, `declining` and `absent` reach the UI; `make_shortlist.py`
+drops the rest (see VERDICTS in public/api/_lib.php).
 
 Usage:
     python validate_diachronic.py               # curated candidates only
@@ -25,7 +38,8 @@ Usage:
     python validate_diachronic.py --smoothing 0.5 --output path/out.csv
     python validate_diachronic.py --top 30      # print top-30 in summary
 
-Requires that at least one of process_wikisource.py / process_culturax.py has been run.
+Requires process_wikisource.py / process_culturax.py, plus extract_inflected_forms.py
+and extract_dict_sources.py for the paradigm and dictionary-year columns.
 """
 
 import argparse
@@ -173,6 +187,40 @@ SMOOTHING = 0.1   # per-million tokens; floor for log ratio
 
 RARITY_BINS = [(0.30, 'very_rare'), (0.50, 'rare'), (1.01, 'uncommon')]
 
+# ── Occurrence thresholds ────────────────────────────────────────────────────────
+#
+# These replace the old per-million thresholds, which compared two corpora that differ
+# by 1,187× in size using the same absolute 0.1 ppm floor:
+#
+#     culturax_ro   16,969,999,321 tokens  →  0.1 ppm = 1,697 occurrences
+#     wikisource_ro     14,297,033 tokens  →  0.1 ppm =     1.43 occurrences
+#
+# So "absent from modern Romanian" used to mean "fewer than 1,697 web hits" (zapciu, at
+# 1,322, was classified extinct) while "historically attested" meant two Wikisource hits.
+# Counting occurrences directly is scale-free and says what it means.
+#
+# Calibrated by sampling the shortlist at each band of the disambiguated count
+# (see docs/activity-history.md):
+#   0         hărățire, zalisi, blănuire, alegădi, berbelâc        — dead
+#   1–19      scoborâre, cârcioc, zânitură, mâglă, zapcierie       — dead
+#   20–199    madmoazelă, gheșeftar, evhologhion, zulie, stoliță   — genuinely rare
+#   200–999   jiliște, civilizațiune, docar, plevușcă, calabalâc   — rare, still readable
+#   1k–3k     lehuzie, arhaism, stăvilar, căldăraș, colindător     — borderline
+#   3k+       despotic, verișoară, călăreț, harababură, foiță      — alive
+MODERN_RARE_OCC  = 500    # below this, genuinely rare in modern Romanian
+MODERN_ALIVE_OCC = 2000   # at or above this, the word is simply in use
+
+# A single hit in a 14M-token corpus is noise, not attestation.
+HIST_MIN_OCC  = 3
+HIST_MIN_DOCS = 2
+
+# How far a word must fall in relative standing between the two corpora to count as
+# declining. Applied to percentile ranks, so it is independent of corpus size.
+RANK_SHIFT_DECLINING = 0.15
+
+INFLECTED_DB = Path('data/processed/inflected_forms.db')
+DICT_SOURCES_DB = Path('data/processed/dict_sources.db')
+
 
 def normalize(text: str) -> str:
     return unicodedata.normalize('NFC',
@@ -252,6 +300,147 @@ def load_corpus_freqs(conn: sqlite3.Connection,
     return {r[0]: (r[1], r[2]) for r in rows}
 
 
+def load_form_lemma_map(db_path: Path) -> dict[str, list[str]]:
+    """Return {inflected_form: [lemma, ...]} from inflected_forms.db.
+
+    Run `extract_inflected_forms.py` to build it. Returns {} with a warning if absent,
+    in which case the family columns fall back to the bare citation-form counts.
+    """
+    if not db_path.exists():
+        print(f'  [inflection] {db_path} not found — run extract_inflected_forms.py to '
+              f'enable lemma aggregation. Falling back to citation-form counts.')
+        return {}
+    conn = sqlite3.connect(str(db_path))
+    try:
+        rows = conn.execute('SELECT form, lemma FROM form_lemma').fetchall()
+    except sqlite3.OperationalError:
+        print(f'  [inflection] {db_path} has no form_lemma table — rebuild it.')
+        return {}
+    finally:
+        conn.close()
+    out: dict[str, list[str]] = {}
+    for form, lemma in rows:
+        out.setdefault(form, []).append(lemma)
+    return out
+
+
+SHARE_ALPHA = 1.0        # smoothing when splitting an ambiguous form's count
+DOMINANT_SHARE = 0.5     # a lemma must win this much of a form to inherit its doc count
+
+
+def aggregate_by_family(freqs: dict[str, tuple[int, int]],
+                        form_lemma: dict[str, list[str]]) -> dict[str, tuple[int, int]]:
+    """Roll citation-form counts up to whole paradigms: {lemma: (occurrences, documents)}.
+
+    Romanian is heavily inflected and the corpus processors count raw tokens, so a lemma
+    is otherwise only ever credited with its citation form:
+
+        înmărmuri  317  →  6,376   (înmărmurit alone is 5,846)
+        cătrăni     59  →  1,825
+
+    Every verb was therefore pushed toward `extinct`.
+
+    **Ambiguous forms are split, not duplicated.** ~12% of surface forms are claimed by
+    more than one lemma, and naively crediting each claimant produces nonsense: `veșcă`
+    (the rim of a sieve) shares its plural `vești`/`veștile` with `veste` (news), and
+    would inherit all 339,710 of its occurrences.
+
+    Each shared form's count is divided between claimants in proportion to how often each
+    lemma's *own headword* appears in the corpus. That prior is what tells the two apart:
+
+        vești     → veste 576,766 vs veșcă 264      → veste takes ~99.9%
+        politețe  → politețe 33,178 vs politeță 280 → politețe takes ~99.2%
+
+    (Weighting by "forms only one lemma claims" was tried first and fails: a noun's own
+    citation form is frequently shared too — `veste` is claimed by both `veste` and
+    `vestă` — so the evidence is empty for exactly the words that need it, and the split
+    lands on whichever lemma happens to own some unrelated form.)
+
+    Returns the disambiguated per-lemma estimate. `aggregate_loose` returns the
+    undivided word-family total; the ratio between them is the "you would recognise a
+    relative of this word" signal that `make_shortlist.py` scores on.
+
+    Occurrences are summed (distinct tokens, so exact). Documents take the max across the
+    forms a lemma dominates — a conservative lower bound on distinct documents, since
+    summing would double-count any document holding two forms of the same lemma.
+    """
+    if not form_lemma:
+        return dict(freqs)
+
+    occ: dict[str, float] = {}
+    doc: dict[str, int] = {}
+    for word, (o, d) in freqs.items():
+        lemmas = form_lemma.get(word) or [word]
+        if len(lemmas) == 1:
+            lemma = lemmas[0]
+            occ[lemma] = occ.get(lemma, 0.0) + o
+            doc[lemma] = max(doc.get(lemma, 0), d)
+            continue
+        # Prior: how prominent is each claimant lemma in its own right?
+        weights = [freqs.get(lm, (0, 0))[0] + SHARE_ALPHA for lm in lemmas]
+        total = sum(weights)
+        for lemma, w in zip(lemmas, weights):
+            share = w / total
+            occ[lemma] = occ.get(lemma, 0.0) + o * share
+            if share >= DOMINANT_SHARE:
+                doc[lemma] = max(doc.get(lemma, 0), d)
+
+    return {w: (int(round(v)), doc.get(w, 0)) for w, v in occ.items()}
+
+
+def aggregate_loose(freqs: dict[str, tuple[int, int]],
+                    form_lemma: dict[str, list[str]]) -> dict[str, int]:
+    """Undivided word-family totals: {lemma: occurrences}, every claimant credited in full.
+
+    This is deliberately the *over*-counting version. Compared against the disambiguated
+    figure it answers a different question — not "how often is this lemma used" but "how
+    often does a reader meet something that looks like it". A large gap means the word
+    survives only as a relative of a current one (`politeță` beside `politețe`), which is
+    the class of entry that wastes a marker's time.
+    """
+    if not form_lemma:
+        return {w: o for w, (o, _) in freqs.items()}
+    out: dict[str, int] = {}
+    for word, (o, _d) in freqs.items():
+        for lemma in form_lemma.get(word) or (word,):
+            out[lemma] = out.get(lemma, 0) + o
+    return out
+
+
+def percentile_ranks(values: dict[str, int]) -> dict[str, float]:
+    """Map {word: count} → {word: percentile rank in 0..1} over the non-zero counts.
+
+    Used instead of ppm for the historical-vs-modern comparison: a rank is scale-free,
+    so a 14M-token corpus and a 17B-token one can be compared without the smaller one's
+    resolution floor deciding the outcome.
+    """
+    present = sorted((v, w) for w, v in values.items() if v > 0)
+    n = len(present)
+    if n == 0:
+        return {}
+    return {w: (i + 1) / n for i, (_, w) in enumerate(present)}
+
+
+def load_dict_meta(db_path: Path) -> dict[str, dict]:
+    """Return {word: {dict_count, newest_dict_year, in_current_dict}} from dict_sources.db.
+
+    Prefer this over `_load_dict_counts`, which re-streams the 1.65 GB dump on every run
+    to recompute a number `extract_dict_sources.py` has already written down.
+    """
+    if not db_path.exists():
+        return {}
+    conn = sqlite3.connect(str(db_path))
+    try:
+        rows = conn.execute('SELECT word, dict_count, newest_dict_year, '
+                            'in_current_dict FROM dict_sources').fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    finally:
+        conn.close()
+    return {r[0]: {'dict_count': r[1], 'newest_dict_year': r[2],
+                   'in_current_dict': r[3]} for r in rows}
+
+
 def load_taxonomy(lexemes_db: Path) -> dict:
     """Return {word_lower: {register, domain, etymology, pos}} from Tag/ObjectTag/EntryLexeme.
     Returns empty dict with a warning if tables are absent (run extract_taxonomy.py first).
@@ -295,20 +484,30 @@ def load_taxonomy(lexemes_db: Path) -> dict:
     return taxonomy
 
 
-def verdict(hist_ppm: float, modern_ppm: float, log_ratio: float) -> str:
-    if hist_ppm >= 1.0 and modern_ppm < 0.1:
-        return 'extinct'
-    if hist_ppm >= 0.1 and modern_ppm < 0.1:
-        return 'historical_only'
-    if modern_ppm >= 0.1 and hist_ppm < 0.1:
-        return 'modern_only'
-    if hist_ppm < 0.1 and modern_ppm < 0.1:
+def verdict(hist_occ: int, hist_docs: int, modern_occ: int, rank_shift: float) -> str:
+    """Classify a lemma from paradigm-level occurrence counts.
+
+    Counts, not ppm — see the MODERN_* / HIST_* constants for why. All inputs are
+    family-aggregated (whole paradigm), so an inflected verb is judged on its paradigm
+    rather than on how often its infinitive happens to be written.
+
+    The four verdicts a shortlisted word can carry are `extinct`, `historical_only`,
+    `declining` and `absent`; `alive` and `emerging` exist so `make_shortlist.py` can
+    drop them, and are never shown in the UI (see VERDICTS in public/api/_lib.php).
+    """
+    attested_hist = hist_occ >= HIST_MIN_OCC and hist_docs >= HIST_MIN_DOCS
+
+    if modern_occ >= MODERN_ALIVE_OCC:
+        # Demonstrably in use today, whatever the history says.
+        return 'emerging' if rank_shift <= -RANK_SHIFT_DECLINING else 'alive'
+    if not attested_hist:
+        # No historical footing, and not common now: we simply have no evidence.
         return 'absent'
-    if log_ratio >= 1.0:
-        return 'declining'
-    if log_ratio <= -1.0:
-        return 'emerging'
-    return 'stable'
+    if modern_occ == 0:
+        return 'extinct'
+    if modern_occ < MODERN_RARE_OCC:
+        return 'historical_only'
+    return 'declining'
 
 
 def main() -> int:
@@ -378,9 +577,32 @@ def main() -> int:
     def_words = _load_definition_words(DEFINITIONS_DB)
     print(f'  {len(def_words):,} words with definitions')
 
-    print('Extracting dictionary coverage counts...')
-    dict_counts = _load_dict_counts(DEX_SQL_PATH)
-    print(f'  {len(dict_counts):,} headwords across all dictionaries')
+    print('Loading dictionary coverage...')
+    dict_meta = load_dict_meta(DICT_SOURCES_DB)
+    if dict_meta:
+        print(f'  {len(dict_meta):,} headwords from {DICT_SOURCES_DB}')
+    else:
+        # Fall back to re-streaming the dump; slower, and yields no year data.
+        print(f'  {DICT_SOURCES_DB} not found — falling back to the dump '
+              f'(run extract_dict_sources.py to skip this)')
+        dict_meta = {w: {'dict_count': c, 'newest_dict_year': None,
+                         'in_current_dict': None}
+                     for w, c in _load_dict_counts(DEX_SQL_PATH).items()}
+        print(f'  {len(dict_meta):,} headwords across all dictionaries')
+
+    print('Loading inflected-form paradigms...')
+    form_lemma = load_form_lemma_map(INFLECTED_DB)
+    print(f'  {len(form_lemma):,} surface forms mapped to lemmas')
+
+    print('Aggregating corpus counts over paradigms...')
+    hist_fam     = aggregate_by_family(hist_freqs,     form_lemma)
+    modern_fam   = aggregate_by_family(modern_freqs,   form_lemma)
+    subtitle_fam = aggregate_by_family(subtitle_freqs, form_lemma)
+    modern_loose = aggregate_loose(modern_freqs, form_lemma)
+    print(f'  {len(hist_fam):,} historical / {len(modern_fam):,} modern lemmas')
+
+    hist_rank   = percentile_ranks({w: o for w, (o, _) in hist_fam.items()})
+    modern_rank = percentile_ranks({w: o for w, (o, _) in modern_fam.items()})
 
     # Restrict to candidates that appear in at least one corpus (unless --all-dex)
     if args.all_dex:
@@ -397,16 +619,31 @@ def main() -> int:
     for word in universe:
         meta = candidates.get(word, {'dex_frequency': 0.0, 'description': '', 'rarity_category': ''})
 
+        # Citation-form counts, kept so the rescore can be diffed against the old data.
         h_occ, h_doc = hist_freqs.get(word,     (0, 0))
         m_occ, m_doc = modern_freqs.get(word,   (0, 0))
         s_occ, s_doc = subtitle_freqs.get(word, (0, 0))
+
+        # Paradigm-level counts — what the verdict is actually computed from.
+        hf_occ, hf_doc = hist_fam.get(word,     (0, 0))
+        mf_occ, mf_doc = modern_fam.get(word,   (0, 0))
+        sf_occ, _      = subtitle_fam.get(word, (0, 0))
 
         hist_ppm     = h_occ * hist_scale     if hist_scale     else 0.0
         modern_ppm   = m_occ * modern_scale   if modern_scale   else 0.0
         subtitle_ppm = s_occ * subtitle_scale if subtitle_scale else 0.0
 
-        log_ratio = math.log2((hist_ppm + S) / (modern_ppm + S))
+        log_ratio  = math.log2((hist_ppm + S) / (modern_ppm + S))
+        rank_shift = hist_rank.get(word, 0.0) - modern_rank.get(word, 0.0)
 
+        # How much bigger the undivided word family is than this lemma alone. High values
+        # mean the word survives only as a relative of a current one — `tinereță` 298×
+        # beside `tinerețe`, `veșcă` 938× beside `veste` — while a genuinely isolated rare
+        # word sits at 1×. This is what flags archaic variants of live vocabulary.
+        ml_occ = modern_loose.get(word, 0)
+        family_ratio = ml_occ / mf_occ if mf_occ else 1.0
+
+        dmeta = dict_meta.get(word) or {}
         tax = taxonomy.get(word, {})
         results.append({
             'word':               word,
@@ -422,17 +659,29 @@ def main() -> int:
             'subtitle_occurrences': s_occ,
             'subtitle_documents':   s_doc,
             'subtitle_ppm':         f'{subtitle_ppm:.4f}',
+            'hist_occ':           hf_occ,
+            'hist_docs':          hf_doc,
+            'modern_occ':         mf_occ,
+            'modern_docs':        mf_doc,
+            'subtitle_occ':       sf_occ,
+            'modern_occ_loose':   ml_occ,
+            'family_ratio':       f'{family_ratio:.2f}',
+            'hist_rank':          f'{hist_rank.get(word, 0.0):.4f}',
+            'modern_rank':        f'{modern_rank.get(word, 0.0):.4f}',
+            'rank_shift':         f'{rank_shift:.4f}',
             'log_ratio':          f'{log_ratio:.4f}',
-            'verdict':            verdict(hist_ppm, modern_ppm, log_ratio),
+            'verdict':            verdict(hf_occ, hf_doc, mf_occ, rank_shift),
             'dex_pos':            '|'.join(sorted(tax.get('pos',       set()))),
             'dex_register':       '|'.join(sorted(tax.get('register',  set()))),
             'dex_domain':         '|'.join(sorted(tax.get('domain',    set()))),
             'dex_etymology':      '|'.join(sorted(tax.get('etymology', set()))),
             'has_definition':     1 if word in def_words else 0,
-            'dict_count':         dict_counts.get(word, 0),
+            'dict_count':         dmeta.get('dict_count', 0),
+            'newest_dict_year':   dmeta.get('newest_dict_year') or '',
+            'in_current_dict':    dmeta.get('in_current_dict') if dmeta.get('in_current_dict') is not None else '',
         })
 
-    results.sort(key=lambda r: float(r['log_ratio']), reverse=True)
+    results.sort(key=lambda r: float(r['rank_shift']), reverse=True)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fields = [
@@ -440,9 +689,12 @@ def main() -> int:
         'hist_occurrences', 'hist_documents', 'hist_ppm',
         'modern_occurrences', 'modern_documents', 'modern_ppm',
         'subtitle_occurrences', 'subtitle_documents', 'subtitle_ppm',
+        'hist_occ', 'hist_docs', 'modern_occ', 'modern_docs', 'subtitle_occ',
+        'modern_occ_loose', 'family_ratio',
+        'hist_rank', 'modern_rank', 'rank_shift',
         'log_ratio', 'verdict',
         'dex_pos', 'dex_register', 'dex_domain', 'dex_etymology',
-        'has_definition', 'dict_count',
+        'has_definition', 'dict_count', 'newest_dict_year', 'in_current_dict',
     ]
     with args.output.open('w', encoding='utf-8', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fields)
@@ -455,20 +707,20 @@ def main() -> int:
     from collections import Counter
     counts = Counter(r['verdict'] for r in results)
     print('\nVerdict breakdown:')
-    for v in ('extinct', 'declining', 'historical_only', 'stable',
-              'modern_only', 'emerging', 'absent'):
+    for v in ('extinct', 'historical_only', 'declining', 'absent',
+              'alive', 'emerging'):
         n = counts.get(v, 0)
         if n:
             print(f'  {v:<20} {n:>6,}')
 
-    # Top N most historically-skewed
-    top = [r for r in results if float(r['hist_ppm']) > 0][:args.top]
+    # Top N most historically-skewed (results are already sorted by rank_shift)
+    top = [r for r in results if int(r['hist_occ']) > 0][:args.top]
     if top:
-        print(f'\nTop {len(top)} historically-skewed (highest log_ratio, hist_ppm > 0):')
-        print(f'  {"word":<22} {"log_ratio":>10} {"hist_ppm":>10} {"modern_ppm":>11}  verdict')
+        print(f'\nTop {len(top)} historically-skewed (highest rank_shift, hist_occ > 0):')
+        print(f'  {"word":<22} {"rank_shift":>10} {"hist_occ":>9} {"modern_occ":>11}  verdict')
         for r in top:
-            print(f'  {r["word"]:<22} {float(r["log_ratio"]):>10.2f} '
-                  f'{float(r["hist_ppm"]):>10.4f} {float(r["modern_ppm"]):>11.4f}  {r["verdict"]}')
+            print(f'  {r["word"]:<22} {float(r["rank_shift"]):>10.2f} '
+                  f'{int(r["hist_occ"]):>9,} {int(r["modern_occ"]):>11,}  {r["verdict"]}')
 
     return 0
 

@@ -742,13 +742,19 @@ document.querySelectorAll('#filter-form label.pill input[type=radio]').forEach(f
   });
 });
 
-// DEX-rare filter is only meaningful on the rare tab — show it there only.
+// Two controls are meaningful on only one tab, so each is shown only there. The DEX-rare
+// ceiling applies to `rare_in_use`; the seam split applies to `forgotten` (the 112
+// rare-in-use words come from a different pipeline and are all stored as 'relevant', so
+// the seam buttons there would look live and do nothing).
 (function() {
-  const ctrl = document.getElementById('dex-rare-control');
-  if (!ctrl) return;
+  const rareOnly = document.getElementById('dex-rare-control');
+  const seamOnly = document.getElementById('seam-control');
+  if (!rareOnly && !seamOnly) return;
   function sync() {
-    const sel = document.querySelector('#filter-form input[name=word_tier]:checked');
-    ctrl.style.display = (sel && sel.value === 'rare_in_use') ? '' : 'none';
+    const sel  = document.querySelector('#filter-form input[name=word_tier]:checked');
+    const rare = !!sel && sel.value === 'rare_in_use';
+    if (rareOnly) rareOnly.style.display = rare ? '' : 'none';
+    if (seamOnly) seamOnly.style.display = rare ? 'none' : '';
   }
   document.querySelectorAll('#filter-form input[name=word_tier]')
     .forEach(function(r) { r.addEventListener('change', sync); });
@@ -814,13 +820,16 @@ var AF_SPECS = [
   { name: 'domain',         type: 'select', def: '', label: function(v){ return 'domeniu: ' + v; } },
   { name: 'etymology',      type: 'select', def: '', label: function(v){ return 'etim: ' + v.replace('limba ', ''); } },
   { name: 'dict_min',       type: 'select', def: '', label: function(v){ return 'dicts ≥' + v; } },
-  { name: 'dex_max',        type: 'select', def: '0.60', label: function(v){ return 'DEX ' + (v === 'all' ? 'toate' : '≤' + v); } },
+  { name: 'dex_max',        type: 'select', def: 'all', label: function(v){ return 'DEX ' + (v === 'all' ? 'toate' : '≤' + v); } },
   { name: 'zipf_min',       type: 'number',   label: function(v){ return 'zipf ≥' + v; } },
   { name: 'zipf_max',       type: 'number',   label: function(v){ return 'zipf ≤' + v; } },
   { name: 'dexfreq_min',    type: 'number',   label: function(v){ return 'dex ≥' + v; } },
   { name: 'dexfreq_max',    type: 'number',   label: function(v){ return 'dex ≤' + v; } },
   { name: 'hide_loanwords', type: 'checkbox', label: function(){ return 'fără împrumuturi'; } },
-  { name: 'hide_proper',    type: 'checkbox', label: function(){ return 'fără nume proprii'; } },
+  { name: 'show_proper',    type: 'checkbox', label: function(){ return 'cu nume proprii'; } },
+  { name: 'show_regional',  type: 'checkbox', label: function(){ return 'cu regionalisme'; } },
+  { name: 'show_variants',  type: 'checkbox', label: function(){ return 'cu variante vechi'; } },
+  { name: 'seam',           type: 'radio',  def: 'relevant', label: function(v){ return v === 'all' ? 'toate listele' : 'listă: ' + v; } },
   { name: 'verdict',        type: 'group',    label: function(n, t){ return 'verdict ' + n + '/' + t; } },
   { name: 'tier',           type: 'group',    label: function(n, t){ return 'tier ' + n + '/' + t; } },
   { name: 'pos',            type: 'group',    label: function(n, t){ return 'POS ' + n + '/' + t; } },
@@ -913,9 +922,10 @@ document.getElementById('filter-form') &&
 var URL_PARAM_DEFAULTS = {
   word_tier: 'forgotten',
   has_def:   '',
-  sort:      'rare',
+  seam:      'relevant',
+  sort:      'quality',
   marks:     'all',
-  dex_max:   '0.60',
+  dex_max:   'all',
 };
 
 function applyUrlToForm() {
@@ -929,7 +939,7 @@ function applyUrlToForm() {
   if (q) { var qi = form.querySelector('input[name=q]'); if (qi) qi.value = q; }
 
   // Radio groups
-  ['word_tier', 'has_def'].forEach(function(name) {
+  ['word_tier', 'has_def', 'seam'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     form.querySelectorAll('input[name=' + name + ']').forEach(function(r) {
@@ -963,8 +973,9 @@ function applyUrlToForm() {
     if (el) el.value = val;
   });
 
-  // Explore: checkboxes (hide_loanwords, hide_proper)
-  ['hide_loanwords', 'hide_proper'].forEach(function(name) {
+  // Explore: checkboxes. The show_* ones are inverted on purpose — an unchecked box
+  // is not submitted, so a default-on hide_* could never be switched off.
+  ['hide_loanwords', 'show_proper', 'show_regional', 'show_variants'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     var el = form.querySelector('input[name=' + name + ']');
@@ -1006,7 +1017,7 @@ function syncUrlFromForm() {
   if (q && q.value.trim()) params.set('q', q.value.trim());
 
   // Radio groups
-  ['word_tier', 'has_def'].forEach(function(name) {
+  ['word_tier', 'has_def', 'seam'].forEach(function(name) {
     var el = form.querySelector('input[name=' + name + ']:checked');
     var val = el ? el.value : '';
     if (val && val !== (URL_PARAM_DEFAULTS[name] || '')) params.set(name, val);
@@ -1036,7 +1047,7 @@ function syncUrlFromForm() {
   });
 
   // Explore: binary checkboxes
-  ['hide_loanwords', 'hide_proper'].forEach(function(name) {
+  ['hide_loanwords', 'show_proper', 'show_regional', 'show_variants'].forEach(function(name) {
     var el = form.querySelector('input[name=' + name + ']');
     if (el && el.checked) params.set(name, '1');
   });

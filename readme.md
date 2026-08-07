@@ -28,51 +28,59 @@ Vezi și: [initial specs](docs/oțios-init-specs.docx.md) / [live](https://docs
 
 ```mermaid
 flowchart TD
-    DEX[("DEX Online dump\n1.2 GB MySQL")]
+    DEX[("DEX Online dump<br/>1.65 GB MySQL")]
 
-    subgraph P1["Phase 1 · Dictionary Analysis"]
-        A["create_sample_db.py"] --> B[("dex-sample.sql")]
-        B --> C["extract_lexemes.py"] --> D[("lexemes.db\n315k lexemes")]
-        D --> E["analyze_forgotten_words.py"] --> F[("forgotten_words_v1.csv")]
-        F --> G["create_curated_list.py"] --> H[("forgotten_words_curated.csv\n~140k candidates")]
-        D --> TAX["extract_taxonomy.py\n(run once)"] --> D
+    subgraph P1["Phase 1 · Extraction"]
+        C["extract_lexemes.py"] --> D[("lexemes.db<br/>317.7k lexemes")]
+        D --> TAX["extract_taxonomy.py"] --> D
+        IF["extract_inflected_forms.py"] --> IFDB[("inflected_forms.db<br/>2.27M forms → lemma")]
+        DS["extract_dict_sources.py"] --> DSDB[("dict_sources.db<br/>113 dictionaries + years")]
+        DEFS["extract_definitions.py"] --> DEFDB[("definitions.db")]
+        D --> G["create_curated_list.py"] --> H[("forgotten_words_curated.csv<br/>~140k candidates")]
     end
 
-    subgraph P2["Phase 2 · Corpus Validation"]
-        subgraph P2A["2a · wordfreq — fast, rough"]
-            WF["validate_with_wordfreq.py"] --> WF_OUT[("validated_wordfreq.csv\n1,868 rows")]
-        end
-        subgraph P2B["2b · Diachronic — recommended ✅"]
-            WS["process_wikisource.py\n(historical · 14M tokens)"]
-            CX["process_culturax.py\n(modern web · 17B tokens)"]
-            WS & CX --> CORP[("corpus_frequencies.db")]
-            CORP --> DIA["validate_diachronic.py"] --> DIA_OUT[("forgotten_words_diachronic.csv\n130k rows · 4 taxonomy cols")]
-        end
-        subgraph P2C["2c · Legacy Wikipedia — ⚠️ P0 bug"]
-            DL["download_wikipedia_ro.py"] --> PC["process_corpus.py"] --> VFW["validate_forgotten_words.py"] --> LEG[("validated.csv")]
-        end
+    subgraph P2["Phase 2 · Corpora"]
+        WS["process_wikisource.py<br/>historical · 14.3M tokens"]
+        CX["process_culturax.py<br/>modern web · 17.0B tokens"]
+        WS & CX --> CORP[("corpus_frequencies.db")]
     end
 
-    subgraph P25["Phase 2.5 · Shortlist"]
-        SL["make_shortlist.py"] --> SL_OUT[("forgotten_words_shortlist.csv\n23,112 rows · 3 tiers")]
+    subgraph P3["Phase 3 · Verdicts, scoring, UI"]
+        DIA["validate_diachronic.py<br/>paradigm-level counts<br/>occurrence thresholds"]
+        DIA --> DIA_OUT[("forgotten_words_diachronic.csv<br/>130k rows")]
+        DIA_OUT --> SL["make_shortlist.py<br/>composite score"]
+        SL --> SL_OUT[("forgotten_words_shortlist.csv<br/>16,203 rows · 2 seams")]
+        SL_OUT --> UI["tools/build_ui_db.py"] --> UIDB[("public/data/ui.db<br/>16,315 words")]
     end
 
-    subgraph P3["Phase 3 · Web Validation"]
-        SW["search_wild.py\n--provider ddg | google"] --> WEB_OUT[("forgotten_words_web_validated.csv\nweb_score · last_seen_approx")]
-    end
-
-    DEX --> A
-    H --> WF
+    DEX --> C & IF & DS & DEFS
     H --> WS & CX
-    H --> DL
-    D -.->|"taxonomy tags\n(dex_pos, register,\ndomain, etymology)"| DIA
-    DIA_OUT --> SL
-    WF_OUT --> SL
-    SL_OUT --> SW
-    LEG --> SW
+    H --> DIA
+    CORP --> DIA
+    IFDB --> DIA
+    DSDB --> DIA
+    DEFDB --> DIA
+    IFDB --> SL
+    DSDB --> UI
+    DEFDB --> UI
+    UIDB --> PHP["public/ · PHP app"]
 ```
 
-> **Phase 2 paths are alternatives** — run 2a for a quick pass, 2b for the recommended diachronic analysis (historical vs modern corpora), or 2c only if reproducing earlier results (it has a known P0 bug). `make_shortlist.py` (Phase 2.5) filters the 130k diachronic rows down to the ~23k most defensible forgotten words before web validation.
+**Two things this diagram is built around**, both fixed in the 2026-08-08 rescore:
+
+- **`inflected_forms.db` feeds `validate_diachronic.py`.** The corpus processors count raw
+  tokens, so without the paradigm map a lemma is only ever credited with its citation form
+  — `înmărmuri` scored 317 while `înmărmurit` alone is 5,846, and every verb drifted toward
+  "extinct".
+- **Thresholds are occurrence counts, never ppm.** Wikisource and CulturaX differ by
+  1,187× in size, so a shared `0.1 ppm` floor meant "fewer than 1,697 modern hits" on one
+  side and "at least 1.43 historical hits" on the other.
+
+`make_shortlist.py` splits its output into two seams via a `seam` column: **`relevant`**
+(2,815 — the default view) and **`curiosity`** (13,388). See `CLAUDE.md` → Seams.
+
+The legacy Wikipedia/OSCAR branch (`process_corpus.py`, `validate_forgotten_words.py`),
+`search_wild.py` and the old Flask UI now live in `archive/` — see `archive/README.md`.
 
 ## Quick Start
 
@@ -86,23 +94,24 @@ source ~/devbox/envs/240826/bin/activate
 pip install -r requirements.txt
 ```
 
-### Phase 1: Dictionary Analysis
+### Phase 1: Extraction
+
+Each of these streams the 1.65 GB dump once. The four extractors are independent, so
+order does not matter between them.
 
 ```bash
-# 1. Create sample database (reduces 1.2GB to 285MB)
-python create_sample_db.py
-
-# 2. Extract lexeme data (creates CSV + SQLite database)
-python extract_lexemes.py
-
-# 3. Generate analysis and statistics
-python analyze_forgotten_words.py
-
-# 4. Create final curated list
-python create_curated_list.py
+python extract_lexemes.py          # → lexemes.csv + lexemes.db
+python extract_taxonomy.py         # → Tag/ObjectTag/… into lexemes.db (register, domain)
+python extract_inflected_forms.py  # → inflected_forms.db  (2.27M forms → lemma)
+python extract_dict_sources.py     # → dict_sources.db     (names, years, in_current_dict)
+python extract_definitions.py      # → definitions.db
+python create_curated_list.py      # → forgotten_words_curated.csv
 ```
 
 **Output**: `forgotten_words_curated.csv` (~140k candidates)
+
+> `extract_inflected_forms.py` is not optional. Without it `validate_diachronic.py` falls
+> back to citation-form counts and every verb in the list reads as extinct.
 
 ### Phase 2a: Quick frequency screen (wordfreq)
 
@@ -164,14 +173,28 @@ Note: `process_culturax.py` reads the 64 parquet shards directly via `HfFileSyst
 ### Phase 2b continued: diachronic comparison + shortlist
 
 ```bash
-# Compare historical vs modern frequencies, add taxonomy columns
+# Roll corpus counts up over inflection paradigms, assign verdicts from occurrence
+# counts, add taxonomy + dictionary-year columns
 python validate_diachronic.py
 # Output: forgotten_words_diachronic.csv (130k rows)
 
-# Filter down to the most defensible forgotten words
-python make_shortlist.py --stats   # preview counts by tier
-python make_shortlist.py           # write forgotten_words_shortlist.csv (~17k rows)
+# Score every candidate and split into the two seams
+python make_shortlist.py --stats        # preview seam and tier counts
+python make_shortlist.py                # → forgotten_words_shortlist.csv (16,203 rows)
+python make_shortlist.py --min-score 88 # loosen/tighten the relevant seam
+
+# Build the database the PHP app reads
+python tools/build_ui_db.py             # → public/data/ui.db (16,315 words)
 ```
+
+After a rebuild, check that `data/word_ids.tsv` gained lines and lost none:
+
+```bash
+git diff --numstat data/word_ids.tsv    # must read "<n>\t0"
+```
+
+That file is what makes `?w=` share links durable; a renumbering silently breaks every
+link ever shared. `tests/test_rescore.py` asserts it too.
 
 ### Phase 2.5: Fill definition gaps from dexonline.ro
 
@@ -196,23 +219,12 @@ python scrape_definitions.py --merge-only
 
 **Output**: `data/processed/scraped_definitions.csv` (checkpoint with columns: `word, definition, source_url, scraped_at, status`). With `--merge`, all `status=ok` rows are upserted into `definitions.db` immediately. Resume is safe — each row is flushed instantly; Ctrl+C stops cleanly.
 
-### Phase 3: Web validation
+### Phase 3: Web validation — retired
 
-```bash
-# Dry run first
-python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
-    --provider ddg --limit 5 --dry-run
-
-# DDG triage (no API key, good for first pass)
-python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
-    --provider ddg --limit 200 --delay 2
-
-# Google CSE (cleaner results, needs env vars, 100/day free tier)
-export GOOGLE_API_KEY="AIza..."
-export GOOGLE_CSE_ID="017576..."
-python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
-    --provider google --limit 100
-```
+`search_wild.py` (DuckDuckGo / Google CSE) moved to `archive/` in August 2026. It had
+reached 47 of 25,305 words (0.19%), and `build_ui_db.py` was reading a different file
+than the one it wrote. With corpus counts now aggregated over paradigms, "is this word
+still used?" is answered from 17B tokens of CulturaX without a daily quota.
 
 ## The web app
 
@@ -407,9 +419,9 @@ forgotten_words_curated.csv    — 140k dictionary suspects (no corpus signal)
         ↓ validate_diachronic.py
 forgotten_words_diachronic.csv — 130k rows with corpus frequencies + taxonomy
         ↓ make_shortlist.py
-forgotten_words_shortlist.csv  — ~17k most defensible forgotten words (2 tiers)
-        ↓ search_wild.py
-forgotten_words_web_validated.csv — shortlist + real-world web presence
+forgotten_words_shortlist.csv  — 16,203 scored words, split into 2 seams
+        ↓ tools/build_ui_db.py
+public/data/ui.db              — 16,315 words for the PHP app
 ```
 
 ### Shared columns
@@ -475,20 +487,23 @@ Generated by `make_shortlist.py` from the diachronic CSV. Three selection tiers,
 | Tier | `confidence_tier` value | Count | Criterion |
 |---|---|---|---|
 | A | `corpus_extinct` | 1,218 | `verdict=extinct`, `hist_ppm > 0` |
-| A | `corpus_declining` | 6,169 | `verdict=declining`, `hist_ppm > 0` |
-| A | `corpus_historical_only` | 9,399 | `verdict=historical_only`, `hist_ppm > 0` |
-| B | `dex_invechit_absent` | 2,994 | `verdict=absent` + `dex_register` contains `învechit` |
-| C | `dex_absent_highfreq` | 3,332 | `verdict=absent`, `hist_ppm=0`, `modern_ppm < 0.1`, `dex_frequency ≥ 0.85` |
+| A | `corpus_declining` | 3,228 | `verdict=declining` — attested historically, 500–1,999 modern occurrences |
+| A | `corpus_historical_only` | 5,339 | `verdict=historical_only` — attested historically, under 500 modern |
+| B | `dex_invechit_absent` | 3,333 | `verdict=absent` + `dex_register` contains `învechit` |
+| C | `dex_absent_highfreq` | 4,233 | `verdict=absent`, `dex_frequency ≥ 0.85` |
 
 Tier B: DEX editorial + absent from all corpora — two independent archaism signals. Tier C: highest DEX legitimacy but no corpus trace at all — the "most forgotten" words (e.g. *oțios*, dex_frequency=0.85). Tune Tier C with `--dex-freq-threshold` (default 0.85).
 
-All rows carry `is_forgotten = true` (required by `search_wild.py`). Columns are a subset of the diachronic CSV plus `confidence_tier`.
+Every row also carries `quality_score`, `seam` (`relevant` / `curiosity`) and the three
+hide-flags `regional_only`, `variant_like`, `proper_noun_like`. See `CLAUDE.md` → Seams
+for how the score and the flags divide the work.
 
 ---
 
-### `forgotten_words_web_validated.csv` — Phase 3 output
+### `forgotten_words_web_validated.csv` — Phase 3 output *(retired)*
 
-All columns from the shortlist, plus web search results from `search_wild.py`.
+Produced by `search_wild.py`, now in `archive/`. Kept here because a stale copy of this
+file is still merged by `build_ui_db.py` for 47 words.
 
 | Column | Description |
 |---|---|
@@ -510,7 +525,7 @@ Quick frequency screen via the `wordfreq` library, without streaming any corpus.
 | `lemma` | Base form produced by `simplemma.lemmatize(word, lang='ro')`. This is what gets looked up in wordfreq. |
 | `zipf_frequency` | Zipf-scale frequency from wordfreq's Romanian model (roughly: 6 = very common, 3 = uncommon, 0 = not in wordfreq's list at all). **`0.0` does not mean "least common" — it means wordfreq has no signal for this word.** |
 | `tier` | Classification: `forgotten` (zipf < 3.0) / `rare_in_use` (3.0 ≤ zipf < 4.5, non-empty `dex_register`) / `common` (≥ 4.5 or no register tag). |
-| `is_forgotten` | `true` if `tier == 'forgotten'` — kept for backward compatibility with `search_wild.py`. |
+| `is_forgotten` | `true` if `tier == 'forgotten'`. |
 
 ## Project Structure
 
@@ -584,7 +599,7 @@ DEX-tagged archaic words with no corpus signal at all (Tier B — "dark matter")
 - [x] CulturaX RO corpus — 40.3M docs, 17.0B tokens (modern web)
 - [x] Diachronic comparison: log₂(hist_ppm / modern_ppm) per word
 - [x] Taxonomy enrichment: `dex_pos`, `dex_register`, `dex_domain`, `dex_etymology`
-- [x] Shortlist generation: 23,112 words across 5 confidence tiers (Tier C added for corpus-absent DEX-canonical words)
+- [x] Shortlist generation: 16,203 words across 5 confidence tiers, split into `relevant` (2,815) and `curiosity` (13,388) seams
 
 **Output**: `forgotten_words_diachronic.csv` (130k rows) → `forgotten_words_shortlist.csv` (23k rows)
 
@@ -640,22 +655,20 @@ DEX-tagged archaic words with no corpus signal at all (Tier B — "dark matter")
 
 ## Known Issues & Limitations
 
-1. **No lemmatization** — `buclele` doesn't match `bucle` in the corpus. Inflected forms are invisible. Adding `simplemma` would significantly improve recall (backlog #6).
+1. ~~**No lemmatization**~~ — fixed 2026-08-08. `extract_inflected_forms.py` maps 2.27M surface forms to lemmas and `validate_diachronic.aggregate_by_family` rolls corpus counts up over paradigms.
 2. **POS tag noise** — some words get wrong POS tags due to the ObjectTag join occasionally pulling tags from adjacent dictionary entries. Supplementary metadata only; doesn't affect core analysis.
 3. **Sparse etymology -ism tags** — many words store "limba franceză" not "franțuzism" in DEX. Both are captured but the vocabulary is inconsistent across DEX editors.
-4. **`absent` verdict ambiguity** — 83k words with no corpus signal conflate "truly unused" with "only appears in inflected forms not tracked". Lemmatization (#6) would reduce this category significantly.
+4. **Thin historical corpus** — Wikisource is 14.3M tokens, so one occurrence is 0.07 ppm. The `hist_occ ≥ 3` / `hist_docs ≥ 2` floors make the signal honest but cannot create evidence: a word genuinely used in 1880 but absent from Wikisource still reads `absent`. Largest remaining source of error — see `docs/BACKLOG.md`.
 
 ## Next Steps
 
 ```bash
-# Web validation — DDG triage on full shortlist
-python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
-    --provider ddg --limit 500 --delay 2
+# Tune where the relevant seam cuts, then rebuild the app database
+python make_shortlist.py --stats --min-score 88
+python make_shortlist.py --min-score 88 && python tools/build_ui_db.py
 
-# Or just the highest-confidence tier first
-python make_shortlist.py --limit 1137   # corpus_extinct only
-python search_wild.py --input data/processed/forgotten_words_shortlist.csv \
-    --provider ddg --delay 2
+# Serve it locally
+cd public && php -S 127.0.0.1:8899
 ```
 
 See [Activity History](docs/activity-history.md) and [Backlog](docs/BACKLOG.md) for the changelong and open items / roadmap.

@@ -4,15 +4,35 @@ Guidance for Claude (and humans) working in this repository.
 
 ## Project overview
 
-Oțios identifies "forgotten" Romanian words: terms in DEX Online (the official dictionary) that have fallen out of modern usage. Pipeline runs in two phases:
+Oțios identifies "forgotten" Romanian words: terms in DEX Online (the official dictionary) that have fallen out of modern usage.
 
-- **Phase 1 — dictionary analysis.** Parse the 1.2 GB DEX Online MySQL dump → SQLite, filter by the `frequency` field, curate a ~1.9k candidate list.
-- **Phase 2 — corpus validation.** Two paths:
-  - **Preferred:** `validate_with_wordfreq.py` — uses `wordfreq` + `simplemma` for fast frequency lookup without streaming corpora. See `docs/wordfreq-recipe.md`.
-  - **Legacy:** Stream Romanian Wikipedia via HuggingFace `datasets` (`process_corpus.py` → `validate_forgotten_words.py`). Has a P0 candidate-set bug — see `docs/BACKLOG.md`.
-- **Phase 3 — web validation.** `search_wild.py` — queries each Phase-2-confirmed word against the Romanian web via Google Custom Search API, recording whether it still appears "in the wild" and when it was last seen.
+- **Phase 1 — dictionary analysis.** Parse the 1.65 GB DEX Online MySQL dump into
+  `lexemes.db`, `inflected_forms.db`, `dict_sources.db` and `definitions.db`, then curate
+  candidates (`create_curated_list.py`).
+- **Phase 2 — corpus comparison.** `process_wikisource.py` (historical) and
+  `process_culturax.py` (modern) count tokens into `corpus_frequencies.db`;
+  `validate_diachronic.py` rolls those counts up over inflection paradigms and assigns a
+  verdict.
+- **Phase 3 — scoring and split.** `make_shortlist.py` scores every candidate and splits
+  the result into two seams (see **Seams** below); `tools/build_ui_db.py` builds
+  `public/data/ui.db` for the PHP app.
+
+`validate_with_wordfreq.py` still exists as a fast standalone screen (see
+`docs/wordfreq-recipe.md`) and feeds the small `rare_in_use` tab, but it is not on the
+main path. The legacy Wikipedia/OSCAR branch and `search_wild.py` are in `archive/`.
 
 For the methodological critique (what "forgotten" should mean, corpus options): `docs/conceptual-roadmap.md` first, then `docs/corpus-options.md`.
+
+### Two things that are easy to get backwards
+
+1. **`Lexeme.frequency` is not a usage frequency.** It behaves like a literary-prominence
+   score: `zapciu` (an obsolete Ottoman-era tax collector) is 0.96 while `internet` is
+   0.88 and `pandemie` is 0.80. High values mean "well established in the written canon",
+   which is why *high* DEX frequency plus corpus absence is the signature of a forgotten
+   word, and *low* DEX frequency mostly means a neologism or an obscure regionalism.
+2. **The two corpora differ by 1,187× in size** (Wikisource 14.3M tokens, CulturaX 17.0B).
+   Any threshold expressed in per-million terms means something completely different on
+   each side. Compare occurrence counts, or percentile ranks — never ppm across corpora.
 
 ## Logs
 
@@ -44,48 +64,47 @@ python -m venv ~/g2-dev/monitorulpreturilor/venv && source ~/g2-dev/monitorulpre
 pip install -r requirements.txt
 ```
 
-`requirements.txt` covers both the legacy pipeline (`datasets`) and the preferred path (`wordfreq`, `simplemma`).
-
-OSCAR-2301 is gated on HuggingFace — requires `huggingface-cli login` plus accepted terms. Without it, `process_corpus.py` silently skips OSCAR (`process_corpus.py:255-261`).
-
-`search_wild.py` (Phase 3) ships two pluggable providers selected via `--provider`:
-
-- `ddg` (default) — DuckDuckGo via the `ddgs` library. No API key. Noisy on rare archaic words (cross-language fuzzy matches), useful for prototyping.
-- `google` — Google Custom Search JSON API. Needs two env vars; cleaner results.
-
-```bash
-export GOOGLE_API_KEY="AIza..."    # Google Cloud Console → APIs & Services → Credentials
-export GOOGLE_CSE_ID="017576..."   # programmablesearchengine.google.com (set "Search entire web")
-```
-Google free tier: 100 queries/day. Use `--limit 100` and re-run daily; checkpoint handles resume automatically.
+`requirements.txt` covers the corpus path (`datasets`) and the frequency screen
+(`wordfreq`, `simplemma`).
 
 ## End-to-end pipeline
 
 All scripts assume `cwd` is the repo root and `data/dictionaries/` + `data/processed/` exist.
 
-**Phase 1:**
-1. Download DEX MySQL dump to `data/dictionaries/dex-database.sql`
-2. `python create_sample_db.py` → `data/dictionaries/dex-database-sample.sql`
-3. `python extract_lexemes.py` → `data/processed/lexemes.csv` + `lexemes.db`
-4. `python analyze_forgotten_words.py` → `data/processed/forgotten_words_v1.csv` + `statistics.txt`
-5. `python create_curated_list.py` → `data/processed/forgotten_words_curated.csv`
+**Phase 1 — extract from the dump.** Each of these streams the 1.65 GB dump once; the
+last three take a few minutes each and are independent, so they can run in any order.
 
-**Phase 2 — preferred path:**
 ```bash
-python validate_with_wordfreq.py
+python extract_lexemes.py          # → lexemes.csv + lexemes.db
+python extract_taxonomy.py         # → Tag/ObjectTag/… into lexemes.db (register, domain, POS)
+python extract_inflected_forms.py  # → inflected_forms.db   (2.27M forms → lemma)
+python extract_dict_sources.py     # → dict_sources.db      (names, years, in_current_dict)
+python extract_definitions.py      # → definitions.db
+python create_curated_list.py      # → forgotten_words_curated.csv
 ```
-Output: `data/processed/forgotten_words_validated_wordfreq.csv` (adds `lemma`, `zipf_frequency`, `is_forgotten` columns; words with zipf < 3.0 are `is_forgotten=true`)
 
-**Phase 3 — web validation:**
+**Phase 2 — corpora.** Long-running; see **Monitoring** below.
+
 ```bash
-# Default provider is DDG (no env vars needed) — good for prototyping
-python search_wild.py --dry-run --limit 5
-python search_wild.py --provider ddg --limit 50 --delay 3
-
-# Google CSE — cleaner results, needs env vars; 100/day free-tier quota
-python search_wild.py --provider google --limit 100
+python process_wikisource.py       # historical  → corpus_frequencies.db
+python process_culturax.py         # modern      → corpus_frequencies.db
 ```
-Output: `data/processed/forgotten_words_web_validated.csv` (adds `total_results`, `in_wild`, `web_score`, `top_url`, `last_seen_approx`, `provider`). `web_score` buckets differ by provider — Google: 0 / <10 / <100 / 100+; DDG: 0 / <3 / <10 / 10+ (capped at 30).
+
+**Phase 3 — verdicts, scoring, UI.**
+
+```bash
+python validate_diachronic.py      # → forgotten_words_diachronic.csv
+python make_shortlist.py           # → forgotten_words_shortlist.csv (both seams)
+python make_shortlist.py --stats   # dry run: seam and tier counts only
+python tools/build_ui_db.py        # → public/data/ui.db
+```
+
+`scrape_definitions.py --merge` fills definition gaps from dexonline.ro for words the dump
+has no `DefinitionSimple` row for (keep `--delay ≥ 3`; the site is community-run).
+
+**After any rebuild, check `git diff --numstat data/word_ids.tsv` shows additions only.**
+That file is what makes `?w=` share links durable, and a renumbering breaks every link
+ever shared, silently. `tests/test_rescore.py` asserts it too.
 
 **Filling definition gaps — `scrape_definitions.py`:**
 
@@ -100,23 +119,43 @@ python scrape_definitions.py --merge-only                # just upsert checkpoin
 
 Output: `data/processed/scraped_definitions.csv` (columns: `word, definition, source_url, scraped_at, status`). `status ∈ {ok, not_found, error}`. With `--merge`, ok rows are `INSERT OR REPLACE`'d into `data/processed/definitions.db`. Resume is automatic: re-running skips words already in the checkpoint or in the definitions DB. Ctrl+C is safe — each row is flushed immediately. Be polite to dexonline.ro (community-run): keep `--delay ≥ 3`.
 
-**Phase 2 — legacy path (has bugs, see BACKLOG):**
-```bash
-python download_wikipedia_ro.py          # interactive y/N prompt
-python process_corpus.py --test|--sample|--full [--wikipedia-only|--oscar-only]
-python validate_forgotten_words.py
-```
-
 ## Key data contracts
 
 ### `lexemes.db` — `Lexeme` table (`extract_lexemes.py:124-150`)
 
 Columns the pipeline reads:
 - `form` — word as it appears in DEX
-- `formNoAccent` — accent-stripped form
-- `frequency` — DEX score 0.0–1.0. **Lower = more likely forgotten. Treat 0.0 as missing data, not "rarest".**
+- `formNoAccent` — accent-stripped form (stress marks only; diacritics are kept)
+- `frequency` — DEX score 0.0–1.0. **A literary-prominence score, not a usage frequency**
+  (`zapciu` 0.96 > `internet` 0.88). Treat 0.0 as missing data, not "rarest".
 - `description` — part-of-speech / register (e.g. `s.f.`, `adj.`)
 - `modelType`, `notes` — used by curation heuristics
+
+### `inflected_forms.db` (`extract_inflected_forms.py`)
+
+```
+lexeme(lexeme_id PK, lemma, frequency)          317,721 rows — complete
+inflected(form, lexeme_id)                      2,269,003 rows
+form_lemma(form, lemma, lexeme_id, n_lemmas)    1,633,231 rows
+```
+
+The corpus processors count raw tokens, and Romanian is heavily inflected, so without this
+map a lemma is only ever credited with its citation form (`înmărmuri` 317, while
+`înmărmurit` alone is 5,846). `n_lemmas` is how many lemmas claim a surface form — 12% are
+shared, and `validate_diachronic.aggregate_by_family` splits those by headword prominence
+rather than crediting each claimant in full.
+
+### `dict_sources.db` (`extract_dict_sources.py`)
+
+```
+dict_sources(word PK, sources, dict_count, newest_dict_year, oldest_dict_year, in_current_dict)
+sources_meta(source_id PK, short_name, year, normative)
+```
+
+113 dictionaries, 108 with a usable year. `in_current_dict` = appears in something
+published from `CURRENT_DICT_YEAR` (2005) on — the line between "dropped out of the
+normative lexicon" and "still official Romanian, just unused". Note `normative` is set for
+only 2 sources (the DOOM editions), so use `year`, not that flag.
 
 ### `forgotten_words_curated.csv` (`create_curated_list.py:166-189`)
 
@@ -157,20 +196,95 @@ corpus_word_frequency(id, word, corpus_name, occurrence_count, document_count, l
 processing_stats(id, corpus_name, documents_processed, tokens_processed, ...)
 ```
 
-`corpus_name ∈ {wikipedia_ro, oscar_ro}`. Words are lowercased and NFC-normalized.
+`corpus_name ∈ {wikisource_ro, culturax_ro, subtitle_ro}`. Words are lowercased and
+NFC-normalized. Sizes are wildly asymmetric — 14.3M vs 17.0B tokens — which is why nothing
+downstream compares them in ppm.
+
+## Seams
+
+`make_shortlist.py` writes one CSV whose `seam` column splits it in two, because the
+project is chasing two different things:
+
+- **`relevant`** (~2.8k) — strong evidence of a word that was used and faded: historically
+  attested, near-absent today, broadly covered by dictionaries, still in one published
+  from 2005 on. **The default view is this seam minus the hide-flags below** (~2.3k).
+- **`curiosity`** (~13.4k) — everything else that still qualifies as a candidate.
+
+The split is a weighted score (`make_shortlist.score`), not a ladder of thresholds. The
+signal that does the most work is **historical attestation strength**: `politeță` occurs
+143 times in Wikisource, `celșag` 4. Without it the score rewards obscurity itself and the
+top of the list fills with words that were never really in circulation.
+
+### Score vs. flags — keep these apart
+
+Three flags mark words most people will not want to see. They are **not** part of the
+score and they do **not** decide the seam:
+
+- `regional_only` — a DEX regional/dialectal tag *without* also being tagged old.
+  `regional|învechit` is a word that died; plain `regional` is a local term.
+- `variant_like` — `family_ratio ≥ 25`, where `family_ratio` is the undivided word-family
+  count over the disambiguated per-lemma one. `tinereță` sits at 298×, `veșcă` at 938×,
+  while a genuinely isolated rare word sits at 1×. It catches only variants that *share an
+  inflectional paradigm* — phonetic respellings like `vivliotică`/`bibliotecă` have
+  unrelated paradigms and are caught instead by having no current dictionary.
+- `proper_noun_like` — DEX knows this spelling **only** as a capitalised headword. It must
+  stay "only": flagging every collision hid ordinary words like `gheb` ("cocoașă") because
+  DEX also lists the name `Gheb`.
+
+**The score says how good the evidence is; the flags say what you would rather not look
+at.** Penalising a flag in the score as well is double-counting, and it makes the flag
+unappealable: when regional words cost 25 points *and* were routed out of the seam, none
+could reach the relevant list, so the UI's "arată regionalisme" toggle had nothing to
+reveal. As it stands the relevant seam holds ~397 regional and ~77 variant words, hidden
+until asked for. The one score penalty that remains is for a *moderate* family ratio
+(4–25×), which is an evidence problem rather than a preference — the lemma's count is
+being propped up by its relatives.
+
+### UI defaults
+
+`build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides all three
+flagged classes, and sorts by `quality_score DESC`. Every one is a visible one-click
+toggle — `seam`, `show_regional`, `show_variants`, `show_proper` — never a silent
+exclusion, because the point of opening this up is to learn where the lines are wrong.
+
+Two things to preserve when touching these:
+
+1. **Toggles are `show_*`, not `hide_*`.** An unchecked checkbox is not submitted, so a
+   default-on `hide_*` could never be switched off.
+2. **Every filter needs registering in `public/assets/app.js` too**, or it works but the
+   URL never reflects it and the state is unshareable: add it to `AF_SPECS` (the chip) and
+   to the read/write arrays in `applyUrlToForm` / the URL writer. A default value goes in
+   `URL_PARAM_DEFAULTS` so it is omitted from the URL when unchanged.
 
 ## Gotchas
 
-- **P0 bug:** `process_corpus.py` counts only words in the curated CSV (~1.9k), but `validate_forgotten_words.py` queries `lexemes.db` across tens of thousands. Most words are never observed → bogus "confirmed_forgotten" results. Full details + fix options in `docs/BACKLOG.md`.
-- **Frequency bins disagree** across scripts (0.25/0.50/0.70 vs 0.30/0.50/0.60 vs 0.01–0.60). No shared constants file — changing one requires hunting down the others.
-- **`explore_dex.py` is not a working script** — it's narrative documentation that can't run. Don't import or execute it.
-- **`convert_to_sqlite.sh` and `mysql_to_sqlite.py` are obsolete** — moved to `archive/` (see `archive/README.md`). Use `extract_lexemes.py` instead; don't run or import the archived scripts.
+- **Never compare the two corpora in ppm.** They differ 1,187× in size, so a shared
+  `0.1 ppm` floor meant "< 1,697 occurrences" on the modern side and "≥ 1.43" on the
+  historical one. That single line classified `zapciu` (1,322 modern hits) as extinct and
+  put `vapor`, `fluviu` and `cioban` in "declining".
+- **Corpus counts are per surface form.** Always roll them up through
+  `inflected_forms.db` before judging a lemma, or every verb reads as extinct.
+- **`dex_pos` comes from `Lexeme.modelType`, not from taxonomy tags.** The meaning-level
+  tags cover ~3% of the list and bleed across variants — `visternic` (modelType `M`) came
+  out "substantiv feminin" because the entry also covers `vistiernică`. `modelType` is on
+  all 317,721 lexemes and gives 99.5% coverage. `T` and `IL` are inflected forms rather
+  than headwords and `I` means invariable, so those fall back to `description`.
+- **Derive `dex_pos` before building `vocab`**, or the POS dropdown lists values that
+  almost nothing matches.
+- **Frequency bins disagree** across scripts (0.30/0.50/0.60 in `constants.py` vs
+  0.30/0.50/1.01 in `validate_diachronic.py`). `constants.py` is canonical.
+- **The sampled dump comments out whole tables** (`-- SAMPLED: INSERT INTO \`Source\``),
+  so `extract_dict_sources.py` against it yields no names or years. It warns; heed it.
+- **`explore_dex.py` is not a working script** — narrative documentation that can't run.
+- **`archive/` is reference only** — the legacy Wikipedia/OSCAR branch, `search_wild.py`
+  and the old Flask UI live there. Don't run or import them; see `archive/README.md`.
 
 ## Conventions
 
 - **One script per pipeline stage.** No package layout until 3+ modules share helpers.
-- **Romanian normalization:** lowercase → cedilla-to-comma diacritics (`ş→ș`, `ţ→ț`) → `unicodedata.normalize('NFC', …)`. Canonical implementation: `process_corpus.py:26-37`.
-- **Generated artifacts go under `data/`** (gitignored). Never commit `*.db`, `*.csv`, or `data/` contents.
+  `dump_parser.py` is the one shared helper — three extractors use its quote-aware scanner.
+- **Romanian normalization:** lowercase → cedilla-to-comma diacritics (`ş→ș`, `ţ→ț`) → `unicodedata.normalize('NFC', …)`. Canonical implementation: `dump_parser.normalize`.
+- **Generated artifacts go under `data/`** (gitignored). Never commit `*.db`, `*.csv`, or `data/` contents — except `data/word_ids.tsv`, which is tracked on purpose.
 - **`frequency = 0` means no data, not "rarest".** Filter with `frequency > 0` or `> 0.01`.
 
 ## Visual skins

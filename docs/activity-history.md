@@ -4,6 +4,188 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-08 — Data-quality audit: paradigm-aware verdicts and two seams
+
+Audit before opening the site to markers. The selection logic had three compounding
+bugs that made verdicts wrong rather than merely noisy, and the default ranking surfaced
+exactly the words the project least wants.
+
+### What was wrong
+
+1. **ppm compared across a 1,187× size gap.** `validate_diachronic.py` applied the same
+   `0.1 ppm` floor to Wikisource (14.3M tokens) and CulturaX (17.0B). "Absent from modern
+   Romanian" therefore meant *fewer than 1,697 web hits*: `zapciu` had 1,322 and was
+   `extinct`. `extinct` topped out at exactly `modern_ppm = 0.0999` — the tier was capped
+   by the threshold, not by absence.
+2. **Counts were per surface form.** Romanian is heavily inflected, so a lemma was only
+   credited with its citation form: `înmărmuri` 317 while `înmărmurit` alone was 5,846;
+   `moleși` 310 vs a 9,205 paradigm; `cătrăni` 59 vs 1,825. Every verb drifted toward
+   `extinct`.
+3. **`declining` measured literary register, not decline.** `log_ratio >= 1.0` means
+   "twice as common in 19th-c. Wikisource as on the modern web", which is true of most of
+   the literary lexicon. 2,602 of 5,998 `corpus_declining` words had ≥ 8,500 modern hits —
+   `vapor`, `fluviu`, `cioban`, `palid`, `viclean`, `colac`.
+
+Also measured: `dex_pos` populated for 3.5% of rows, `zipf_frequency` non-zero for 5.8%,
+`web_score` for 0.19%. And `Lexeme.frequency` is not a usage frequency — `zapciu` 0.96 vs
+`internet` 0.88 — so the default `modern_ppm ASC` sort ranked the list upside down, with
+`vivliotică`, `tăligraf`, `sâroman` (archaic respellings of *bibliotecă*, *telegraf*,
+*sărman*) scoring as the "most forgotten".
+
+### What changed
+
+- **`extract_inflected_forms.py`** (new) — `InflectedForm` + `Lexeme` in one pass via the
+  new quote-aware `dump_parser.py`. 2,269,003 forms → 1,633,231 form→lemma pairs covering
+  317,718 of 317,721 lexemes.
+- **`extract_dict_sources.py`** — now also reads `Source.year` / `Source.normative`, adding
+  `newest_dict_year`, `oldest_dict_year` and `in_current_dict` (published 2005+). 113
+  dictionaries, 108 dated. `normative` is set for only the 2 DOOM editions, so `year` is
+  the usable signal.
+- **`validate_diachronic.py`** — `aggregate_by_family` rolls counts over paradigms;
+  ambiguous forms (12% of the map) are split between claimant lemmas in proportion to each
+  lemma's own headword count. Two earlier attempts failed and are recorded in the
+  docstring: crediting every claimant in full gave `veșcă` (sieve rim) all 339,710 of
+  `veste` (news) via their shared plural; weighting by "forms only one lemma claims" gave
+  the opposite error, because a noun's citation form is frequently shared too (`veste` is
+  claimed by both `veste` and `vestă`). `aggregate_loose` keeps the undivided total on
+  purpose — the loose/disambiguated ratio is the archaic-variant detector.
+  Verdicts now use occurrence floors (`MODERN_RARE_OCC` 500, `MODERN_ALIVE_OCC` 2000,
+  `HIST_MIN_OCC` 3 + `HIST_MIN_DOCS` 2) and `rank_shift`, a percentile-rank difference
+  that is scale-free.
+- **`make_shortlist.py`** — `classify()`'s first-match-wins ladder replaced by a weighted
+  score, and the 0.70-in-signature / 0.85-on-CLI threshold mismatch collapsed to one
+  constant. Output splits into `relevant` (2,346) and `curiosity` (13,857). The five
+  `confidence_tier` names are unchanged so the UI's `TIERS` map and `--v-*` CSS tokens
+  still work.
+- **UI** — default sort is `quality_score DESC`; defaults hide regional-only, variant-like
+  and proper-noun words; `seam` selector added. Toggles are `show_*` rather than `hide_*`
+  because an unchecked checkbox is not submitted, so a default-on `hide_*` can never be
+  turned off.
+
+### Calibration
+
+Thresholds were set by sampling bands, not guessed. Disambiguated modern counts:
+`0` hărățire/zalisi/berbelâc · `1–19` scoborâre/cârcioc/zapcierie · `20–199`
+madmoazelă/gheșeftar/evhologhion · `200–999` jiliște/civilizațiune/docar/calabalâc ·
+`1k–3k` lehuzie/arhaism/stăvilar · `3k+` despotic/verișoară/călăreț. `family_ratio` over
+the 8,879-word candidate pool: 86% sit at 1×, and 25× is where "this verb has a common
+participle" (pardosi, teși, 4–10×) turns into "this is an old spelling of a live word"
+(justeță, acurateță, datoriu, uleu).
+
+Adding historical attestation to the score was the single biggest quality change. Without
+it the top of the relevant seam was `potricală`, `țarțam`, `sărciner` — rare, but never in
+circulation. With it: `poronci`, `jeț`, `jiganie`, `iznoavă`, `tibișir`, `vorovi`,
+`potcă`, `ciocoism`, `prepelicar`, `spoliație`, `poetastru`.
+
+### Corrections to the audit's own claims
+
+- The "~48k lost Lexeme rows (13%)" in the plan was **wrong**. `AUTOINCREMENT=365,869` is
+  a high-water mark, not a row count. The dump holds 317,721 `Lexeme` tuples and the old
+  regex parser reads 317,688 — a real loss of **33 rows (0.01%)**. Verified by counting
+  top-level tuples independently.
+- The 648 "column-shifted" rows are not a parse failure either: the new quote-aware parser
+  reads the same 648 as empty. It is a data quirk (no frequency value). Storing them as
+  NULL rather than an empty string that sorts above 1.0 is still an improvement.
+
+### Retired
+
+`analyze_forgotten_words.py`, `validate_forgotten_words.py`, `process_corpus.py`,
+`download_wikipedia_ro.py`, `search_wild.py` and the whole Flask `ui/` moved to
+`archive/`. The Flask tests had been failing against real data for a while — `app.py:133`
+falls back to the real `rare_words_wordfreq.csv` instead of the fixture, so
+`test_load_words_count` asserted `115 == 2`. Suite is now 70 tests in 4s.
+
+### Verification
+
+`data/word_ids.tsv` grew by 1,033 lines with **zero removals** and no existing id
+changed, so every `?w=` link shared to date still resolves. Default view measured through
+the running app at 2,273 words (9 pages of 250 + 23), matching the DB predicate exactly;
+`gheb` (proper noun) hidden by default and visible with `show_proper=1`.
+
+### Follow-up fixes after review of the running app
+
+Three bugs, all found by looking at the actual UI rather than the API:
+
+1. **The new toggles never reached the URL.** `hide_loanwords` round-tripped but
+   `show_proper` / `show_regional` / `show_variants` / `seam` did not, so the state was
+   unshareable and lost on reload. Filters have to be registered in
+   `public/assets/app.js` as well as PHP — `AF_SPECS` for the chip, plus the read/write
+   arrays in `applyUrlToForm` and the URL writer, plus `URL_PARAM_DEFAULTS`. Now noted in
+   CLAUDE.md, because nothing about adding a PHP filter suggests you also owe the JS.
+2. **`proper_noun_like` was hiding ordinary words.** It flagged any word colliding with a
+   capitalised DEX headword, so `gheb` ("cocoașă") was hidden because DEX also lists the
+   name `Gheb`. Harmless while the filter was opt-in; a real loss once it became the
+   default. Now flags only words DEX knows *exclusively* as capitalised: 447 marked → 2.
+   Also switched the test from `GLOB '[A-Z]*'` to `str.isupper()`, which was ASCII-only
+   and missed Ș/Ă/Î.
+3. **"arată regionalisme" and "arată variante vechi" were dead controls.** Regional and
+   variant words were penalised 25/35 points in the score *and* routed out of the seam,
+   so the relevant list contained none of them and the toggles had nothing to reveal —
+   the checkbox visibly ticked and the count never moved. The penalties are gone: the
+   score now measures evidence quality only, and the three flags are purely the UI's to
+   act on. The relevant seam holds 397 regional and 77 variant words, hidden by default,
+   and the toggles move the count (2,345 → 2,738 → 2,815). The 4–25× family-ratio penalty
+   stays, since that is an evidence problem rather than a preference.
+
+The default view is unchanged in size (2,345) and content; what changed is that the
+excluded classes are now reachable.
+
+### Second review pass — the filter sheet
+
+Three more, all from the same neglected column:
+
+4. **The CATEGORIE (POS) filter matched nothing.** `dex_pos` was built from meaning-level
+   taxonomy tags: 480 of 16,315 words (2.9%), and the values were mostly `locuțiune
+   adverbială`, not the eight options the filter offers. Selecting `vb.` returned zero
+   words; `s.m.` returned one. Rebuilt from `Lexeme.modelType`, the inflection model DEX
+   actually conjugates with — present on all 317,721 lexemes. Coverage **2.9% → 99.5%**,
+   and the options now return 924 / 400 / 480 / 402 / 277 for the four noun-adjective
+   classes and verbs. Mapping verified by sampling high-frequency words per model:
+   `F/M/N` nouns, `A/AF/AM/AN` adjective, `V/VT/VI` verb, `PT` participle, `P` pronoun,
+   `SP` proper noun; `T` (strămoși, cii) and `IL` (contrare, militare) are inflected forms
+   rather than headwords, and `I` is invariable, so those fall back to `description`.
+   The derivation has to run *before* the `vocab` table is built or the dropdown keeps
+   listing the old values.
+5. **`visternic` was labelled "substantiv feminin".** Same cause: its `modelType` is `M`,
+   but the DEX entry also covers the feminine `vistiernică` and the meaning tag bled
+   across. Correct now, and guarded by a test.
+6. **The rare tab showed one word out of 112.** `dex_max` defaulted to a 0.60 DEX-frequency
+   ceiling — which made sense only under the old reading of that column. Since DEX
+   frequency is literary prominence, a rare word sitting at 0.9 is ordinary, not a
+   contradiction. Default is now no ceiling. The seam control is also hidden on that tab:
+   those 112 words come from `validate_with_wordfreq.py` and are all stored `relevant`, so
+   "curiozități" was a live-looking button that could only ever return the same list.
+   `dex_max` had exactly this treatment already; the seam control now shares it.
+
+### Not a regression
+
+The `SINONIME — ÎN CURÂND` slot was removed in the previous session, not this one —
+`docs/BACKLOG.md:689` records it as dropped 2026-08-07 ("along with…"), and
+`activity-history.md:141` says the same. The synonym *data* was never there;
+`docs/BACKLOG.md:244` still tracks scraping it from dexonline's `Sinonime`/`Sinonime82`.
+Those dictionaries are intact in `sources` for 7,946 words and show as chips in the
+detail panel.
+
+### Docs brought in line
+
+`README.md` (pipeline diagram, Phase 1/2b/3, the CSV contracts, the tier table, the
+limitations list), `public/metodologie.html` (sections 04, 05, 08 and the timeline) and
+`CLAUDE.md`. The methodology page had been describing the ppm log-ratio formula and the
+old seven-verdict ladder, both of which no longer exist.
+
+One thing worth noting as a near-miss: a global replace of the old shortlist figure
+`23.112` also rewrote a **2026-05-19 timeline entry** that legitimately recorded the count
+as it was on that date. Caught in review and restored — a changelog that silently updates
+its own history is worse than one that is out of date.
+
+### Open
+
+`oțios` itself now lands in the **curiosity** seam (score 67): zero historical corpus
+attestation and 266 modern occurrences. Defensible, but worth a decision before the
+naming question is settled.
+
+---
+
 ## 2026-08-07 — Raw enums out of the UI, and the two launch blockers
 
 Two batches. The first was everything a visitor could see and shouldn't; the second was

@@ -86,7 +86,10 @@ if ($is_mark_filter) {
 
 $where    = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
 global $SORT_OPTIONS;
-$order_by = $SORT_OPTIONS[$sort] ?? $SORT_OPTIONS['rare'];
+// Fall back if this ui.db predates the rescore and has no quality_score column, so an
+// old database still serves rather than 500-ing on an unknown column.
+$default_sort = db_has_column('quality_score') ? DEFAULT_SORT : 'rare';
+$order_by = $SORT_OPTIONS[$sort] ?? $SORT_OPTIONS[$default_sort];
 
 // Count total matching rows
 $count_sql  = "SELECT COUNT(*) FROM words $where";

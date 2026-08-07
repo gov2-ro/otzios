@@ -13,11 +13,21 @@ where `lexicon` is the headword and `sourceId` points at the `Source` table. The
 Single streaming pass (Definition is dumped before Source, so sourceIds are collected
 first and resolved to names at the end). Never loads the 1.5 GB dump into memory.
 
+`Source` also carries `year` and `normative`, which give each word a *dictionary
+recency* signal for free: the newest dictionary a word still appears in separates
+"dropped out of the normative lexicon" from "still officially Romanian, just unused".
+That distinction is what splits the two seams in `make_shortlist.py`.
+
 Output: data/processed/dict_sources.db
-Schema: dict_sources(word TEXT PRIMARY KEY, sources TEXT, dict_count INTEGER)
-        `word`        — normalized headword (lower, ș/ț, NFC), matches the pipeline
-        `sources`     — sorted shortNames, '|'-joined (e.g. "DEX '98|DLR|MDA")
-        `dict_count`  — number of distinct dictionaries
+Schema: dict_sources(word PK, sources, dict_count, newest_dict_year, oldest_dict_year,
+                     in_current_dict)
+        `word`             — normalized headword (lower, ș/ț, NFC), matches the pipeline
+        `sources`          — sorted shortNames, '|'-joined (e.g. "DEX '98|DLR|MDA")
+        `dict_count`       — number of distinct dictionaries
+        `newest_dict_year` — max Source.year across the word's dictionaries
+        `oldest_dict_year` — min, i.e. roughly first attestation
+        `in_current_dict`  — 1 if it appears in a dictionary from CURRENT_DICT_YEAR on
+        sources_meta(source_id PK, short_name, year, normative)
 
 Usage:
     python extract_dict_sources.py                                   # full dump
@@ -25,10 +35,12 @@ Usage:
 """
 
 import argparse
+import re
 import sqlite3
 import sys
-import unicodedata
 from pathlib import Path
+
+from dump_parser import normalize, parse_tuples, strip_line_prefix
 
 DEX_SQL_PATH = Path('data/dictionaries/dex-database.sql')
 OUTPUT_DB = Path('data/processed/dict_sources.db')
@@ -36,133 +48,65 @@ OUTPUT_DB = Path('data/processed/dict_sources.db')
 _DEF_PREFIX = "INSERT INTO `Definition` VALUES "
 _SRC_PREFIX = "INSERT INTO `Source` VALUES "
 
+# Definition: (id, userId, sourceId, lexicon, internalRep, ...) — stop at lexicon so the
+# internalRep longtext is skipped rather than decoded.
+_DEF_SOURCE_ID, _DEF_LEXICON = 2, 3
+# Source: (id, shortName, urlName, name, author, publisher, year, sourceTypeId, managerId,
+#          importType, reformId, remark, hidden, link, courtesyLink, courtesyText,
+#          canModerate, normative, ...)
+_SRC_ID, _SRC_SHORT_NAME, _SRC_YEAR, _SRC_NORMATIVE = 0, 1, 6, 17
 
-def normalize(text: str) -> str:
-    """Same normalization the rest of the pipeline uses (validate_diachronic.normalize)."""
-    return unicodedata.normalize('NFC',
-        text.lower().replace('ş', 'ș').replace('ţ', 'ț'))
+# A word appearing in a dictionary from this year on is still in the current lexicon.
+# 2005 sits after DEX '98 / NODEX '02 and before DEX '09 / DOOM 2 '05, so it selects the
+# genuinely current layer without depending on a hand-maintained list of sigla.
+CURRENT_DICT_YEAR = 2005
 
-
-def _read_quoted(s: str, i: int) -> tuple[str | None, int]:
-    """Read a MySQL-escaped quoted string or NULL starting at s[i]. Returns (value, new_i)."""
-    n = len(s)
-    if i < n and s[i] == "'":
-        i += 1
-        buf: list[str] = []
-        while i < n:
-            c = s[i]
-            if c == '\\' and i + 1 < n:
-                nxt = s[i + 1]
-                buf.append("'" if nxt == "'" else ('\\' if nxt == '\\' else nxt))
-                i += 2
-            elif c == "'":
-                i += 1
-                break
-            else:
-                buf.append(c)
-                i += 1
-        return ''.join(buf), i
-    if s[i:i + 4] == 'NULL':
-        return None, i + 4
-    return None, i
+_YEAR_RE = re.compile(r'(1[5-9]\d{2}|20\d{2})')
 
 
-def _read_unquoted(s: str, i: int) -> tuple[str, int]:
-    """Read an unquoted field (integer/decimal) until ',' or ')'. Returns (value, new_i)."""
-    n = len(s)
-    start = i
-    while i < n and s[i] not in (',', ')'):
-        i += 1
-    return s[start:i].strip(), i
+def parse_year(raw: str | None) -> int | None:
+    """Source.year is free text ('1998', '1955-1957', 'f.a.'). Take the latest year in it."""
+    if not raw:
+        return None
+    years = _YEAR_RE.findall(raw)
+    return max(int(y) for y in years) if years else None
 
 
-def _skip_to_tuple_end(s: str, i: int) -> int:
-    """From inside a tuple, advance past its matching ')'. Honors string escaping."""
-    n = len(s)
-    depth = 1
-    in_str = False
-    while i < n and depth > 0:
-        c = s[i]
-        if in_str:
-            if c == '\\' and i + 1 < n:
-                i += 2
-            elif c == "'":
-                in_str = False
-                i += 1
-            else:
-                i += 1
-        else:
-            if c == "'":
-                in_str = True
-                i += 1
-            elif c == '(':
-                depth += 1
-                i += 1
-            elif c == ')':
-                depth -= 1
-                i += 1
-            else:
-                i += 1
-    return i
-
-
-def _strip_line_prefix(line: str, prefix: str) -> str:
-    s = line[len(prefix):].rstrip('\n')
-    if s.endswith(';'):
-        s = s[:-1]
-    return s
-
-
-def _parse_source_line(s: str, id_to_name: dict[str, str]) -> None:
-    """Parse `Source` tuples: col0 = id, col1 = shortName."""
-    i, n = 0, len(s)
-    while i < n:
-        while i < n and s[i] != '(':
-            i += 1
-        if i >= n:
-            break
-        i += 1  # skip '('
-        sid, i = _read_unquoted(s, i)
-        if i < n and s[i] == ',':
-            i += 1
-        short_name, i = _read_quoted(s, i)
-        if sid and short_name:
-            id_to_name[sid] = short_name
-        i = _skip_to_tuple_end(s, i)
+def _parse_source_line(s: str, sources: dict[str, dict]) -> None:
+    for t in parse_tuples(s, max_index=_SRC_NORMATIVE):
+        if len(t) <= _SRC_SHORT_NAME:
+            continue
+        sid, short_name = t[_SRC_ID], t[_SRC_SHORT_NAME]
+        if not sid or not short_name:
+            continue
+        year = parse_year(t[_SRC_YEAR]) if len(t) > _SRC_YEAR else None
+        normative = t[_SRC_NORMATIVE] if len(t) > _SRC_NORMATIVE else None
+        sources[sid] = {
+            'short_name': short_name,
+            'year': year,
+            'normative': int(normative) if (normative or '').isdigit() else 0,
+        }
 
 
 def _parse_definition_line(s: str, word_sources: dict[str, set], state: dict) -> None:
-    """Parse `Definition` tuples: cols 0,1 = id,userId; col2 = sourceId; col3 = lexicon."""
-    i, n = 0, len(s)
-    while i < n:
-        while i < n and s[i] != '(':
-            i += 1
-        if i >= n:
-            break
-        i += 1  # skip '('
-        # skip col0 (id) and col1 (userId)
-        for _ in range(2):
-            _, i = _read_unquoted(s, i)
-            if i < n and s[i] == ',':
-                i += 1
-        source_id, i = _read_unquoted(s, i)  # col2
-        if i < n and s[i] == ',':
-            i += 1
-        lexicon, i = _read_quoted(s, i)       # col3
-        if lexicon and source_id:
-            norm = normalize(lexicon)
-            srcs = word_sources.get(norm)
-            if srcs is None:
-                srcs = set()
-                word_sources[norm] = srcs
-            srcs.add(source_id)
-            state['tuples'] += 1
-        i = _skip_to_tuple_end(s, i)
+    for t in parse_tuples(s, max_index=_DEF_LEXICON):
+        if len(t) <= _DEF_LEXICON:
+            continue
+        source_id, lexicon = t[_DEF_SOURCE_ID], t[_DEF_LEXICON]
+        if not lexicon or not source_id:
+            continue
+        norm = normalize(lexicon)
+        srcs = word_sources.get(norm)
+        if srcs is None:
+            srcs = set()
+            word_sources[norm] = srcs
+        srcs.add(source_id)
+        state['tuples'] += 1
 
 
-def extract(dump_path: Path, limit: int | None) -> tuple[dict[str, set], dict[str, str]]:
+def extract(dump_path: Path, limit: int | None) -> tuple[dict[str, set], dict[str, dict]]:
     word_sources: dict[str, set] = {}
-    id_to_name: dict[str, str] = {}
+    sources: dict[str, dict] = {}
     state = {'tuples': 0}
     def_done = False
 
@@ -170,36 +114,58 @@ def extract(dump_path: Path, limit: int | None) -> tuple[dict[str, set], dict[st
         for lineno, line in enumerate(f, 1):
             if not def_done and line.startswith(_DEF_PREFIX):
                 if limit is None or state['tuples'] < limit:
-                    _parse_definition_line(_strip_line_prefix(line, _DEF_PREFIX),
+                    _parse_definition_line(strip_line_prefix(line, _DEF_PREFIX),
                                            word_sources, state)
                     if limit is not None and state['tuples'] >= limit:
                         def_done = True
             elif line.startswith(_SRC_PREFIX):
-                _parse_source_line(_strip_line_prefix(line, _SRC_PREFIX), id_to_name)
+                _parse_source_line(strip_line_prefix(line, _SRC_PREFIX), sources)
             if lineno % 500_000 == 0:
                 print(f'  ...{lineno:,} lines, {len(word_sources):,} headwords, '
-                      f'{len(id_to_name)} sources', file=sys.stderr)
+                      f'{len(sources)} sources', file=sys.stderr)
 
-    return word_sources, id_to_name
+    return word_sources, sources
 
 
-def write_db(out_path: Path, word_sources: dict[str, set], id_to_name: dict[str, str]) -> int:
+def write_db(out_path: Path, word_sources: dict[str, set], sources: dict[str, dict]) -> int:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if out_path.exists():
         out_path.unlink()
     conn = sqlite3.connect(str(out_path))
     conn.execute("""
         CREATE TABLE dict_sources (
-            word       TEXT PRIMARY KEY,
-            sources    TEXT,
-            dict_count INTEGER
+            word             TEXT PRIMARY KEY,
+            sources          TEXT,
+            dict_count       INTEGER,
+            newest_dict_year INTEGER,
+            oldest_dict_year INTEGER,
+            in_current_dict  INTEGER
         )
     """)
+    conn.execute("""
+        CREATE TABLE sources_meta (
+            source_id  INTEGER PRIMARY KEY,
+            short_name TEXT,
+            year       INTEGER,
+            normative  INTEGER
+        )
+    """)
+    conn.executemany('INSERT INTO sources_meta VALUES (?,?,?,?)', [
+        (int(sid), meta['short_name'], meta['year'], meta['normative'])
+        for sid, meta in sources.items() if sid.isdigit()
+    ])
+
     rows = []
     for word, sids in word_sources.items():
-        names = sorted({id_to_name.get(sid, f'#{sid}') for sid in sids})
-        rows.append((word, '|'.join(names), len(sids)))
-    conn.executemany('INSERT INTO dict_sources VALUES (?,?,?)', rows)
+        names = sorted({sources.get(sid, {}).get('short_name') or f'#{sid}' for sid in sids})
+        years = [sources.get(sid, {}).get('year') for sid in sids]
+        years = [y for y in years if y]
+        newest = max(years) if years else None
+        oldest = min(years) if years else None
+        rows.append((word, '|'.join(names), len(sids), newest, oldest,
+                     1 if (newest or 0) >= CURRENT_DICT_YEAR else 0))
+    conn.executemany('INSERT INTO dict_sources VALUES (?,?,?,?,?,?)', rows)
+    conn.execute('CREATE INDEX idx_dict_current ON dict_sources(in_current_dict)')
     conn.commit()
     conn.close()
     return len(rows)
@@ -221,10 +187,16 @@ def main() -> int:
         return 1
 
     print(f'Streaming {args.dump} ...', file=sys.stderr)
-    word_sources, id_to_name = extract(args.dump, args.limit)
-    print(f'Sources resolved : {len(id_to_name)}', file=sys.stderr)
+    word_sources, sources = extract(args.dump, args.limit)
+    dated = sum(1 for m in sources.values() if m['year'])
+    print(f'Sources resolved : {len(sources)} ({dated} with a year)', file=sys.stderr)
     print(f'Headwords        : {len(word_sources):,}', file=sys.stderr)
-    n = write_db(args.out, word_sources, id_to_name)
+    if not sources:
+        # The sampled dump comments this table out ("-- SAMPLED: INSERT INTO `Source`"),
+        # which would silently produce '#<id>' names and no years at all.
+        print('WARNING: no Source rows found — dictionary names and years will be '
+              'missing. Is this the sampled dump?', file=sys.stderr)
+    n = write_db(args.out, word_sources, sources)
     print(f'Wrote {n:,} rows → {args.out}', file=sys.stderr)
     return 0
 

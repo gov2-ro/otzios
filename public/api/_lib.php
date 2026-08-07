@@ -17,12 +17,18 @@ define('PAGE_SIZE', 250);
 // in _lib.php — index, joc, stats, lista — gets the dropdown for free.
 require_once __DIR__ . '/_skins.php';
 
+// 'quality' is the default: the composite score from make_shortlist.py, which balances
+// historical attestation against modern absence instead of ranking on modern rarity
+// alone. Sorting by 'rare' put the most obscure regionalisms first — jbârc, barabor,
+// hâșăi — which is the opposite of what the list is for.
 $SORT_OPTIONS = [
-    'rare'     => 'COALESCE(modern_ppm, -1) ASC',
-    'declined' => 'log_ratio DESC NULLS LAST',
+    'quality'  => 'quality_score DESC NULLS LAST, dex_frequency DESC',
+    'rare'     => 'COALESCE(modern_occ, -1) ASC',
+    'declined' => 'rank_shift DESC NULLS LAST',
     'dex_freq' => 'dex_frequency ASC NULLS LAST',
     'alpha'    => 'word ASC',
 ];
+define('DEFAULT_SORT', 'quality');
 
 $QUICK_TAGS = [
     ['ascunde', 'a'],
@@ -251,6 +257,45 @@ function build_word_filter(array $p): array {
     $conditions = ['word_tier = ?'];
     $params     = [$word_tier];
 
+    // ── Defaults that shape what a first-time visitor sees ─────────────────────
+    // Each is a one-click toggle in the filter sheet, never a silent exclusion: the
+    // whole point of opening this to markers is to learn where these lines are wrong.
+
+    // Seam: 'relevant' is the ~2.8k band of words with the strongest evidence of having
+    // been used and faded; 'curiosity' is the rest. 'all' merges them.
+    //
+    // Only the `forgotten` tier is split into seams — the 112 `rare_in_use` words come
+    // from a different pipeline (validate_with_wordfreq.py) and are all stored as
+    // 'relevant', so applying the filter there would make 'curiozități' silently empty.
+    if (db_has_column('seam') && $word_tier !== 'rare_in_use') {
+        $seam = trim($p['seam'] ?? 'relevant');
+        if ($seam !== 'all' && in_array($seam, ['relevant', 'curiosity'], true)) {
+            $conditions[] = 'seam = ?';
+            $params[]     = $seam;
+        }
+    }
+
+    // Regional-only words (tagged `regional`/`dialectal`/a region, without also being
+    // tagged old) are hidden by default — a word used in one valley is not a word
+    // Romanian forgot. Pass show_regional=1 to include them.
+    if (db_has_column('regional_only') && ($p['show_regional'] ?? '') !== '1') {
+        $conditions[] = '(regional_only IS NULL OR regional_only = 0)';
+    }
+
+    // Archaic spellings of words people still use (politeță/politețe, uleu/ulei) —
+    // detected via the paradigm-sharing ratio, not spelling similarity.
+    if (db_has_column('variant_like') && ($p['show_variants'] ?? '') !== '1') {
+        $conditions[] = '(variant_like IS NULL OR variant_like = 0)';
+    }
+
+    // Minimum historical attestation. Off by default so the no-corpus-signal words
+    // (the `oțios` class) stay visible, but available as a filter.
+    $hist_min = (int)trim($p['hist_min'] ?? '');
+    if ($hist_min > 0 && db_has_column('hist_occ')) {
+        $conditions[] = 'hist_occ >= ?';
+        $params[]     = $hist_min;
+    }
+
     // Verdict multi-select checkboxes
     $verdict_values = parse_multi($p['verdict'] ?? null);
     if ($verdict_values !== [] && count($verdict_values) < $VERDICT_TOTAL) {
@@ -302,10 +347,14 @@ function build_word_filter(array $p): array {
         $params[]     = $dict_min_int;
     }
 
-    // DEX frequency ceiling (only meaningful for rare_in_use tab)
+    // DEX frequency ceiling (only meaningful for the rare_in_use tab).
+    //
+    // No ceiling by default. It used to default to 0.60, which left the rare tab showing
+    // exactly one word (`listat`) out of 112 — DEX frequency is a literary-prominence
+    // score, so a "rare" word sitting at 0.9 is normal rather than a contradiction.
     if ($word_tier === 'rare_in_use') {
         $dex_max = trim($p['dex_max'] ?? '');
-        $ceiling = $dex_max === '' ? 0.60 : ($dex_max === 'all' ? null : (float)$dex_max);
+        $ceiling = ($dex_max === '' || $dex_max === 'all') ? null : (float)$dex_max;
         if ($ceiling !== null && $ceiling > 0) {
             $conditions[] = 'dex_frequency BETWEEN ? AND ?';
             $params[]     = 0.01;
@@ -334,8 +383,13 @@ function build_word_filter(array $p): array {
         $conditions[] = '(en_zipf IS NULL OR en_zipf < 4.0)';
     }
 
-    // Hide proper nouns (proper_noun_like flag)
-    if (db_has_column('proper_noun_like') && ($p['hide_proper'] ?? '') === '1') {
+    // Proper nouns are hidden by default now; `show_proper=1` brings them back. Phrased
+    // as show- rather than hide- on purpose: an unchecked checkbox is not submitted at
+    // all, so a default-on `hide_proper` could never be switched off. A word that is only
+    // a surname or a place name is never the answer to "what did Romanian forget", and
+    // 447 of them were in the list. The legacy `hide_proper=1` still means hide, which is
+    // now simply the default.
+    if (db_has_column('proper_noun_like') && ($p['show_proper'] ?? '') !== '1') {
         $conditions[] = '(proper_noun_like IS NULL OR proper_noun_like = 0)';
     }
 

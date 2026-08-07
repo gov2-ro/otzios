@@ -1,0 +1,310 @@
+"""Regression guards for the 2026-08-07 data-quality rescore.
+
+Two kinds of test live here:
+
+* **Unit** — the aggregation and verdict logic, on synthetic data. Always run.
+* **Integration** — assertions against the built `public/data/ui.db`, skipped when it
+  is absent so a fresh checkout still gets a green suite. These are the ones that would
+  catch a threshold being retuned into nonsense, because they name actual words.
+
+The control words come from `tests/fixtures/rescore_baseline.json`, captured before the
+rescore. See docs/activity-history.md for the measurements behind each group.
+"""
+
+import json
+import sqlite3
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+import validate_diachronic as vd
+
+UI_DB = Path(__file__).parent.parent / 'public' / 'data' / 'ui.db'
+BASELINE = Path(__file__).parent / 'fixtures' / 'rescore_baseline.json'
+
+
+@pytest.fixture(scope='module')
+def db():
+    if not UI_DB.exists():
+        pytest.skip(f'{UI_DB} not built')
+    conn = sqlite3.connect(f'file:{UI_DB}?mode=ro', uri=True)
+    conn.row_factory = sqlite3.Row
+    yield conn
+    conn.close()
+
+
+def word(db, w):
+    return db.execute('SELECT * FROM words WHERE word = ?', (w,)).fetchone()
+
+
+# ── Paradigm aggregation ──────────────────────────────────────────────────────
+
+def test_aggregate_rolls_inflected_forms_into_the_lemma():
+    """The bug this fixes: `înmărmuri` scored 317 while `înmărmurit` alone was 5,846."""
+    freqs = {'înmărmuri': (317, 100), 'înmărmurit': (5846, 900)}
+    form_lemma = {'înmărmuri': ['înmărmuri'], 'înmărmurit': ['înmărmuri']}
+    out = vd.aggregate_by_family(freqs, form_lemma)
+    assert out['înmărmuri'][0] == 317 + 5846
+
+
+def test_aggregate_splits_a_shared_form_by_headword_prominence():
+    """`veșcă` (sieve rim) must not inherit `veste`'s (news) 339k via their shared plural."""
+    freqs = {'veste': (576766, 1000), 'veșcă': (264, 20), 'vești': (300000, 800)}
+    form_lemma = {'veste': ['veste'], 'veșcă': ['veșcă'], 'vești': ['veste', 'veșcă']}
+    out = vd.aggregate_by_family(freqs, form_lemma)
+    assert out['veșcă'][0] < 1000        # keeps roughly its own count
+    assert out['veste'][0] > 800_000     # takes essentially all of the shared form
+
+
+def test_aggregate_documents_never_exceed_the_largest_contributing_form():
+    """Documents are a max, not a sum — summing double-counts a document holding two
+    forms of the same lemma."""
+    freqs = {'a': (10, 7), 'b': (10, 3)}
+    out = vd.aggregate_by_family(freqs, {'a': ['lemma'], 'b': ['lemma']})
+    assert out['lemma'][1] == 7
+
+
+def test_loose_aggregation_over_counts_on_purpose():
+    """The loose/disambiguated ratio is the archaic-variant signal, so it must not
+    do the splitting."""
+    freqs = {'vești': (300000, 800)}
+    form_lemma = {'vești': ['veste', 'veșcă']}
+    loose = vd.aggregate_loose(freqs, form_lemma)
+    assert loose['veste'] == loose['veșcă'] == 300000
+
+
+def test_aggregate_without_a_map_is_a_passthrough():
+    freqs = {'x': (5, 2)}
+    assert vd.aggregate_by_family(freqs, {}) == freqs
+
+
+# ── Verdict thresholds ────────────────────────────────────────────────────────
+
+def test_verdict_uses_counts_not_ppm():
+    """zapciu had 1,322 modern occurrences and was called `extinct`, because the shared
+    0.1 ppm floor meant '< 1,697 hits' in a 17B-token corpus. At its paradigm count of
+    1,747 it now reads `declining` — still on the list, but no longer called dead."""
+    assert vd.verdict(hist_occ=41, hist_docs=21, modern_occ=1747,
+                      rank_shift=0.07) == 'declining'
+    assert vd.verdict(hist_occ=41, hist_docs=21, modern_occ=5000,
+                      rank_shift=0.07) == 'alive'
+
+
+def test_verdict_extinct_requires_zero_modern_occurrences():
+    assert vd.verdict(10, 5, 0, 0.5) == 'extinct'
+    assert vd.verdict(10, 5, 1, 0.5) == 'historical_only'
+
+
+def test_verdict_ignores_single_document_attestation():
+    """15 occurrences inside one Wikisource text is a quirk of that text, not evidence."""
+    assert vd.verdict(hist_occ=15, hist_docs=1, modern_occ=3, rank_shift=0.5) == 'absent'
+    assert vd.verdict(hist_occ=15, hist_docs=2, modern_occ=3, rank_shift=0.5) == 'historical_only'
+
+
+def test_verdict_declining_band():
+    lo, hi = vd.MODERN_RARE_OCC, vd.MODERN_ALIVE_OCC
+    assert vd.verdict(50, 10, lo - 1, 0.2) == 'historical_only'
+    assert vd.verdict(50, 10, lo, 0.2) == 'declining'
+    assert vd.verdict(50, 10, hi, 0.2) == 'alive'
+
+
+# ── Integration: the built database ───────────────────────────────────────────
+
+def test_no_alive_word_is_labelled_forgotten(db):
+    """Nothing in the list may carry an extinct/historical verdict while being common."""
+    bad = db.execute(
+        "SELECT word, modern_occ, verdict FROM words "
+        " WHERE verdict IN ('extinct','historical_only') "
+        "   AND modern_occ >= ?", (vd.MODERN_RARE_OCC,)).fetchall()
+    assert bad == [], [dict(r) for r in bad[:10]]
+
+
+def test_extinct_words_have_no_modern_occurrences(db):
+    bad = db.execute(
+        "SELECT word, modern_occ FROM words WHERE verdict='extinct' AND modern_occ > 0"
+    ).fetchall()
+    assert bad == [], [dict(r) for r in bad[:10]]
+
+
+def test_loose_count_is_never_below_the_disambiguated_one(db):
+    bad = db.execute(
+        'SELECT word, modern_occ, modern_occ_loose FROM words '
+        ' WHERE modern_occ_loose IS NOT NULL AND modern_occ IS NOT NULL '
+        '   AND modern_occ_loose < modern_occ').fetchall()
+    assert bad == [], [dict(r) for r in bad[:10]]
+
+
+def test_seams_are_disjoint_and_non_empty(db):
+    seams = dict(db.execute(
+        "SELECT seam, COUNT(*) FROM words WHERE word_tier='forgotten' GROUP BY seam"))
+    assert seams.get('relevant', 0) > 0
+    assert seams.get('curiosity', 0) > 0
+    assert set(seams) <= {'relevant', 'curiosity'}
+
+
+def test_relevant_seam_is_a_reviewable_size(db):
+    """It is the default view and the thing markers work through. If a retune blows it
+    past a few thousand, the point of the split has been lost."""
+    n = db.execute(
+        "SELECT COUNT(*) FROM words WHERE word_tier='forgotten' AND seam='relevant'"
+    ).fetchone()[0]
+    assert 1000 <= n <= 4000, n
+
+
+def test_relevant_seam_contains_hideable_words(db):
+    """The seam is decided by score alone, and regional/variant words carry no score
+    penalty — so the relevant seam must hold some of each. Otherwise the UI's
+    `show_regional` / `show_variants` toggles are dead controls with nothing to reveal,
+    which is exactly the bug this arrangement replaced.
+    """
+    regional, variant = db.execute(
+        "SELECT SUM(regional_only = 1), SUM(variant_like = 1) "
+        "  FROM words WHERE seam='relevant' AND word_tier='forgotten'").fetchone()
+    assert regional > 0, 'no regional words in the relevant seam — toggle is dead'
+    assert variant > 0, 'no variant words in the relevant seam — toggle is dead'
+
+
+def test_default_view_hides_them_anyway(db):
+    """Hiding is the UI's job, and the default is still a clean list."""
+    total, visible = db.execute(
+        "SELECT COUNT(*),"
+        "       SUM(COALESCE(regional_only,0)=0 AND COALESCE(variant_like,0)=0"
+        "           AND COALESCE(proper_noun_like,0)=0)"
+        "  FROM words WHERE seam='relevant' AND word_tier='forgotten'").fetchone()
+    assert 1000 <= visible <= 4000, visible
+    assert visible < total, 'nothing is being hidden — the toggles would be pointless'
+
+
+def test_pos_covers_almost_everything(db):
+    """`dex_pos` came from meaning-level taxonomy tags and covered 2.9% of the list, so
+    every option in the POS filter matched a handful of words or none at all. It is
+    derived from `Lexeme.modelType` now."""
+    covered, total = db.execute(
+        "SELECT SUM(dex_pos IS NOT NULL AND dex_pos != ''), COUNT(*) FROM words"
+    ).fetchone()
+    assert covered / total > 0.95, f'{covered}/{total}'
+
+
+@pytest.mark.parametrize('pos', [
+    'substantiv feminin', 'substantiv masculin', 'substantiv neutru',
+    'adjectiv', 'verb',
+])
+def test_every_main_pos_option_matches_a_useful_number(db, pos):
+    """Each of these returned 0–13 words before the fix; `verb` returned zero."""
+    n = db.execute(
+        "SELECT COUNT(*) FROM words WHERE word_tier='forgotten' AND seam='relevant'"
+        "   AND ('|' || dex_pos || '|') LIKE ?", (f'%|{pos}|%',)).fetchone()[0]
+    assert n > 100, f'{pos}: {n}'
+
+
+def test_pos_prefers_the_inflection_model_over_meaning_tags(db):
+    """`visternic` is modelType M. The DEX entry also covers the feminine `vistiernică`,
+    and the meaning-level tag bled across, labelling the word "substantiv feminin"."""
+    row = word(db, 'visternic')
+    if row is None:
+        pytest.skip('visternic not in the shortlist')
+    assert 'substantiv masculin' in (row['dex_pos'] or '')
+    assert 'substantiv feminin' not in (row['dex_pos'] or '')
+
+
+def test_rare_tier_is_not_collapsed_by_a_default_ceiling(db):
+    """`dex_max` defaulted to 0.60 and left the rare tab showing one word out of 112."""
+    n = db.execute(
+        "SELECT COUNT(*) FROM words WHERE word_tier='rare_in_use'").fetchone()[0]
+    assert n > 50, n
+
+
+def test_proper_noun_flag_does_not_catch_ordinary_words(db):
+    """`gheb` ("cocoașă") was hidden because DEX also lists the surname `Gheb`. The flag
+    now means "DEX knows this *only* as a capitalised headword"."""
+    row = word(db, 'gheb')
+    if row is None:
+        pytest.skip('gheb not in the shortlist')
+    assert row['proper_noun_like'] == 0
+
+
+@pytest.mark.parametrize('w', [
+    # Common words the old thresholds called extinct or declining.
+    'vapor', 'fluviu', 'cioban', 'palid', 'viclean', 'colac', 'corabie',
+])
+def test_common_words_left_the_list(db, w):
+    assert word(db, w) is None, f'{w} is still in the shortlist'
+
+
+@pytest.mark.parametrize('w', [
+    # Genuinely faded, well attested, no common relative — the target profile.
+    'livede', 'arșic', 'loitră', 'ghizd', 'olat', 'veleat', 'jiganie', 'pogace',
+])
+def test_target_words_are_present(db, w):
+    row = word(db, w)
+    assert row is not None, f'{w} dropped out of the shortlist'
+    assert row['verdict'] in ('extinct', 'historical_only', 'declining', 'absent')
+
+
+@pytest.mark.parametrize('w', [
+    'jbârc', 'nejid', 'hâșăi', 'zăplad',   # tagged regional or popular-only
+    'politeță', 'tinereță', 'veșcă',       # archaic spelling of a word still in use
+])
+def test_noise_words_are_out_of_the_default_view(db, w):
+    """Out of the *default view* — which is the seam plus the three hide-flags, not the
+    seam alone. A word may legitimately score into `relevant` and still be hidden."""
+    row = word(db, w)
+    if row is None:
+        return                                        # dropped entirely is also fine
+    hidden = (row['seam'] == 'curiosity'
+              or row['regional_only'] == 1
+              or row['variant_like'] == 1
+              or row['proper_noun_like'] == 1)
+    assert hidden, f'{w} is visible in the default view'
+
+
+def test_untagged_obscurities_rank_below_well_attested_words(db):
+    """`barabor` carries no register tag at all, so neither the regional nor the variant
+    penalty touches it, and it does reach the relevant seam. That is defensible — it is
+    genuinely extinct — but on 11 historical occurrences it must sit near the bottom,
+    not at the top where the old modern_ppm sort put it.
+    """
+    row = word(db, 'barabor')
+    if row is None:
+        pytest.skip('barabor not in the shortlist')
+    rank, total = db.execute(
+        "SELECT (SELECT COUNT(*) FROM words w2 "
+        "          WHERE w2.seam='relevant' AND w2.word_tier='forgotten'"
+        "            AND w2.quality_score > w.quality_score) + 1,"
+        "       (SELECT COUNT(*) FROM words"
+        "          WHERE seam='relevant' AND word_tier='forgotten')"
+        "  FROM words w WHERE w.word = 'barabor'").fetchone()
+    assert rank > total / 2, f'barabor ranks {rank} of {total}'
+
+
+def test_baseline_fixture_still_describes_the_same_words():
+    """Guards the fixture itself: if it is regenerated from post-rescore data the
+    before/after comparison in the docs silently stops meaning anything."""
+    data = json.loads(BASELINE.read_text(encoding='utf-8'))
+    groups = data['groups']
+    assert groups['must_leave_extinct_declining']['vapor']['verdict'] == 'declining'
+    assert groups['must_leave_default_view']['barabor']['verdict'] == 'historical_only'
+
+
+# ── Share-link durability ─────────────────────────────────────────────────────
+
+def test_word_ids_are_unique_and_complete(db):
+    total, with_id, distinct = db.execute(
+        'SELECT COUNT(*), COUNT(word_id), COUNT(DISTINCT word_id) FROM words').fetchone()
+    assert total == with_id == distinct
+
+
+def test_word_ids_file_is_append_only():
+    """The one irreversible thing in a rebuild: `?w=` links break silently if an id is
+    ever renumbered. tools/word_ids.py must only ever append."""
+    import subprocess
+    repo = Path(__file__).parent.parent
+    head = subprocess.run(['git', 'show', 'HEAD:data/word_ids.tsv'],
+                          capture_output=True, text=True, cwd=repo)
+    if head.returncode != 0:
+        pytest.skip('data/word_ids.tsv not in HEAD')
+    old = head.stdout.splitlines()
+    new = (repo / 'data' / 'word_ids.tsv').read_text(encoding='utf-8').splitlines()
+    assert new[:len(old)] == old, 'existing word ids changed — shared links would break'

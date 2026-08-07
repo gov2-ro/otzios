@@ -6,6 +6,53 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 ## Bugs / Known Issues
 
+- [ ] **Historical corpus is thin — 14.3M tokens.** Wikisource gives one occurrence =
+  0.07 ppm, so the whole historical side rests on very few hits: 9,996 shortlist words
+  (40%) sat on ≤2 occurrences before the 2026-08-08 rescore added `HIST_MIN_OCC`/
+  `HIST_MIN_DOCS` floors. Those floors make the signal honest but they cannot create
+  evidence — words genuinely used in 1880 but absent from Wikisource still read `absent`.
+  This is now the largest remaining source of error. Options: more Romanian literature
+  (archive.org, Gutenberg RO), the DLR/DLRLC literary citations already embedded in the
+  dump's definition text (`GALAN,`, `CARAGIALE`, `DUMITRIU, N. 122` — a free, dated,
+  in-repo citation corpus), or CoRoLa. The citation route is cheapest and worth costing
+  first.
+
+- [ ] **Variant detection only catches paradigm-sharing pairs.** `family_ratio` (see
+  `make_shortlist.FAMILY_RATIO_VARIANT`) flags `politeță`/`politețe` and `uleu`/`ulei`
+  because they share inflected forms. Phonetic respellings with unrelated paradigms —
+  `vivliotică`/`bibliotecă`, `tăligraf`/`telegraf`, `sâroman`/`sărman` — are invisible to
+  it, and are currently only kept out of the relevant seam by having no current
+  dictionary. A phonological-correspondence matcher (`v→b`, `tăli→tele`, `î/â`) against
+  corpus-alive lemmas would close the gap.
+
+- [ ] **`oțios` sits in the `curiosity` seam.** Score 67: zero historical corpus
+  attestation, 266 modern occurrences. Correct by the current rules, awkward for the
+  project's namesake. Decide whether the naming question moves, or whether the
+  no-corpus-signal (`dex_absent_highfreq`) class deserves its own treatment.
+
+- [ ] **CLRE (clre.solirom.ro) spike — timeboxed.** 100 dictionaries aligned at entry and
+  sense level, free access, from the "A. Philippide" institute. Deferred in the
+  2026-08-08 audit because dexonline already yields 113 sources covering the same
+  historical spine (Scriban, Șăineanu, CADE, DAR, DLR, DLRLC, MDA2), and `Source.year`
+  supplies the recency signal CLRE would have been used for. Its unique value is
+  *first-attestation dating* and dictionaries dexonline lacks (Lexiconul de la Buda 1825,
+  Laurian–Massim 1871). No documented bulk export — check for one before building on it.
+
+- [ ] **`extract_lexemes.py` still uses the lossy regex splitter.** `re.findall(r'\(([^)]+)\)')`
+  drops rows containing a literal `)` in a quoted field. Measured impact is small — 33 of
+  317,721 rows (0.01%), *not* the 13% first estimated from the AUTOINCREMENT high-water
+  mark — so this is tidiness, not urgency. `dump_parser.parse_tuples` is the drop-in
+  replacement and `extract_inflected_forms.py` already writes a complete `lexeme` table
+  that could replace `lexemes.db` outright.
+
+- [ ] **`create_curated_list.fetch_all_tags` misses root tags 6 (`rar`) and 239
+  (`ieșit din uz`).** It walks parents `{1,17,41,42}` while
+  `validate_diachronic.load_taxonomy` also catches `{6,17,239}`. So `dex_register` in the
+  curated CSV is strictly narrower than in the diachronic one, which weakens
+  `validate_with_wordfreq.py`'s archaic-register gate — it can never see two of the four
+  markers in its own `ARCHAIC_REGISTER_MARKERS`.
+
+
 - [ ] check why some words are still missing definitions even if found on dexonline. did scraping fail?
 
 - [ ] `dreadnought` nu e marcat ca `marină` (Mar.) in our UI but it is in dexonline web
