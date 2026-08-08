@@ -4,8 +4,11 @@ All offline — the strings below are real entry bodies copied from dexonline.ro
 parser can be changed without hitting a community-run site to find out what broke.
 """
 
+import os
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import scrape_synonyms as ss
@@ -89,3 +92,25 @@ def test_delay_floor_is_enforced(monkeypatch, capsys):
     monkeypatch.setattr(sys, 'argv', ['scrape_synonyms.py', '--delay', '0.1'])
     assert ss.main() == 1
     assert 'Refusing' in capsys.readouterr().err
+
+
+def test_second_run_cannot_hold_the_host_lock(tmp_path):
+    """
+    --delay is per-process, so the floor above only holds if one process runs.
+    Two concurrent runs really happened (2026-08-08) and halved the interval.
+    """
+    lock = tmp_path / 'dexonline.lock'
+    held = ss.acquire_host_lock(lock)
+    try:
+        with pytest.raises(ss.LockHeld) as caught:
+            ss.acquire_host_lock(lock)
+        assert str(os.getpid()) in str(caught.value)   # names who is holding it
+    finally:
+        held.close()
+
+
+def test_lock_is_released_when_the_holder_closes(tmp_path):
+    """No stale-lock cleanup step: the kernel drops it with the file handle."""
+    lock = tmp_path / 'dexonline.lock'
+    ss.acquire_host_lock(lock).close()
+    ss.acquire_host_lock(lock).close()               # would raise if it stuck

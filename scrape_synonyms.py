@@ -37,6 +37,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import fcntl
+import os
 import re
 import sqlite3
 import sys
@@ -52,6 +54,7 @@ from bs4 import BeautifulSoup
 DEFAULT_INPUT      = Path('data/processed/forgotten_words_shortlist.csv')
 DEFAULT_OUTPUT     = Path('data/processed/scraped_synonyms.csv')
 DEFAULT_DB         = Path('data/processed/synonyms.db')
+DEXONLINE_LOCK     = Path('data/.dexonline.lock')
 DEXONLINE_URL_TMPL = 'https://dexonline.ro/definitie/{}'
 USER_AGENT         = 'otios-scraper/0.1 (Romanian linguistic research)'
 FIELDNAMES         = ['word', 'synonyms', 'antonyms', 'source_url', 'scraped_at', 'status']
@@ -305,6 +308,46 @@ def merge_into_db(csv_path: Path, db_path: Path) -> int:
     return n
 
 
+class LockHeld(Exception):
+    """Another process is already making requests to dexonline.ro."""
+
+
+def acquire_host_lock(path: Path = DEXONLINE_LOCK):
+    """
+    Serialise every process that makes requests to dexonline.ro.
+
+    `--delay` is a *per-process* guard, so two copies of this script each politely
+    waiting 3s still hit a community-run site every 1.5s — which is exactly what
+    happened on 2026-08-08. The lock makes the delay mean what it says.
+
+    Keyed on the **host**, not on this script: `scrape_definitions.py` talks to the
+    same site, so it interlocks with this one by adopting the same two lines rather
+    than getting a lock of its own that permits the same doubling.
+
+    `flock`, not a PID file: the kernel releases it when the process dies, so a
+    SIGKILLed run cannot strand a stale lock that someone has to `rm` by hand. The
+    pid written inside is only ever read back to name the holder in the error.
+
+    Returns the open handle — **keep a reference for the duration of the run**,
+    since closing it releases the lock.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = path.open('a+', encoding='utf-8')
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.seek(0)
+        holder = handle.read().strip() or 'holder unknown'
+        handle.close()
+        raise LockHeld(holder) from None
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f'pid {os.getpid()} since '
+                 f'{datetime.now(timezone.utc).isoformat(timespec="seconds")}\n')
+    handle.flush()
+    return handle
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -339,6 +382,21 @@ def main() -> int:
     if not args.input.exists():
         print(f'Missing: {args.input} — run make_shortlist.py first.', file=sys.stderr)
         return 1
+
+    # Taken before the queue is planned, so a second run hears why it is stopping
+    # instead of a plan it will not carry out. Dry runs make no requests and so stay
+    # lock-free: inspecting the queue while a scrape is going is legitimate.
+    # Held for the rest of the run — `lock` looks unused, but closing it unlocks.
+    lock = None                                                       # noqa: F841
+    if not args.dry_run:
+        try:
+            lock = acquire_host_lock()                                # noqa: F841
+        except LockHeld as held:
+            print(f'Another dexonline scrape is already running ({held}).\n'
+                  f'Two at once halve the interval between requests, which is the '
+                  f'one thing --delay exists to prevent. Wait for it, or stop it '
+                  f'first.', file=sys.stderr)
+            return 1
 
     words = load_words(args.input, args.seam)
     done  = load_checkpoint(args.output, args.retry_not_found)
