@@ -14,7 +14,7 @@ So the words are known to be in those dictionaries (that is where `dict_count` c
 from) but their contents are not distributed. The rendered page has them.
 
 One request per word, against the same URL `scrape_definitions.py` already uses. Be
-polite to dexonline.ro — it is community-run — and keep `--delay >= 3`.
+polite to dexonline.ro — it is community-run — and keep `--delay >= 1.2`.
 
 Output: data/processed/scraped_synonyms.csv
         (word, synonyms, antonyms, source_url, scraped_at, status)
@@ -27,7 +27,7 @@ each row is flushed immediately.
 
 Usage:
     python scrape_synonyms.py --dry-run --limit 5        # smoke test, no HTTP
-    python scrape_synonyms.py --limit 20 --delay 3.0     # small live run
+    python scrape_synonyms.py --limit 20 --delay 1.2     # small live run
     python scrape_synonyms.py --seam relevant --merge    # the ~2.8k default-view words
     python scrape_synonyms.py --merge                    # everything on the shortlist
     python scrape_synonyms.py --merge-only               # just upsert the checkpoint
@@ -357,7 +357,7 @@ def main() -> int:
     ap.add_argument('--seam', choices=['relevant', 'curiosity'], default=None,
                     help='Only scrape one seam (relevant = the ~2.8k default view)')
     ap.add_argument('--limit', type=int, default=None, help='Cap words this run')
-    ap.add_argument('--delay', type=float, default=3.0,
+    ap.add_argument('--delay', type=float, default=1.2,
                     help='Seconds between requests (default: %(default)s)')
     ap.add_argument('--dry-run', action='store_true',
                     help='Print URLs only; no HTTP requests, no output written')
@@ -369,9 +369,9 @@ def main() -> int:
                     help='Re-queue words previously recorded as not_found')
     args = ap.parse_args()
 
-    if args.delay < 3.0 and not args.dry_run:
+    if args.delay < 1.2 and not args.dry_run:
         print(f'Refusing --delay {args.delay}: dexonline.ro is community-run, keep it '
-              f'at 3s or more.', file=sys.stderr)
+              f'at 1.2s or more.', file=sys.stderr)
         return 1
 
     if args.merge_only:
