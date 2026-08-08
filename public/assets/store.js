@@ -124,6 +124,11 @@ function hydrateDetail(root) {
   if (explainer) explainer.style.display = qtExplainerDismissed() ? 'none' : '';
 }
 
+function closeDictTooltips() {
+  document.querySelectorAll('.dict-tooltip:not([hidden])').forEach(function(t) { t.setAttribute('hidden', ''); });
+  document.querySelectorAll('.fp-dicts-toggle[aria-expanded="true"]').forEach(function(b) { b.setAttribute('aria-expanded', 'false'); });
+}
+
 // Delegated on document.body so it works no matter how the panel HTML was inserted
 // (htmx swap on index.php, plain fetch+innerHTML on joc.php). Guarded on
 // `document.body` because this file also runs inside a Node `vm` stub in
@@ -188,7 +193,36 @@ if (typeof document !== 'undefined' && document.body) {
       if (typeof populateTagFilterOptions === 'function') populateTagFilterOptions();
       return;
     }
+
+    // Dictionary-name tooltip — the label doubles as its own toggle button so
+    // the names stop printing straight into the panel body (see .fp-dicts in
+    // detail.php). Closes any other open one first: only one at a time.
+    var dictToggle = e.target.closest('.fp-dicts-toggle');
+    if (dictToggle) {
+      e.preventDefault();
+      var dictTip = dictToggle.parentElement.querySelector('.dict-tooltip');
+      if (!dictTip) return;
+      var willOpen = dictTip.hasAttribute('hidden');
+      closeDictTooltips();
+      if (willOpen) {
+        dictTip.removeAttribute('hidden');
+        dictToggle.setAttribute('aria-expanded', 'true');
+        // Fixed positioning has nothing to anchor to on its own — place it
+        // under the toggle, clamped so it can't run past the viewport edge.
+        var rect = dictToggle.getBoundingClientRect();
+        var maxLeft = window.innerWidth - dictTip.offsetWidth - 8;
+        dictTip.style.top = Math.round(rect.bottom + 4) + 'px';
+        dictTip.style.left = Math.round(Math.max(8, Math.min(rect.left, maxLeft))) + 'px';
+      }
+      return;
+    }
+    if (!e.target.closest('.dict-tooltip')) closeDictTooltips();
   });
+
+  // A stale-positioned tooltip left open through a scroll is worse than none —
+  // 'scroll' doesn't bubble, so this has to be a capturing listener on document
+  // to catch it from `.fp-body` (the panel's own scrolling region).
+  document.addEventListener('scroll', closeDictTooltips, true);
 
   // Tag input — add custom tag on Enter
   document.body.addEventListener('keydown', function(e) {

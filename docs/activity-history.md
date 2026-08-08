@@ -4,6 +4,209 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-09 — `attested_after`, the other half of the last-attestation filter
+
+`attested_before=<year>` (last attestation older than Y) existed; its counterpart didn't,
+so there was no way to isolate the *other* end of `curiosity` — words that faded relatively
+recently rather than centuries ago. Added `attested_after=<year>` (`newest_dict_year >= ?`,
+vs. `attested_before`'s `< ?`, so the two never overlap at a shared boundary year and
+compose into a band when both are set). New select in `index.php` beside the existing one,
+`_lib.php`'s `build_word_filter()` gets the mirrored condition, and `app.js` gets the third
+registration every filter needs: `AF_SPECS` (chip reads `atestat ≥1990`), the
+`applyUrlToForm` read list, and the `syncUrlFromForm` write list.
+
+Sanity-checked against the live `curiosity` seam rather than trusting the SQL by eye:
+12,046 total, 11,368 at `attested_after=2005` (most of the seam is unremarkable-recent, as
+expected), 206 at `attested_before=1970` (close to `CLAUDE.md`'s already-documented 225),
+118 in the `1990–2005` band — strictly narrower than either bound alone, confirming the two
+conditions actually AND together rather than one silently overriding the other.
+
+---
+
+## 2026-08-09 — joc/liste to top nav, footer decluttered, word-cloud contrast + layout fixes
+
+Follow-up to the previous session's header/footer reshuffle, from screenshot feedback.
+
+**Top nav.** `joc` and `liste` moved out of `footer.php`'s nav loop into a new `.top-nav`
+in `header.php`, right after the brand mark — reachable in one click from every page instead
+of a scroll to the bottom bar. `index.php`'s `?` shortcuts/legend link followed them up
+(`$header_nav_extra`, index-only — the shortcuts modal doesn't exist on the other four
+pages). `header.php` now needs `$page` too, so every caller sets it before that require
+rather than only before `footer.php`'s. `footer.php`'s loop is
+`array_diff_key(NAV_ITEMS, array_flip(['index','joc','liste']))`: `cuvinte` is dropped
+outright rather than moved, since the brand mark already links home on every page.
+
+**Feed hidden.** The 📇 feed button in `index.php`'s footer got a `hidden` attribute,
+matching the dormant 🎲 `surpriseWord()` button beside it — the feature and its markup stay,
+it just has no bar to live in right now. Unlike 🎲 it has no keyboard shortcut, so it is
+genuinely unreachable until it gets a new home; noted in `CLAUDE.md` rather than silently
+left.
+
+**Two skins needed the on-bar treatment again.** `govuk` and `registru` force `.brand-bar`
+black in both themes; `.top-nav-item`, `.shortcuts-link` and `kbd` all rendered low-contrast
+or invisible there until given the same `--gv-on-bar`/`--rg-on-bar` re-grounding as
+`.search-toggle-btn` got last session. Exactly the same category of bug, same fix shape —
+now called out as a standing rule in `CLAUDE.md` rather than something to rediscover a third
+time.
+
+**Word cloud: three related bugs from one root cause, plus one unrelated one.**
+
+- `#word-list` is a CSS grid (`auto-fill, minmax(var(--word-col), 1fr)`), and a grid item
+  stretches to fill its track by default. `.word-row` never opted out, so the hover/selected
+  background and the `.ann-overlay` annotation emoji (`position: absolute; right: 2px`,
+  anchored to the row's own box) both extended to the *column's* edge instead of the word's —
+  a black bar spanning the full card width, and a 🙈/😂/📝 emoji stranded far from the word
+  it annotates. One `justify-self: start` on `.word-row` fixed both: the row now hugs its
+  content (word + freq superscript), so the background and the overlay's anchor point both
+  shrink to match. Confirmed harmless in table view, where `#word-list.word-list-table` is
+  `display: block` (not a grid), so `.word-row` is not a grid item there at all and this rule
+  has no effect — table rows keep their explicit `width: 100%`.
+- Separately: a selected word's text stayed in its verdict colour instead of switching to
+  `var(--bg)`, i.e. dark-on-dark whenever that verdict colour was tuned dark (Beton, GOV.UK —
+  both pick dark verdict colours for contrast against their *light* page ground). Root cause
+  was a CSS specificity bug the code already carried a comment claiming didn't exist:
+  `#word-list .word-row[data-selected] .word-text` is (1,3,0), but
+  `#word-list:not(.word-list-table) .word-row.verdict-X .word-text` is (1,4,0) — the verdict
+  rule is more specific and silently won regardless of source order, despite the old comment
+  asserting the opposite. Fixed with `!important` rather than another round of specificity
+  arithmetic, since "selected always wins over verdict colour" has no exception to design
+  around.
+
+Verified via headless Chromium (`playwright`, still no Chrome-extension session) across all
+five pages, the word-cloud selected state in paper/brutal/govuk × light/dark, and the emoji
+overlay by writing a tagged word straight into `localStorage`'s research store and
+re-running `hydrateRows()`.
+
+---
+
+## 2026-08-08 — Dict-name tooltip, collapsible search, header controls move to footer
+
+Four UI changes, all in the shared partials so they apply everywhere at once.
+
+**Synonyms live.** The `--seam relevant` scrape finished (2,292 rows merged into
+`data/processed/synonyms.db` at 12:16), but `public/data/ui.db` was still the 02:28
+build. Reran `tools/build_ui_db.py` — 2,075 words now carry `synonyms`/`antonyms`.
+`data/word_ids.tsv` diff is empty (no new words), so the append-only invariant holds
+trivially.
+
+**Dictionary names collapse into a click tooltip.** `.fp-dicts` in `detail.php` used to
+print one `.dict-chip` per source inline — a word in 18 dictionaries meant 18 chips in
+the panel body. The "📚 în N dicționare" label is now a `<button class="fp-dicts-toggle">`
+and the chips live in a `.dict-tooltip`, `hidden` by default. Handled in `store.js`
+(delegated on `document.body`, same pattern as the bookmark/tag buttons) rather than
+`app.js`, because `detail.php` renders on both `index.php` (htmx swap) and `joc.php`
+(plain fetch), and only `store.js` loads on both — `app.js` is index-only.
+
+One real bug found via a headless-Playwright check (no Chrome-extension session this
+session, so `playwright` stood in for the browser tool): `.fp-dicts` sits inside
+`.fp-body`, which scrolls, and an `absolute`-positioned popover is clipped by its
+scrolling ancestor's overflow instead of floating above it — the tooltip rendered as a
+1px sliver. Fixed by switching to `position: fixed` and computing `top`/`left` in JS from
+the toggle's own `getBoundingClientRect()`, clamped so it can't run past the right edge.
+A capturing `scroll` listener on `document` closes it, since `.fp-body`'s scroll doesn't
+bubble.
+
+**Search collapses behind a magnifier.** `#search` in `index.php` was always-visible,
+`flex:1`, up to 360px wide. Now wrapped in `.search-wrap` with a `.search-toggle-btn`
+(magnifier SVG) in front of it; the input is `display:none` until `.search-wrap` gets
+`.is-open` (click, the `/` shortcut, or already-open on load if the URL carried `q` —
+`applyUrlToForm()` still fills the value first). `onblur` collapses it back if empty, and
+the filter-form's `reset` handler does the same.
+
+**Scale/skin/theme moved from the brand bar to the footer.** They were pasted into
+`header.php`'s `.brand-right` on all five pages; now they render in `footer.php`'s
+`.status-right`, once, using the `--sm` control variants that were already sized for it.
+`index.php`'s feed button and cloud/table view toggle followed them into a new
+`$footer_tools` slot (index-only — `header.php` keeps only the spinner and result count).
+Freed up enough header width that the collapsed search icon has room to sit next to the
+brand mark on a 375px phone, which it didn't before.
+
+This nearly doubled what the footer carries, and the fixed-position mobile status bar
+doesn't grow with its content — it clips. Swept widths 320–768px with a headless-browser
+height probe (temporarily forcing `#status-bar{position:static;height:auto}` and reading
+`getBoundingClientRect()`) and found two bands where the wrapped content (69px at
+500–700px, 86px at 320–440px) exceeded the existing `--statusbar-h` (44px / 62px): the nav
+row was rendering 5–14px below the viewport, unreachable. Added a `≤710px` tier
+(`--statusbar-h: 76px`) and raised the existing `≤480px` tier from 62px to 96px — sized
+for the worse of the two sub-cases in that range (86px, three lines) rather than adding a
+fourth breakpoint for the 445–480px band that measures better (61px) but few real phones
+land in.
+
+**Two skins needed a follow-up patch.** `govuk.css` and `registru.css` force their
+`.brand-bar` to black in both themes and had component rules re-grounding every control
+that used to live there (`.view-toggle`, `.theme-toggle`, `.scale-stepper`, `.play-btn`,
+`.skin-select`) against `--gv-on-bar`/`--rg-on-bar` instead of the page-ground tokens that
+would vanish on black. Moving those controls to the footer — a page-ground surface in both
+skins, not a forced-black masthead — left that re-grounding dead code, harmlessly (verified
+both skins' footers in light and dark: default app.css styling already reads fine there).
+But the new `.search-toggle-btn` stayed behind in `.brand-bar`, unstyled by either skin, and
+rendered as a barely-visible white square on black. Removed the dead selectors and added
+`.search-toggle-btn` to the surviving on-bar rule (alongside `.filter-toggle-btn`, the only
+other control still in the bar) in both files — this is the exact "component rules break if
+the markup moves" risk `CLAUDE.md`'s skins section already names, just encountered rather
+than theoretical this time.
+
+Verified in a headless Chromium via `playwright` (no Chrome-extension session available)
+across index/joc/liste/stats at desktop, 700px, and 390px widths, the dict-tooltip on both
+`index.php` and `joc.php`, and all six skins' header/footer in both themes.
+
+## 2026-08-08 — Filtre rail goes type-only in every skin
+
+app.css stripped the fill off `.fs-pill` a while back — text over nothing, with weight and
+an underline for checked — and every skin had since put one back on its own: `brutal`
+inverted both the pills and the section labels into ink blocks, `tezaur` filled checked
+pills with the accent, `govuk` with `--surface`, and `registru` turned `.fs-label` into
+filled §-tags. Reported as "too loud", correctly.
+
+All four are now type only, in both themes. The checkbox-inversion rules that `brutal` and
+`tezaur` carried (white tick on the pill's own dark fill) went with them, since app.css's
+plain `--text`-filled tick works once there is no coloured ground to invert off of.
+
+The reason this kept happening is worth keeping: **most of these pills are checked when
+you arrive**, so a fill on a checked pill is not a highlight, it is the rail's background.
+Each skin looked fine while being written alone. Written up as a rule in `CLAUDE.md` under
+the skins section.
+
+`.seg-opt` was deliberately left alone — it is a segmented control with no tick and no
+swatch, so its inverted block is the only mark saying which option is live, and it is
+app.css's own treatment rather than anything a skin added.
+
+---
+
+## 2026-08-08 — "Registru" skin, after patronview.com
+
+New skin at `public/assets/skins/registru.css` (~620 lines), built from the design system
+in `docs/reference/design-systems/context.dev patronview.com-design.md`. (The
+`design-extractor.com` file beside it documents a Cloudflare interstitial the extractor
+hit instead of the site; its dark palette is still the only documented one PatronView has,
+so the dark block is built from that.)
+
+The adaptation, in short: black masthead, IBM Plex Mono for anything that names or labels,
+Public Sans for prose, zero radius, zero shadow, and one saturated blue reserved for the
+active-filter chips. `--serif` points at Plex Mono, so headwords, panel titles and the
+game's prompt read as records in an index; rule 8 of the file sends definitions and other
+running prose back to the sans.
+
+Substitutions, all forced and all noted in the file: Libre Franklin → Public Sans (a fork
+of it, and already loaded — skins cannot add a `<link>`); no weight 700 anywhere, because
+the pages load Plex Mono at 400/500/600 only; `--surface` is a whisper-grey rather than
+the reference's pure white, because hover, the rail and the status bar are all painted
+with it and white-on-white erases every one.
+
+Two findings folded back into `CLAUDE.md`:
+
+- `--word-col` was measured against Source Serif 4 and has to move with the display font —
+  Plex Mono is ~25% wider per character.
+- `.joc-mode.active` fills itself with `--accent`, which under this skin is black; on the
+  black masthead the selected game mode vanished. Anything in the bar that fills with
+  `--accent` needs re-grounding, the same list `govuk` already re-grounds.
+
+`stats.php`'s two hardcoded chart hexes (indigo POS, emerald domain) are patched to ink in
+the skin file, and the existing backlog entry now records that a second skin has needed
+the workaround.
+
+---
+
 ## 2026-08-08 — Verdict dots retired, Filtre pills go minimal
 
 Two skin-system changes across all five skins (paper, brutal, govuk, tezaur, velin),

@@ -85,10 +85,13 @@ $meta_parts = array_filter([
   </div>
   <?php endif; ?>
 
-  <!-- Dictionaries -->
+  <!-- Dictionaries. Names are listed in a click-open tooltip rather than inline —
+       a word in ~20 dictionaries used to print ~20 chips into the body every time,
+       which is more chrome than the definition above it. -->
   <?php if ($sources): ?>
   <div class="fp-dicts">
-    <span class="fp-extra-label">📚 în <?= $dict_count ?> <?= $dict_count === 1 ? 'dicționar' : 'dicționare' ?></span>
+    <button type="button" class="fp-extra-label fp-dicts-toggle"
+            aria-haspopup="true" aria-expanded="false">📚 în <?= $dict_count ?> <?= $dict_count === 1 ? 'dicționar' : 'dicționare' ?></button>
     <?php
     // Last attestation: the newest dictionary that still prints this word. A
     // lexicographic claim, independent of the corpus figures in the footer below —
@@ -101,7 +104,9 @@ $meta_parts = array_filter([
       <span class="dict-chip dict-chip--year"
             title="Cel mai recent dicționar din DEX care încă include acest cuvânt">ultima atestare <?= $attested ?></span>
     <?php endif; ?>
-    <?php foreach ($sources as $src): ?><span class="dict-chip"><?= e($src) ?></span><?php endforeach; ?>
+    <div class="dict-tooltip" hidden>
+      <?php foreach ($sources as $src): ?><span class="dict-chip"><?= e($src) ?></span><?php endforeach; ?>
+    </div>
   </div>
   <?php endif; ?>
 
@@ -122,7 +127,7 @@ $meta_parts = array_filter([
     <button id="bookmark-btn" data-word="<?= e($w['word']) ?>" title="fav (f) — păstrează, cuvânt de care ești mândru"><span class="qt-key">f</span><span class="fav-star">★</span> fav</button>
     <div id="tags-row" data-word="<?= e($w['word']) ?>">
       <div class="quick-tags">
-        <button type="button" class="qt-btn" data-qtkey="a" title="ascunde (a) — neinteresant, prea cunoscut. Dispare din listă, îl regăsești în settings"><span class="qt-key">a</span>ascunde</button>
+        <!-- <button type="button" class="qt-btn" data-qtkey="a" title="ascunde (a) — neinteresant, prea cunoscut. Dispare din listă, îl regăsești în settings"><span class="qt-key">a</span>ascunde</button> -->
         <button type="button" class="qt-btn" data-qtkey="l" title="lol (l) — amuzant, de păstrat"><span class="qt-key">l</span>lol</button>
         <button type="button" class="qt-btn" data-qtkey="m" title="meh (m) — la fel ca ascunde, doar zis altfel. Dispare din listă, îl regăsești în settings"><span class="qt-key">m</span>meh</button>
       </div>

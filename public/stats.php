@@ -28,7 +28,7 @@ global $POS_OPTIONS;
 </head>
 <body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
 
-  <?php $brand_tag = 'statistici'; require __DIR__ . '/api/_partials/header.php'; ?>
+  <?php $page = 'stats'; $brand_tag = 'statistici'; require __DIR__ . '/api/_partials/header.php'; ?>
 
   <form id="filter-form"
         hx-get="<?= BASE ?>/api/stats.php"
@@ -119,7 +119,7 @@ global $POS_OPTIONS;
     </div>
   </div>
 
-  <?php $page = 'stats'; require __DIR__ . '/api/_partials/footer.php'; ?>
+  <?php require __DIR__ . '/api/_partials/footer.php'; ?>
 
   <script src="<?= BASE ?>/assets/prefs.js"></script>
   <script>

@@ -136,10 +136,73 @@ body {
   color: var(--text-3);
 }
 
-#search {
+/* ── Top nav (header.php) — joc + liste, and index.php's `?` shortcuts link.
+   Distinct from .site-nav in the footer: two destinations rather than five,
+   so icon + label always fit and there is no 900px breakpoint dropping the
+   label — a bare glyph pair next to the wordmark would be the one thing this
+   bar has room to avoid. */
+.top-nav { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.top-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+  text-decoration: none;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  transition: color .12s;
+}
+.top-nav-item .nav-icon { font-size: 0.8125rem; line-height: 1; }
+.top-nav-item:hover { color: var(--accent); }
+/* Same "underline, no fill" mark as .nav-item.is-current in the footer. */
+.top-nav-item.is-current { color: var(--text); border-bottom: 1px solid var(--accent); padding-bottom: 1px; }
+.shortcuts-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+  text-decoration: none;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+.shortcuts-link:hover { color: var(--accent); }
+
+/* Search — collapsed behind the magnifier button until opened (openSearch() /
+   closeSearchIfEmpty() in app.js), so the bar starts out reading brand + tools
+   rather than brand + a wide empty field nobody has typed in yet. */
+.search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.search-wrap.is-open {
   flex: 1;
   min-width: 120px;
-  max-width: 360px;
+  max-width: 400px;
+}
+.search-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  background: var(--surface);
+  /* border: 1px solid var(--border);
+  border-radius: var(--radius); */
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.search-toggle-btn:hover,
+.search-wrap.is-open .search-toggle-btn { border-color: var(--accent); color: var(--accent); }
+#search {
+  display: none;
+  flex: 1;
+  min-width: 0;
   height: 30px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -151,6 +214,7 @@ body {
   font-size: 0.875rem;
   transition: border-color .15s, background .15s;
 }
+.search-wrap.is-open #search { display: block; }
 #search::placeholder { color: var(--text-3); }
 #search:focus {
   outline: none;
@@ -564,7 +628,14 @@ body {
   align-items: baseline;
 }
 
-/* Word chip */
+/* Word chip. `justify-self: start` keeps the grid item itself hugging its
+   content (word + freq superscript) instead of stretching to fill the full
+   column track — a grid item stretches by default, so the hover/selected
+   background, and the `.ann-overlay` emoji anchored to the row's own right
+   edge, were both spanning/landing at the column boundary rather than the
+   word's actual edge. Harmless in table view: that container switches to
+   `display: block` (below), so `.word-row` is no longer a grid item there and
+   this has no effect — table rows keep their explicit `width: 100%`. */
 .word-row {
   display: flex;
   align-items: baseline;
@@ -576,6 +647,7 @@ body {
   transition: background .12s;
   position: relative;
   min-width: 0;
+  justify-self: start;
 }
 .word-row:hover { background: var(--accent-bg); }
 .word-row:active { transform: translateY(1px); }
@@ -588,10 +660,18 @@ body {
   outline-offset: 1px;
 }
 .word-row[data-selected] { background: var(--text); }
-/* #word-list, not just .word-row[data-selected], so this still outranks the
-   verdict-colour rules below on specificity — selection has to win regardless
-   of source order. */
-#word-list .word-row[data-selected] .word-text { color: var(--bg); }
+/* Selection has to win over the verdict-colour rules below regardless of which
+   verdict is showing — but `#word-list .word-row[data-selected] .word-text`
+   is (1,3,0) and `#word-list:not(.word-list-table) .word-row.verdict-X
+   .word-text` is (1,4,0): the verdict rule is MORE specific, despite the
+   comment this used to carry claiming the opposite. The result was invisible:
+   a selected word kept its verdict colour — tuned for contrast against the
+   *page* background — sitting on the selected row's `var(--text)` fill
+   instead of switching to `var(--bg)`, i.e. dark-on-dark in Beton and GOV.UK,
+   whose verdict colours run dark for contrast on a light page. `!important`
+   rather than another round of specificity arithmetic, because "selected
+   always wins" is exactly the case that flag exists for. */
+#word-list .word-row[data-selected] .word-text { color: var(--bg) !important; }
 .word-row[data-selected] .chip-freq { color: rgba(250,247,241,.45); }
 
 /* Row removal — word just tagged ascunde/meh, popping out of the list */
@@ -963,7 +1043,7 @@ body {
 }
 
 /* Dicts */
-.fp-dicts { line-height: 2; }
+.fp-dicts { position: relative; line-height: 2; }
 .fp-extra-label {
   font-family: var(--mono);
   font-size: 0.5625rem;
@@ -974,6 +1054,36 @@ body {
   margin-right: 6px;
   white-space: nowrap;
 }
+/* The label doubles as the tooltip trigger, so it needs to look clickable without
+   losing the plain, unbordered look every other `.fp-extra-label` has. */
+.fp-dicts-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.fp-dicts-toggle::after { content: ' ▾'; }
+.fp-dicts-toggle:hover,
+.fp-dicts-toggle[aria-expanded="true"] { color: var(--text-2); }
+/* Dictionary names, hidden until the label above is clicked — a word in ~20
+   dictionaries used to print ~20 chips straight into the panel body.
+   `position: fixed` rather than `absolute`: `.fp-dicts` lives inside `.fp-body`,
+   which scrolls (long definitions), and an absolutely-positioned popover is
+   clipped by its scrolling ancestor's overflow instead of floating above it.
+   Fixed escapes that; store.js sets top/left from the toggle's own rect since
+   fixed positioning has nothing else to anchor to. */
+.dict-tooltip {
+  position: fixed;
+  z-index: 60;
+  max-width: 320px;
+  padding: 8px;
+  line-height: 1.8;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
+}
+.dict-tooltip[hidden] { display: none; }
 .dict-chip {
   display: inline-block;
   font-size: 0.625rem;
@@ -1753,9 +1863,13 @@ body {
 @media (max-width: 1279px) {
   .status-legend { display: none; }
 }
-.status-right { display: flex; gap: 12px; align-items: center; }
+.status-right { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 #status-bar a { color: var(--text-3); text-decoration: none; font-size: 0.6875rem; }
 #status-bar a:hover { color: var(--text); }
+
+/* Text-scale / skin / theme, moved here from the brand bar — same three controls
+   on every page, so the footer (already the one shared bar) is where they live now. */
+.status-prefs { display: inline-flex; align-items: center; gap: 8px; }
 
 /* The `?` link's word-fallback: shown only where `kbd` is hidden (≤768px). */
 .shortcuts-alt { display: none; }
@@ -2034,13 +2148,16 @@ kbd {
     gap: 8px;
   }
   .brand-id { order: 0; }
-  #search {
+  /* Collapsed (icon only) it sits in source order, next to brand-id — plenty of
+     room now that scale/skin/theme have moved to the footer. Opened, it claims
+     its own full-width row like the old always-visible #search did. */
+  .search-wrap.is-open {
     order: 2;
     flex: 1 1 100%;
     max-width: 100%;
     min-width: 0;
-    font-size: 1rem;
   }
+  #search { font-size: 1rem; }
   /* Tight bar: shrink the gaps so the play buttons fit next to the toggles.
      flex-shrink must be re-enabled here (the base rule pins it to 0) — otherwise
      the cluster's hypothetical size stays at max-content, it never narrows far
@@ -2139,6 +2256,20 @@ kbd {
 }
 
 /* ══════════════════════════════════════════
+   NARROWING FOOTER (≤ 710px)
+
+   The footer picked up feed/view-mode (index) and scale/skin/theme (every
+   page) when they moved out of the brand bar. Past this width `.status-right`
+   can no longer fit tools + prefs + nav on one line and wraps to two — measured
+   69px tall at 500–700px against the 44px --statusbar-h assumes, which the
+   fixed bar clips silently rather than growing into. Bump it to fit; the
+   ≤480px tier below raises it again once a third line joins.
+══════════════════════════════════════════ */
+@media (max-width: 710px) {
+  :root { --statusbar-h: 76px; }
+}
+
+/* ══════════════════════════════════════════
    NARROW PHONES (≤ 480px)
 
    The status bar's two groups stop fitting on one line around here — measured
@@ -2146,9 +2277,14 @@ kbd {
    the bar is fixed it clips silently instead of scrolling. Stack the two groups
    instead, and grow --statusbar-h so the body padding, detail sheet and toast
    move down with it.
+
+   Below ~445px `.status-right` itself wraps again — measured 86px tall (three
+   lines: counts, tools+prefs, nav) against 445–480px's 61px (two lines) — so
+   this tier is sized for the three-line case rather than adding a fourth
+   breakpoint for a width band few real devices sit in.
 ══════════════════════════════════════════ */
 @media (max-width: 480px) {
-  :root { --statusbar-h: 62px; }
+  :root { --statusbar-h: 96px; }
 
   #status-bar {
     height: var(--statusbar-h);

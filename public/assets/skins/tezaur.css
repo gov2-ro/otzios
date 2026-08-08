@@ -205,21 +205,17 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-bg);
 }
-/* The tinted fill is its own "selected" mark, so app.css's default underline
-   is switched back off here — same idea as the word cloud pills, one signal
-   not two. */
+/* Checked is the accent in text, not a solid accent block. The fill version
+   read as a row of buttons in a panel that is a list of choices, and with most
+   of them checked by default that is most of the rail. app.css's underline is
+   left switched on here — this skin already underlines nothing else in the
+   sheet, so it does not collide with anything. The check and the verdict swatch
+   go back to app.css's plain treatment, which no longer has a coloured ground
+   to invert off of. */
 [data-skin="tezaur"] .fs-pill:has(input:checked) {
-  background: var(--accent);
-  color: var(--on-accent);
-  text-decoration: none;
-}
-[data-skin="tezaur"] .fs-pill:has(input:checked) .fs-check {
-  background: var(--on-accent);
-  border-color: var(--on-accent);
-}
-[data-skin="tezaur"] .fs-pill:has(input:checked) .fs-check::after {
-  border-left-color: var(--accent);
-  border-bottom-color: var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
 }
 /* Without this the skin falls back to the UA's 1px ring, which all but
    disappears on the rounded controls. A soft halo suits the shapes and clears

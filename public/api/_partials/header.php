@@ -1,71 +1,72 @@
 <?php
 /**
- * Shared page header — brand, a slot for page-specific controls, and the three
- * display preferences (text scale, skin, theme).
+ * Shared page header — brand, primary nav, and a slot for page-specific controls.
  *
  * Before this existed each of the five pages drew its own bar: `index.php` had
  * `.brand-bar`, `joc.php` had `.joc-head`, `lista`/`liste` had `.lista-nav`, and
  * `stats.php` had **nothing at all** — you landed on a bare filter strip with no
- * indication you were still in Oțios. The three preference toggles were pasted
- * into all five, so adding a fourth meant editing five files.
+ * indication you were still in Oțios.
  *
- * **Navigation is deliberately not here — it is in `footer.php`.** `index.php`
- * already put it in the bottom status bar, that bar is the right size for it, and
- * the top bar on the explorer is already carrying brand + search + count + play +
- * view + scale + skin + theme + filters. Five more links is the one thing it
- * cannot take. Identity goes at the top, travel goes at the bottom, on every page.
+ * **`joc` and `liste` live here; `statistici`, `metodologie` and the toggles are
+ * in `footer.php`.** The two destinations people jump to mid-browse (play the
+ * game, check a list) are one click from the brand, always visible; the rest of
+ * travel plus text-scale/skin/theme are the bottom bar's job — see `footer.php`
+ * for why that split exists at all.
  *
  * Set before requiring (all optional):
  *
- *   $brand_tag     string  Tagline beside the wordmark. Defaults to the site's.
- *   $header_center string  HTML between brand and the right cluster — the
- *                          explorer's search box. Rendered raw; escape at source.
- *   $header_tools  string  HTML at the head of the right cluster, before the
- *                          preferences: the explorer's count/play/view, joc's
- *                          mode buttons and score.
- *   $header_after  string  HTML after the preferences, i.e. last in the bar —
- *                          the explorer's filter button, which has to stay put.
+ *   $page              string  Key of the current page, from NAV_ITEMS in
+ *                              `_lib.php`. Marks the matching top-nav entry
+ *                              `aria-current="page"` and unlinks it.
+ *   $brand_tag         string  Tagline beside the wordmark. Defaults to the
+ *                              site's.
+ *   $header_nav_extra  string  HTML appended inside the top-nav, after joc/liste
+ *                              — the explorer's `?` shortcuts/legend link, which
+ *                              only exists on `index.php`.
+ *   $header_center     string  HTML between the nav and the right cluster — the
+ *                              explorer's search box. Rendered raw; escape at
+ *                              source.
+ *   $header_tools      string  HTML at the head of the right cluster, before
+ *                              $header_after: the explorer's count, joc's mode
+ *                              buttons and score.
+ *   $header_after      string  HTML after $header_tools, i.e. last in the bar —
+ *                              the explorer's filter button, which has to stay
+ *                              put.
  *
  * Slots are strings rather than callbacks so a caller can build one with
  * `ob_start()` and keep writing ordinary markup.
  */
 
-$brand_tag     = $brand_tag     ?? 'cuvinte uitate';
-$header_center = $header_center ?? '';
-$header_tools  = $header_tools  ?? '';
-$header_after  = $header_after  ?? '';
+$page              = $page              ?? '';
+$brand_tag         = $brand_tag         ?? 'voroave neglijate';
+$header_nav_extra  = $header_nav_extra  ?? '';
+$header_center     = $header_center     ?? '';
+$header_tools      = $header_tools      ?? '';
+$header_after      = $header_after      ?? '';
 ?>
 <header class="brand-bar">
-  <a class="brand-id" href="<?= BASE ?>/" title="Oțios — cuvinte uitate">
-    <span class="brand-name">otios</span>
+  <a class="brand-id" href="<?= BASE ?>/" title="Oțios — cuvinte negljate">
+    <span class="brand-name">oțios</span>
     <span class="brand-sep"></span>
     <span class="brand-tag"><?= e($brand_tag) ?></span>
   </a>
 
+  <nav class="top-nav" aria-label="Navigare principală">
+    <?php foreach (['joc', 'liste'] as $key):
+      $item = NAV_ITEMS[$key]; ?>
+      <a style="text-transform: uppercase;" class="top-nav-item<?= $key === $page ? ' is-current' : '' ?>"
+         href="<?= BASE . $item['path'] ?>" title="<?= e($item['label']) ?>"
+         <?= $key === $page ? 'aria-current="page"' : '' ?>>
+        <span class="nav-icon" aria-hidden="true"><?= $item['icon'] ?></span><span class="nav-label"><?= e($item['label']) ?></span>
+      </a>
+    <?php endforeach; ?>
+    
+  </nav>
+
   <?= $header_center ?>
-
   <div class="brand-right">
-    <?= $header_tools ?>
-
-    <!-- Font-size stepper. An addition to browser zoom, not a replacement:
-         pinch-zoom is deliberately left unblocked (WCAG 1.4.4). -->
-    <div class="scale-stepper scale-stepper--sm" role="group" aria-label="Mărime text">
-      <button type="button" class="scale-btn" data-scale-btn="down" onclick="stepTextScale(-1)"
-              title="Text mai mic" aria-label="Text mai mic">A−</button>
-      <button type="button" class="scale-btn" data-scale-btn="up" onclick="stepTextScale(1)"
-              title="Text mai mare" aria-label="Text mai mare">A+</button>
-    </div>
-
-    <!-- Options discovered from assets/skins/*.css — no registry to update. -->
-    <?= otios_skin_select('skin-select--sm') ?>
-
-    <div class="theme-toggle theme-toggle--sm" role="group" aria-label="Temă">
-      <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')"
-              title="Temă deschisă" aria-label="Temă deschisă">☀</button>
-      <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')"
-              title="Temă întunecată" aria-label="Temă întunecată">☾</button>
-    </div>
-
+  <?= $header_nav_extra ?>  
+  <?= $header_tools ?>
     <?= $header_after ?>
   </div>
 </header>

@@ -121,6 +121,7 @@ require_once __DIR__ . '/api/_lib.php';
             title="Clasament">🏆 <span class="play-label">clasament</span></button>
   <?php $header_tools = ob_get_clean();
 
+  $page      = 'joc';
   $brand_tag = 'joc';
   require __DIR__ . '/api/_partials/header.php';
   ?>
@@ -144,7 +145,7 @@ require_once __DIR__ . '/api/_lib.php';
     </div>
   </div>
 
-  <?php $page = 'joc'; require __DIR__ . '/api/_partials/footer.php'; ?>
+  <?php require __DIR__ . '/api/_partials/footer.php'; ?>
 
   <script>var OTIOS_BASE = '<?= BASE ?>';</script>
   <script src="<?= BASE ?>/assets/prefs.js"></script>

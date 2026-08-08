@@ -24,8 +24,8 @@
 
 [data-skin="brutal"] {
   /* Bone paper, black ink. --border is ink too: hairlines are meant to be seen. */
-  --bg:        #EDEAE1;
-  --surface:   #E1DDD1;
+  --bg:        #f7f6f2;
+  --surface:   #f2f1ec;
   --surface-2: #FFFFFF;
   --border:    #14120F;
   --border-2:  #14120F;
@@ -658,26 +658,39 @@
 }
 [data-skin="brutal"] .fs-section { border-bottom: 1px solid var(--border); }
 
-/* Section labels become index tabs — inverted blocks that step down the rail. */
+/* Section labels: type only. These were inverted ink blocks stepping down the
+   rail, which looked good in isolation and terrible five sections deep — with
+   most pills checked by default the rail read as a stack of black bars before
+   you had read a single word of it. Weight and tracking carry the label; see
+   the note on .fs-pill below for why this is a rule and not a preference. */
 [data-skin="brutal"] .fs-label {
   align-self: flex-start;
-  background: var(--ink);
-  color: var(--on-ink);
-  padding: 3px 8px 2px;
   margin-bottom: 8px;
   letter-spacing: var(--tk-eyebrow);
   font-weight: 700;
+  color: var(--text-3);
 }
 
-/* Unchecked stays text-over-nothing per app.css. The hover wash is brutal's
-   one universal interactive tell (same hl-soft every seg-opt/word-row uses),
-   and checked leans on the heavier grotesque rather than a fill — a solid ink
-   block per pill was the wall of boxes this was built to get away from. */
-[data-skin="brutal"] .fs-pill { padding: 4px 9px; }
-[data-skin="brutal"] .fs-pill:hover { background: var(--hl-soft); }
+/* A choice, not a button — the same reasoning app.css states at .fs-pill, which
+   this skin was overriding. Beton's instinct is to box and invert everything,
+   but the Filtre sheet is the one place that instinct compounds: ~25 pills,
+   most of them checked on arrival, each one a filled ink rectangle. Nothing in
+   the rail is louder than the words the rail exists to filter.
+   The mark for "checked" is weight plus Beton's own heavy underline, and the
+   tick and the verdict swatch still say on/off on their own. */
+[data-skin="brutal"] .fs-pill {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-weight: 500;
+  padding: 4px 9px;
+}
+[data-skin="brutal"] .fs-pill:hover { background: transparent; color: var(--text); }
 [data-skin="brutal"] .fs-pill:has(input:checked) {
-  color: var(--ink);
+  background: transparent;
+  color: var(--text);
   font-weight: 700;
+  text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }

@@ -150,6 +150,19 @@
 [data-skin="govuk"] .result-count,
 [data-skin="govuk"] .brand-spinner { color: var(--gv-on-bar-2); }
 
+/* joc/liste + the `?` shortcuts link, same on-black treatment as everything
+   else left in the bar. */
+[data-skin="govuk"] .brand-bar .top-nav-item,
+[data-skin="govuk"] .brand-bar .shortcuts-link { color: var(--gv-on-bar-2); }
+[data-skin="govuk"] .brand-bar .top-nav-item:hover,
+[data-skin="govuk"] .brand-bar .shortcuts-link:hover,
+[data-skin="govuk"] .brand-bar .top-nav-item.is-current { color: var(--gv-on-bar); }
+[data-skin="govuk"] .brand-bar kbd {
+  background: transparent;
+  border-color: var(--gv-on-bar-2);
+  color: var(--gv-on-bar);
+}
+
 [data-skin="govuk"] #search {
   background: #ffffff;
   color: #0b0c0c;
@@ -160,51 +173,25 @@
 }
 [data-skin="govuk"] #search::placeholder { color: #505a5f; }
 
-/* Every control in the bar sits on black. --border/--text-* are page-ground
-   values and would vanish here, so the bar's own two greys are used instead.
-   background-COLOR only on the select: the shorthand would wipe out the caret,
-   which app.css draws as two background-image gradients. */
-[data-skin="govuk"] .brand-bar .view-toggle,
-[data-skin="govuk"] .brand-bar .theme-toggle,
-[data-skin="govuk"] .brand-bar .scale-stepper,
-[data-skin="govuk"] .brand-bar .play-btn,
+/* Everything left in the bar sits on black: search's own toggle button, and
+   the filter button. --border/--text-* are page-ground values and would
+   vanish here, so the bar's own two greys are used instead. Scale/skin/theme
+   and feed/view-toggle moved to the footer (a page-ground surface, not a
+   forced-black masthead) when they moved out of .brand-bar, so they no longer
+   need this re-grounding — the footer's default app.css styling already reads
+   fine in both themes there. */
+[data-skin="govuk"] .brand-bar .search-toggle-btn,
 [data-skin="govuk"] .brand-bar .filter-toggle-btn {
   background: transparent;
   border-color: var(--gv-on-bar-2);
   color: var(--gv-on-bar);
 }
-[data-skin="govuk"] .brand-bar .skin-select {
-  background-color: transparent;
-  border-color: var(--gv-on-bar-2);
-  color: var(--gv-on-bar);
-}
-/* The option list is drawn by the OS on its own ground, so it needs the page's
-   colours back or it renders white-on-white. */
-[data-skin="govuk"] .brand-bar .skin-select option {
-  background: var(--surface-2);
-  color: var(--text);
-}
-[data-skin="govuk"] .brand-bar .vt-btn,
-[data-skin="govuk"] .brand-bar .tg-btn,
-[data-skin="govuk"] .brand-bar .scale-btn { color: var(--gv-on-bar-2); }
-[data-skin="govuk"] .brand-bar .vt-btn + .vt-btn,
-[data-skin="govuk"] .brand-bar .tg-btn + .tg-btn,
-[data-skin="govuk"] .brand-bar .scale-btn + .scale-btn { border-left-color: var(--gv-on-bar-2); }
-[data-skin="govuk"] .brand-bar .vt-btn:hover,
-[data-skin="govuk"] .brand-bar .tg-btn:hover,
-[data-skin="govuk"] .brand-bar .scale-btn:hover { background: var(--gv-bar-hov); color: var(--gv-on-bar); }
-[data-skin="govuk"] .brand-bar .skin-select:hover { background-color: var(--gv-bar-hov); color: var(--gv-on-bar); }
-[data-skin="govuk"] .brand-bar .vt-btn.vt-active,
-[data-skin="govuk"] .brand-bar .tg-btn.tg-active { background: var(--gv-on-bar); color: var(--gv-bar); }
-[data-skin="govuk"] .brand-bar .play-btn:hover,
+[data-skin="govuk"] .brand-bar .search-toggle-btn:hover,
+[data-skin="govuk"] .brand-bar .search-wrap.is-open .search-toggle-btn,
 [data-skin="govuk"] .brand-bar .filter-toggle-btn:hover,
 [data-skin="govuk"] .brand-bar .filter-toggle-btn.filter-toggle-active {
   border-color: var(--gv-on-bar);
   color: var(--gv-on-bar);
-}
-[data-skin="govuk"] .brand-bar .scale-btn:disabled:hover {
-  background: transparent;
-  color: var(--gv-on-bar-2);
 }
 
 /* ── 2. Focus ───────────────────────────────────────────────────────────────
@@ -324,16 +311,20 @@
 
 /* ── Rail and chrome ─────────────────────────────────────────────────────────
    GDS would never leave a checked state unmarked, but it also would never
-   underline something that isn't a link — a govuk-tag (flat, square, grey
-   fill) reads as "selected" without borrowing link semantics, so checked
-   gets that instead of app.css's default underline. */
+   underline something that isn't a link — so checked is bold black against the
+   grey of everything unchecked, which is GDS's own way of saying it.
+   This used to add a grey fill behind the checked pill as well. It was the
+   quietest of the four skins' fills and still wrong: with most pills checked on
+   arrival the rail became a field of grey boxes, which is exactly the wall of
+   boxes app.css removed from .fs-pill in the first place. Weight and colour do
+   the whole job, and the tick beside the label is already unambiguous. */
 [data-skin="govuk"] .fs-pill {
   color: var(--text-3);
   font-family: var(--sans);
 }
 [data-skin="govuk"] .fs-pill:hover { color: var(--text-2); }
 [data-skin="govuk"] .fs-pill:has(input:checked) {
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
   font-weight: 700;
   text-decoration: none;

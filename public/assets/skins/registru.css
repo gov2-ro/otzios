@@ -1,0 +1,611 @@
+/* @skin Registru
+
+   ══════════════════════════════════════════════════════════════════════════════
+   REGISTRU — after patronview.com, adapted rather than copied.
+
+   PatronView is a public record of American cultural philanthropy, and it looks
+   like one: a black masthead, IBM Plex Mono for everything that names or labels,
+   a light Franklin sans for prose, hairline rules instead of cards, zero radius,
+   zero shadow, and one saturated blue used as a highlighter and nowhere else.
+   Oțios is also a public record — of ~17k words the language stopped using — so
+   the fit is close enough that most of the work is done by tokens.
+
+   Source: docs/reference/design-systems/context.dev patronview.com-design.md.
+   (The design-extractor.com file in that folder documents a Cloudflare
+   interstitial it hit instead of the site; its *dark* palette is the only
+   documented one PatronView has, so the dark block below is built from it.)
+
+   Three deliberate deviations:
+
+     · Libre Franklin → Public Sans. The pages load Public Sans, and skins cannot
+       add a <link>. This costs nothing: Public Sans is a fork of Libre Franklin.
+     · Nothing here asks for weight 700. The pages load IBM Plex Mono at 400/500/
+       600 only, so 700 would be synthesised — the reference's bold headlines are
+       rendered at 600 with tighter tracking instead.
+     · --surface is a whisper-grey, not the reference's pure white. Hover states,
+       the rail and the status bar are all painted with it, and white-on-white
+       erases every one of them. It is the one place flatness had to yield.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════
+   TOKENS
+══════════════════════════════════════════ */
+[data-skin="registru"] {
+  --bg:        #FFFFFF;
+  --surface:   #F4F5F6;   /* see the deviation note above */
+  --surface-2: #FFFFFF;
+  --border:    #E5E7EB;   /* reference: tertiary */
+  --border-2:  #D1D5DB;   /* reference: border   */
+
+  /* The reference has two greys, #757575 and #9CA3AF, and black. #9CA3AF is
+     2.6:1 on white — fine for the 11px annotations it carries there, not fine
+     for --text-4, which on this site is real 9px text (the freq superscript).
+     So the bottom two steps collapse onto #757575 (4.6:1), the same compromise
+     govuk.css makes for the same reason. */
+  --text:   #000000;
+  --text-2: #5A5A5A;
+  --text-3: #757575;
+  --text-4: #757575;
+
+  /* Black is the action colour: the primary button, the underlined inline link,
+     the focus ring. There is no second brand hue — the blue below is a
+     highlighter, deliberately not a link colour. */
+  --accent:    #000000;
+  --accent-bg: #DCEEFA;   /* the highlighter, diluted for use as a ground */
+  --on-accent: #FFFFFF;
+  --badge-bg:  #000000;
+  --star:      #0284C7;
+
+  /* Four verdicts on a monochrome page. The reference has no vocabulary for
+     this, so they are pitched as printer's inks: dark enough to read as text
+     rather than as UI, distinct enough in hue to tell apart at word size.
+     -bd carries the saturated value because every badge here is bordered
+     (component rule 4 below) rather than filled. */
+  --v-ext:  #B4231A; --v-ext-bg:  #FBEAE8; --v-ext-bd:  #B4231A; --v-ext-tx:  #A81E14;
+  --v-dec:  #8A6116; --v-dec-bg:  #F8F0DE; --v-dec-bd:  #8A6116; --v-dec-tx:  #7A5410;
+  --v-hist: #14568F; --v-hist-bg: #E4EDF7; --v-hist-bd: #14568F; --v-hist-tx: #1A6099;
+  --v-abs:  #5B3E8F; --v-abs-bg:  #ECE7F5; --v-abs-bd:  #5B3E8F; --v-abs-tx:  #6A4AA3;
+
+  --success: #0B6B33; --success-bg: #E3F1E8; --success-border: #0B6B33;
+  --error:   #B00020; --error-bg:   #FBE8EB; --error-border:   #B00020;   /* reference error */
+
+  --sans:  'Public Sans', 'Libre Franklin', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:  'IBM Plex Mono', ui-monospace, monospace;
+  /* The identity move. There is no serif in the reference — its display voice is
+     bold mono, and pointing --serif there turns every headword, panel title and
+     hover card into a record in an index rather than a word in a book. Body copy
+     that would suffer from it is sent back to --sans by rule 8. */
+  --serif: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* rounded.none, everywhere. The reference allows 8px on cards; mixing is
+     explicitly called out as a don't, so this takes the stricter reading. */
+  --radius: 0;
+
+  /* Plex Mono is wider than Source Serif 4 — ~0.6em per character against the
+     serif's ~0.48 — so the cloud's column has to grow with it or the ellipsis
+     starts eating ordinary words. 12.5rem holds the same share of headwords
+     (~p98) that 10.5rem held for the serif. */
+  --word-col: 12.5rem;
+
+  /* Skin-private.
+     --rg-mark is the one saturated colour on the page: the §-tag highlighter.
+     It is reserved for "what is marking this view right now" — the active
+     filter chips and their count — and used nowhere else. */
+  --rg-mark:     #4CC3F5;
+  --rg-on-mark:  #000000;
+  --rg-bar:      #000000;
+  --rg-bar-edge: #000000;
+  --rg-on-bar:   #FFFFFF;
+  --rg-on-bar-2: #9CA3AF;   /* 7.4:1 on the bar */
+  --rg-bar-hov:  #262626;
+  --rg-grey:     #757575;   /* reference: button-primary-hover */
+}
+
+/* Dark. Built from the only dark palette the site documents (the interstitial):
+   #000 ground, #F2F2F2 text, #B6B6B6 muted, #82B6FF link. Black is still the
+   action colour, which on a black ground means white — the button inverts, the
+   masthead stays. */
+[data-skin="registru"][data-theme="dark"] {
+  --bg:        #000000;
+  --surface:   #121212;
+  --surface-2: #171717;
+  --border:    #2A2A2A;
+  --border-2:  #454545;
+
+  --text:   #F2F2F2;
+  --text-2: #D0D0D0;
+  --text-3: #B6B6B6;
+  --text-4: #949494;   /* 6.8:1 on the ground — the 9px superscript reads this */
+
+  --accent:    #FFFFFF;
+  --accent-bg: #12283C;
+  --on-accent: #000000;
+  --badge-bg:  #F2F2F2;
+  --star:      #82B6FF;
+
+  --v-ext:  #F07A6B; --v-ext-bg:  #2A100C; --v-ext-bd:  #F07A6B; --v-ext-tx:  #F2A093;
+  --v-dec:  #DBA640; --v-dec-bg:  #241B08; --v-dec-bd:  #DBA640; --v-dec-tx:  #E8C87C;
+  --v-hist: #82B6FF; --v-hist-bg: #0E1E33; --v-hist-bd: #82B6FF; --v-hist-tx: #A8CCFF;
+  --v-abs:  #B69AE8; --v-abs-bg:  #1C142E; --v-abs-bd:  #B69AE8; --v-abs-tx:  #C9B4F0;
+
+  --success: #6FCF8E; --success-bg: #0C2415; --success-border: #6FCF8E;
+  --error:   #F07A6B; --error-bg:   #2A100C; --error-border:   #F07A6B;
+
+  --rg-mark:     #82B6FF;   /* the interstitial's own link blue */
+  --rg-on-mark:  #000000;
+  --rg-bar:      #0A0A0A;
+  --rg-bar-edge: #2E2E2E;   /* black-on-black needs a seam; white did not */
+  --rg-on-bar:   #F2F2F2;
+  --rg-on-bar-2: #B6B6B6;
+  --rg-bar-hov:  #242424;
+  --rg-grey:     #6A6A6A;
+}
+
+/* ══════════════════════════════════════════
+   COMPONENT RULES
+
+   What tokens could not say:
+
+     1. the black masthead, and every control in it re-grounded
+     2. flat — the eight shadows and every hardcoded radius in app.css
+     3. the 3px hard focus outline
+     4. bordered square tags instead of tinted pills
+     5. the black rectangle button, mono caps, grey on hover
+     6. §-tag section labels, and the blue highlighter on active filters
+     7. the stat strip: rules top and bottom, left-aligned, caps labels
+     8. body copy sent back to the sans, and italics removed
+══════════════════════════════════════════ */
+
+/* ── 1. Masthead ────────────────────────────────────────────────────────────
+   Black in both themes — the reference has no light header, and in dark the
+   page ground is black too, so the bar earns a seam rather than a contrast. */
+[data-skin="registru"] .brand-bar {
+  background: var(--rg-bar);
+  border-bottom: 1px solid var(--rg-bar-edge);
+}
+[data-skin="registru"] .brand-name {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 1.25rem;
+  letter-spacing: -0.04em;
+  color: var(--rg-on-bar);
+}
+[data-skin="registru"] .brand-id:hover .brand-name { color: var(--rg-on-bar-2); }
+[data-skin="registru"] .brand-tag {
+  color: var(--rg-on-bar-2);
+  letter-spacing: 0.14em;
+}
+[data-skin="registru"] .brand-sep     { background: var(--rg-on-bar-2); }
+[data-skin="registru"] .result-count,
+[data-skin="registru"] .brand-spinner { color: var(--rg-on-bar-2); }
+
+/* joc/liste + the `?` shortcuts link, same on-black treatment as everything
+   else left in the bar. */
+[data-skin="registru"] .brand-bar .top-nav-item,
+[data-skin="registru"] .brand-bar .shortcuts-link { color: var(--rg-on-bar-2); }
+[data-skin="registru"] .brand-bar .top-nav-item:hover,
+[data-skin="registru"] .brand-bar .shortcuts-link:hover,
+[data-skin="registru"] .brand-bar .top-nav-item.is-current { color: var(--rg-on-bar); }
+[data-skin="registru"] .brand-bar kbd {
+  background: transparent;
+  border-color: var(--rg-on-bar-2);
+  color: var(--rg-on-bar);
+}
+
+/* The reference's input: square, white, sans, body-md. app.css sets it in
+   italic serif, which is the opposite of every one of those. */
+[data-skin="registru"] #search {
+  background: #FFFFFF;
+  color: #000000;
+  border: 1px solid #FFFFFF;
+  font-family: var(--sans);
+  font-style: normal;
+  font-size: 0.8125rem;
+}
+[data-skin="registru"] #search::placeholder { color: var(--rg-grey); }
+[data-skin="registru"] #search:focus {
+  border-color: #FFFFFF;
+  box-shadow: none;
+}
+
+/* Everything left in the bar sits on black: search's own toggle button, and
+   the filter button. --border and the --text-* ramp are page-ground values
+   and disappear here, so the bar's own two tones stand in. Scale/skin/theme
+   and feed/view-toggle moved to the footer (a page-ground surface, not a
+   forced-black masthead) when they moved out of .brand-bar, so they no longer
+   need this re-grounding — the footer's default app.css styling already reads
+   fine in both themes there. */
+[data-skin="registru"] .brand-bar .search-toggle-btn,
+[data-skin="registru"] .brand-bar .filter-toggle-btn {
+  background: transparent;
+  border-color: var(--rg-on-bar-2);
+  color: var(--rg-on-bar);
+}
+[data-skin="registru"] .brand-bar .search-toggle-btn:hover,
+[data-skin="registru"] .brand-bar .search-wrap.is-open .search-toggle-btn,
+[data-skin="registru"] .brand-bar .filter-toggle-btn:hover,
+[data-skin="registru"] .brand-bar .filter-toggle-btn.filter-toggle-active {
+  border-color: var(--rg-on-bar);
+  color: var(--rg-on-bar);
+}
+[data-skin="registru"] .brand-bar .scale-btn:disabled:hover {
+  background: transparent;
+  color: var(--rg-on-bar-2);
+}
+
+/* ── 2. Flat, and square ────────────────────────────────────────────────────
+   "Elevated surfaces should not feel lifted; they should feel filed." Depth in
+   app.css is eight shadows, three of them behind !important in the responsive
+   rules, so those need it back. */
+[data-skin="registru"] #hover-box,
+[data-skin="registru"] .filter-sheet,
+[data-skin="registru"] .feed-card,
+[data-skin="registru"] #shortcuts-modal,
+[data-skin="registru"] #board-modal { box-shadow: none; }
+[data-skin="registru"] #detail-panel { box-shadow: none; }
+[data-skin="registru"] #app.has-panel #detail-panel { box-shadow: none !important; }
+[data-skin="registru"] #detail-panel.panel-open     { box-shadow: none !important; }
+
+/* --radius squares most of the site; these carry their own number. */
+[data-skin="registru"] #hover-box,
+[data-skin="registru"] .filter-sheet,
+[data-skin="registru"] .feed-card,
+[data-skin="registru"] #shortcuts-modal,
+[data-skin="registru"] #board-modal,
+[data-skin="registru"] .toast,
+[data-skin="registru"] .fs-handle,
+[data-skin="registru"] .fs-dot,
+[data-skin="registru"] .fs-check,
+[data-skin="registru"] .lg-sw,
+[data-skin="registru"] .legend-sw,
+[data-skin="registru"] .list-pub,
+[data-skin="registru"] .filter-count-badge,
+[data-skin="registru"] .verdict-badge::before,
+[data-skin="registru"] .af-chip,
+[data-skin="registru"] .af-chip button { border-radius: 0; }
+/* The verdict pip is the only round mark left once the above lands. The panel
+   badge draws it as a box, so squaring it is a radius; the table badge draws it
+   as a '●' glyph, so squaring it is a different character. */
+[data-skin="registru"] .verdict-badge::before { width: 7px; height: 7px; }
+[data-skin="registru"] .chip-vbadge::before   { content: '■'; }
+
+/* The sheet is a drawer, not a card — a hard top edge rather than a lip. */
+[data-skin="registru"] .filter-sheet { border-top: 2px solid var(--text); }
+
+/* ── 3. Focus ───────────────────────────────────────────────────────────────
+   3px, offset 0, in the text colour — the reference's own probe-confirmed
+   values. On the black masthead --text is invisible, so it flips to the bar's
+   ink there. */
+[data-skin="registru"] a:focus-visible,
+[data-skin="registru"] button:focus-visible,
+[data-skin="registru"] input:focus-visible,
+[data-skin="registru"] select:focus-visible,
+[data-skin="registru"] summary:focus-visible,
+[data-skin="registru"] .fs-pill:has(input:focus-visible),
+[data-skin="registru"] .word-row:focus-visible,
+/* #status-bar a is coloured from an id selector, so its focus ring has to be
+   restated at matching weight rather than reaching for !important. */
+[data-skin="registru"] #status-bar a:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 0;
+  border-radius: 0;
+}
+[data-skin="registru"] .brand-bar a:focus-visible,
+[data-skin="registru"] .brand-bar button:focus-visible,
+[data-skin="registru"] .brand-bar select:focus-visible,
+[data-skin="registru"] .brand-bar input:focus-visible {
+  outline: 3px solid var(--rg-on-bar);
+  outline-offset: 0;
+}
+
+/* ── 4. Tags ────────────────────────────────────────────────────────────────
+   "Chips and section tags are small, structural labels rather than decorative
+   pills." Bordered and square, the fill barely tinted: the edge carries the
+   colour, not the ground. Applies to the verdict badges, the detail panel's
+   register tags and the dictionary chips alike. */
+[data-skin="registru"] .verdict-badge,
+[data-skin="registru"] #word-list.word-list-table .chip-vbadge {
+  border: 1px solid currentColor;
+  padding: 2px 7px 2px 5px;
+  font-weight: 600;          /* not 700 — see the header */
+  letter-spacing: 0.12em;
+}
+[data-skin="registru"] .detail-tag,
+[data-skin="registru"] .dict-chip,
+[data-skin="registru"] .syn-chip {
+  border-color: var(--border-2);
+  font-family: var(--mono);
+  font-size: 0.5625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* Synonyms are words, not labels — they keep their case and their reading size,
+   or the one place the UI invites wandering sideways becomes unreadable. */
+[data-skin="registru"] .syn-chip {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.6875rem;
+}
+[data-skin="registru"] .syn-chip--ant { font-style: normal; }
+/* Restated: the rule above outranks .dict-chip--year on specificity and would
+   otherwise flatten the last-attestation chip back into the row it leads. */
+[data-skin="registru"] .dict-chip--year { border-color: var(--v-ext-bd); }
+
+/* ── 5. Buttons ─────────────────────────────────────────────────────────────
+   button-primary: black rectangle, white mono caps, hovering to the grey
+   support tone rather than to an opacity. */
+[data-skin="registru"] .fs-apply,
+[data-skin="registru"] .dex-link {
+  background: var(--text);
+  color: var(--bg);
+  border: 1px solid var(--text);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+[data-skin="registru"] .fs-apply:hover,
+[data-skin="registru"] .dex-link:hover {
+  background: var(--rg-grey);
+  border-color: var(--rg-grey);
+  color: #FFFFFF;
+  opacity: 1;
+}
+
+/* button-secondary: the same rectangle inverted, for the rail's own controls. */
+[data-skin="registru"] .reset-btn,
+[data-skin="registru"] .qt-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--text);
+  color: var(--text);
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-skin="registru"] .reset-btn:hover,
+[data-skin="registru"] .qt-btn:hover {
+  background: var(--border);
+  border-color: var(--text);
+  color: var(--text);
+}
+
+/* Links are black and underlined, thickening on hover — there is no link hue
+   in this system, so the underline is the whole affordance. */
+[data-skin="registru"] #status-bar a,
+[data-skin="registru"] .fs-reset {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+[data-skin="registru"] #status-bar a:hover,
+[data-skin="registru"] .fs-reset:hover {
+  color: var(--text);
+  text-decoration-thickness: 2px;
+}
+
+/* ── 6. Section labels and the highlighter ──────────────────────────────────
+   The reference's "§01 · INSTITUTIONS" block is a filled rectangle of mono caps
+   introducing a band of content, and the filter sheet's section labels are
+   structurally the same thing — but PatronView spends that block once per
+   screen, on a page-width band. The rail has eight of them stacked in a 280px
+   column, and eight filled rectangles is a wall, not a rhythm. The label keeps
+   the mono caps and the wide tracking; the section rule underneath it (app.css
+   draws one on every .fs-section) already does the banding. */
+[data-skin="registru"] .fs-label {
+  letter-spacing: 0.14em;
+  margin-bottom: 8px;
+}
+[data-skin="registru"] .fs-title,
+[data-skin="registru"] .stat-card-title,
+[data-skin="registru"] .fp-extra-label {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+/* The blue is spent here and nowhere else: what is filtering this view right
+   now, and how many of them there are. One highlight per screen, which is what
+   the reference does with it. */
+[data-skin="registru"] .af-chip {
+  background: var(--rg-mark);
+  border-color: var(--rg-mark);
+  color: var(--rg-on-mark);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-skin="registru"] .af-chip button {
+  background: var(--rg-on-mark);
+  color: var(--rg-mark);
+}
+[data-skin="registru"] .filter-count-badge {
+  background: var(--rg-mark);
+  color: var(--rg-on-mark);
+}
+[data-skin="registru"] .af-clear-all {
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* A picked filter is stated in weight and ink, with no ground behind it. The
+   reference does mark state with a ground — but on tabs and buttons, never on a
+   list of choices, and app.css took the fill off .fs-pill for a reason a skin
+   does not get to overrule: most of these are checked when you arrive, so a
+   fill is not a highlight, it is the background of the rail. */
+[data-skin="registru"] .fs-pill:has(input:checked) {
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ── 7. Stat strip ──────────────────────────────────────────────────────────
+   The one component the reference states almost literally: a band ruled top and
+   bottom, split by hairlines, each cell a big tabular mono figure over a tiny
+   letterspaced caps label, both flush left. app.css centres them and sets the
+   label in serif italic. */
+[data-skin="registru"] .stats-summary {
+  background: var(--bg);
+  border-top: 2px solid var(--text);
+  border-bottom: 2px solid var(--text);
+}
+[data-skin="registru"] .stat-num {
+  align-items: flex-start;
+  padding: 14px 16px;
+  gap: 6px;
+  border-right-color: var(--border-2);
+}
+[data-skin="registru"] .stat-n {
+  font-weight: 600;
+  font-size: 1.75rem;
+  letter-spacing: -0.035em;
+}
+[data-skin="registru"] .stat-l {
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 0.5625rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+/* --border is a rule on the page ground; the card head sits on --surface, where
+   it disappears. --border-2 is the "when more definition is needed" tone. */
+[data-skin="registru"] .stat-card-head {
+  border-bottom: 1px solid var(--border-2);
+  padding-bottom: 6px;
+}
+
+/* Bars are ink on a hairline track, square like everything else. Two of the
+   eight fills in app.css are hardcoded hexes rather than tokens — #6366f1 for
+   part-of-speech and #059669 for domain — so no skin can reach them by
+   redeclaring anything, and on a page that is otherwise black, white and one
+   blue they are by some distance the loudest thing on it. The four verdict
+   fills keep their colour: those repeat the footer legend, and dropping them
+   to ink would cost real information. */
+[data-skin="registru"] .bar-track,
+[data-skin="registru"] .bar-fill { border-radius: 0; }
+[data-skin="registru"] .bar-track { background: var(--border); }
+[data-skin="registru"] .bar-fill--pos,
+[data-skin="registru"] .bar-fill--dom { background: var(--text); }
+
+/* ── 8. Type ────────────────────────────────────────────────────────────────
+   --serif points at Plex Mono, which is right for anything that names a thing
+   and wrong for anything you read in sentences. These send the prose back. */
+[data-skin="registru"] .definition-text,
+[data-skin="registru"] #hb-def,
+[data-skin="registru"] .fp-nodef,
+[data-skin="registru"] .word-list-empty,
+[data-skin="registru"] .feed-empty,
+[data-skin="registru"] .stats-empty,
+[data-skin="registru"] .bar-empty,
+[data-skin="registru"] .stat-card-sub,
+[data-skin="registru"] .shortcuts-group,
+[data-skin="registru"] #status-bar .status-home {
+  font-family: var(--sans);
+  font-style: normal;
+}
+[data-skin="registru"] .definition-text { line-height: 1.55; }
+
+/* Plex Mono italic is not among the loaded weights, so every italic left in
+   app.css would be synthesised as an oblique. The reference has no italic
+   anywhere in any case. */
+[data-skin="registru"] .fp-nodef,
+[data-skin="registru"] .lg-mark { font-style: normal; }
+
+/* Headwords: the display voice, at 600 with the reference's tight tracking.
+   No --v-*-word ramp is defined — the fallback to --v-*-tx is the printer's-ink
+   ramp above, which is already pitched for word-sized text on white. */
+[data-skin="registru"] .word-text {
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+[data-skin="registru"] .fp-title,
+[data-skin="registru"] #hb-word {
+  font-weight: 600;
+  letter-spacing: -0.045em;
+}
+[data-skin="registru"] .list-name,
+[data-skin="registru"] .lista-word,
+[data-skin="registru"] .shortcuts-header,
+[data-skin="registru"] .board-head { letter-spacing: -0.02em; }
+
+/* Nav is the reference's masthead menu, moved to the foot: mono, caps, spaced.
+   No colour of its own — #status-bar a above already sets it, and the current
+   page's accent underline is drawn from --accent. */
+[data-skin="registru"] .nav-label {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+[data-skin="registru"] #status-bar {
+  background: var(--bg);
+  border-top: 1px solid var(--border-2);
+  letter-spacing: 0.06em;
+}
+
+/* Table view is the closest thing here to the reference's ranked listings:
+   a rule under nothing, hairlines between rows, and the headword column doing
+   all the work. It only needs its own top edge to read as a table. */
+[data-skin="registru"] #word-list.word-list-table .word-row { border-bottom-color: var(--border); }
+[data-skin="registru"] #word-list.word-list-table .word-row:first-child { border-top: 2px solid var(--text); }
+
+/* ── joc.php ────────────────────────────────────────────────────────────────
+   The game's styles are page-local rather than in app.css, and they carry their
+   own radii (16px card, 14px mode pills, 10px choices) and a shadow — none of
+   which --radius can reach. The headword keeps the display voice; the four
+   answers are prose and go to the sans, like every other definition. */
+[data-skin="registru"] .joc-card {
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--bg);
+  border-color: var(--text);
+}
+/* joc's mode switch lives in the masthead, and it paints its selected state with
+   --accent — which in this skin is black, i.e. invisible on a black bar. It
+   takes the same treatment as every other toggle up there: the bar's ink as the
+   fill, the bar itself as the label. Same reason .joc-score is restated: it is
+   set in --text-3, a page-ground grey. */
+[data-skin="registru"] .joc-mode {
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.6875rem;
+  background: transparent;
+  border-color: var(--rg-on-bar-2);
+  color: var(--rg-on-bar-2);
+}
+[data-skin="registru"] .joc-mode:hover { background: var(--rg-bar-hov); color: var(--rg-on-bar); }
+[data-skin="registru"] .joc-mode.active {
+  background: var(--rg-on-bar);
+  border-color: var(--rg-on-bar);
+  color: var(--rg-bar);
+}
+[data-skin="registru"] .joc-score { color: var(--rg-on-bar-2); }
+/* The leaderboard modal's buttons — 21px pills in joc.php's own stylesheet. */
+[data-skin="registru"] .joc-btn {
+  border-radius: 0;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+[data-skin="registru"] .joc-choice {
+  border-radius: 0;
+  border-width: 1px;
+  background: var(--surface-2);
+  font-family: var(--sans);
+  font-size: 1rem;
+}
+[data-skin="registru"] .joc-def { font-family: var(--sans); font-style: normal; }
+
+/* Colour emoji are the loudest thing on a page that is otherwise black, white
+   and one blue. Drained rather than hidden — they still carry shape, and some
+   controls have no other mark. Not applied to #status-bar a: those links are
+   ink here, and a greyed emoji beside black text is just a duller black. */
+[data-skin="registru"] .chip-dict,
+[data-skin="registru"] .play-btn,
+[data-skin="registru"] .joc-mode,
+[data-skin="registru"] .joc-choice::before { filter: grayscale(1); }

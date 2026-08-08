@@ -89,7 +89,7 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
   </style>
 </head>
 <body>
-  <?php $brand_tag = 'liste'; require __DIR__ . '/api/_partials/header.php'; ?>
+  <?php $page = 'liste'; $brand_tag = 'liste'; require __DIR__ . '/api/_partials/header.php'; ?>
 
   <div class="lista-wrap">
     <h1 class="liste-h1">Liste</h1>
@@ -176,7 +176,7 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
     </section>
   </div>
 
-  <?php $page = 'liste'; require __DIR__ . '/api/_partials/footer.php'; ?>
+  <?php require __DIR__ . '/api/_partials/footer.php'; ?>
 
   <script>var OTIOS_BASE = '<?= BASE ?>';</script>
   <script src="<?= BASE ?>/assets/prefs.js"></script>

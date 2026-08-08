@@ -55,35 +55,46 @@ global $QUICK_TAGS, $POS_OPTIONS;
        Nav lives in the footer; see api/_partials/header.php for why.
   ══════════════════════════════════════════ -->
   <?php
+  $page = 'index';
+
   ob_start(); ?>
-    <input id="search" form="filter-form"
-           type="text" name="q" placeholder="caută un cuvânt…"
-           hx-get="<?= BASE ?>/api/search.php" hx-trigger="input changed delay:200ms"
-           hx-target="#word-list" hx-include="#filter-form, #search" autocomplete="off"
-           title="Caută (diacriticele opționale: 'otios' găsește 'oțios')">
+    <!-- Opens the shortcuts/legend modal — explorer-only, so it rides along in
+         $header_nav_extra rather than living in header.php itself. `kbd` is
+         display:none below 768px (shortcuts mean nothing on a phone), which
+         left this a zero-width tap target — and the modal is where the colour
+         legend lives on narrow screens, since the footer legend hides below
+         1280px. So the label falls back to a word there rather than
+         disappearing. -->
+    <a href="#" class="shortcuts-link" onclick="showShortcuts();return false;"
+       title="Legendă și scurtături"><kbd>?</kbd><span class="shortcuts-alt">legendă</span></a>
+  <?php $header_nav_extra = ob_get_clean();
+
+  ob_start(); ?>
+    <!-- Collapsed behind a magnifier by default — see openSearch()/closeSearchIfEmpty()
+         in app.js. Opens on click, on the `/` shortcut, or already-open if the page
+         loaded with a `q` in the URL (applyUrlToForm sets the value; the open check
+         runs right after it). -->
+    <div class="search-wrap" id="search-wrap">
+      <button type="button" class="search-toggle-btn" id="search-toggle-btn"
+              onclick="openSearch(true)" aria-label="Caută" aria-expanded="false"
+              aria-controls="search" title="Caută (/)">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/>
+          <line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <input id="search" form="filter-form"
+             type="text" name="q" placeholder="caută un cuvânt…"
+             hx-get="<?= BASE ?>/api/search.php" hx-trigger="input changed delay:200ms"
+             hx-target="#word-list" hx-include="#filter-form, #search" autocomplete="off"
+             onblur="closeSearchIfEmpty()"
+             title="Caută (diacriticele opționale: 'otios' găsește 'oțios')">
+    </div>
   <?php $header_center = ob_get_clean();
 
   ob_start(); ?>
     <span class="htmx-indicator brand-spinner" aria-hidden="true">…</span>
     <span id="result-count" class="result-count"><?= number_format((int)$total) ?></span>
-
-    <!-- Play modes (moved out of the filter panel — always reachable) -->
-    <div class="play-group" role="group" aria-label="Moduri de joc">
-      <!-- 🎲 hidden pending a manual-selection design; surpriseWord() is still
-           bound to the `r` shortcut and can be re-enabled by unhiding this. -->
-      <button type="button" class="play-btn" onclick="surpriseWord()" hidden
-              title="Cuvânt aleator din selecția curentă (r)">🎲 <span class="play-label">la întâmplare</span></button>
-      <button type="button" class="play-btn" onclick="enterFeed()"
-              title="Mod card: cuvânt cu cuvânt (f)">📇 <span class="play-label">feed</span></button>
-    </div>
-
-    <!-- View toggle: cloud ⊞ / table ≡ -->
-    <div class="view-toggle" id="view-toggle" role="group" aria-label="Mod de afișare">
-      <button type="button" class="vt-btn vt-active" id="btn-cloud" aria-pressed="true"
-              onclick="setView('cloud')" title="Nor de cuvinte" aria-label="Nor de cuvinte">⊞</button>
-      <button type="button" class="vt-btn" id="btn-table" aria-pressed="false"
-              onclick="setView('table')" title="Tabel" aria-label="Tabel">≡</button>
-    </div>
   <?php $header_tools = ob_get_clean();
 
   ob_start(); ?>
@@ -233,9 +244,19 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <option value="15">≥ 15 dicționare</option>
         </select>
         <?php if (db_has_column('newest_dict_year')): ?>
-        <!-- Cel mai recent dicționar care încă tipărește cuvântul. Aproape tot ce
-             răspunde la asta stă în seamul „curiozități”: „relevante” cere deja
-             prezența într-un dicționar de după 2005. -->
+        <!-- Cel mai recent dicționar care încă tipărește cuvântul, ca interval — după
+             Y1, înainte de Y2. Aproape tot ce răspunde la asta stă în seamul
+             „curiozități”: „relevante” cere deja prezența într-un dicționar de după
+             2005, deci „după” e aproape mereu adevărat acolo și „înainte” aproape
+             mereu fals. -->
+        <select name="attested_after" class="fs-select tax-select" data-default=""
+                title="Cel mai recent dicționar în care apare cuvântul e din anul ales sau mai nou">
+          <option value="">ultima atestare: oricând</option>
+          <option value="1970">după 1970</option>
+          <option value="1990">după 1990</option>
+          <option value="2005">după 2005</option>
+          <option value="2010">după 2010</option>
+        </select>
         <select name="attested_before" class="fs-select tax-select" data-default=""
                 title="Cel mai recent dicționar în care apare cuvântul e mai vechi de anul ales">
           <option value="">ultima atestare: oricând</option>
@@ -386,18 +407,11 @@ global $QUICK_TAGS, $POS_OPTIONS;
   </div><!-- .word-area -->
   </div><!-- .layout-row -->
 
-  <!-- Status bar — shared nav, plus the two things only the explorer has -->
+  <!-- Status bar — shared nav, plus the one thing only the explorer has -->
   <?php
-  $page = 'index';
   ob_start(); ?>
     <span id="status-word-count"><?= (int)$total ?></span> cuvinte · <span id="bookmark-count">0</span> favorite
     <button id="share-bookmarks-btn" onclick="shareBookmarks()" title="Copiază URL playlist" style="display:none">share ↗</button>
-    <!-- `kbd` is display:none below 768px (shortcuts mean nothing on a phone), which
-         left this a zero-width tap target — and the modal is where the colour legend
-         lives on narrow screens, since the footer legend hides below 1280px. So the
-         label falls back to a word there rather than disappearing. -->
-    <a href="#" class="shortcuts-link" onclick="showShortcuts();return false;"
-       title="Legendă și scurtături"><kbd>?</kbd><span class="shortcuts-alt">legendă</span></a>
   <?php $footer_left = ob_get_clean();
 
   ob_start(); ?>
@@ -416,6 +430,27 @@ global $QUICK_TAGS, $POS_OPTIONS;
       <span class="lg"><i class="lg-freq">42</i>frecvență DEX</span>
     </span>
   <?php $footer_extra = ob_get_clean();
+
+  ob_start(); ?>
+    <!-- Play modes (moved out of the filter panel — always reachable). Both
+         hidden pending a home for them outside the footer: 🎲/surpriseWord()
+         stays bound to the `r` shortcut, 📇/enterFeed() has no shortcut of its
+         own yet. Either can come back by unhiding it. -->
+    <div class="play-group" role="group" aria-label="Moduri de joc">
+      <button type="button" class="play-btn" onclick="surpriseWord()" hidden
+              title="Cuvânt aleator din selecția curentă (r)">🎲 <span class="play-label">la întâmplare</span></button>
+      <button type="button" class="play-btn" onclick="enterFeed()" hidden
+              title="Mod card: cuvânt cu cuvânt (f)">📇 <span class="play-label">feed</span></button>
+    </div>
+
+    <!-- View toggle: cloud ⊞ / table ≡ -->
+    <div class="view-toggle" id="view-toggle" role="group" aria-label="Mod de afișare">
+      <button type="button" class="vt-btn vt-active" id="btn-cloud" aria-pressed="true"
+              onclick="setView('cloud')" title="Nor de cuvinte" aria-label="Nor de cuvinte">⊞</button>
+      <button type="button" class="vt-btn" id="btn-table" aria-pressed="false"
+              onclick="setView('table')" title="Tabel" aria-label="Tabel">≡</button>
+    </div>
+  <?php $footer_tools = ob_get_clean();
 
   require __DIR__ . '/api/_partials/footer.php';
   ?>

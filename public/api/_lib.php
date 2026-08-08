@@ -375,14 +375,22 @@ function build_word_filter(array $p): array {
     // A lexicographic signal, entirely independent of the corpus work — a word whose
     // most recent dictionary is Șăineanu (1929) is forgotten in a way one still in
     // DOOM 3 (2021) is not. Mostly useful on the `curiosity` seam: `relevant` requires
-    // `in_current_dict` (2005+) to begin with, so it is 2010+ almost by construction.
+    // `in_current_dict` (2005+) to begin with, so `attested_after` is close to always
+    // true there and `attested_before` close to always false — both filters are built
+    // for drilling into `curiosity`, not `relevant`.
     //
-    // Rows with no year are excluded when a ceiling is set. 453 words have none — the
-    // dictionary is unnamed or unmatched — and "unknown" is not evidence of age.
+    // Rows with no year are excluded when either bound is set. 453 words have none —
+    // the dictionary is unnamed or unmatched — and "unknown" is not evidence of age
+    // in either direction.
     $attested_before = (int)trim($p['attested_before'] ?? '');
     if ($attested_before > 0 && db_has_column('newest_dict_year')) {
         $conditions[] = 'newest_dict_year IS NOT NULL AND newest_dict_year < ?';
         $params[]     = $attested_before;
+    }
+    $attested_after = (int)trim($p['attested_after'] ?? '');
+    if ($attested_after > 0 && db_has_column('newest_dict_year')) {
+        $conditions[] = 'newest_dict_year IS NOT NULL AND newest_dict_year >= ?';
+        $params[]     = $attested_after;
     }
 
     // DEX frequency ceiling (only meaningful for the rare_in_use tab).

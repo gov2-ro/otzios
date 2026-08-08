@@ -699,6 +699,12 @@ stay the same under every skin. Noticed while checking `govuk`, which is otherwi
 strictly black/white/blue. Low priority — the page reads fine — but it is the one place a
 skin visibly does not reach.
 
+Hit again by `registru` (2026-08-08), which is black/white/one-blue and where indigo and
+emerald bars were by some distance the loudest thing on the stats page. That skin patches
+both fills to `var(--text)` in its own file, so this is now worked around twice rather
+than fixed once — two tokens (`--bar-pos`, `--bar-dom`, defaulting to the current hexes)
+would retire it. Second skin to need it is usually the point to stop working around.
+
 ## Filter by dictionary — which one, and how recent (2026-08-06)
 
 Counting dictionaries is already done: `dict_min` in the filter rail offers ≥3 / ≥6 /

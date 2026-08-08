@@ -260,14 +260,17 @@ Two things to preserve when touching these:
 ### `newest_dict_year` — last attestation
 
 The newest dictionary that still prints a word, from `Source.year` via `dict_sources.db`.
-97% coverage (15,862 of 16,315). Exposed as `sort=attested`, the `attested_before=<year>`
-filter, and the lead chip in the detail panel's dictionary row.
+97% coverage (15,862 of 16,315). Exposed as `sort=attested`, the `attested_before=<year>` /
+`attested_after=<year>` filters (a band when both are set — `attested_after` is `>=`,
+`attested_before` is `<`, so they never overlap at the shared boundary year), and the lead
+chip in the detail panel's dictionary row.
 
-**It is a `curiosity`-seam instrument.** The `relevant` seam requires `in_current_dict`
-(2005+) to qualify, so it is 2,806 words at 2010+ and 9 below — the filter says almost
-nothing there by construction. On `curiosity` it is sharp: 225 words were last printed
-before 1970, and that slice is almost entirely pre-1953-reform orthography (`desbatere`,
-`sburătoare`, `răsvrătit`, `vuet`).
+**Both filters are `curiosity`-seam instruments.** The `relevant` seam requires
+`in_current_dict` (2005+) to qualify, so `attested_after` is close to always true there and
+`attested_before` close to always false — neither says much there by construction. On
+`curiosity` both are sharp: 225 words were last printed before 1970, and that slice is
+almost entirely pre-1953-reform orthography (`desbatere`, `sburătoare`, `răsvrătit`,
+`vuet`); the ~11.4k at 2005+ are `attested_after`'s more ordinary end of the range.
 
 Rows with no year are excluded when a ceiling is set, and sort last. "Unknown" means the
 dictionary is unnamed or unmatched — it is not evidence that a word is old.
@@ -365,6 +368,7 @@ public/assets/skins/
   _template.css   # copy this; underscore-prefixed files are skipped by the scanner
   brutal.css      # "Beton"  — the full brutalist skin, ~1080 lines
   govuk.css       # "Guvern" — GOV.UK Design System homage, ~330 lines
+  registru.css    # "Registru" — patronview.com homage, mono headwords, ~620 lines
   tezaur.css      # "Tezaur" — thesaurus.com homage, tinted word pills, ~210 lines
   velin.css       # "Velin"  — worked example, tokens only, ~70 lines
 ```
@@ -412,10 +416,42 @@ durable; component rules are neither. This is why `velin.css` is 68 lines and
 Colours that differ between light and dark must be tokens declared in **both** blocks;
 hardcoding one is the most common way a skin ends up unreadable at night.
 
+### The Filtre rail is type only — no skin gets a fill there
+
+`.fs-pill` and `.fs-label` carry **no background and no border**, in any state, in any
+skin. Checked is said with colour, weight, and at most an underline; the tick and the
+verdict swatch inside the pill already state on/off on their own.
+
+This is not a stylistic preference, which is why it is a rule rather than a note in one
+skin: **most of these pills are checked when you arrive.** A fill on a checked pill is
+therefore not a highlight, it is the background of the rail — ~25 filled rectangles
+stacked in a 280px column, louder than the words the rail exists to filter. app.css took
+the fill off `.fs-pill` for exactly this reason (the comment is at its declaration), and
+every skin then put one back independently: `brutal` inverted both the pills and the
+labels to ink blocks, `tezaur` filled them with the accent, `govuk` with `--surface`, and
+`registru` made the labels into §-tags. All four are fixed; the trap is that each one
+looks reasonable while you are writing that skin alone.
+
+`.seg-opt` is the exception and is **not** covered by this. It is a segmented control with
+no tick and no swatch, so the inverted block is the only thing saying which option is
+live — and it is app.css's own treatment, identical under every skin.
+
 `govuk.css` was built partly to find where the contract runs out. It did: the black
 masthead, the yellow focus state, square marks, dotless tags, the green button and the
 inset rule all needed component rules. That list, and the two hooks worth adding if a
 third skin wants them, is in `docs/BACKLOG.md`.
+
+`registru.css` is the first skin to repoint `--serif` at a monospace, and that turned up
+two things worth knowing before the next one does it:
+
+- **`--word-col` moves with the display font.** It was measured against Source Serif 4;
+  Plex Mono is ~25% wider per character, and leaving the token alone puts ordinary
+  headwords into the ellipsis. Treat it as part of the type decision, not a layout one.
+- **A skin whose `--accent` is the page's own ink has to re-ground anything that fills
+  with it inside a dark masthead.** `.joc-mode.active` paints itself `--accent`, which
+  under this skin is black — on a black bar the selected game mode simply disappeared.
+  `govuk` re-grounds the bar's controls for the same reason, so the list of what lives up
+  there is worth copying wholesale rather than rediscovering.
 
 Skin files load with an mtime query string, so edits show on plain reload. A stored skin
 whose file has since been deleted falls back to `DEFAULT_SKIN` (the valid list is baked
@@ -427,34 +463,62 @@ All five pages (`index`, `stats`, `joc`, `lista`, `liste`) draw the same two par
 Before them, each page rolled its own bar and `stats.php` had no brand at all.
 
 ```php
-<?php $brand_tag = 'statistici'; require __DIR__ . '/api/_partials/header.php'; ?>
+<?php $page = 'stats'; $brand_tag = 'statistici'; require __DIR__ . '/api/_partials/header.php'; ?>
 ...
-<?php $page = 'stats';          require __DIR__ . '/api/_partials/footer.php'; ?>
+<?php require __DIR__ . '/api/_partials/footer.php'; ?>
 ```
 
-**Identity at the top, travel at the bottom.** `header.php` is brand + display
-preferences (scale, skin, theme); `footer.php` is the one navigation bar. Nav is *not* in
-the header on purpose — the explorer's top bar already carries brand, search, count, play,
-view and filters, and five more links is what breaks it. The bottom bar is also
-thumb-reachable on a phone, and `index.php` had already put nav there.
+**Identity plus the two live destinations at the top; the rest of travel and the display
+preferences at the bottom.** `header.php` is brand, a top nav of `joc` + `liste` (one click
+from anywhere — the two places people jump to mid-browse), and whatever is genuinely
+page-specific (search, count, play, filters). `footer.php` is `statistici` + `metodologie`
++ GitHub, plus the text-scale/skin/theme toggles, since those are the same on every page.
+`cuvinte` (index) appears in neither — the brand mark already links home on every page, so a
+nav entry to the same place was pure redundancy. The split exists at all because the
+explorer's top bar was already carrying brand, search, count, play and filters, and a full
+five-entry nav plus three toggles is what broke it; `index.php` had already put its counts
+and legend in the bottom bar, which is also thumb-reachable on a phone.
 
-`header.php` takes three optional slots, all raw HTML strings, so a caller can build one
-with `ob_start()` and keep writing ordinary markup: `$header_center` (the explorer's
-search box), `$header_tools` (count/play/view; joc's modes and score), `$header_after`
-(the filter button, which has to stay last). `footer.php` takes `$footer_left` and
-`$footer_extra` (the explorer's counts and colour legend) plus `$page`.
+**Both partials now read `$page`**, so set it *before* requiring `header.php` (not only
+before `footer.php` as it used to be) — it marks the matching entry `aria-current="page"` in
+both the top nav and the footer nav. `lista.php` still deliberately leaves it unset: it is
+not `liste.php`, so nothing in either nav should render as current and stop being clickable.
 
-Three things to preserve:
+`header.php` takes five optional slots, all raw HTML strings, so a caller can build one with
+`ob_start()` and keep writing ordinary markup: `$header_nav_extra` (appended inside the top
+nav, after joc/liste — the explorer's `?` shortcuts/legend link, index-only), `$header_center`
+(the explorer's collapsible search — a magnifier `.search-toggle-btn` that reveals `#search`
+inside `.search-wrap`, see `openSearch()`/`closeSearchIfEmpty()` in `app.js`), `$header_tools`
+(spinner + result count; joc's modes and score), `$header_after` (the filter button, which has
+to stay last). `footer.php` takes `$footer_left` (the explorer's counts), `$footer_extra` (the
+colour legend) and `$footer_tools` (the explorer's cloud/table view toggle — index-only,
+everything else in the footer is universal) plus `$page`. The explorer's feed button
+(`enterFeed()`) is currently `hidden` in the markup rather than wired to either bar — like
+the dormant 🎲 `surpriseWord()` button beside it, it has no home yet, not no code.
 
-1. **`NAV_ITEMS` lives in `_lib.php`**, not in the partial — a `const` in an included
+Four things to preserve:
+
+1. **`NAV_ITEMS` lives in `_lib.php`**, not in either partial — a `const` in an included
    file cannot be guarded against a second include, and it sits with `VERDICTS`/`TIERS`
-   as the other list of user-facing strings drawn on every page.
+   as the other list of user-facing strings drawn on every page. `header.php` reads
+   `NAV_ITEMS['joc']`/`['liste']` directly rather than duplicating path/icon/label;
+   `footer.php` loops `array_diff_key(NAV_ITEMS, array_flip(['index','joc','liste']))`.
 2. **The current page stays an `<a>`** with `aria-current="page"` and an accent underline.
    As a `<span>` it stopped matching every skin's `#status-bar a` rule and needed its own
    colour — and `var(--text)` is a *page*-ground token, which on beton's ink footer meant
    near-black on black. Never give this bar a colour of its own.
-3. **Every nav entry keeps an icon and a label.** Below 900px labels are hidden and the
-   icons carry the bar alone, so an entry without one would vanish.
+3. **Every footer nav entry keeps an icon and a label.** Below 900px labels are hidden and
+   the icons carry the bar alone, so an entry without one would vanish. The top nav's two
+   entries keep both at every width — there was room, and a bare icon pair beside the
+   wordmark is the one thing that bar has space to avoid.
+4. **`govuk` and `registru` force `.brand-bar` black in both themes**, so anything living in
+   it needs on-bar re-grounding in those two skin files (`--gv-on-bar`/`--rg-on-bar`) —
+   `.top-nav-item`, `.shortcuts-link` and `kbd` all needed it when they moved up from the
+   footer, a page-ground surface neither skin forces dark. The reverse also holds: a
+   control that moves *out* of `.brand-bar` (scale/skin/theme, feed/view-toggle, all now in
+   the footer) should have its now-dead `.brand-bar`-scoped rules removed from both files,
+   not left to rot — exactly the risk the skins section above already names for component
+   rules in general.
 
 `lista.php` sets `$brand_tag` but deliberately no `$page`: it is not `liste.php`, so
 nothing in the nav should render as current and stop being clickable.

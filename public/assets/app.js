@@ -645,6 +645,26 @@ function setView(mode) {
 // Theme, skin and text-scale controls live in prefs.js — every page carries
 // those toggles, this file is index-only.
 
+// Search is collapsed behind the magnifier button (.search-wrap) until opened —
+// on click, on the `/` shortcut, or already-open on load if the URL carried a
+// query (see the applyUrlToForm() call site below).
+function openSearch(focus) {
+  var wrap = document.getElementById('search-wrap');
+  if (!wrap) return;
+  wrap.classList.add('is-open');
+  var btn = document.getElementById('search-toggle-btn');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+  if (focus) document.getElementById('search').focus();
+}
+function closeSearchIfEmpty() {
+  var input = document.getElementById('search');
+  if (!input || input.value.trim() !== '') return;
+  var wrap = document.getElementById('search-wrap');
+  if (wrap) wrap.classList.remove('is-open');
+  var btn = document.getElementById('search-toggle-btn');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
 function showShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'flex'; }
 function hideShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'none'; }
 function closePanel() {
@@ -681,7 +701,7 @@ document.addEventListener('keydown', function(e) {
     return;
   }
   if (e.key === 'Escape') { hideShortcuts(); closePanel(); return; }
-  if (e.key === '/') { e.preventDefault(); document.getElementById('search').focus(); return; }
+  if (e.key === '/') { e.preventDefault(); openSearch(true); return; }
   if (e.key === 'j' || e.key === 'ArrowDown')  { e.preventDefault(); navigateSpatial('down');  gPressed = false; return; }
   if (e.key === 'k' || e.key === 'ArrowUp')    { e.preventDefault(); navigateSpatial('up');    gPressed = false; return; }
   if (e.key === 'h' || e.key === 'ArrowLeft')  { e.preventDefault(); navigateSpatial('left');  gPressed = false; return; }
@@ -881,6 +901,7 @@ var AF_SPECS = [
   { name: 'domain',         type: 'select', def: '', label: function(v){ return 'domeniu: ' + v; } },
   { name: 'etymology',      type: 'select', def: '', label: function(v){ return 'etim: ' + v.replace('limba ', ''); } },
   { name: 'dict_min',       type: 'select', def: '', label: function(v){ return 'dicts ≥' + v; } },
+  { name: 'attested_after',  type: 'select', def: '', label: function(v){ return 'atestat ≥' + v; } },
   { name: 'attested_before', type: 'select', def: '', label: function(v){ return 'atestat <' + v; } },
   { name: 'dex_max',        type: 'select', def: 'all', label: function(v){ return 'DEX ' + (v === 'all' ? 'toate' : '≤' + v); } },
   { name: 'zipf_min',       type: 'number',   label: function(v){ return 'zipf ≥' + v; } },
@@ -1022,8 +1043,8 @@ function applyUrlToForm() {
     });
   });
 
-  // Selects: sort, register, domain, etymology, dex_max, dict_min, attested_before, marks
-  ['sort', 'register', 'domain', 'etymology', 'dex_max', 'dict_min', 'attested_before', 'marks'].forEach(function(name) {
+  // Selects: sort, register, domain, etymology, dex_max, dict_min, attested_after, attested_before, marks
+  ['sort', 'register', 'domain', 'etymology', 'dex_max', 'dict_min', 'attested_after', 'attested_before', 'marks'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     var el = form.querySelector('select[name=' + name + ']');
@@ -1098,7 +1119,7 @@ function syncUrlFromForm() {
   });
 
   // Selects (dex_max is handled separately below, appended at the very end)
-  ['sort', 'register', 'domain', 'etymology', 'dict_min', 'attested_before', 'marks'].forEach(function(name) {
+  ['sort', 'register', 'domain', 'etymology', 'dict_min', 'attested_after', 'attested_before', 'marks'].forEach(function(name) {
     var el = form.querySelector('select[name=' + name + ']');
     if (!el) return;
     var val = el.value;
@@ -1141,11 +1162,18 @@ document.getElementById('filter-form') && document.getElementById('filter-form')
     if (form) form.dispatchEvent(new Event('change', { bubbles: true }));
     syncUrlFromForm();
     renderActiveFilters();
+    closeSearchIfEmpty();
   }, 0);
 });
 
 // Apply URL params to form before HTMX fires its initial load request
 applyUrlToForm();
+
+// A query already in the URL means search is already in use — leave the box
+// open rather than collapsing an active search behind the magnifier.
+if (document.getElementById('search') && document.getElementById('search').value.trim() !== '') {
+  openSearch(false);
+}
 
 // Rehydrate open word from URL on page load — definition takes the spotlight.
 // A reload is not a share: refreshing drops the word instead of re-opening the
