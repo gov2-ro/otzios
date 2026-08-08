@@ -285,8 +285,11 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 #### joc.php
 - [ ] filter out too easy queries - word part/segment that repeats in definition
 - [ ] one word can have multiple definitions, include within the choices?
-- [ ] mark words as unworthym, too simple 
-- [ ] add bookmarking, favorites, add to list here - by using the game we create an audit tool
+- [x] mark words as unworthym, too simple 
+- [x] add bookmarking, favorites, add to list here - by using the game we create an audit tool
+- [ ] show definition for failure
+- [ ] move game types in the mid of header nav? 
+- [ ] better emoji for meh - remove
 
 ## Misc
 
@@ -371,6 +374,9 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] make a list with _*-ațiune_
 
+- [ ] hide diminutive? - filter diminutive at least
+
+- [ ] when showing words lists, filters should be disabled
 
 ## Post launch
 
