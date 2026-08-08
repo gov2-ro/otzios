@@ -166,7 +166,6 @@
 [data-skin="brutal"] .chip-dict,
 [data-skin="brutal"] .fp-extra-label,
 [data-skin="brutal"] #status-bar a,
-[data-skin="brutal"] .joc-nav a,
 [data-skin="brutal"] .play-btn,
 [data-skin="brutal"] .joc-mode,
 [data-skin="brutal"] .joc-feedback,
@@ -971,15 +970,11 @@
 
 /* ══════════════════════════════════════════
    JOC — overrides joc.php's own <style> block via attribute specificity
+
+   `.joc-head` and `.joc-title` used to be restated here; joc.php now draws the
+   shared `.brand-bar` instead, which this skin already styles above.
 ══════════════════════════════════════════ */
 
-[data-skin="brutal"] .joc-head { border-bottom: var(--stroke-lg) solid var(--ink); }
-[data-skin="brutal"] .joc-title {
-  font-family: var(--sans);
-  font-weight: 800;
-  letter-spacing: var(--tk-display);
-  font-size: 1.125rem;
-}
 [data-skin="brutal"] .joc-mode {
   border: var(--stroke) solid var(--ink);
   background: var(--surface-2);
@@ -991,7 +986,6 @@
 [data-skin="brutal"] .joc-mode:hover { background: var(--hl); color: var(--on-hl); }
 [data-skin="brutal"] .joc-mode.active { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
 [data-skin="brutal"] .joc-score { font-weight: 700; color: var(--text-2); }
-[data-skin="brutal"] .joc-nav a { font-weight: 600; }
 
 [data-skin="brutal"] .joc-card {
   border: var(--stroke-lg) solid var(--ink);
@@ -1052,7 +1046,7 @@
 [data-skin="brutal"] .lista-item { border-bottom: 1px solid var(--border); }
 [data-skin="brutal"] .lista-word { font-family: var(--sans); font-weight: 800; letter-spacing: var(--tk-display); }
 [data-skin="brutal"] .lista-word:hover { background: var(--hl); color: var(--on-hl); text-decoration: none; }
-[data-skin="brutal"] .lista-nav a { font-weight: 700; text-transform: uppercase; letter-spacing: var(--tk-ui); }
+[data-skin="brutal"] .site-nav a { font-weight: 700; text-transform: uppercase; letter-spacing: var(--tk-ui); }
 
 /* ══════════════════════════════════════════
    MOBILE

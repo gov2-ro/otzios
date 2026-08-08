@@ -26,6 +26,10 @@ $SORT_OPTIONS = [
     'rare'     => 'COALESCE(modern_occ, -1) ASC',
     'declined' => 'rank_shift DESC NULLS LAST',
     'dex_freq' => 'dex_frequency ASC NULLS LAST',
+    // Oldest last attestation first — the word no dictionary has reprinted since
+    // 1929 ahead of the one still in DOOM 3. Nulls last: no year is "unknown",
+    // not "ancient", and 453 of ~16k words have none.
+    'attested' => 'newest_dict_year ASC NULLS LAST, word ASC',
     'alpha'    => 'word ASC',
 ];
 define('DEFAULT_SORT', 'quality');
@@ -102,6 +106,25 @@ const TIERS = [
         'label' => 'dex. absent', 'fill' => 'bar-fill--abs',
         'tip'   => 'Frecvență editorială DEX ridicată, dar zero prezențe în corpus',
     ],
+];
+
+/**
+ * The five destinations of `_partials/footer.php`, in the order they appear.
+ *
+ * Here rather than in the partial for the same reason VERDICTS is: it is the one
+ * list of user-facing strings for a thing drawn on every page, and a `const` in an
+ * included file cannot be guarded against a second include.
+ *
+ * Every entry keeps an icon *and* a label — below 900px the labels are hidden and
+ * the icons carry the bar alone, so an entry without one would vanish. The label
+ * survives as the `title` in that state.
+ */
+const NAV_ITEMS = [
+    'index' => ['path' => '/',                 'icon' => '◈',  'label' => 'cuvinte'],
+    'joc'   => ['path' => '/joc.php',          'icon' => '🎮', 'label' => 'joc'],
+    'stats' => ['path' => '/stats.php',        'icon' => '📊', 'label' => 'statistici'],
+    'liste' => ['path' => '/liste.php',        'icon' => '📋', 'label' => 'liste'],
+    'metod' => ['path' => '/metodologie.html', 'icon' => '🧐', 'label' => 'metodologie'],
 ];
 
 function verdict_label(?string $v): string { return VERDICTS[$v ?? '']['label'] ?? 'neclasificat'; }
@@ -345,6 +368,21 @@ function build_word_filter(array $p): array {
     if ($dict_min_int > 0) {
         $conditions[] = 'dict_count >= ?';
         $params[]     = $dict_min_int;
+    }
+
+    // Last attestation: newest dictionary that still prints the word.
+    //
+    // A lexicographic signal, entirely independent of the corpus work — a word whose
+    // most recent dictionary is Șăineanu (1929) is forgotten in a way one still in
+    // DOOM 3 (2021) is not. Mostly useful on the `curiosity` seam: `relevant` requires
+    // `in_current_dict` (2005+) to begin with, so it is 2010+ almost by construction.
+    //
+    // Rows with no year are excluded when a ceiling is set. 453 words have none — the
+    // dictionary is unnamed or unmatched — and "unknown" is not evidence of age.
+    $attested_before = (int)trim($p['attested_before'] ?? '');
+    if ($attested_before > 0 && db_has_column('newest_dict_year')) {
+        $conditions[] = 'newest_dict_year IS NOT NULL AND newest_dict_year < ?';
+        $params[]     = $attested_before;
     }
 
     // DEX frequency ceiling (only meaningful for the rare_in_use tab).

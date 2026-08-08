@@ -28,6 +28,8 @@ global $POS_OPTIONS;
 </head>
 <body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
 
+  <?php $brand_tag = 'statistici'; require __DIR__ . '/api/_partials/header.php'; ?>
+
   <form id="filter-form"
         hx-get="<?= BASE ?>/api/stats.php"
         hx-trigger="change"
@@ -117,24 +119,7 @@ global $POS_OPTIONS;
     </div>
   </div>
 
-  <div id="status-bar">
-    <span class="status-left">
-      <a href="<?= BASE ?>/" class="status-home">← cuvinte</a>
-    </span>
-    <span class="status-right">
-      <div class="scale-stepper scale-stepper--sm" role="group" aria-label="Mărime text">
-        <button type="button" class="scale-btn" data-scale-btn="down" onclick="stepTextScale(-1)" title="Text mai mic">A−</button>
-        <button type="button" class="scale-btn" data-scale-btn="up" onclick="stepTextScale(1)" title="Text mai mare">A+</button>
-      </div>
-      <?= otios_skin_select("skin-select--sm") ?>
-      <div class="theme-toggle theme-toggle--sm" role="group" aria-label="Temă">
-        <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
-        <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')" title="Temă întunecată">☾</button>
-      </div>
-      <a href="<?= BASE ?>/metodologie.html">🧐 metodologie</a>
-      <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">GitHub</a>
-    </span>
-  </div>
+  <?php $page = 'stats'; require __DIR__ . '/api/_partials/footer.php'; ?>
 
   <script src="<?= BASE ?>/assets/prefs.js"></script>
   <script>

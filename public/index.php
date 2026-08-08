@@ -51,70 +51,56 @@ global $QUICK_TAGS, $POS_OPTIONS;
 <body>
 
   <!-- ═══════════════════════════════════════
-       BRAND BAR
+       BRAND BAR — shared shell, three slots of explorer-specific controls.
+       Nav lives in the footer; see api/_partials/header.php for why.
   ══════════════════════════════════════════ -->
-  <header class="brand-bar">
-    <div class="brand-id">
-      <span class="brand-name">otios</span>
-      <span class="brand-sep"></span>
-      <span class="brand-tag">cuvinte uitate</span>
-    </div>
-
+  <?php
+  ob_start(); ?>
     <input id="search" form="filter-form"
            type="text" name="q" placeholder="caută un cuvânt…"
            hx-get="<?= BASE ?>/api/search.php" hx-trigger="input changed delay:200ms"
            hx-target="#word-list" hx-include="#filter-form, #search" autocomplete="off"
            title="Caută (diacriticele opționale: 'otios' găsește 'oțios')">
+  <?php $header_center = ob_get_clean();
 
-    <div class="brand-right">
-      <span class="htmx-indicator brand-spinner" aria-hidden="true">…</span>
-      <span id="result-count" class="result-count"><?= number_format((int)$total) ?></span>
+  ob_start(); ?>
+    <span class="htmx-indicator brand-spinner" aria-hidden="true">…</span>
+    <span id="result-count" class="result-count"><?= number_format((int)$total) ?></span>
 
-      <!-- Play modes (moved out of the filter panel — always reachable) -->
-      <div class="play-group" role="group" aria-label="Moduri de joc">
-        <!-- 🎲 hidden pending a manual-selection design; surpriseWord() is still
-             bound to the `r` shortcut and can be re-enabled by unhiding this. -->
-        <button type="button" class="play-btn" onclick="surpriseWord()" hidden
-                title="Cuvânt aleator din selecția curentă (r)">🎲 <span class="play-label">la întâmplare</span></button>
-        <button type="button" class="play-btn" onclick="enterFeed()"
-                title="Mod card: cuvânt cu cuvânt (f)">📇 <span class="play-label">feed</span></button>
-      </div>
-
-      <!-- View toggle: cloud ⊞ / table ≡ -->
-      <div class="view-toggle" id="view-toggle" role="group" aria-label="Mod de afișare">
-        <button type="button" class="vt-btn vt-active" id="btn-cloud"
-                onclick="setView('cloud')" title="Nor de cuvinte">⊞</button>
-        <button type="button" class="vt-btn" id="btn-table"
-                onclick="setView('table')" title="Tabel">≡</button>
-      </div>
-
-      <!-- Font-size stepper -->
-      <div class="scale-stepper" role="group" aria-label="Mărime text">
-        <button type="button" class="scale-btn" data-scale-btn="down" onclick="stepTextScale(-1)" title="Text mai mic">A−</button>
-        <button type="button" class="scale-btn" data-scale-btn="up" onclick="stepTextScale(1)" title="Text mai mare">A+</button>
-      </div>
-
-      <!-- Skin picker -- options are discovered from assets/skins/*.css -->
-      <?= otios_skin_select() ?>
-
-      <!-- Theme toggle -->
-      <div class="theme-toggle" role="group" aria-label="Temă">
-        <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
-        <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')" title="Temă întunecată">☾</button>
-      </div>
-
-      <!-- Filter button (always visible) -->
-      <button type="button" class="filter-toggle-btn" id="filter-toggle-btn"
-              onclick="toggleFilterDrawer()" aria-label="Filtre">
-        <svg width="16" height="11" viewBox="0 0 16 11" fill="none" aria-hidden="true">
-          <rect width="16" height="2" rx="1" fill="currentColor"/>
-          <rect y="4.5" width="11" height="2" rx="1" fill="currentColor"/>
-          <rect y="9" width="7" height="2" rx="1" fill="currentColor"/>
-        </svg>
-        filtre <span class="filter-count-badge" id="filter-count-badge" style="display:none"></span>
-      </button>
+    <!-- Play modes (moved out of the filter panel — always reachable) -->
+    <div class="play-group" role="group" aria-label="Moduri de joc">
+      <!-- 🎲 hidden pending a manual-selection design; surpriseWord() is still
+           bound to the `r` shortcut and can be re-enabled by unhiding this. -->
+      <button type="button" class="play-btn" onclick="surpriseWord()" hidden
+              title="Cuvânt aleator din selecția curentă (r)">🎲 <span class="play-label">la întâmplare</span></button>
+      <button type="button" class="play-btn" onclick="enterFeed()"
+              title="Mod card: cuvânt cu cuvânt (f)">📇 <span class="play-label">feed</span></button>
     </div>
-  </header>
+
+    <!-- View toggle: cloud ⊞ / table ≡ -->
+    <div class="view-toggle" id="view-toggle" role="group" aria-label="Mod de afișare">
+      <button type="button" class="vt-btn vt-active" id="btn-cloud" aria-pressed="true"
+              onclick="setView('cloud')" title="Nor de cuvinte" aria-label="Nor de cuvinte">⊞</button>
+      <button type="button" class="vt-btn" id="btn-table" aria-pressed="false"
+              onclick="setView('table')" title="Tabel" aria-label="Tabel">≡</button>
+    </div>
+  <?php $header_tools = ob_get_clean();
+
+  ob_start(); ?>
+    <!-- Filter button — stays last in the bar, so it is the `$header_after` slot -->
+    <button type="button" class="filter-toggle-btn" id="filter-toggle-btn"
+            onclick="toggleFilterDrawer()" aria-label="Filtre" aria-expanded="false">
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" aria-hidden="true">
+        <rect width="16" height="2" rx="1" fill="currentColor"/>
+        <rect y="4.5" width="11" height="2" rx="1" fill="currentColor"/>
+        <rect y="9" width="7" height="2" rx="1" fill="currentColor"/>
+      </svg>
+      filtre <span class="filter-count-badge" id="filter-count-badge" style="display:none"></span>
+    </button>
+  <?php $header_after = ob_get_clean();
+
+  require __DIR__ . '/api/_partials/header.php';
+  ?>
 
   <!-- ═══════════════════════════════════════
        LAYOUT ROW — filter rail (desktop) + word area.
@@ -158,6 +144,9 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <option value="rare">↓ rarest modern</option>
           <option value="declined">↓ most declined</option>
           <option value="dex_freq">↓ DEX frequency</option>
+          <?php if (db_has_column('newest_dict_year')): ?>
+          <option value="attested">↑ ultima atestare</option>
+          <?php endif; ?>
           <option value="alpha">↕ alphabetical</option>
         </select>
       </div>
@@ -243,6 +232,19 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <option value="10">≥ 10 dicționare</option>
           <option value="15">≥ 15 dicționare</option>
         </select>
+        <?php if (db_has_column('newest_dict_year')): ?>
+        <!-- Cel mai recent dicționar care încă tipărește cuvântul. Aproape tot ce
+             răspunde la asta stă în seamul „curiozități”: „relevante” cere deja
+             prezența într-un dicționar de după 2005. -->
+        <select name="attested_before" class="fs-select tax-select" data-default=""
+                title="Cel mai recent dicționar în care apare cuvântul e mai vechi de anul ales">
+          <option value="">ultima atestare: oricând</option>
+          <option value="1970">înainte de 1970</option>
+          <option value="1990">înainte de 1990</option>
+          <option value="2005">înainte de 2005</option>
+          <option value="2010">înainte de 2010</option>
+        </select>
+        <?php endif; ?>
         <span id="dex-rare-control" class="dex-rare-control" style="display:none">
           <select name="dex_max" class="fs-select tax-select" data-default="all">
             <option value="all" selected>DEX: toate</option>
@@ -364,7 +366,13 @@ global $QUICK_TAGS, $POS_OPTIONS;
         <div id="hb-def"></div>
       </div>
       <div id="word-list-container">
+        <!-- A listbox with a roving tabindex, not 25k tab stops. Tab reaches the list
+             once and lands on the selected word (or the first one); j/k/arrows move
+             within it and carry the tabindex along. See selectRow() in app.js. -->
         <div id="word-list"
+             role="listbox"
+             aria-label="Cuvinte"
+             tabindex="0"
              hx-get="<?= BASE ?>/api/search.php"
              hx-trigger="load"
              hx-include="#filter-form, #search"
@@ -378,9 +386,21 @@ global $QUICK_TAGS, $POS_OPTIONS;
   </div><!-- .word-area -->
   </div><!-- .layout-row -->
 
-  <!-- Status bar -->
-  <div id="status-bar">
-    <span class="status-left"><span id="status-word-count"><?= (int)$total ?></span> cuvinte · <span id="bookmark-count">0</span> favorite <button id="share-bookmarks-btn" onclick="shareBookmarks()" title="Copiază URL playlist" style="display:none">share ↗</button></span>
+  <!-- Status bar — shared nav, plus the two things only the explorer has -->
+  <?php
+  $page = 'index';
+  ob_start(); ?>
+    <span id="status-word-count"><?= (int)$total ?></span> cuvinte · <span id="bookmark-count">0</span> favorite
+    <button id="share-bookmarks-btn" onclick="shareBookmarks()" title="Copiază URL playlist" style="display:none">share ↗</button>
+    <!-- `kbd` is display:none below 768px (shortcuts mean nothing on a phone), which
+         left this a zero-width tap target — and the modal is where the colour legend
+         lives on narrow screens, since the footer legend hides below 1280px. So the
+         label falls back to a word there rather than disappearing. -->
+    <a href="#" class="shortcuts-link" onclick="showShortcuts();return false;"
+       title="Legendă și scurtături"><kbd>?</kbd><span class="shortcuts-alt">legendă</span></a>
+  <?php $footer_left = ob_get_clean();
+
+  ob_start(); ?>
     <!-- Legend. The cloud encodes four things with no label anywhere on the
          page: the word's colour (beton) or its dot (paper), two different
          underlines, and the superscript. Hidden below 1280px, where the bar has
@@ -395,16 +415,10 @@ global $QUICK_TAGS, $POS_OPTIONS;
       <span class="lg"><i class="lg-mark lg-fav">abc</i>favorit</span>
       <span class="lg"><i class="lg-freq">42</i>frecvență DEX</span>
     </span>
+  <?php $footer_extra = ob_get_clean();
 
-    <span class="status-right">
-      <a href="<?= BASE ?>/liste.php">📋 liste</a>
-      <a href="<?= BASE ?>/joc.php">🎮 joc</a>
-      <a href="<?= BASE ?>/stats.php">📊 statistici</a>
-      <a href="<?= BASE ?>/metodologie.html">metodologie</a>
-      <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">GitHub</a>
-      <a href="#" onclick="showShortcuts();return false;"><kbd>?</kbd></a>
-    </span>
-  </div>
+  require __DIR__ . '/api/_partials/footer.php';
+  ?>
 
   <!-- Filter backdrop -->
   <div class="filter-backdrop" id="filter-backdrop" onclick="toggleFilterDrawer()"></div>

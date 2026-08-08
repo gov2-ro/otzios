@@ -4,6 +4,95 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-08 — Shared page shell, last-attestation signal, keyboard access
+
+Backlog pass. Four items, one of which turned out to be already-paid-for work nobody had
+spent.
+
+### Two scrapers were running at once
+
+`ps` showed two `scrape_synonyms.py --seam relevant --merge` processes started three
+minutes apart, sharing one checkpoint CSV and hitting dexonline.ro every ~1.5s between
+them. `--delay >= 3` is refused below 3s at the argument level, but it is a *per-process*
+guard, so N copies divide it by N.
+
+Fixed with `acquire_host_lock()` — an exclusive `flock` on `data/.dexonline.lock` taken
+before the queue is even planned, so a second run hears why it is stopping instead of a
+plan it will not execute. Keyed on the host rather than the script so `scrape_definitions.py`
+interlocks by adopting the same two lines; `flock` rather than a PID file so `kill -9`
+cannot strand it; `--dry-run` exempt because it makes no requests. Two tests cover
+exclusion and release. Both processes were stopped and one restarted — resume is
+checkpoint-based, so nothing was lost.
+
+The `--seam relevant` scrape was left running at commit time: **1,418 of 2,815 words
+done** (1,133 ok, 285 `not_found`), logging to `data/logs/synonyms.log` with its pid in
+`data/logs/synonyms.pid`. It resumes on its own if interrupted; run
+`python tools/build_ui_db.py` afterwards to fold the results into `ui.db`.
+
+### The last-attestation blocker was gone and nobody had noticed
+
+The backlog said this needed "a hand-curated `dictionary → publication year` table — 73
+rows" because there was "no year metadata anywhere". Since that was written,
+`extract_dict_sources.py` learned to read `Source.year`, and `newest_dict_year` had been
+flowing all the way into `ui.db` — **97% coverage, 15,862 of 16,315 words** — where a
+`grep` over `public/` found exactly zero uses of it.
+
+Shipped without a pipeline run or a new column: `sort=attested`, an `attested_before=<year>`
+filter (registered in `AF_SPECS` and both URL arrays, so it is shareable), and "ultima
+atestare 1929" as the lead chip in the detail panel.
+
+The caveat that matters: `relevant` requires `in_current_dict` (2005+) to qualify, so it
+is 2,806 words at 2010+ and 9 below — this is a `curiosity`-seam instrument. There it is
+sharp. 225 curiosity words were last printed before 1970 and that slice is a clean sweep
+of pre-1953-reform orthography: `desbatere`, `sburătoare`, `răsvrătit`, `orândueală`,
+`vuet`, `zeciueală`.
+
+### One page shell instead of five
+
+`stats.php` had no brand or title at all — you landed on a bare filter strip. `index.php`
+put nav in the bottom status bar, `joc.php` in a top `.joc-nav`, `lista`/`liste` in a
+`.lista-nav`, and the three display toggles were pasted into all five.
+
+Split into `_partials/header.php` (brand + three `ob_start()` slots + preferences) and
+`_partials/footer.php` (the one nav bar) — **identity at the top, travel at the bottom**.
+Nav deliberately did not go in the header: the explorer's top bar already carries nine
+controls and "the brand bar carries too much" is a live backlog entry. `.joc-head`,
+`.joc-title`, `.joc-nav` and `.lista-nav` are gone from the pages and from `brutal.css` /
+`govuk.css`.
+
+Beton caught the one real bug. Rendering the current page as a `<span>` stopped it
+matching every skin's `#status-bar a` rule, so it needed a colour of its own — and
+`var(--text)` is a *page*-ground token, which on beton's ink footer is near-black on
+black. Keeping it an `<a>` with `aria-current="page"` and an accent underline means every
+skin's existing link rule applies for free. Verified across five skins × two themes.
+
+### Keyboard access to the word list
+
+Rows were click-handling `<div>`s. Made the list a **listbox with a roving tabindex**
+rather than putting `tabindex="0"` on every row — with infinite scroll, the literal fix
+would have meant tabbing through thousands of words to reach the footer. Tab enters once
+and lands on the selected word; `j`/`k`/arrows carry focus, but only when focus was
+already on a row, so a `?word=` link on page load doesn't yank the caret; Enter and Space
+activate, with Space `preventDefault`ed so it doesn't scroll instead. The mouse path now
+routes through `selectRow()` too — it used to set `data-selected` by hand, which would
+have left the tab stop behind. `aria-pressed` added to the view and theme toggles.
+
+Two things found on the way: `app.css` defined **no `:focus-visible` at all** (only
+`brutal.css` did), so the moment rows became focusable there was a caret nobody could
+see; and `kbd { display: none }` below 768px had left the `?` link a **zero-width tap
+target** on mobile — which is the only route to the colour legend on a phone, since the
+footer legend hides below 1280px.
+
+### Still open, deliberately
+
+The visual half of "verdict is colour-only in cloud view" is a design decision, not an
+accessibility patch — shape-coding the dot does nothing in beton (which drops the dot),
+and showing `EXT`/`DEC` changes the density of the main view. The screen-reader half is
+fixed via the row's `aria-label`. Also logged: the index sort `<select>` is four English
+strings, which belongs in one pass with the `stats.php` copy list.
+
+`tests/test_store_sync.js` fails on `main` as well — pre-existing, untouched here.
+
 ## 2026-08-08 — Data-quality audit: paradigm-aware verdicts and two seams
 
 Audit before opening the site to markers. The selection logic had three compounding

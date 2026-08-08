@@ -23,7 +23,12 @@ function setTheme(theme) {
 function syncThemeButtons() {
   var theme = document.documentElement.getAttribute('data-theme') || 'light';
   document.querySelectorAll('[data-theme-btn]').forEach(function(btn) {
-    btn.classList.toggle('tg-active', btn.dataset.themeBtn === theme);
+    var on = btn.dataset.themeBtn === theme;
+    btn.classList.toggle('tg-active', on);
+    // The class is the only thing that used to say which is active, so a screen
+    // reader heard two identical unlabelled buttons. aria-pressed makes the state
+    // part of the button rather than part of the stylesheet.
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
 }
 

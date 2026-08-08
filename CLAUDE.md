@@ -253,8 +253,24 @@ Two things to preserve when touching these:
    default-on `hide_*` could never be switched off.
 2. **Every filter needs registering in `public/assets/app.js` too**, or it works but the
    URL never reflects it and the state is unshareable: add it to `AF_SPECS` (the chip) and
-   to the read/write arrays in `applyUrlToForm` / the URL writer. A default value goes in
+   to the read/write arrays in `applyUrlToForm` / the URL writer — **there are two arrays,
+   one per direction, and missing the writer is the silent half**. A default value goes in
    `URL_PARAM_DEFAULTS` so it is omitted from the URL when unchanged.
+
+### `newest_dict_year` — last attestation
+
+The newest dictionary that still prints a word, from `Source.year` via `dict_sources.db`.
+97% coverage (15,862 of 16,315). Exposed as `sort=attested`, the `attested_before=<year>`
+filter, and the lead chip in the detail panel's dictionary row.
+
+**It is a `curiosity`-seam instrument.** The `relevant` seam requires `in_current_dict`
+(2005+) to qualify, so it is 2,806 words at 2010+ and 9 below — the filter says almost
+nothing there by construction. On `curiosity` it is sharp: 225 words were last printed
+before 1970, and that slice is almost entirely pre-1953-reform orthography (`desbatere`,
+`sburătoare`, `răsvrătit`, `vuet`).
+
+Rows with no year are excluded when a ceiling is set, and sort last. "Unknown" means the
+dictionary is unnamed or unmatched — it is not evidence that a word is old.
 
 ## Synonyms
 
@@ -279,6 +295,20 @@ python tools/build_ui_db.py                             # fold into ui.db
 
 Resume is automatic and Ctrl+C is safe — each row is flushed as it arrives. `--delay`
 below 3s is refused outright: dexonline.ro is community-run.
+
+**One scrape at a time, enforced.** `--delay` is a per-process guard, so two copies each
+waiting 3s hit the site every 1.5s — which happened on 2026-08-08. `acquire_host_lock()`
+takes an exclusive `flock` on `data/.dexonline.lock` before any request; a second run
+exits 1 and names the holder. Three properties worth keeping:
+
+- **It is keyed on the host, not the script.** `scrape_definitions.py` talks to the same
+  site, and adopting the same two lines makes it interlock with this one. A per-script
+  lock would permit exactly the doubling this prevents.
+- **`flock`, not a PID file.** The kernel drops it when the process dies, so a `kill -9`
+  cannot strand a lock that someone has to `rm` by hand. The pid written inside is only
+  read back to name the holder in the error message.
+- **`--dry-run` never takes it.** Inspecting the queue while a scrape runs is legitimate;
+  it makes no requests.
 
 Two things the parser has to get right, both learned from real output:
 
@@ -390,6 +420,44 @@ third skin wants them, is in `docs/BACKLOG.md`.
 Skin files load with an mtime query string, so edits show on plain reload. A stored skin
 whose file has since been deleted falls back to `DEFAULT_SKIN` (the valid list is baked
 into the pre-paint boot script).
+
+## Page shell — header and footer partials
+
+All five pages (`index`, `stats`, `joc`, `lista`, `liste`) draw the same two partials.
+Before them, each page rolled its own bar and `stats.php` had no brand at all.
+
+```php
+<?php $brand_tag = 'statistici'; require __DIR__ . '/api/_partials/header.php'; ?>
+...
+<?php $page = 'stats';          require __DIR__ . '/api/_partials/footer.php'; ?>
+```
+
+**Identity at the top, travel at the bottom.** `header.php` is brand + display
+preferences (scale, skin, theme); `footer.php` is the one navigation bar. Nav is *not* in
+the header on purpose — the explorer's top bar already carries brand, search, count, play,
+view and filters, and five more links is what breaks it. The bottom bar is also
+thumb-reachable on a phone, and `index.php` had already put nav there.
+
+`header.php` takes three optional slots, all raw HTML strings, so a caller can build one
+with `ob_start()` and keep writing ordinary markup: `$header_center` (the explorer's
+search box), `$header_tools` (count/play/view; joc's modes and score), `$header_after`
+(the filter button, which has to stay last). `footer.php` takes `$footer_left` and
+`$footer_extra` (the explorer's counts and colour legend) plus `$page`.
+
+Three things to preserve:
+
+1. **`NAV_ITEMS` lives in `_lib.php`**, not in the partial — a `const` in an included
+   file cannot be guarded against a second include, and it sits with `VERDICTS`/`TIERS`
+   as the other list of user-facing strings drawn on every page.
+2. **The current page stays an `<a>`** with `aria-current="page"` and an accent underline.
+   As a `<span>` it stopped matching every skin's `#status-bar a` rule and needed its own
+   colour — and `var(--text)` is a *page*-ground token, which on beton's ink footer meant
+   near-black on black. Never give this bar a colour of its own.
+3. **Every nav entry keeps an icon and a label.** Below 900px labels are hidden and the
+   icons carry the bar alone, so an entry without one would vanish.
+
+`lista.php` sets `$brand_tag` but deliberately no `$page`: it is not `liste.php`, so
+nothing in the nav should render as current and stop being clickable.
 
 ## Lists
 

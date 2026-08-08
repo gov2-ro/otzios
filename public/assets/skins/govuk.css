@@ -220,7 +220,7 @@
 [data-skin="govuk"] button:focus-visible,
 [data-skin="govuk"] .fs-pill:has(input:focus-visible),
 [data-skin="govuk"] summary:focus-visible,
-/* #status-bar a and .lista-nav a colour their links from an id selector, which
+/* #status-bar a colours its links from an id selector, which
    outranks the rule above and left the focused link light-blue on yellow
    (3.7:1). Repeated at matching weight rather than reached for !important. */
 [data-skin="govuk"] #status-bar a:focus-visible,
@@ -290,17 +290,13 @@
 /* ── 6. Links ───────────────────────────────────────────────────────────────
    GDS underlines links always and thickens the underline on hover rather than
    changing much else. */
-[data-skin="govuk"] #status-bar a,
-[data-skin="govuk"] .lista-nav a,
-[data-skin="govuk"] .joc-nav a {
+[data-skin="govuk"] #status-bar a {
   color: var(--accent);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.15em;
 }
-[data-skin="govuk"] #status-bar a:hover,
-[data-skin="govuk"] .lista-nav a:hover,
-[data-skin="govuk"] .joc-nav a:hover {
+[data-skin="govuk"] #status-bar a:hover {
   color: var(--gv-link-hov);
   text-decoration-thickness: 3px;
 }
@@ -317,7 +313,7 @@
    there is no emoji anywhere in GDS. Drained rather than hidden — they still
    carry shape, and hiding them would strip the only mark some controls have.
 
-   Deliberately NOT applied to #status-bar a / .joc-nav a, even though those
+   Deliberately NOT applied to #status-bar a, even though the nav there
    carry the most emoji: filter greys the whole element including its text, and
    those links are #1d70b8. Blue underlined links are more GDS than dead emoji
    are un-GDS, so the emoji stay in colour there. */

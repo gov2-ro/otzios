@@ -101,12 +101,18 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+/* An <a> to the explorer since the shared header landed — the wordmark is the
+   escape hatch from every other page, so it must not look or behave like a link
+   (no underline, no accent) while still being one. */
 .brand-id {
   display: flex;
   align-items: baseline;
   gap: 10px;
   flex-shrink: 0;
+  text-decoration: none;
+  color: inherit;
 }
+.brand-id:hover .brand-name { color: var(--accent); }
 .brand-name {
   font-family: var(--serif);
   font-size: 1.375rem;
@@ -265,7 +271,7 @@ body {
   font-weight: 700;
 }
 
-/* ── Theme toggle + font-size stepper (used in brand-bar, status-bar, joc-nav, site-nav) ── */
+/* ── Theme toggle + font-size stepper (used in brand-bar and status-bar) ── */
 .theme-toggle, .scale-stepper {
   display: inline-flex;
   height: 26px;
@@ -295,7 +301,7 @@ body {
 .scale-btn:disabled { opacity: .35; cursor: default; }
 .scale-btn:disabled:hover { background: transparent; color: var(--text-3); }
 
-/* Compact variant for the slim status-bar / joc-nav / site-nav contexts */
+/* Compact variant for the slim status-bar and shared-header contexts */
 .theme-toggle--sm, .scale-stepper--sm { height: 20px; }
 .theme-toggle--sm .tg-btn, .scale-stepper--sm .scale-btn { padding: 0 6px; font-size: 0.6875rem; }
 
@@ -573,6 +579,14 @@ body {
 }
 .word-row:hover { background: var(--accent-bg); }
 .word-row:active { transform: translateY(1px); }
+/* Rows became focusable when the list became a listbox, and nothing in this file
+   defined a focus ring — so keyboard users had a caret they could not see. The
+   selected row already inverts, but selection and focus are not the same thing:
+   clicking selects without focusing, so the ring has to be its own mark. */
+.word-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 .word-row[data-selected] { background: var(--text); }
 .word-row[data-selected] .word-text { color: var(--bg); }
 .word-row[data-selected] .chip-freq { color: rgba(250,247,241,.45); }
@@ -956,6 +970,14 @@ body {
   background: var(--surface-2);
   color: var(--text-2);
   white-space: nowrap;
+}
+/* Last attestation leads the dictionary row, so it is the one chip that carries the
+   accent — it is a claim about the word, not just a name in a list. Borrows the
+   verdict-extinct border rather than inventing a token, so every skin already has it. */
+.dict-chip--year {
+  border-color: var(--v-ext-bd, var(--accent));
+  color: var(--text);
+  font-family: var(--mono);
 }
 /* Synonyms / antonyms. Chips are links: a synonym of a forgotten word is very often
    another word on the list, so this is the one place the UI invites wandering sideways.
@@ -1713,6 +1735,41 @@ body {
 .status-right { display: flex; gap: 12px; align-items: center; }
 #status-bar a { color: var(--text-3); text-decoration: none; font-size: 0.6875rem; }
 #status-bar a:hover { color: var(--text); }
+
+/* The `?` link's word-fallback: shown only where `kbd` is hidden (≤768px). */
+.shortcuts-alt { display: none; }
+@media (max-width: 768px) { .shortcuts-alt { display: inline; } }
+
+/* ── Site nav (footer.php) ──
+   The one navigation bar. Icon + label down to 900px, icon alone below that:
+   five destinations plus GitHub is ~300px of labels, which a phone bar does not
+   have once the counts are beside it. Every item keeps its label as `title`, so
+   nothing becomes an unexplained glyph. */
+.site-nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.nav-icon { font-size: 0.75rem; line-height: 1; }
+/* The current page is marked with an accent underline and nothing else — no
+   colour of its own. `--text` here looked right on paper and came out near-black
+   on black in beton, whose footer is an ink ground: the text tokens describe the
+   *page* ground, not this bar. Leaving the colour to each skin's `#status-bar a`
+   rule is the only version that survives a skin nobody has written yet. */
+.nav-item.is-current .nav-label,
+.nav-item.is-current .nav-icon { border-bottom: 1px solid var(--accent); padding-bottom: 1px; }
+/* Below 900px the label is gone, so the underline has to ride the icon instead. */
+@media (min-width: 901px) { .nav-item.is-current .nav-icon { border-bottom: 0; } }
+
+@media (max-width: 900px) {
+  .site-nav { gap: 14px; }
+  .nav-label { display: none; }
+  .nav-icon { font-size: 0.9375rem; }
+  /* GitHub has no icon of its own — the ↗ would read as a bare arrow. */
+  .site-nav a[target="_blank"] { display: none; }
+}
 /* stats.php's "← cuvinte" back-link — was a pile of inline styles plus
    onmouseover/onmouseout colour swapping; the hover is just CSS. */
 #status-bar .status-home {

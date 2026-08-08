@@ -87,17 +87,6 @@ $desc  = $row && $row['description'] !== ''
     .lista-tags { font-family: var(--mono); font-size: 0.6875rem; color: var(--text-3); margin-left: 8px; }
     .lista-def { margin: 4px 0 0; color: var(--text-2); font-size: 0.9375rem; line-height: 1.5; }
     .lista-nodef { color: var(--text-4); font-style: italic; }
-    .lista-nav {
-      font-family: var(--mono); font-size: 0.75rem; margin-bottom: 20px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .lista-nav a { color: var(--text-3); text-decoration: none; }
-    .lista-nav a:hover { color: var(--accent); }
-    .lista-nav-sep { color: var(--text-4); }
-    /* Push the two display controls to the right of the "← Oțios" link. Only
-       the first of them gets the auto margin — giving it to both would split
-       the free space between them. */
-    .lista-nav .skin-select { margin-left: auto; }
     .lista-empty { color: var(--text-3); padding: 30px 0; }
     .lista-share { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
     .lista-share a.playlist-btn { text-decoration: none; display: inline-block; }
@@ -110,21 +99,14 @@ $desc  = $row && $row['description'] !== ''
   </style>
 </head>
 <body>
-  <div class="lista-wrap">
-    <!-- A shared list is often someone's first page on the site, so the display
-         controls belong here too — otherwise an arriving visitor is stuck with
-         whatever skin and theme happen to be the defaults. -->
-    <div class="lista-nav">
-      <a href="<?= BASE ?>/">← Oțios</a>
-      <span class="lista-nav-sep">·</span>
-      <a href="<?= BASE ?>/liste.php">liste</a>
-      <?= otios_skin_select("skin-select--sm") ?>
-      <div class="theme-toggle theme-toggle--sm" role="group" aria-label="Temă">
-        <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
-        <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')" title="Temă întunecată">☾</button>
-      </div>
-    </div>
+  <!-- A shared list is often someone's first page on the site, which is most of
+       why the header is shared: an arriving visitor gets the brand, the way back
+       into the explorer and the display controls without this page restating any
+       of it. `$page` is left unset on purpose — this is not `liste.php`, so
+       nothing in the nav should render as the current page and go unclickable. -->
+  <?php $brand_tag = 'listă'; require __DIR__ . '/api/_partials/header.php'; ?>
 
+  <div class="lista-wrap">
     <?php if (!$row): ?>
       <h1 class="lista-title">Listă negăsită</h1>
       <p class="lista-desc">Această listă nu există sau nu mai este publică.</p>
@@ -185,6 +167,9 @@ $desc  = $row && $row['description'] !== ''
       <?php endif; ?>
     <?php endif; ?>
   </div>
+
+  <?php require __DIR__ . '/api/_partials/footer.php'; ?>
+
   <script src="<?= BASE ?>/assets/prefs.js"></script>
   <script>
   (function() {

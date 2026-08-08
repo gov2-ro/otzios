@@ -89,6 +89,18 @@ $meta_parts = array_filter([
   <?php if ($sources): ?>
   <div class="fp-dicts">
     <span class="fp-extra-label">📚 în <?= $dict_count ?> <?= $dict_count === 1 ? 'dicționar' : 'dicționare' ?></span>
+    <?php
+    // Last attestation: the newest dictionary that still prints this word. A
+    // lexicographic claim, independent of the corpus figures in the footer below —
+    // and a far more legible one than `raport 3.12`. `newest_dict_year` has been in
+    // ui.db since the dict-sources extractor learned to read `Source.year`; this is
+    // the first thing to read it. Absent for ~3% of words, where the dictionary is
+    // unnamed or unmatched, and then simply not shown.
+    $attested = isset($w['newest_dict_year']) ? (int) $w['newest_dict_year'] : 0;
+    if ($attested > 0): ?>
+      <span class="dict-chip dict-chip--year"
+            title="Cel mai recent dicționar din DEX care încă include acest cuvânt">ultima atestare <?= $attested ?></span>
+    <?php endif; ?>
     <?php foreach ($sources as $src): ?><span class="dict-chip"><?= e($src) ?></span><?php endforeach; ?>
   </div>
   <?php endif; ?>

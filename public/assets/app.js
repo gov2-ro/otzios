@@ -502,13 +502,32 @@ function selectRow(idx, noClick) {
   const all = rows();
   if (!all.length) return;
   selectedIdx = Math.max(0, Math.min(idx, all.length - 1));
-  all.forEach(function(r) { r.removeAttribute('data-selected'); });
+  all.forEach(function(r) {
+    r.removeAttribute('data-selected');
+    // Roving tabindex: exactly one row is tabbable at a time, so Tab enters and
+    // leaves the list in one step instead of walking every word on the page.
+    r.setAttribute('tabindex', '-1');
+    r.setAttribute('aria-selected', 'false');
+  });
   const r = all[selectedIdx];
   if (r) {
+    // Move DOM focus along with the selection, but only when focus was already on a
+    // row. j/k from a focused row should carry the caret; the same call made on page
+    // load from a ?word= link must not yank focus out of wherever the user is.
+    const focusWasInList = document.activeElement &&
+                           document.activeElement.classList.contains('word-row');
     r.setAttribute('data-selected', '');
+    r.setAttribute('tabindex', '0');
+    r.setAttribute('aria-selected', 'true');
     r.scrollIntoView({ block: 'nearest' });
+    if (focusWasInList) r.focus({ preventScroll: true });
     if (!noClick) r.click();
   }
+  // The container is only a tab stop while no row owns the tabindex — otherwise the
+  // list would be two stops. It goes back to being one when the list empties out,
+  // so a filter that matches nothing is still reachable.
+  const list = document.getElementById('word-list');
+  if (list) list.setAttribute('tabindex', r ? '-1' : '0');
 }
 
 function navigateSpatial(direction) {
@@ -602,16 +621,23 @@ function setView(mode) {
   const btnCloud = document.getElementById('btn-cloud');
   const btnTable = document.getElementById('btn-table');
   if (!list) return;
+  // aria-pressed alongside the class: the class is what CSS reads, the attribute is
+  // what a screen reader reads, and only one of them existed before.
+  function setPressed(btn, on) {
+    if (!btn) return;
+    btn.classList.toggle('vt-active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
   if (mode === 'table') {
     list.classList.add('word-list-table');
     list.classList.remove('word-list-cloud');
-    if (btnCloud) btnCloud.classList.remove('vt-active');
-    if (btnTable) btnTable.classList.add('vt-active');
+    setPressed(btnCloud, false);
+    setPressed(btnTable, true);
   } else {
     list.classList.remove('word-list-table');
     list.classList.add('word-list-cloud');
-    if (btnCloud) btnCloud.classList.add('vt-active');
-    if (btnTable) btnTable.classList.remove('vt-active');
+    setPressed(btnCloud, true);
+    setPressed(btnTable, false);
   }
   try { localStorage.setItem('otios.view', mode); } catch (_) {}
 }
@@ -713,10 +739,45 @@ document.addEventListener('click', function(e) {
 
   const all = rows();
   const idx = all.indexOf(row);
+  // Route through selectRow so the mouse path keeps aria-selected and the roving
+  // tabindex in step — it used to set data-selected by hand, and after this pass
+  // that would have left the keyboard's tab stop on whatever was selected before.
+  if (idx !== -1) { selectRow(idx, true); return; }
   if (idx < 0) return;
   all.forEach(function(r) { r.removeAttribute('data-selected'); });
   row.setAttribute('data-selected', '');
   selectedIdx = idx;
+});
+
+// ── Keyboard access to the word list ────────────────────────────────────────────
+//
+// The rows are `role="option"` inside a `role="listbox"`, which buys the right
+// announcement but no behaviour: a div does not activate on Enter the way a button
+// does, and a listbox is expected to be one tab stop that you then arrow around in.
+// Both halves are supplied here. j/k/h/l and the arrows are already handled by the
+// global keydown listener above and move selection (and, from a focused row, focus).
+
+document.addEventListener('keydown', function(e) {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const row = document.activeElement && document.activeElement.closest('.word-row');
+  if (!row) return;
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();          // Space would otherwise scroll the list
+    row.click();
+  }
+});
+
+// Tabbing into an untouched list lands on the container; hand it straight to the
+// selected word (or the first) so the very next arrow key does something visible.
+// selectRow can't move focus itself here — it only does so when focus is already on
+// a row, and at this instant it is on the container — so focus is passed explicitly.
+document.addEventListener('focusin', function(e) {
+  if (e.target.id !== 'word-list') return;
+  const all = rows();
+  if (!all.length) return;
+  selectRow(selectedIdx < 0 ? 0 : selectedIdx, true);
+  const sel = all[selectedIdx];
+  if (sel) sel.focus({ preventScroll: true });
 });
 
 // Shortcuts overlay dismiss
@@ -820,6 +881,7 @@ var AF_SPECS = [
   { name: 'domain',         type: 'select', def: '', label: function(v){ return 'domeniu: ' + v; } },
   { name: 'etymology',      type: 'select', def: '', label: function(v){ return 'etim: ' + v.replace('limba ', ''); } },
   { name: 'dict_min',       type: 'select', def: '', label: function(v){ return 'dicts ≥' + v; } },
+  { name: 'attested_before', type: 'select', def: '', label: function(v){ return 'atestat <' + v; } },
   { name: 'dex_max',        type: 'select', def: 'all', label: function(v){ return 'DEX ' + (v === 'all' ? 'toate' : '≤' + v); } },
   { name: 'zipf_min',       type: 'number',   label: function(v){ return 'zipf ≥' + v; } },
   { name: 'zipf_max',       type: 'number',   label: function(v){ return 'zipf ≤' + v; } },
@@ -829,7 +891,10 @@ var AF_SPECS = [
   { name: 'show_proper',    type: 'checkbox', label: function(){ return 'cu nume proprii'; } },
   { name: 'show_regional',  type: 'checkbox', label: function(){ return 'cu regionalisme'; } },
   { name: 'show_variants',  type: 'checkbox', label: function(){ return 'cu variante vechi'; } },
-  { name: 'seam',           type: 'radio',  def: 'relevant', label: function(v){ return v === 'all' ? 'toate listele' : 'listă: ' + v; } },
+  // The chip used to print the raw seam value ("listă: curiosity") into an otherwise
+  // Romanian bar. Labels are the ones already on the seam control itself.
+  { name: 'seam',           type: 'radio',  def: 'relevant', label: function(v){
+      return v === 'all' ? 'toate listele' : 'listă: ' + (v === 'curiosity' ? 'curiozități' : 'relevante'); } },
   { name: 'verdict',        type: 'group',    label: function(n, t){ return 'verdict ' + n + '/' + t; } },
   { name: 'tier',           type: 'group',    label: function(n, t){ return 'tier ' + n + '/' + t; } },
   { name: 'pos',            type: 'group',    label: function(n, t){ return 'POS ' + n + '/' + t; } },
@@ -957,8 +1022,8 @@ function applyUrlToForm() {
     });
   });
 
-  // Selects: sort, register, domain, etymology, dex_max, dict_min, marks
-  ['sort', 'register', 'domain', 'etymology', 'dex_max', 'dict_min', 'marks'].forEach(function(name) {
+  // Selects: sort, register, domain, etymology, dex_max, dict_min, attested_before, marks
+  ['sort', 'register', 'domain', 'etymology', 'dex_max', 'dict_min', 'attested_before', 'marks'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     var el = form.querySelector('select[name=' + name + ']');
@@ -1033,7 +1098,7 @@ function syncUrlFromForm() {
   });
 
   // Selects (dex_max is handled separately below, appended at the very end)
-  ['sort', 'register', 'domain', 'etymology', 'dict_min', 'marks'].forEach(function(name) {
+  ['sort', 'register', 'domain', 'etymology', 'dict_min', 'attested_before', 'marks'].forEach(function(name) {
     var el = form.querySelector('select[name=' + name + ']');
     if (!el) return;
     var val = el.value;

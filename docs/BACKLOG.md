@@ -54,6 +54,17 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 
 - [ ] check why some words are still missing definitions even if found on dexonline. did scraping fail?
+  Scale as of 2026-08-08's `ui.db`: **746 of 16,315 words have no definition, 33 of them
+  in the `relevant` seam.** Small enough to diagnose case by case rather than guess.
+
+- [ ] **`scrape_definitions.py` has no host lock.** `scrape_synonyms.py` got one on
+  2026-08-08 after two copies of it ran concurrently and halved the interval between
+  requests, which is the one thing `--delay >= 3` exists to prevent. The lock is keyed on
+  the **host** (`data/.dexonline.lock`), not on the script, precisely so the definitions
+  scraper interlocks with the synonyms one by adopting the same two lines —
+  `acquire_host_lock()` / the `LockHeld` branch in `main()`. Until it does, running both
+  at once reproduces the bug across scripts. If a third caller appears, that is the point
+  to lift the helper into a shared module rather than copy it a third time.
 
 - [ ] `dreadnought` nu e marcat ca `marină` (Mar.) in our UI but it is in dexonline web
 
@@ -482,14 +493,48 @@ kept bumping into. Roughly in order of how much they cost a first-time visitor.
   page's equivalent rail is fully Romanian. (`word_list.php`'s two English strings were
   fixed on this branch; the rest were left alone for the same copy-ownership reason.)
 
+  **The index page is not clean either** (found 2026-08-08): the sort `<select>` in the
+  filter rail reads `↓ rarest modern` / `↓ most declined` / `↓ DEX frequency` /
+  `↕ alphabetical` — four English strings in the most-used control on the site. Only
+  `↓ cele mai potrivite` and the new `↑ ultima atestare` are Romanian. Same copy-ownership
+  reason for leaving them; they belong in one pass with the `stats.php` list.
+
+- [x] **Raw seam enum in the active-filter chip.** Fixed 2026-08-08. `AF_SPECS` printed
+  `listă: curiosity` into an otherwise Romanian chip bar; it now uses the same labels the
+  seam control itself carries (`relevante` / `curiozități`). Same family as the verdict-enum
+  entry above — worth grepping for a third instance rather than waiting to spot one.
+
 ### Navigation and information architecture
 
-- [ ] **There is no shared header, and no consistent way to move between the four pages.**
-  `index.php` puts navigation in the *bottom* status bar; `joc.php` has its own `.joc-nav`
-  in a top bar; `stats.php` has **no brand or title at all** — you land on a bare filter
-  strip with no indication you're still in Oțios; `lista.php` has a lone `← Oțios` link.
-  A single `_partials/header.php` carrying brand + nav + the three preference toggles
-  would fix identity, navigation and the toggle duplication in one move.
+- [x] **There is no shared header, and no consistent way to move between the four pages.**
+  Done 2026-08-08, as **two** partials rather than one. `api/_partials/header.php` carries
+  brand + three slots + the display preferences; `api/_partials/footer.php` carries the
+  one navigation bar. All five pages adopted both, and `.joc-head` / `.joc-title` /
+  `.joc-nav` / `.lista-nav` are gone from the pages *and* from `brutal.css` / `govuk.css`.
+
+  **Why the split**, since the original entry asked for one partial with nav in it: the
+  explorer's top bar already carries brand + search + count + play + view + scale + skin +
+  theme + filters, and "the brand bar carries too much" is a live entry three sections
+  down. Five nav links is the one thing it cannot take. `index.php` had already put nav in
+  the bottom status bar, that bar is the right size for it, and it is thumb-reachable on a
+  phone — so identity goes at the top and travel goes at the bottom, on every page. Below
+  900px the nav drops to icons only, and the GitHub link (which has no icon of its own)
+  hides.
+
+  Two things worth not undoing:
+  1. **The current page stays an `<a>`**, marked `aria-current="page"` and distinguished
+     by an accent underline. It was briefly a `<span>`, which stopped matching every
+     skin's `#status-bar a` rule and so needed a colour of its own — and `var(--text)`
+     came out near-black on beton's ink footer. This is the `--bar-bg` / `--on-bar` trap
+     already logged under "Skin ideas"; letting each skin's existing link rule apply is
+     the version that survives a skin nobody has written yet.
+  2. **`lista.php` deliberately sets no `$page`.** It is not `liste.php`, so nothing in
+     the nav should render as current and stop being clickable.
+
+  Found while adopting it: `kbd { display: none }` below 768px (pre-existing) left the `?`
+  shortcuts link a **zero-width tap target** on mobile — and that modal is where the colour
+  legend lives on narrow screens, since the footer legend hides below 1280px. It now falls
+  back to the word "legendă" there.
 
 - [ ] **`metodologie.html` is a separate product.** It links neither `app.css` nor
   `prefs.js`, loads a *different* font stack (Inter Tight + JetBrains Mono vs the app's
@@ -553,20 +598,43 @@ kept bumping into. Roughly in order of how much they cost a first-time visitor.
   had it, so all five now agree. The in-app A−/A+ stepper stays as an addition to browser
   zoom, not a replacement.
 
-- [ ] **Word rows are non-focusable `<div>`s.** `word_row.php` emits a `div` with a click
-  handler — no `tabindex`, no `role`, no keyboard activation outside the app's private
-  `j`/`k` handler. To a screen reader the main content is an undifferentiated pile of
-  divs. `<button>` (or at minimum `role="button"` + `tabindex="0"` + Enter/Space) would
-  fix keyboard access and expose the list properly.
+- [x] **Word rows are non-focusable `<div>`s.** Done 2026-08-08 as a **listbox with a
+  roving tabindex**, not `tabindex="0"` on every row: `#word-list` is `role="listbox"`,
+  rows are `role="option"`, and exactly one row is tabbable at a time. Plain `tabindex="0"`
+  everywhere would have been literally correct and unusable — with infinite scroll, Tab
+  would walk thousands of words before reaching the footer.
 
-- [ ] **Toggle buttons don't expose their state.** The view/theme/skin/scale groups use
-  `role="group"` and communicate the active option purely through a CSS class; none set
-  `aria-pressed`. Several icon-only buttons (`⊞ ≡ ☀ ☾ A− A+ ▤ ▩`) rely on `title` alone
-  with no `aria-label`.
+  - Tab enters the list once and lands on the selected word (or the first).
+  - `j`/`k`/arrows move selection *and* focus — but `selectRow()` only moves focus when
+    focus was **already** on a row, so the same call made on page load from a `?word=`
+    link doesn't yank the caret out of wherever the user is.
+  - Enter and Space activate; Space is `preventDefault`ed so it doesn't scroll instead.
+  - The mouse path now routes through `selectRow()` too. It used to set `data-selected`
+    by hand, which after this change would have left the tab stop on the previous row.
+  - Rows carry an explicit `aria-label` ("subdialect, doar istoric") and the chips are
+    `aria-hidden` — otherwise a screen reader reads out "subdialect 89 s.f. IST 📚12".
+
+  Also found: **`app.css` defined no `:focus-visible` at all** (only `brutal.css` did), so
+  the moment rows became focusable there was a caret nobody could see. `.word-row:focus-visible`
+  now draws an accent outline — kept separate from `[data-selected]`, because clicking
+  selects without focusing and the two states are not the same thing.
+
+- [x] **Toggle buttons don't expose their state.** Done 2026-08-08. `syncThemeButtons()`
+  and `setView()` now set `aria-pressed` alongside the CSS class, and the icon-only
+  buttons in the shared header carry `aria-label` as well as `title`. The class is what
+  CSS reads, the attribute is what a screen reader reads, and only one of them existed.
 
 - [ ] **In cloud view, verdict is encoded only as colour.** The square is the sole signal;
   table view additionally shows `EXT`/`DEC`/`IST`/`ABS`. Colour-blind users get nothing in
-  the default view.
+  the default view. **The screen-reader half is fixed** (2026-08-08 — the row's `aria-label`
+  names the verdict), but the visual half is still open and is a *design* decision, not an
+  accessibility patch: every fix changes how the cloud looks. Shape-coding the dot per
+  verdict is the textbook answer but does nothing in `beton`, which drops the dot and
+  colours the headword instead; showing the `EXT`/`DEC` abbreviation in cloud view fixes
+  every skin but changes the density of the main view. Note desktop hover already names
+  the verdict via `#hover-box`, so in practice the gap is **mobile cloud view**, which
+  overlaps with the "no way to preview a definition without committing" entry above —
+  worth solving together.
 
 ### Mobile
 
@@ -651,21 +719,38 @@ dictionaries appear in fewer than 200 words each (DGL 2, Șăineanu ed. I 1, DEX
   (`DEX '09` is a substring of nothing here, but `DOOM` is a prefix of `DOOM 2`/`DOOM 3`,
   and `MDA` of `MDA2`).
 
-- [ ] **Most-recent-attestation filter — needs a year map that does not exist yet.** This
-  is the valuable one: a word whose newest dictionary is Șăineanu (1929) is far more
-  forgotten than one still in DOOM 3 (2021), and that is a lexicographic signal entirely
-  independent of the corpus-frequency work in Phase 2. Blocker: **no year metadata
-  anywhere.** `dict_sources.db` is only `(word, sources, dict_count)`. Some names embed a
-  year (`DEX '09`, `DEX '98`, `DRAM 2021`, `MDN '00`, `Sinonime82`, `DEX '75`) but most do
-  not (`MDA2`, `DOR`, `Ortografic`, `DLRLC`, `Scriban`, `Șăineanu, ed. VI`, `NODEX`). Needs
-  a hand-curated `dictionary → publication year` table — 73 rows, one-off, and the head 15
-  cover the overwhelming majority of words. Once it exists it yields a `last_attested_year`
-  per word, which is sortable, filterable, and probably a better headline number than the
-  DEX frequency score currently in the superscript.
+- [x] **Most-recent-attestation filter** — Done 2026-08-08. **The blocker this entry
+  described was already gone and nobody had noticed.** It said "no year metadata
+  anywhere … needs a hand-curated `dictionary → publication year` table", but
+  `extract_dict_sources.py` had since learned to read `Source.year` (108 of 113
+  dictionaries carry one), so `newest_dict_year` was already in `dict_sources.db`, already
+  flowed through `make_shortlist.py` → `build_ui_db.py`, and was sitting in `ui.db` on
+  **15,862 of 16,315 words (97%)**. A `grep` over `public/` found zero uses of it. No
+  curation, no pipeline run, no new column — the signal had been paid for and never spent.
 
-- [ ] **Consider surfacing `last_attested_year` in the UI once it exists.** The detail
-  panel already lists the dictionaries a word appears in; adding "ultima atestare: 1929"
-  would be a stronger and more legible claim than `zipf0.0 … ratio3.12`.
+  Shipped as three things in `_lib.php` / `index.php` / `detail.php`:
+  - `sort=attested` — `newest_dict_year ASC NULLS LAST, word ASC`. Nulls last on purpose:
+    no year means the dictionary is unnamed or unmatched, not that the word is ancient.
+  - `attested_before=<year>` — a filter offering 1970 / 1990 / 2005 / 2010, registered in
+    `AF_SPECS` and both URL arrays so it is shareable.
+  - "ultima atestare 1929" as the lead chip in the detail panel's dictionary row.
+
+  **Read the seam caveat before using it as a headline number.** The `relevant` seam
+  requires `in_current_dict` (2005+) to qualify, so it is 2,806 words at 2010+ and 9 below
+  — this filter says almost nothing there *by construction*. It is a `curiosity`-seam
+  instrument, and a good one: 225 curiosity words were last printed before 1970, and the
+  top of that list is `bracă`, `bujdeucă`, `ciotură`, `desbatere`, `orândueală`,
+  `răsvrătit`, `sburătoare`, `vuet`, `zeciueală` — all Șăineanu 1929, and a clean sweep of
+  pre-1953-reform orthography. Incidentally this is also the cheapest route to the
+  "make a list with *-ațiune" item below: `abilitațiune`, `insinuațiune`,
+  `personificațiune` are all in the same slice.
+
+- [ ] **Whether `last_attested_year` should replace the superscript.** Now that it is
+  visible in the panel, the open question is whether it is a better *headline* number than
+  the DEX frequency score currently in the superscript. Argument for: "ultima atestare
+  1929" is a claim a reader can act on, where `89` is not. Argument against: 97% coverage
+  means 3% of words would show nothing, and the distribution is bimodal (10,243 words at
+  2021, 4,892 at 2010), so for two thirds of the list it would print the same two values.
 
 ## Typographic pass — remaining findings (2026-08-06)
 

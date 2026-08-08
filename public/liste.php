@@ -68,16 +68,6 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
   <?= otios_skin_links() ?>
   <style>
     .lista-wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 64px; }
-    .lista-nav {
-      font-family: var(--mono); font-size: 0.75rem; margin-bottom: 20px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .lista-nav a { color: var(--text-3); text-decoration: none; }
-    .lista-nav a:hover { color: var(--accent); }
-    /* Without a separator the links read as one phrase — "OȚIOS JOC STATISTICI". */
-    .lista-nav-sep { color: var(--text-4); }
-    .lista-nav .skin-select { margin-left: auto; }
-
     .liste-h1 { font-family: var(--serif); font-size: 1.75rem; font-weight: 600; color: var(--text); margin: 0 0 4px; }
     .liste-lede { color: var(--text-2); font-size: 0.9375rem; margin: 0 0 26px; }
     .liste-section { margin-bottom: 34px; }
@@ -99,20 +89,9 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
   </style>
 </head>
 <body>
-  <div class="lista-wrap">
-    <div class="lista-nav">
-      <a href="<?= BASE ?>/">← Oțios</a>
-      <span class="lista-nav-sep">·</span>
-      <a href="<?= BASE ?>/joc.php">joc</a>
-      <span class="lista-nav-sep">·</span>
-      <a href="<?= BASE ?>/stats.php">statistici</a>
-      <?= otios_skin_select("skin-select--sm") ?>
-      <div class="theme-toggle theme-toggle--sm" role="group" aria-label="Temă">
-        <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
-        <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')" title="Temă întunecată">☾</button>
-      </div>
-    </div>
+  <?php $brand_tag = 'liste'; require __DIR__ . '/api/_partials/header.php'; ?>
 
+  <div class="lista-wrap">
     <h1 class="liste-h1">Liste</h1>
     <p class="liste-lede">
       Cuvintele pe care le marchezi în timp ce explorezi se adună singure în patru liste.
@@ -196,6 +175,8 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
       <p class="liste-note">Listele publice sunt scrise de vizitatori. Nu sunt verificate.</p>
     </section>
   </div>
+
+  <?php $page = 'liste'; require __DIR__ . '/api/_partials/footer.php'; ?>
 
   <script>var OTIOS_BASE = '<?= BASE ?>';</script>
   <script src="<?= BASE ?>/assets/prefs.js"></script>

@@ -19,20 +19,16 @@ require_once __DIR__ . '/api/_lib.php';
   <?= otios_skin_links() ?>
   <style>
     body { display:flex; flex-direction:column; min-height:100vh; }
-    .joc-head {
-      display:flex; align-items:center; gap:14px; flex-wrap:wrap;
-      padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);
-    }
-    .joc-title { font-family:var(--serif); font-weight:600; font-size:1.0625rem; color:var(--text); }
+    /* .joc-head / .joc-title / .joc-nav are gone — the bar is the shared
+       .brand-bar now, and the nav is in the shared footer. What is left is the
+       two game-specific controls it hands to the header's $header_tools slot. */
     .joc-modes { display:flex; gap:6px; }
     .joc-mode {
       font-family:var(--mono); font-size:0.75rem; padding:4px 12px; border-radius:14px;
       border:1px solid var(--border-2); background:var(--surface); color:var(--text-2); cursor:pointer;
     }
     .joc-mode.active { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
-    .joc-score { margin-left:auto; font-family:var(--mono); font-size:0.75rem; color:var(--text-3); }
-    .joc-nav a { font-family:var(--mono); font-size:0.75rem; color:var(--text-3); text-decoration:none; margin-left:12px; }
-    .joc-nav a:hover { color:var(--text); }
+    .joc-score { font-family:var(--mono); font-size:0.75rem; color:var(--text-3); }
     /* Game card + word-detail pane: stacked on mobile, side-by-side on desktop. */
     .joc-layout { flex:1; display:flex; flex-direction:column; min-height:0; }
     .joc-main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:24px 16px; }
@@ -114,24 +110,20 @@ require_once __DIR__ . '/api/_lib.php';
   </style>
 </head>
 <body>
-  <div class="joc-head">
-    <span class="joc-title">Oțios · joc</span>
+  <?php
+  ob_start(); ?>
     <div class="joc-modes">
-      <button type="button" class="joc-mode active" data-mode="sense" onclick="setMode('sense')">🔤 sensuri</button>
-      <button type="button" class="joc-mode" data-mode="quiz" onclick="setMode('quiz')">❓ grilă</button>
+      <button type="button" class="joc-mode active" data-mode="sense" onclick="setMode('sense')" aria-pressed="true">🔤 sensuri</button>
+      <button type="button" class="joc-mode" data-mode="quiz" onclick="setMode('quiz')" aria-pressed="false">❓ grilă</button>
     </div>
     <span class="joc-score" id="joc-score"></span>
-    <div class="scale-stepper scale-stepper--sm" role="group" aria-label="Mărime text">
-      <button type="button" class="scale-btn" data-scale-btn="down" onclick="stepTextScale(-1)" title="Text mai mic">A−</button>
-      <button type="button" class="scale-btn" data-scale-btn="up" onclick="stepTextScale(1)" title="Text mai mare">A+</button>
-    </div>
-    <?= otios_skin_select("skin-select--sm") ?>
-    <div class="theme-toggle theme-toggle--sm" role="group" aria-label="Temă">
-      <button type="button" class="tg-btn" data-theme-btn="light" onclick="setTheme('light')" title="Temă deschisă">☀</button>
-      <button type="button" class="tg-btn" data-theme-btn="dark" onclick="setTheme('dark')" title="Temă întunecată">☾</button>
-    </div>
-    <span class="joc-nav"><a href="#" onclick="openBoard();return false;">🏆 clasament</a><a href="<?= BASE ?>/">← acasă</a><a href="<?= BASE ?>/liste.php">📋 liste</a><a href="<?= BASE ?>/stats.php">statistici</a></span>
-  </div>
+    <button type="button" class="play-btn" onclick="openBoard();return false;"
+            title="Clasament">🏆 <span class="play-label">clasament</span></button>
+  <?php $header_tools = ob_get_clean();
+
+  $brand_tag = 'joc';
+  require __DIR__ . '/api/_partials/header.php';
+  ?>
 
   <div class="joc-layout">
     <div class="joc-main">
@@ -151,6 +143,8 @@ require_once __DIR__ . '/api/_lib.php';
       <div id="board-body"><p class="board-empty">se încarcă…</p></div>
     </div>
   </div>
+
+  <?php $page = 'joc'; require __DIR__ . '/api/_partials/footer.php'; ?>
 
   <script>var OTIOS_BASE = '<?= BASE ?>';</script>
   <script src="<?= BASE ?>/assets/prefs.js"></script>
