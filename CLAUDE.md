@@ -256,6 +256,43 @@ Two things to preserve when touching these:
    to the read/write arrays in `applyUrlToForm` / the URL writer. A default value goes in
    `URL_PARAM_DEFAULTS` so it is omitted from the URL when unchanged.
 
+## Synonyms
+
+`words.synonyms` / `words.antonyms` come from `scrape_synonyms.py`, not from the dump.
+dexonline distributes `Definition.internalRep` in full only for the Academy dictionaries;
+the Litera titles are redacted to 23 characters:
+
+```
+sourceId 1 (DEX '98)   max 15,039 chars   mean 201
+sourceId 6 (Sinonime)  max     23 chars   mean  23   "@AB'A@ s. dimie, păn..."
+```
+
+So `dict_count` knows a word appears in `Sinonime`/`Sinonime82`/`Antonime`, but not what
+they say. The rendered page has it.
+
+```bash
+python scrape_synonyms.py --dry-run --seam relevant     # count + ETA, no requests
+python scrape_synonyms.py --seam relevant --merge       # the default-view words
+python scrape_synonyms.py --merge-only                  # re-merge an existing checkpoint
+python tools/build_ui_db.py                             # fold into ui.db
+```
+
+Resume is automatic and Ctrl+C is safe — each row is flushed as it arrives. `--delay`
+below 3s is refused outright: dexonline.ro is community-run.
+
+Two things the parser has to get right, both learned from real output:
+
+1. **A page renders every entry dexonline considers related, not just the one asked
+   for.** `/definitie/roză` also carries `ROZ` (the colour). Entries are matched on
+   headword — without it `roză` picks up *trandafiriu, rozatic, pembe*. When nothing
+   matches, all entries are used, because archaic spellings are the point here and
+   dexonline normalises them (`/definitie/poronci` returns only `PORUNCĂ`/`PORUNCI`).
+2. **Each entry opens with its own capitalised headword**, sometimes mid-token because
+   the markup does not fence it off (`"ROZĂ     trandafir, rug"`). Leading capital runs
+   are stripped and still-uppercase tokens dropped: synonyms are lowercase, headwords
+   are not. Antonime entries are the exception — ordinary case, `Curajos ≠ fricos, laș` —
+   so their headword is read from before the `≠`.
+
 ## Gotchas
 
 - **Never compare the two corpora in ppm.** They differ 1,187× in size, so a shared

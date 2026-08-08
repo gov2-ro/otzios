@@ -157,6 +157,39 @@ Three more, all from the same neglected column:
    "curiozități" was a live-looking button that could only ever return the same list.
    `dex_max` had exactly this treatment already; the seam control now shares it.
 
+### Synonyms piped in
+
+`scrape_synonyms.py` + `synonyms.db` + chips in the detail panel, closing the backlog
+item that had been waiting on data.
+
+The data is **not in the dump**, which is worth recording because it looks like it should
+be: dexonline distributes `Definition.internalRep` in full only for the Academy
+dictionaries. The Litera titles are redacted to 20 characters plus an ellipsis —
+`sourceId 6 (Sinonime)` has `max_len=23, mean=23` against `sourceId 1 (DEX '98)`'s
+`max_len=15,039, mean=201`. So `dict_count` has always known a word appears in
+`Sinonime`/`Sinonime82`/`Antonime` without being able to say what they contain.
+
+Two parser corrections, both from reading real output rather than trusting the first
+version:
+
+- A dexonline page renders every entry it considers related. `/definitie/roză` also
+  carries `ROZ` (the colour), so the first run gave `roză` nine synonyms of which six
+  — *trandafiriu, rozatic, roziu, pembe, rozosin, rumen* — belong to a different word.
+  Matching on headword cuts it to the correct three. The fallback when nothing matches
+  is deliberate: `/definitie/poronci` returns entries headed `PORUNCĂ` and `PORUNCI` and
+  none headed `PORONCI`, so a strict match would return nothing for precisely the
+  archaic spellings this project exists to find.
+- Each entry opens with its own capitalised headword, sometimes inside a token because
+  the markup does not separate it (`"ROZĂ     trandafir, rug"`). One run gave
+  `CELE ZECE PORUNCI     decalogul` as a single "synonym".
+
+A unit test also caught that single-letter headwords (`A`, `Î`, `O` are real DEX entries)
+survived the capital-stripping pattern, which required 2+ capitals.
+
+Hit rate on the 12-word live test: 9 ok, 3 not_found. `jeț` → *fotoliu, șezău*;
+`jiganie` → *dihanie, fiară, jivină, lighioană, sălbăticiune*; `modru` → *chip, fel,
+formă, gen, manieră, metodă, mijloc, mod*.
+
 ### Not a regression
 
 The `SINONIME — ÎN CURÂND` slot was removed in the previous session, not this one —

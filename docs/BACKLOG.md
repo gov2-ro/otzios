@@ -241,7 +241,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] **Diacritic-insensitive search** — searching `otios` should find `oțios`; `stramosesc` should find `strămoșesc`. Normalize both the query and the indexed word by stripping diacritics before matching (ț→t, ș→s, ă→a, â→a, î→i). Implement in the SQL WHERE clause using a pre-computed `word_normalized` column in the `words` table (populated at build time), or a SQLite custom function. Both PHP and Flask search endpoints need updating.
 
-- [ ] **synonyms data** — the detail panel has a "Sinonime: în curând" placeholder slot wired up, but no synonym data exists in any source DB yet. Scrape synonyms (dexonline has `Sinonime`/`Sinonime82` dictionaries) into a `synonyms` column / table and populate the slot.
+- [x] **synonyms data** — done 2026-08-08. `scrape_synonyms.py` → `synonyms.db` → `words.synonyms`/`words.antonyms`, rendered as linked chips in the detail panel. Not available from the dump: the Litera dictionaries (`Sinonime`, `Sinonime82`, `Antonime`) are redacted to 23 characters in `Definition.internalRep`, so `dict_count` knows a word is in them but not what they say.
 
 - [ ] **UI redesign** — fresh-identity, mobile-first redesign spec written for a designer in `docs/design-brief.md` (covers table view, filter-bar redesign, calmer verdict palette, play modes, shared-word landing). Hand off when ready.
 
