@@ -83,11 +83,15 @@
   --on-accent: #14130F;   /* ink, not white — see the light block */
 }
 
-/* Optional. Only `brutal` and `tezaur` define these: the colour the headword
-   itself is painted in, one per verdict. Define them if your skin drops the
-   verdict dot and encodes the verdict in the word instead — the footer legend
-   swatch reads this ramp first and falls back to --v-*. Leave them out and the
-   legend shows the dot colours, which is correct for a skin that keeps dots. */
+/* Optional. The per-word dot is gone site-wide — every skin now paints the
+   headword itself, one colour per verdict, and app.css falls back to
+   --v-*-tx (the badge-text ramp above) when a skin defines nothing here. That
+   fallback is usually enough: it's what paper, govuk and velin all run on.
+   Define your own only if --v-*-tx isn't right for word-sized text on your
+   surface — brutal is the example: its badge is a solid fill with a
+   white/black -tx, meaningless reused as running text, so it hand-tunes a
+   separate ramp here. The footer legend swatch reads this ramp too, falling
+   back the same way. */
 /* [data-skin="TEMPLATE"] {
      --v-ext-word: …; --v-dec-word: …; --v-hist-word: …; --v-abs-word: …;
    } */

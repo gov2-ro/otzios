@@ -588,9 +588,11 @@ body {
   outline-offset: 1px;
 }
 .word-row[data-selected] { background: var(--text); }
-.word-row[data-selected] .word-text { color: var(--bg); }
+/* #word-list, not just .word-row[data-selected], so this still outranks the
+   verdict-colour rules below on specificity — selection has to win regardless
+   of source order. */
+#word-list .word-row[data-selected] .word-text { color: var(--bg); }
 .word-row[data-selected] .chip-freq { color: rgba(250,247,241,.45); }
-.word-row[data-selected] .verdict-dot { opacity: .55; }
 
 /* Row removal — word just tagged ascunde/meh, popping out of the list */
 .word-row.row-hiding {
@@ -602,21 +604,25 @@ body {
   to   { opacity: 0; transform: scale(.6); }
 }
 
-/* Verdict dot */
-.verdict-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  align-self: center;
-  background: var(--text-4);
-  transition: background .1s;
-}
-.word-row.verdict-extinct         .verdict-dot { background: var(--v-ext); }
-.word-row.verdict-declining       .verdict-dot { background: var(--v-dec); }
-.word-row.verdict-historical_only .verdict-dot { background: var(--v-hist); }
-.word-row.verdict-absent          .verdict-dot { background: var(--v-abs); }
-.word-row.verdict-unknown         .verdict-dot { background: var(--text-4); }
+/* Verdict dot — retired. It cost 8px of circle plus a 5px gap on every one of
+   25,000+ words, a mark the eye reads as punctuation before it reads as data.
+   The verdict now rides on the word's own colour instead (below), which
+   carries the same signal in zero horizontal space. The markup element stays
+   (word_row.php, aria-hidden) so nothing has to change there; this just
+   collapses it everywhere, cloud and table alike. */
+.verdict-dot { display: none; }
+
+/* Verdict as the word's own colour, cloud view only — table view already
+   states the verdict in the IST/EXT badge, so colouring there would repeat
+   it. `-word` is a skin's own ramp tuned for large body text (brutal's, for
+   instance, cannot reuse its badge -tx: that's white-on-solid-fill contrast,
+   meaningless as running text); skins that never define it fall back to
+   `-tx`, the badge-label ramp, which already clears real contrast on a plain
+   ground for paper/tezaur/velin/govuk alike. */
+#word-list:not(.word-list-table) .word-row.verdict-extinct         .word-text { color: var(--v-ext-word,  var(--v-ext-tx)); }
+#word-list:not(.word-list-table) .word-row.verdict-declining       .word-text { color: var(--v-dec-word,  var(--v-dec-tx)); }
+#word-list:not(.word-list-table) .word-row.verdict-historical_only .word-text { color: var(--v-hist-word, var(--v-hist-tx)); }
+#word-list:not(.word-list-table) .word-row.verdict-absent          .word-text { color: var(--v-abs-word,  var(--v-abs-tx)); }
 
 /* Word text. Ellipsis rather than a wider column: the ~2% of headwords that
    outrun their cell would otherwise set the width for all 25k. Hovering any row
@@ -685,8 +691,17 @@ body {
   text-decoration-thickness: 1.5px;
   text-underline-offset: 2px;
 }
-.word-row[data-selected].inv .word-text,
-.word-row[data-selected].bookmarked .word-text { text-decoration-color: rgba(250,247,241,.75); }
+#word-list .word-row[data-selected].inv .word-text,
+#word-list .word-row[data-selected].bookmarked .word-text { text-decoration-color: rgba(250,247,241,.75); }
+
+/* In cloud view the word itself now carries the verdict colour, so a fixed
+   --v-ext/--v-dec underline can land under a differently-coloured word and
+   read as a second, contradictory verdict. Tie it to the word's own colour
+   instead — dotted vs solid is what tells inv and bookmarked apart, not hue. */
+#word-list:not(.word-list-table) .word-row:not([data-selected]).inv .word-text,
+#word-list:not(.word-list-table) .word-row:not([data-selected]).bookmarked .word-text {
+  text-decoration-color: currentColor;
+}
 
 /* ══════════════════════════════════════════
    TABLE VIEW
@@ -721,8 +736,7 @@ body {
 #word-list.word-list-table .word-row:hover { background: var(--surface); }
 #word-list.word-list-table .word-row[data-selected] { background: var(--text); }
 
-/* In table view, hide verdict dot and freq superscript */
-#word-list.word-list-table .verdict-dot { display: none; }
+/* In table view, hide the freq superscript (the dot is already gone everywhere) */
 #word-list.word-list-table .chip-freq   { display: none; }
 
 /* Word text in table: smaller, left-anchored. Long headwords ellipsis rather
@@ -1330,28 +1344,37 @@ body {
 }
 .fs-pills-pos { gap: 5px; }
 
+/* A choice, not a button — no fill, no edge, until it's picked. Every
+   fs-pill in the Filtre sheet used to carry a border and a surface fill even
+   unchecked, and with five sections' worth on screen at once (most of them
+   checked by default) that reads as a wall of boxes before you've read a
+   single label. Text over nothing is the resting state; the tick/dot inside
+   still shows on/off on its own, and :checked below adds an underline so the
+   pill itself doesn't need a box to say "selected". */
 .fs-pill {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  background: transparent;
   font-family: var(--sans);
   font-size: 0.75rem;
   font-weight: 400;
-  color: var(--text-2);
+  color: var(--text-3);
   cursor: pointer;
   user-select: none;
-  transition: border-color .1s, background .1s, color .1s;
+  transition: color .1s;
   white-space: nowrap;
 }
 .fs-pill input { display: none; }
+.fs-pill:hover { color: var(--text-2); }
 .fs-pill:has(input:checked) {
-  border-color: var(--text);
-  background: var(--text);
-  color: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
 }
 
 /* Verdict pills with dot */
@@ -1360,12 +1383,14 @@ body {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  opacity: .6;
+  opacity: .55;
   transition: opacity .1s;
 }
-.fs-pill:has(input:checked) .fs-dot { opacity: 1; filter: brightness(1.4); }
+.fs-pill:has(input:checked) .fs-dot { opacity: 1; }
 
-/* Checkbox square */
+/* Checkbox square. Filled straight in --text/--bg rather than inverting off
+   the pill's own background, because the pill no longer has one to invert
+   off of — a plain checked-checkbox look, same in every state. */
 .fs-check {
   width: 12px;
   height: 12px;
@@ -1389,15 +1414,11 @@ body {
   transition: opacity .1s;
 }
 .fs-pill:has(input:checked) .fs-check {
-  background: var(--bg);
-  border-color: var(--bg);
+  background: var(--text);
+  border-color: var(--text);
 }
-/* The tick is drawn in --bg, which is also the checked box's fill — so it was
-   invisible and a ticked pill read as an empty light square. Ink it. */
 .fs-pill:has(input:checked) .fs-check::after {
   opacity: 1;
-  border-left-color: var(--text);
-  border-bottom-color: var(--text);
 }
 
 .fs-pill-sm {

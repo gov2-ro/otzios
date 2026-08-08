@@ -4,6 +4,59 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-08 — Verdict dots retired, Filtre pills go minimal
+
+Two skin-system changes across all five skins (paper, brutal, govuk, tezaur, velin),
+prompted by a screenshot of Beton's Filtre panel: a wall of solid-black checkbox bars and
+bordered pills, "too loud."
+
+**Verdict dots.** Every skin now hides the per-word `.verdict-dot` in the cloud view and
+paints the headword itself instead — previously only brutal did this ("deliberately
+skin-scoped: paper keeps its dots, so the two can be compared"). Moved the component rule
+into `app.css` unscoped, keyed off `var(--v-*-word, var(--v-*-tx))`: skins that define
+their own `-word` ramp (brutal, tezaur) keep it verbatim; skins that don't (paper, govuk,
+velin) fall back to the existing badge-text ramp, which turned out to already clear real
+contrast on a plain ground (6.5–14:1 measured across all three). Brutal's own `-word`
+tokens stay — its badge is a solid fill with white/black `-tx`, meaningless reused as
+running text, which is why that ramp was hand-tuned in the first place. Also matched the
+inv/bookmarked underline colour to `currentColor` in cloud view everywhere (previously
+brutal-only), since a fixed `--v-ext` red underline reads as a second, contradictory
+verdict once the word itself carries a colour. Table view is untouched — it already states
+the verdict in the IST/EXT badge.
+
+**Filtre pills.** `.fs-pill` (VERDICT/NIVEL/CATEGORIE/explore toggles) lost its default
+border and background in `app.css` — text over nothing until checked, dimmed to
+`--text-3`. Checked state diverges by skin: paper/velin/brutal get an underline (no
+fill — a solid ink block per pill, all checked by default in NIVEL/CATEGORIE, was
+literally the wall of boxes this was fixing); govuk gets a flat `govuk-tag`-style grey
+fill instead of underlining a non-link; tezaur keeps its existing accent-coloured fill,
+already the right shape for "background only when selected." `.fs-check` stopped
+inverting off the pill's own background (which no longer exists) and now fills straight
+in `--text`/`--bg`, independent of skin. Brutal's and govuk's now-redundant per-skin
+copies of the dot-hiding/word-colouring rules were deleted rather than left duplicated.
+
+Verified headless via Playwright (no interactive browser session available) — computed
+`.verdict-dot` display, `.word-text` color per verdict class with contrast ratios, and
+`.fs-pill` checked/unchecked computed styles across all 5 skins × 2 themes, plus visual
+screenshots of the Filtre rail and table view.
+
+---
+
+## 2026-08-08 — `scrape_synonyms.py` delay floor lowered to 1.2s
+
+Weekend, one-off run, `relevant` seam only (~2.8k words) — traded some of the politeness
+margin for speed. Floor moved from `--delay >= 3` to `--delay >= 1.2` in the refusal
+check, the `--delay` default, and both docstring/usage mentions; `CLAUDE.md`'s Synonyms
+section updated to match. `scrape_definitions.py` was left at its `--delay 3.0` default —
+that one runs unattended for hours, not requested to change.
+
+Killed the in-flight run (still at the old 3s pace, pid 47112) and restarted it under the
+same `data/logs/synonyms.log` / `synonyms.pid` convention so it resumes from the existing
+checkpoint rather than re-scraping. `acquire_host_lock()` still applies unchanged — it
+guards against concurrent processes regardless of what `--delay` is set to.
+
+---
+
 ## 2026-08-08 — Shared page shell, last-attestation signal, keyboard access
 
 Backlog pass. Four items, one of which turned out to be already-paid-for work nobody had

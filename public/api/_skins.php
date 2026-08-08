@@ -43,7 +43,8 @@ function otios_skins(): array
     static $skins = null;
     if ($skins !== null) return $skins;
 
-    $skins = [BASE_SKIN => 'Hârtie — editorial'];
+    // $skins = [BASE_SKIN => 'Hârtie — editorial'];
+    $skins = [BASE_SKIN => 'Alpha'];
 
     foreach (glob(SKINS_DIR . '/*.css') ?: [] as $path) {
         $id = basename($path, '.css');

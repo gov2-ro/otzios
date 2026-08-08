@@ -294,7 +294,7 @@ python tools/build_ui_db.py                             # fold into ui.db
 ```
 
 Resume is automatic and Ctrl+C is safe — each row is flushed as it arrives. `--delay`
-below 3s is refused outright: dexonline.ro is community-run.
+below 1.2s is refused outright: dexonline.ro is community-run.
 
 **One scrape at a time, enforced.** `--delay` is a per-process guard, so two copies each
 waiting 3s hit the site every 1.5s — which happened on 2026-08-08. `acquire_host_lock()`

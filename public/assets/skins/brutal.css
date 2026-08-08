@@ -1,4 +1,4 @@
-/* @skin Beton — brutalist
+/* @skin Beton
 
    ══════════════════════════════════════════════════════════════════════════════
    BETON — the brutalist skin.
@@ -406,30 +406,13 @@
 [data-skin="brutal"] .word-text { font-size: 1.4375rem; }
 [data-skin="brutal"] .chip-freq { font-weight: 600; }
 
-/* Dots are squares wherever they survive (table view hides them anyway). */
-[data-skin="brutal"] .verdict-dot {
-  width: 8px;
-  height: 8px;
-  border: 1px solid var(--ink);
-}
-[data-skin="brutal"] .word-row[data-selected] .verdict-dot {
-  opacity: 1;
-  border-color: var(--on-ink);
-}
-
 /* ── Verdict as the word's own colour, in cloud view ──────────────────────────
-   The dot cost 8px of square plus a 5px gap on every one of 25,217 words — a
-   13px tax per word for a mark the eye reads as punctuation before it reads as
-   data. Colouring the headword carries the same signal in zero horizontal
-   space, and the cloud tightens noticeably.
-
-   This is deliberately skin-scoped: paper keeps its dots, so the two can be
-   compared live with the ▤/▩ toggle rather than from memory.
-
-   The badge palette could not simply be reused. As a fill behind a badge these
-   colours only had to clear 3:1; as 23px text on bone they need 4.5:1, and two
-   missed outright — extinct at 4.09:1 and declining at 2.36:1, the orange being
-   effectively unreadable.
+   app.css now does the dot-hiding and the `.word-text` colouring itself (every
+   skin gets it, falling back to --v-*-tx). What stays here is the ramp: the
+   badge palette could not simply be reused for it. As a fill behind a badge
+   these colours only had to clear 3:1; as 23px text on bone they need 4.5:1,
+   and two missed outright — extinct at 4.09:1 and declining at 2.36:1, the
+   orange being effectively unreadable.
 
    Clearing 4.5:1 was necessary but not sufficient. At ~4.6:1 against ink's
    15.5:1 the coloured words were visibly *lighter* than the black ones, so
@@ -451,19 +434,6 @@
   --v-abs-word:  #A97CFF;  /* 6.58:1 */
 }
 
-/* Cloud view only. Table view already hides the dot and states the verdict in
-   the IST/EXT badge, so colouring there would be saying it twice.
-   All four are coloured, including `historical_only` at 41.8% of the corpus.
-   Leaving the plurality as plain ink was tried and is worse: the default sort
-   surfaces historical_only almost exclusively, so the landing view lost verdict
-   encoding altogether. At this contrast the navy carries the signal without
-   shouting. */
-[data-skin="brutal"] #word-list:not(.word-list-table) .verdict-dot { display: none; }
-[data-skin="brutal"] #word-list:not(.word-list-table) .word-row.verdict-extinct         .word-text { color: var(--v-ext-word); }
-[data-skin="brutal"] #word-list:not(.word-list-table) .word-row.verdict-declining       .word-text { color: var(--v-dec-word); }
-[data-skin="brutal"] #word-list:not(.word-list-table) .word-row.verdict-historical_only .word-text { color: var(--v-hist-word); }
-[data-skin="brutal"] #word-list:not(.word-list-table) .word-row.verdict-absent          .word-text { color: var(--v-abs-word); }
-
 /* The rail's verdict swatches are the only key the cloud has now that the dots
    are gone, so they have to be painted in the same ramp as the words — showing
    the brighter badge fill next to a darker word would make the key wrong.
@@ -473,26 +443,17 @@
 [data-skin="brutal"] .fs-pill-v-hist .fs-dot { background: var(--v-hist-word) !important; }
 [data-skin="brutal"] .fs-pill-v-abs  .fs-dot { background: var(--v-abs-word)  !important; }
 
-/* Selection paints an ink block, so the word has to come back off the palette.
-   Needs the id to outrank the four rules above. */
-[data-skin="brutal"] #word-list .word-row[data-selected] .word-text { color: var(--on-ink); }
-
-/* The dotted "învechit" underline is drawn in the extinct red, which now reads
-   as a second, contradictory verdict under a blue or purple word. Match the
-   word instead. */
-[data-skin="brutal"] #word-list:not(.word-list-table) .word-row.inv .word-text {
-  text-decoration-color: currentColor;
-}
-
-/* Underline marks get thicker — they have to survive an 800-weight grotesque. */
+/* Underline marks get thicker — they have to survive an 800-weight grotesque.
+   app.css already ties the colour to currentColor / var(--on-ink) generically;
+   the #word-list id-boost keeps these two specific enough to still win. */
 [data-skin="brutal"] .word-row.inv .word-text,
 [data-skin="brutal"] .word-row.bookmarked .word-text {
   text-decoration-thickness: 3px;
   text-underline-offset: 3px;
 }
 [data-skin="brutal"] .word-row.bookmarked .word-text { text-decoration-style: solid; }
-[data-skin="brutal"] .word-row[data-selected].inv .word-text,
-[data-skin="brutal"] .word-row[data-selected].bookmarked .word-text { text-decoration-color: var(--on-ink); }
+[data-skin="brutal"] #word-list .word-row[data-selected].inv .word-text,
+[data-skin="brutal"] #word-list .word-row[data-selected].bookmarked .word-text { text-decoration-color: var(--on-ink); }
 
 /* ── Table view: a ledger ── */
 [data-skin="brutal"] #word-list.word-list-table .word-row {
@@ -708,25 +669,20 @@
   font-weight: 700;
 }
 
-[data-skin="brutal"] .fs-pill {
-  border: 1.5px solid var(--ink);
-  background: var(--surface-2);
-  color: var(--text);
-  font-weight: 500;
-  padding: 4px 9px;
-}
+/* Unchecked stays text-over-nothing per app.css. The hover wash is brutal's
+   one universal interactive tell (same hl-soft every seg-opt/word-row uses),
+   and checked leans on the heavier grotesque rather than a fill — a solid ink
+   block per pill was the wall of boxes this was built to get away from. */
+[data-skin="brutal"] .fs-pill { padding: 4px 9px; }
 [data-skin="brutal"] .fs-pill:hover { background: var(--hl-soft); }
 [data-skin="brutal"] .fs-pill:has(input:checked) {
-  background: var(--ink);
-  color: var(--on-ink);
-  border-color: var(--ink);
+  color: var(--ink);
   font-weight: 700;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 [data-skin="brutal"] .fs-dot { border: 1px solid var(--ink); opacity: 1; width: 9px; height: 9px; }
-[data-skin="brutal"] .fs-pill:has(input:checked) .fs-dot { border-color: var(--on-ink); filter: none; }
 [data-skin="brutal"] .fs-check { border: 1.5px solid var(--ink); }
-[data-skin="brutal"] .fs-pill:has(input:checked) .fs-check { background: var(--on-ink); border-color: var(--on-ink); }
-[data-skin="brutal"] .fs-pill:has(input:checked) .fs-check::after { border-color: var(--ink); }
 
 [data-skin="brutal"] .fs-select,
 [data-skin="brutal"] .fs-sort,

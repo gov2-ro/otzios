@@ -1,4 +1,4 @@
-/* @skin Guvern — GOV.UK
+/* @skin GOV.UK
 
    ══════════════════════════════════════════════════════════════════════════════
    GUVERN — an homage to the GOV.UK Design System, not a copy of it.
@@ -122,7 +122,7 @@
      1. the black masthead with its blue rule, and the whole brand bar
         re-tuned for a dark ground while the page stays white
      2. the yellow focus state — the single most recognisable GDS behaviour
-     3. squared marks: the verdict dot, tag corners, checkbox
+     3. squared marks: tag corners, checkbox
      4. tags without their leading dot, in bold caps
      5. the green button with its 2px bottom edge
      6. links underlined, thickening on hover
@@ -243,7 +243,6 @@
 }
 
 /* ── 3. Square marks ────────────────────────────────────────────────────── */
-[data-skin="govuk"] .verdict-dot { border-radius: 0; width: 8px; height: 8px; }
 [data-skin="govuk"] .fs-dot      { border-radius: 0; }
 [data-skin="govuk"] .fs-check    { border-radius: 0; border-color: var(--text); }
 [data-skin="govuk"] .lg-sw       { border-radius: 0; }
@@ -323,18 +322,21 @@
 [data-skin="govuk"] .joc-mode,
 [data-skin="govuk"] .joc-choice::before { filter: grayscale(1); }
 
-/* ── Rail and chrome ────────────────────────────────────────────────────── */
+/* ── Rail and chrome ─────────────────────────────────────────────────────────
+   GDS would never leave a checked state unmarked, but it also would never
+   underline something that isn't a link — a govuk-tag (flat, square, grey
+   fill) reads as "selected" without borrowing link semantics, so checked
+   gets that instead of app.css's default underline. */
 [data-skin="govuk"] .fs-pill {
-  border-radius: 0;
-  border: 2px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
+  color: var(--text-3);
   font-family: var(--sans);
 }
+[data-skin="govuk"] .fs-pill:hover { color: var(--text-2); }
 [data-skin="govuk"] .fs-pill:has(input:checked) {
-  border-color: var(--text);
-  background: var(--text);
-  color: var(--bg);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
 }
 /* GDS section headings are bold sans at reading size, never letterspaced caps. */
 [data-skin="govuk"] .fs-label,
@@ -359,10 +361,10 @@
 }
 
 /* ── Word cloud ─────────────────────────────────────────────────────────────
-   Bold Arial. GDS would never colour body text, so the verdict stays on the
-   (now square) dot and the words are all --text — which is also why this skin
-   defines no --v-*-word ramp: the footer legend swatch should show the dot
-   colour, because that is what the reader is being asked to match. */
+   Bold Arial. The per-word dot is gone site-wide now (app.css), so the
+   verdict has to live in the word itself even here — this skin defines no
+   --v-*-word ramp of its own, so app.css's fallback to --v-*-tx applies:
+   GDS's own tag text colours, already accessible on white/black. */
 [data-skin="govuk"] .word-text {
   font-family: var(--sans);
   font-weight: 700;

@@ -1,4 +1,4 @@
-/* @skin Tezaur — dicționar web
+/* @skin dictionary
 
    ══════════════════════════════════════════════════════════════════════════════
    TEZAUR — in the manner of thesaurus.com / dictionary.com.
@@ -205,10 +205,13 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-bg);
 }
+/* The tinted fill is its own "selected" mark, so app.css's default underline
+   is switched back off here — same idea as the word cloud pills, one signal
+   not two. */
 [data-skin="tezaur"] .fs-pill:has(input:checked) {
   background: var(--accent);
-  border-color: var(--accent);
   color: var(--on-accent);
+  text-decoration: none;
 }
 [data-skin="tezaur"] .fs-pill:has(input:checked) .fs-check {
   background: var(--on-accent);
