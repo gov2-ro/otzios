@@ -180,8 +180,17 @@ def _load_definition_words(db_path: Path) -> set[str]:
     return {normalize(w) for w, d in rows if not is_placeholder_definition(d)}
 
 HIST_CORPUS     = 'wikisource_ro'
+LUMRO_CORPUS    = 'lumro_ro'
 MODERN_CORPUS   = 'culturax_ro'
 SUBTITLE_CORPUS = 'subtitle_ro'
+
+# The historical side is a *panel*, not one corpus. Wikisource is broad, undated and
+# noisy; LUMRO is 175 dated novels by 111 authors (1845–1920), counted by the same
+# tokenizer against the same DEX lookup set, so the two are addable. Both are raw text
+# rolled up through our own paradigms — unlike CoRoLa, whose lists arrive already
+# lemmatized by someone else's lemmatizer and therefore cannot simply be joined on the
+# headword (see process_corola.py and docs/corpus-expansion-plan.md).
+HIST_CORPORA = (HIST_CORPUS, LUMRO_CORPUS)
 
 SMOOTHING = 0.1   # per-million tokens; floor for log ratio
 
@@ -402,6 +411,27 @@ def aggregate_by_family(freqs: dict[str, tuple[int, int]],
     return {w: (int(round(v)), int(round(doc.get(w, 0.0)))) for w, v in occ.items()}
 
 
+def merge_panels(*panels: dict[str, tuple[int, int]]) -> dict[str, tuple[int, int]]:
+    """Combine per-lemma (occurrences, documents) from several corpora.
+
+    Both halves are summed, and for documents that is only right *across* corpora: a
+    document in Wikisource and a novel in LUMRO are different documents, so adding
+    them counts each once. Within one corpus documents stay a max over the lemma's
+    forms (see `aggregate_by_family`), because there the same document can hold two
+    forms of the same lemma.
+
+    Hence the order this is applied in: aggregate each corpus first, merge after.
+    Merging the raw surface counts first and aggregating once would push both corpora
+    through a single max and lose the documents only the smaller one contributes.
+    """
+    out: dict[str, tuple[int, int]] = {}
+    for panel in panels:
+        for lemma, (occ, doc) in panel.items():
+            prev = out.get(lemma, (0, 0))
+            out[lemma] = (prev[0] + occ, prev[1] + doc)
+    return out
+
+
 def aggregate_loose(freqs: dict[str, tuple[int, int]],
                     form_lemma: dict[str, list[str]]) -> dict[str, int]:
     """Undivided word-family totals: {lemma: occurrences}, every claimant credited in full.
@@ -543,7 +573,9 @@ def main() -> int:
 
     freq_conn = sqlite3.connect(FREQ_DB)
 
-    hist_tokens   = get_corpus_tokens(freq_conn, HIST_CORPUS)
+    ws_tokens     = get_corpus_tokens(freq_conn, HIST_CORPUS)
+    lumro_tokens  = get_corpus_tokens(freq_conn, LUMRO_CORPUS)
+    hist_tokens   = ws_tokens + lumro_tokens
     modern_tokens = get_corpus_tokens(freq_conn, MODERN_CORPUS)
 
     if hist_tokens == 0 and modern_tokens == 0:
@@ -555,10 +587,14 @@ def main() -> int:
     print(f'Corpus sizes:')
     subtitle_tokens = get_corpus_tokens(freq_conn, SUBTITLE_CORPUS)
 
-    if hist_tokens:
-        print(f'  {HIST_CORPUS:<20} {hist_tokens:>15,} tokens')
+    if ws_tokens:
+        print(f'  {HIST_CORPUS:<20} {ws_tokens:>15,} tokens')
     else:
         print(f'  {HIST_CORPUS:<20}  (no completed run)')
+    if lumro_tokens:
+        print(f'  {LUMRO_CORPUS:<20} {lumro_tokens:>15,} tokens')
+    else:
+        print(f'  {LUMRO_CORPUS:<20}  (no completed run — process_lumro.py)')
     if modern_tokens:
         print(f'  {MODERN_CORPUS:<20} {modern_tokens:>15,} tokens')
     else:
@@ -578,10 +614,17 @@ def main() -> int:
     print(f'  {len(candidates):,} words')
 
     print('Loading corpus frequencies...')
-    hist_freqs     = load_corpus_freqs(freq_conn, HIST_CORPUS)     if hist_tokens     else {}
+    ws_freqs       = load_corpus_freqs(freq_conn, HIST_CORPUS)     if ws_tokens       else {}
+    lumro_freqs    = load_corpus_freqs(freq_conn, LUMRO_CORPUS)    if lumro_tokens    else {}
     modern_freqs   = load_corpus_freqs(freq_conn, MODERN_CORPUS)   if modern_tokens   else {}
     subtitle_freqs = load_corpus_freqs(freq_conn, SUBTITLE_CORPUS) if subtitle_tokens else {}
     freq_conn.close()
+
+    # Citation-form view of the whole historical panel, for the diffable raw columns.
+    hist_freqs = dict(ws_freqs)
+    for w, (o, d) in lumro_freqs.items():
+        prev = hist_freqs.get(w, (0, 0))
+        hist_freqs[w] = (prev[0] + o, prev[1] + d)
 
     print('Loading DEX taxonomy...')
     taxonomy = load_taxonomy(LEXEMES_DB)
@@ -609,7 +652,10 @@ def main() -> int:
     print(f'  {len(form_lemma):,} surface forms mapped to lemmas')
 
     print('Aggregating corpus counts over paradigms...')
-    hist_fam     = aggregate_by_family(hist_freqs,     form_lemma)
+    # Each historical corpus is aggregated on its own and the results merged — see
+    # merge_panels for why that order matters to the document counts.
+    hist_fam     = merge_panels(aggregate_by_family(ws_freqs,    form_lemma),
+                                aggregate_by_family(lumro_freqs, form_lemma))
     modern_fam   = aggregate_by_family(modern_freqs,   form_lemma)
     subtitle_fam = aggregate_by_family(subtitle_freqs, form_lemma)
     modern_loose = aggregate_loose(modern_freqs, form_lemma)

@@ -73,8 +73,11 @@ difference, not a partial run — the document count matches the published figur
 Downloaded and counted (`upb-nlp/LUMRO`, 175 JSON files, full text as
 `{chapter: [paragraph, …]}`):
 
-- **7,520,713 tokens**, 43.2M characters — 53% the size of Wikisource, a substantial
-  addition rather than a rounding error.
+- **5,072,239 tokens** by the pipeline's own tokenizer — 35% the size of Wikisource.
+  (An earlier draft of this document said 7.52M from a looser throwaway regex; the
+  comparable figure, counted the way `process_wikisource.py` counts, is 5.07M. 36.1% of
+  those tokens match a DEX lookup form, against Wikisource's 37.9% — close enough to
+  confirm the two panels are being counted the same way.)
 - **111 authors, 1845–1920**, median year 1898, publication year in every filename.
   By decade: 1840s 2, 1850s 7, 1860s 11, 1870s 9, 1880s 20, 1890s 40, 1900s 38, 1910s 35,
   1920s 10. Three of 175 files do not parse a year from the filename.
@@ -83,17 +86,19 @@ Downloaded and counted (`upb-nlp/LUMRO`, 175 JSON files, full text as
 - The text carries pre-reform orthography in exactly the register we want — the sampled page
   has `neâncetată`, `naturei`, `îndumnezeieşte`, `profumul`.
 
-Rolled up through `inflected_forms.db` with the same paradigm logic as
-`aggregate_by_family`, against the current 16,203-row shortlist:
+**Ingested 2026-08-10** by `process_lumro.py`, as a second historical panel beside
+Wikisource (`HIST_CORPORA`). Measured effect on the rebuild:
 
-- **8,201 of 16,203 shortlist words (50.6%) get at least one LUMRO hit.**
-- **1,327 words would cross the `HIST_MIN_OCC`/`HIST_MIN_DOCS` attestation bar** that they
-  currently fail. Every one of them is presently `absent` — the verdict meaning "no
-  historical footing, and not common now: we simply have no evidence."
+- 34.7% of shortlist words take at least one LUMRO hit.
+- **381 words crossed the `HIST_MIN_OCC`/`HIST_MIN_DOCS` attestation bar**, all of them
+  previously `absent` — the verdict meaning "we simply have no evidence".
+- **509 words promoted `curiosity` → `relevant`, none demoted.**
+- Shortlist 16,557 → 17,594 rows; words with zero historical occurrences 5,209 → 4,887.
 
-That last number is the case for LUMRO on its own. `absent` is the verdict that says the
-pipeline could not tell, and a 7.5M-token dated literary corpus converts 1,327 of those into
-an actual judgement.
+An earlier draft predicted 1,327 rather than 381. The gap is not an error in either number:
+the prediction was made against the pre-`hist_docs`-fix shortlist, and that fix had already
+rescued most of the words LUMRO would otherwise have rescued. Two fixes aimed at the same
+population do not add up.
 
 ### But ~170 of those never needed a new corpus — `hist_docs` has a defect
 
@@ -202,12 +207,49 @@ requiring **no corpus processing at all** — a download and a join on lemma, ag
 pipeline that already has lemmas. It directly attacks the panel's weakest point, which is
 that "modern" currently means one web crawl.
 
-**The catch is the licence: CC BY-NC-ND 4.0.** Non-commercial is fine here. *No-derivatives*
-is the question, and it bears on a public site. Using the lists internally to compute a
-verdict and publishing only the verdict is a defensible read; republishing the frequency
-numbers themselves, or shipping them inside `ui.db`, is not. Decide that before wiring it to
-anything user-facing — I would keep CoRoLa strictly as an input to `verdict`/`score` and
-never surface a CoRoLa-derived count in the UI.
+**The licence is CC BY-NC-ND 4.0.** Settled 2026-08-10: the project is non-commercial and
+redistributes none of the data, so it is used as an *input only* — no CoRoLa-derived count
+goes into `ui.db`. `process_corola.py` carries that constraint in its docstring and prints
+it on every run.
+
+**Loaded 2026-08-10 — and deliberately not wired to anything.** `corola_lemma_frequency`
+holds 1,457,518 lemmas over 665.9M tokens, parsed clean (0 malformed rows, 0 normalization
+collisions). 81.3% of shortlist words get a CoRoLa count. It still cannot be joined on the
+headword, for two measured reasons:
+
+**1. Its lemma inventory is not DEX's.** The lists are lemmatized by TTL, and TTL's chosen
+headword is frequently the form this project holds as the *archaic variant*:
+
+| DEX archaic headword | CoRoLa count | modern counterpart | CoRoLa count |
+|---|---:|---|---:|
+| `strugur` | 12,176 | `strugure` | 724 |
+| `gherghină` | 3,658 | `gheorghină` | 2 |
+| `cadră` | 51,181 | `cadru` | 73,660 |
+| `republicat` | 107,074 | `republica` | 20,203 |
+
+A string join therefore hands the modern word's entire count to its obsolete spelling. That
+is the same failure as the subtitle corpus by a different route: it marks precisely the
+words this project hunts for as alive. It is what produced the 1,333 shortlist words that
+look "extinct in CulturaX but ≥50 in CoRoLa" — mostly an artefact, not a discovery.
+
+**2. The distributed list is legal-skewed, not balanced.** Against CulturaX, per-token:
+
+| lemma | CoRoLa ppm | CulturaX ppm | ratio |
+|---|---:|---:|---:|
+| `alin` (alineat) | 2,652.6 | 0.0005 | ~5,000,000× |
+| `anexă` | 1,040.6 | 5.9 | 178× |
+| `prevedere` | 1,265.9 | 7.2 | 175× |
+| `articol` | 4,011.5 | 224.0 | 18× |
+| `lege` | 2,559.3 | 184.6 | 14× |
+
+Everyday vocabulary sits at 0.2–3× (`mamă` 3.0×, `copil` 1.5×, `pâine` 0.7×), so the list is
+not broken — it is dominated by legislation, and `articol` alone is 0.4% of all tokens.
+
+**What it would take.** Reconcile CoRoLa lemmas to DEX lemmas through `inflected_forms.db`
+rather than by string identity, so `strugur`'s count lands on `strugure`; and treat presence
+in the legal register as `specialist_alive` rather than plain alive. Both are real work and
+both are worth doing — CoRoLa is still the best register diversity available — but neither
+is a chore, and the naive version is worse than not doing it.
 
 ## Recommended order
 
@@ -224,12 +266,15 @@ Ranked by evidence gained per unit of work. The first three need no new corpus p
    `subtitle_ppm` survives into `ui.db`) but nothing reads either, so fixing the plumbing on
    a signal that must not be used would be churn. Either filter the folk clips and re-run, or
    invert it into a traditional-song register flag — both are decisions, not chores.
-3. **Ingest CoRoLa frequency lists** (S–M, licence decision first). Download, join on lemma,
-   add as a second modern signal. No streaming, no GPU, no multi-day run.
-4. **Ingest LUMRO** (M). 7.5M tokens, 175 files, trivial to parse. The real prize is the
-   per-decade and per-author metadata: it makes "attested by ≥ 2 independent authors" and
-   per-decade decline curves possible for the first time. Do not double-count its ELTeC
-   overlap.
+3. **Ingest CoRoLa frequency lists** — **done as a load, blocked as a signal** (2026-08-10).
+   `process_corola.py` fills `corola_lemma_frequency`; nothing consumes it, and nothing
+   should until its lemmas are reconciled to DEX's through `inflected_forms.db`. See above.
+4. **Ingest LUMRO** — **done** (2026-08-10), `process_lumro.py`, wired into `HIST_CORPORA`.
+   5.07M tokens, +509 words into the relevant seam, 381 off `absent`. Still unused: the
+   per-decade and per-author metadata, which is what would make "attested by ≥ 2 independent
+   authors" and per-decade decline curves possible. The parse already reads year and author
+   from every filename — a re-run costs 3 seconds, so that data is one small schema decision
+   away rather than another ingest.
 5. **Preserve CulturaX `timestamp` / `url` / `source`** (L — deferred). `process_culturax.py`
    currently keeps none of it; confirmed, the only metadata references in that file are
    parquet row-group internals. Grok is right that this would separate 2013 evidence from

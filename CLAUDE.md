@@ -196,7 +196,16 @@ corpus_word_frequency(id, word, corpus_name, occurrence_count, document_count, l
 processing_stats(id, corpus_name, documents_processed, tokens_processed, ...)
 ```
 
-`corpus_name ∈ {wikisource_ro, culturax_ro, subtitle_ro}`. Words are lowercased and
+`corpus_name ∈ {wikisource_ro, lumro_ro, culturax_ro, subtitle_ro}`. The **historical panel
+is `wikisource_ro` + `lumro_ro`** (`HIST_CORPORA`), aggregated separately and merged by
+`merge_panels()` — documents are summed *across* corpora because a Wikisource page and a
+LUMRO novel are different documents, but stay a max *within* one corpus. Merging the raw
+surface counts first instead would push both through a single max and lose the documents
+only the smaller corpus contributes.
+
+`corola_lemma_frequency` is a **separate table on purpose**: its counts are per-lemma, not
+per-surface-form, so it must never go through `aggregate_by_family`. See the CoRoLa gotcha
+below. Words are lowercased and
 NFC-normalized. Sizes are wildly asymmetric — 14.3M vs 17.0B tokens — which is why nothing
 downstream compares them in ppm.
 
@@ -205,10 +214,10 @@ downstream compares them in ppm.
 `make_shortlist.py` writes one CSV whose `seam` column splits it in two, because the
 project is chasing two different things:
 
-- **`relevant`** (~3.0k) — strong evidence of a word that was used and faded: historically
+- **`relevant`** (~3.6k) — strong evidence of a word that was used and faded: historically
   attested, near-absent today, broadly covered by dictionaries, still in one published
-  from 2005 on. **The default view is this seam minus the hide-flags below** (~2.4k).
-- **`curiosity`** (~13.7k) — everything else that still qualifies as a candidate.
+  from 2005 on. **The default view is this seam minus the hide-flags below** (~2.9k).
+- **`curiosity`** (~14.1k) — everything else that still qualifies as a candidate.
 
 The split is a weighted score (`make_shortlist.score`), not a ladder of thresholds. The
 signal that does the most work is **historical attestation strength**: `politeță` occurs
@@ -235,7 +244,7 @@ score and they do **not** decide the seam:
 at.** Penalising a flag in the score as well is double-counting, and it makes the flag
 unappealable: when regional words cost 25 points *and* were routed out of the seam, none
 could reach the relevant list, so the UI's "arată regionalisme" toggle had nothing to
-reveal. As it stands the relevant seam holds ~404 regional and ~129 variant words, hidden
+reveal. As it stands the relevant seam holds ~440 regional and ~153 variant words, hidden
 until asked for. The one score penalty that remains is for a *moderate* family ratio
 (4–25×), which is an evidence problem rather than a preference — the lemma's count is
 being propped up by its relatives.
@@ -278,7 +287,7 @@ Two things to preserve when touching these:
 ### `newest_dict_year` — last attestation
 
 The newest dictionary that still prints a word, from `Source.year` via `dict_sources.db`.
-97% coverage (16,155 of 16,667). Exposed as `sort=attested`, the `attested_before=<year>` /
+97% coverage (17,162 of 17,704). Exposed as `sort=attested`, the `attested_before=<year>` /
 `attested_after=<year>` filters (a band when both are set — `attested_after` is `>=`,
 `attested_before` is `<`, so they never overlap at the shared boundary year), and the lead
 chip in the detail panel's dictionary row.
@@ -286,9 +295,9 @@ chip in the detail panel's dictionary row.
 **Both filters are `curiosity`-seam instruments.** The `relevant` seam requires
 `in_current_dict` (2005+) to qualify, so `attested_after` is close to always true there and
 `attested_before` close to always false — neither says much there by construction. On
-`curiosity` both are sharp: 234 words were last printed before 1970, and that slice is
+`curiosity` both are sharp: 285 words were last printed before 1970, and that slice is
 almost entirely pre-1953-reform orthography (`desbatere`, `sburătoare`, `răsvrătit`,
-`vuet`); the ~12.8k at 2005+ are `attested_after`'s more ordinary end of the range.
+`vuet`); the ~13.2k at 2005+ are `attested_after`'s more ordinary end of the range.
 
 Rows with no year are excluded when a ceiling is set, and sort last. "Unknown" means the
 dictionary is unnamed or unmatched — it is not evidence that a word is old.
@@ -352,6 +361,17 @@ Two things the parser has to get right, both learned from real output:
   put `vapor`, `fluviu` and `cioban` in "declining".
 - **Corpus counts are per surface form.** Always roll them up through
   `inflected_forms.db` before judging a lemma, or every verb reads as extinct.
+- **CoRoLa is loaded but deliberately not wired into any verdict.** `process_corola.py`
+  fills `corola_lemma_frequency` (1,457,518 lemmas, 665.9M tokens) and nothing reads it yet.
+  Two reasons, both measured. **(1) Its lemma inventory is not DEX's.** The lists are
+  TTL-lemmatized, and TTL's chosen headword is often the form this project holds as the
+  *archaic variant*: `strugur` 12,176 vs `strugure` 724, `gherghină` 3,658 vs `gheorghină` 2.
+  Joining on the headword string therefore hands a modern word's whole count to its obsolete
+  spelling — marking exactly the words we hunt for as alive. **(2) The distributed list is
+  legal-skewed**, not the balanced corpus the description promises: against CulturaX, `alin`
+  is over-represented ~5M×, `anexă` 178×, `prevedere` 175×, `articol` 18×, while everyday
+  vocabulary sits at 0.2–3×. Using it needs lemma reconciliation through
+  `inflected_forms.db` first; it is not a string join.
 - **`subtitle_ro` is not a modern-usage signal — ~1/6th of it is folk-music television.**
   `process_subtitles.py` calls it "Digi24 news content"; the news is real but so is a large
   body of folklore programming, and the archaic vocabulary in it comes from *sung traditional

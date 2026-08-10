@@ -49,6 +49,63 @@ Recommended order (first three need no new corpus processing): fix `hist_docs` �
 
 ---
 
+## 2026-08-10 — corpus panel: LUMRO ingested and wired in; CoRoLa loaded and deliberately not
+
+Two new corpus processors, one of which is now driving verdicts and one of which is not.
+
+**`process_lumro.py` — 175 dated Romanian novels, wired into the historical panel.**
+5,072,239 tokens by the pipeline's own tokenizer (an earlier estimate of 7.52M came from a
+looser throwaway regex; 36.1% of tokens match a DEX form against Wikisource's 37.9%, which
+is the check that the two panels are counted the same way). 111 authors, 1845–1920, year in
+every filename, cedilla diacritics already handled by the shared normalizer.
+
+`HIST_CORPORA` is now `wikisource_ro` + `lumro_ro`. Each corpus is aggregated on its own and
+the results merged by a new `merge_panels()`, **not** merged as raw surface counts and
+aggregated once: documents are summed across corpora because a Wikisource page and a novel
+are different documents, but stay a max within a corpus. Merging first would push both
+through a single max and silently drop the documents only the smaller corpus contributes.
+
+Rebuild:
+
+- **381 words crossed the historical-attestation bar**, all previously `absent`
+- **509 words promoted `curiosity` → `relevant`, none demoted**
+- shortlist 16,557 → 17,594; words with zero historical occurrences 5,209 → 4,887
+- seams now relevant 3,608 / curiosity 14,096; `ui.db` 17,704 words
+- `data/word_ids.tsv`: **464 added, 0 deleted**, first 26,479 lines byte-identical
+
+The earlier prediction was 1,327, not 381. Both numbers are right: the prediction was made
+against the pre-`hist_docs`-fix shortlist, and that fix had already rescued most of the same
+words. Two fixes aimed at one population do not add.
+
+**`process_corola.py` — 1,457,518 lemmas, 665.9M tokens, loaded and connected to nothing.**
+Licence settled with the owner: non-commercial, nothing redistributed, so CC BY-NC-ND allows
+it as an input; no CoRoLa-derived number goes into `ui.db`, and the script says so on every
+run. It lives in its own table `corola_lemma_frequency` because its counts are per-lemma,
+the opposite of `corpus_word_frequency`'s per-surface-form invariant.
+
+81.3% of shortlist words get a CoRoLa count, and it still cannot be used yet:
+
+1. **TTL's lemma inventory is not DEX's**, and its chosen headword is often the form we hold
+   as the archaic variant — `strugur` 12,176 vs `strugure` 724, `gherghină` 3,658 vs
+   `gheorghină` 2, `republicat` 107,074. A string join hands the modern word's whole count
+   to its obsolete spelling, marking exactly the words this project hunts as alive. The
+   1,333 words that look "extinct in CulturaX but ≥50 in CoRoLa" are mostly this artefact.
+2. **The distributed list is legal-skewed**, not the balanced corpus advertised: vs CulturaX,
+   `alin` ~5M×, `anexă` 178×, `prevedere` 175×, `articol` 18× (0.4% of all tokens), while
+   everyday vocabulary sits at 0.2–3×.
+
+Fixing it means reconciling lemmas through `inflected_forms.db` and treating the legal
+register as `specialist_alive` — both worth doing, neither a chore.
+
+**Found in passing: `modelType 'V'` is missing from the corpus lookup allow-list.**
+`load_dex_words()` allows `'VT'` and `'VI'` but not plain `'V'`, so 3,184 verbs with no
+description are counted by no corpus at all — `râde`, at DEX frequency 0.99, is absent from
+the `culturax_ro` table entirely. Measured shortlist impact is one word (`țepeni`), so it is
+logged rather than fixed. The allow-list is also inconsistent with itself: `'T'` is excluded
+as an inflected form while `'IL'`, equally inflected, is included.
+
+---
+
 ## 2026-08-10 — dexonline host lock for `scrape_definitions.py`; `subtitle_ro` found unusable as a modern-usage signal
 
 Two backlog items, one shipped and one deliberately not.

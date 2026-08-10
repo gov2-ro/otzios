@@ -17,6 +17,18 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
   in-repo citation corpus), or CoRoLa. The citation route is cheapest and worth costing
   first.
 
+- [ ] **`modelType 'V'` is missing from the corpus lookup allow-list** (găsit 260810).
+  `load_dex_words()` — în `process_wikisource.py`, `process_culturax.py` și acum și în
+  `process_lumro.py`, copiat verbatim — acceptă `modelType IN ('A','F','M','N','VT','VI',
+  'IL','PT','P')`. `'V'` lipsește, deși `'VT'` și `'VI'` sunt acolo: sunt toate verbe.
+  Efect: **3.184 de leme cu `modelType='V'` și `description` goală nu sunt numărate în
+  niciun corpus** — `râde` (frecvență DEX 0,99!) e complet absent din tabelul `culturax_ro`.
+  Impact măsurat pe shortlist: **un singur cuvânt** (`țepeni`, `absent` cu 0/0), pentru că
+  lista curată filtrează oricum aproape tot restul — deci e de reparat, nu urgent.
+  De verificat cu ocazia asta și `'I'` (invariabil, 25.999 fără descriere) și `'SP'` (1.081):
+  `'T'` e exclus intenționat (formă flexionară, nu headword), dar `'IL'` — la fel de
+  flexionar — e în listă, deci allow-lista nu e coerentă cu ea însăși.
+
 - [ ] **Variant detection only catches paradigm-sharing pairs.** `family_ratio` (see
   `make_shortlist.FAMILY_RATIO_VARIANT`) flags `politeță`/`politețe` and `uleu`/`ulei`
   because they share inflected forms. Phonetic respellings with unrelated paradigms —
@@ -540,14 +552,27 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
       folosit. Două ieșiri, ambele decizii: filtrează clipurile de folclor și re-rulează
       `process_subtitles.py` (~11M tokeni de știri reale), sau inversează-l într-un flag de
       registru „cântec tradițional", lângă `regional_only`.
-    - [ ] **3. Liste de frecvențe CoRoLa** (S–M) — [Zenodo 7091535](https://zenodo.org/records/7091535),
-      114,1 MB, 24 liste (12 word / 12 lemma), corpus 1B+ tokeni echilibrat pe 71 subdomenii.
-      Descărcare liberă, fără procesare de corpus. **Licența e CC BY-NC-ND**: de folosit doar
-      ca intrare în `verdict`/`score`, niciodată publicat un număr derivat din CoRoLa în UI.
-    - [ ] **4. LUMRO** (M) — măsurat: 175 romane, **7,52M tokeni**, 111 autori, 1845–1920,
-      an în numele fișierului, diacritice cedilă (deja tratate de `dump_parser.normalize`).
-      50,6% din shortlist ia cel puțin un hit; **1.327 cuvinte ar trece pragul de atestare
-      istorică** pe care acum îl pică (toate `absent` în prezent).
+    - [x] **3. Liste de frecvențe CoRoLa** — **încărcate 260810, dar neconectate deliberat.**
+      `process_corola.py` → tabelul `corola_lemma_frequency` (1.457.518 leme, 665,9M tokeni,
+      0 rânduri malformate). Licența: proiectul e necomercial și nu redistribuie nimic, deci
+      se folosește **doar ca intrare** — niciun număr derivat din CoRoLa în `ui.db`.
+      **Nu se poate face join pe headword**, din două motive măsurate: (1) lemele TTL nu sunt
+      lemele DEX, iar headword-ul ales de TTL e adesea exact varianta pe care noi o ținem ca
+      arhaică — `strugur` 12.176 vs `strugure` 724, `gherghină` 3.658 vs `gheorghină` 2 —
+      deci un join pe șir mută tot uzul modern pe grafia ieșită din uz, exact cuvintele pe
+      care le căutăm; (2) lista distribuită e înclinată spre juridic, nu echilibrată: față de
+      CulturaX, `alin` ~5M×, `anexă` 178×, `prevedere` 175×, `articol` 18×, în timp ce
+      vocabularul comun stă la 0,2–3×. De reconciliat lemele prin `inflected_forms.db`
+      înainte de orice folosire.
+    - [x] **4. LUMRO** — **ingerat 260810** (`process_lumro.py`, în `HIST_CORPORA`).
+      175 romane, **5,07M tokeni** cu tokenizatorul pipeline-ului (nu 7,52M — ăla era dintr-un
+      regex mai larg), 111 autori, 1845–1920. Efect: **381 de cuvinte trec pragul de atestare**
+      (toate `absent` înainte), **509 promovate `curiosity` → `relevant`, zero retrogradate**,
+      shortlist 16.557 → 17.594. Predicția anterioară de 1.327 era față de shortlist-ul de
+      *dinaintea* reparării `hist_docs`, care salvase deja majoritatea acelorași cuvinte.
+      - [ ] Rămâne nefolosit: anul și autorul, citite deja din numele fișierului la fiecare
+        rulare. Ar face posibile „atestat de ≥2 autori independenți" și curbele pe decenii.
+        Re-rularea costă 3 secunde, deci e o decizie de schemă, nu un alt ingest.
     - [ ] **5. Metadate CulturaX** (L, amânat) — `process_culturax.py` nu păstrează
       `timestamp`/`url`/`source`. Ar separa dovada din 2013 de cea din 2023 și sutele de
       gazde independente de o pagină de dicționar oglindită — dar cere reprocesarea a 40,3M
