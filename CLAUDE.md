@@ -203,6 +203,14 @@ LUMRO novel are different documents, but stay a max *within* one corpus. Merging
 surface counts first instead would push both through a single max and lose the documents
 only the smaller corpus contributes.
 
+**LUMRO's `document_count` is distinct authors (of 111), not novels (of 175).** `hist_docs`
+is read as a claim about independence, and three novels by one novelist are one writer's
+vocabulary — 638 of the 1,425 words LUMRO attests came from a single author before this,
+`jupâneșică` at 47 occurrences all by V.A. Urechia among them. Occurrences still sum over
+every novel; only the independence claim is corrected. Wikisource keeps counting pages
+because it has no author metadata — the asymmetry follows what is knowable. Pinned by
+`tests/test_process_lumro.py`, since "count novels" is the obvious simplification.
+
 `corola_lemma_frequency` is a **separate table on purpose**: its counts are per-lemma, not
 per-surface-form, so it must never go through `aggregate_by_family`. See the CoRoLa gotcha
 below. Words are lowercased and
@@ -214,7 +222,7 @@ downstream compares them in ppm.
 `make_shortlist.py` writes one CSV whose `seam` column splits it in two, because the
 project is chasing two different things:
 
-- **`relevant`** (~3.6k) — strong evidence of a word that was used and faded: historically
+- **`relevant`** (~3.5k) — strong evidence of a word that was used and faded: historically
   attested, near-absent today, broadly covered by dictionaries, still in one published
   from 2005 on. **The default view is this seam minus the hide-flags below** (~2.9k).
 - **`curiosity`** (~14.1k) — everything else that still qualifies as a candidate.
@@ -244,7 +252,7 @@ score and they do **not** decide the seam:
 at.** Penalising a flag in the score as well is double-counting, and it makes the flag
 unappealable: when regional words cost 25 points *and* were routed out of the seam, none
 could reach the relevant list, so the UI's "arată regionalisme" toggle had nothing to
-reveal. As it stands the relevant seam holds ~440 regional and ~153 variant words, hidden
+reveal. As it stands the relevant seam holds ~440 regional and ~152 variant words, hidden
 until asked for. The one score penalty that remains is for a *moderate* family ratio
 (4–25×), which is an evidence problem rather than a preference — the lemma's count is
 being propped up by its relatives.
@@ -287,7 +295,7 @@ Two things to preserve when touching these:
 ### `newest_dict_year` — last attestation
 
 The newest dictionary that still prints a word, from `Source.year` via `dict_sources.db`.
-97% coverage (17,162 of 17,704). Exposed as `sort=attested`, the `attested_before=<year>` /
+97% coverage (17,146 of 17,687). Exposed as `sort=attested`, the `attested_before=<year>` /
 `attested_after=<year>` filters (a band when both are set — `attested_after` is `>=`,
 `attested_before` is `<`, so they never overlap at the shared boundary year), and the lead
 chip in the detail panel's dictionary row.

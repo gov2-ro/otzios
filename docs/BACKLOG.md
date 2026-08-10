@@ -570,9 +570,20 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
       (toate `absent` înainte), **509 promovate `curiosity` → `relevant`, zero retrogradate**,
       shortlist 16.557 → 17.594. Predicția anterioară de 1.327 era față de shortlist-ul de
       *dinaintea* reparării `hist_docs`, care salvase deja majoritatea acelorași cuvinte.
-      - [ ] Rămâne nefolosit: anul și autorul, citite deja din numele fișierului la fiecare
-        rulare. Ar face posibile „atestat de ≥2 autori independenți" și curbele pe decenii.
-        Re-rularea costă 3 secunde, deci e o decizie de schemă, nu un alt ingest.
+      - [x] **Autorul e folosit: `document_count` = autori distincți, nu romane** (260810).
+        `hist_docs >= 2` e o afirmație despre *independență*, iar trei romane ale aceluiași
+        romancier sunt vocabularul unui singur om. Măsurat înainte: din 1.425 de cuvinte a
+        căror atestare o dă LUMRO, **638 (44,8%) veneau de la un singur autor** —
+        `jupâneșică` cu 47 de ocurențe, toate V.A. Urechia. Ocurențele se adună în
+        continuare peste toate romanele; se corectează doar independența.
+        **Efectul real e mic și merită notat**: doar **315 cuvinte** apar în mai multe romane
+        ale aceluiași autor, deci doar atâtea pot fi mișcate — 10 verdicte schimbate, 3 ieșite
+        din seamul `relevant`, 17 din shortlist. Principiul contează mai mult decât cifra.
+        Fixat de `tests/test_process_lumro.py`, fiindcă „numără romane" e simplificarea
+        evidentă. Wikisource numără în continuare pagini: n-are metadate de autor.
+      - [ ] Rămâne nefolosit: **anul**. Ar face posibile curbele pe decenii (1840–1920, deja
+        parsate la fiecare rulare). E o decizie de schemă plus un consumator în UI — nu se
+        construiește până nu există ce să le citească.
     - [ ] **5. Metadate CulturaX** (L, amânat) — `process_culturax.py` nu păstrează
       `timestamp`/`url`/`source`. Ar separa dovada din 2013 de cea din 2023 și sutele de
       gazde independente de o pagină de dicționar oglindită — dar cere reprocesarea a 40,3M

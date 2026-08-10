@@ -14,10 +14,23 @@ words take at least one LUMRO hit, and 1,327 words cross the
 HIST_MIN_OCC/HIST_MIN_DOCS attestation bar they currently fail — all of them
 presently `absent`, the verdict meaning "no evidence either way".
 
-**The document unit is the novel**, so `document_count` here is out of 175, not out
-of 12,921. Two distinct novels is a much stronger attestation than two Wikisource
-pages; `validate_diachronic.HIST_MIN_DOCS` is applied to the combined historical
-panel and that asymmetry is deliberate, not an oversight.
+**The document unit is the AUTHOR, not the novel** — `document_count` here is out of
+111, not 175 and not 12,921. This is the one non-obvious decision in this script and
+it is deliberate.
+
+`validate_diachronic.verdict()` reads `hist_docs >= 2` to mean "attested in more than
+one place", i.e. as a measure of *independence*. Three novels by one novelist are not
+three independent attestations of a word; they are one writer's vocabulary, and
+counting them as three is how a single author's idiolect becomes "historically
+attested". Measured before making this choice: of the 1,425 shortlist words whose
+attestation LUMRO supplies, **638 (44.8%) came from a single author** — `jupâneșică`
+at 47 occurrences, every one of them V.A. Urechia; `campament` 19, all
+N. Radulescu-Niger. Several sat in the `relevant` seam, which is the default view.
+
+Occurrences still sum across all novels, so a word used heavily by one author keeps
+its weight in `hist_occ`; only the independence claim is corrected. Wikisource has no
+author metadata, so it still counts pages — the panels are asymmetric because what we
+know about them is asymmetric, and the stricter unit is applied where it is knowable.
 
 Source: https://github.com/upb-nlp/LUMRO (JSON per novel, `{chapter: [paragraph, …]}`).
 Download once with:
@@ -42,6 +55,7 @@ import time
 import unicodedata
 import zipfile
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -153,6 +167,67 @@ def iter_novels(zip_path: Path):
             yield year, author, title, text
 
 
+@dataclass
+class Counts:
+    occurrences: dict[str, int]
+    documents: dict[str, int]        # distinct AUTHORS, not novels — see module docstring
+    novels_with: dict[str, int]      # reported for transparency, never stored
+    authors_with: dict[str, set[str]]
+    total_tokens: int
+    matched: int
+    novels: int
+    years: list[int]
+    authors: set[str]
+
+
+def count_novels(novels, dex_words: set[str]) -> Counts:
+    """Count DEX-form occurrences over an iterable of (year, author, title, text).
+
+    `documents` is the number of distinct **authors** a form appears in, which is the
+    whole point of this module — see the docstring at the top for the measurement that
+    motivated it. Occurrences still sum over every novel.
+    """
+    occ: dict[str, int] = defaultdict(int)
+    novels_with: dict[str, int] = defaultdict(int)
+    authors_with: dict[str, set[str]] = defaultdict(set)
+    total_tokens = n_novels = matched = 0
+    years: list[int] = []
+    authors: set[str] = set()
+
+    for i, (year, author, title, text) in enumerate(novels):
+        tokens = tokenize(text)
+        total_tokens += len(tokens)
+        n_novels += 1
+        if year:
+            years.append(year)
+        if author:
+            authors.add(author)
+        # An unattributed file must not silently merge with every other unattributed
+        # one into a single phantom author, so it stands as its own source.
+        source = author or f'__unattributed_{i}'
+        seen = set()
+        for t in tokens:
+            if t in dex_words:
+                occ[t] += 1
+                matched += 1
+                seen.add(t)
+        for t in seen:
+            novels_with[t] += 1
+            authors_with[t].add(source)
+
+    return Counts(
+        occurrences=dict(occ),
+        documents={w: len(a) for w, a in authors_with.items()},
+        novels_with=dict(novels_with),
+        authors_with=dict(authors_with),
+        total_tokens=total_tokens,
+        matched=matched,
+        novels=n_novels,
+        years=years,
+        authors=authors,
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -193,29 +268,11 @@ def main() -> int:
             return 1
 
     started = time.time()
-    occ: dict[str, int] = defaultdict(int)
-    doc: dict[str, int] = defaultdict(int)
-    total_tokens = docs = matched = 0
-    years: list[int] = []
-    authors: set[str] = set()
-
-    for year, author, title, text in iter_novels(args.source):
-        tokens = tokenize(text)
-        total_tokens += len(tokens)
-        docs += 1
-        if year:
-            years.append(year)
-        if author:
-            authors.add(author)
-        seen = set()
-        for t in tokens:
-            if t in dex_words:
-                occ[t] += 1
-                matched += 1
-                seen.add(t)
-        for t in seen:
-            doc[t] += 1
-
+    counts = count_novels(iter_novels(args.source), dex_words)
+    occ, doc = counts.occurrences, counts.documents
+    novels_with, authors_with = counts.novels_with, counts.authors_with
+    total_tokens, docs, matched = counts.total_tokens, counts.novels, counts.matched
+    years, authors = counts.years, counts.authors
     elapsed = time.time() - started
 
     print(f'Novels            : {docs:,}')
@@ -225,6 +282,16 @@ def main() -> int:
     print(f'Tokens            : {total_tokens:,}')
     print(f'  matched to DEX  : {matched:,} ({matched/total_tokens:.1%})')
     print(f'Unique DEX words  : {len(occ):,}')
+
+    # Both numbers printed so the document-unit choice above stays visible rather than
+    # being something you have to read the source to discover.
+    single_author = sum(1 for w, a in authors_with.items() if len(a) == 1)
+    multi_novel_single_author = sum(
+        1 for w in occ if len(authors_with[w]) == 1 and novels_with[w] > 1)
+    print(f'Document unit     : author ({len(authors):,} authors, {docs:,} novels)')
+    print(f'  single-author   : {single_author:,} words ({single_author/len(occ):.1%})')
+    print(f'  …of which >1 novel by that author: {multi_novel_single_author:,} '
+          f'(counted once, not once per novel)')
 
     if years:
         decades: dict[int, int] = defaultdict(int)

@@ -100,6 +100,34 @@ the prediction was made against the pre-`hist_docs`-fix shortlist, and that fix 
 rescued most of the words LUMRO would otherwise have rescued. Two fixes aimed at the same
 population do not add up.
 
+#### Its document unit is the author, not the novel
+
+`verdict()` reads `hist_docs >= 2` as "attested in more than one place" — a claim about
+*independence*. Three novels by one novelist are one writer's vocabulary, not three
+independent attestations, and LUMRO is the only corpus here that knows who wrote what.
+
+The check that forced the decision: of the 1,425 shortlist words whose historical
+attestation LUMRO supplies, **638 (44.8%) come from a single author** — `jupâneșică` at 47
+occurrences, every one V.A. Urechia; `campament` 19, all N. Radulescu-Niger; `plavie` 11,
+all C. Sandu-Aldea. Several sit in the `relevant` seam, which is the default view. Across
+all LUMRO-attested shortlist words, 39.6% rest on one author.
+
+So `process_lumro.py` stores distinct **authors** as `document_count` (111 possible, not
+175). Occurrences still sum over every novel, so a word an author leans on keeps its weight
+in `hist_occ`; only the independence claim is corrected.
+
+**The honest size of the effect is small**, and worth recording so nobody re-derives it
+expecting more: only **315 words** appear in more than one novel by the same author, which
+is the only population the change can move. The rescore gave 10 verdict changes (all
+`historical_only` → `absent`), 3 words out of the relevant seam, and 17 off the shortlist.
+The principle matters more than the number — it stops a single novelist's idiolect from
+reading as circulation, and that failure mode would grow with any further single-author-heavy
+corpus.
+
+Wikisource keeps counting pages, because it carries no author metadata. The panels are
+asymmetric because what is known about them is asymmetric, and the stricter unit is applied
+where it is knowable rather than dropped for symmetry's sake.
+
 ### But ~170 of those never needed a new corpus — `hist_docs` has a defect
 
 While testing the above I hit words like `văz` carrying `hist_occ 96` with `hist_docs 0`.

@@ -77,6 +77,29 @@ The earlier prediction was 1,327, not 381. Both numbers are right: the predictio
 against the pre-`hist_docs`-fix shortlist, and that fix had already rescued most of the same
 words. Two fixes aimed at one population do not add.
 
+**LUMRO's document unit is the author, not the novel.** Added after the first ingest, on a
+measurement: `hist_docs >= 2` is a claim about *independence*, and of the 1,425 shortlist
+words whose attestation LUMRO supplies, **638 (44.8%) came from a single author** —
+`jupâneșică` at 47 occurrences, every one V.A. Urechia; `campament` 19, all
+N. Radulescu-Niger. Several were in the `relevant` seam. So `document_count` is now distinct
+authors (of 111) rather than novels (of 175); occurrences still sum over every novel, so
+only the independence claim changes. Wikisource keeps counting pages — it has no author
+metadata, and the stricter unit belongs where it is knowable.
+
+**The measured effect is small and that is worth recording**: only 315 words appear in more
+than one novel by the same author, so only those can move. The rescore gave 10 verdict
+changes (all `historical_only` → `absent`), 3 words out of the relevant seam, 17 off the
+shortlist; `data/word_ids.tsv` unchanged. The principle is the point — it stops one
+novelist's idiolect reading as circulation, a failure mode that grows with any further
+single-author-heavy corpus.
+
+The counting loop was extracted to `count_novels()` and pinned by a new
+`tests/test_process_lumro.py` (6 tests), because "just count novels" is the obvious
+simplification and nothing else in the tree would catch it. Suite now 103.
+
+Final figures after this pass: shortlist 17,577; seams relevant 3,495 / curiosity 14,082;
+`ui.db` 17,687 words.
+
 **`process_corola.py` — 1,457,518 lemmas, 665.9M tokens, loaded and connected to nothing.**
 Licence settled with the owner: non-commercial, nothing redistributed, so CC BY-NC-ND allows
 it as an input; no CoRoLa-derived number goes into `ui.db`, and the script says so on every
