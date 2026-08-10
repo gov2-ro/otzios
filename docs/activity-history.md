@@ -49,6 +49,49 @@ Recommended order (first three need no new corpus processing): fix `hist_docs` �
 
 ---
 
+## 2026-08-10 — dexonline host lock for `scrape_definitions.py`; `subtitle_ro` found unusable as a modern-usage signal
+
+Two backlog items, one shipped and one deliberately not.
+
+**`scrape_definitions.py` now takes the host lock.** `acquire_host_lock()` and the `LockHeld`
+branch, guarded on `not args.dry_run` (`--merge-only` returns before it), on the same
+`data/.dexonline.lock` path `scrape_synonyms.py` uses. Verified cross-script rather than in
+isolation: with the synonyms scraper holding the lock, a live definitions run exits 1 and
+names the holder, while `--dry-run` still prints its queue and makes no requests. Duplicated
+rather than imported, per the two-callers convention — **the lock path is the contract**, and
+a drift there makes the two stop interlocking silently. This mattered now because two scrapes
+are queued behind it (746 missing definitions, ~14.2k synonyms).
+
+**`subtitle_ro` will not be wired into the verdict, and the earlier recommendation to do so
+is withdrawn.** `process_subtitles.py` describes it as 966 Digi24 news clips; comparing
+per-token rates against CulturaX shows the most over-represented words are folk-song
+vocabulary, not news — `lai` 332×, `mândruliță` 242×, `neicuță` 122×, `țurai` 119×.
+Reconstructing the source clips from the dump's `Subtitle` table (`clipId` is retained) makes
+it unambiguous: all seven sampled clips are folklore programming — "festivalul Național de
+folclor Constantin Arvinte", "regina muzicii populare Irina Loghin", "festivalul de muzică
+populară Ciocârlia" — and two are transcribed lyrics rather than speech, one with visible ASR
+damage.
+
+Sized by clip, using genre-naming words as the marker:
+
+- clips with ≥ 3 markers: **15.6% of tokens but 27.5% of all shortlist-word occurrences** (1.76×)
+- clips with ≥ 5 markers: 9.0% of tokens, 21.4% of occurrences (2.37×)
+- **444 of the 2,446 shortlist words it attests appear *only* in folk clips** — for those,
+  "attested in modern broadcast" means "sung in a traditional song on television"
+
+So scoring subtitle presence as evidence of modern life would have rescued precisely the
+words the project exists to find. Nothing reads `subtitle_ppm` today (no PHP, no JS), so
+there is no live harm — the plumbing defects are real but fixing them on a signal that must
+not be used is churn. Two honest routes recorded instead, both decisions rather than chores:
+filter the folk clips by `clipId` and re-run for ~11M tokens of actual news, or invert the
+signal into a traditional-song register flag alongside `regional_only`.
+
+Also ticked a stale backlog entry: "also advance on fav / lol" was already delivered in
+`eb11974` (`store.js:161` / `:187`) — an unticked child under a ticked parent saying the same
+thing. Added the `subtitle_ro` finding to the `CLAUDE.md` gotchas.
+
+---
+
 ## 2026-08-10 — fix: share-scaled document counts in `aggregate_by_family`, and rescore
 
 Documents in `aggregate_by_family` are now scaled by the same share that splits a form's

@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import fcntl
+import os
 import sqlite3
 import sys
 import time
@@ -43,6 +45,14 @@ DEFAULT_DEFS_DB     = Path('data/processed/definitions.db')
 DEXONLINE_URL_TMPL  = 'https://dexonline.ro/definitie/{}'
 USER_AGENT          = 'otios-scraper/0.1 (Romanian linguistic research)'
 FIELDNAMES          = ['word', 'definition', 'source_url', 'scraped_at', 'status']
+
+# The same path `scrape_synonyms.py` locks. Keyed on the host rather than on the
+# script, so the two scrapers interlock; a per-script lock would permit exactly the
+# doubling this prevents. **This path is the contract** — the helper below is
+# duplicated rather than imported (per CLAUDE.md: copy at two callers, lift to a
+# shared module at three), so if it ever drifts here the two stop interlocking
+# silently.
+DEXONLINE_LOCK      = Path('data/.dexonline.lock')
 
 
 # ---------------------------------------------------------------------------
@@ -286,6 +296,50 @@ def merge_into_db(csv_path: Path, db_path: Path) -> tuple[int, int]:
 
 
 # ---------------------------------------------------------------------------
+# Host lock
+# ---------------------------------------------------------------------------
+
+class LockHeld(Exception):
+    """Another process is already making requests to dexonline.ro."""
+
+
+def acquire_host_lock(path: Path = DEXONLINE_LOCK):
+    """
+    Serialise every process that makes requests to dexonline.ro.
+
+    `--delay` is a *per-process* guard, so two copies each politely waiting 3s still
+    hit a community-run site every 1.5s — which is what happened on 2026-08-08 with
+    two `scrape_synonyms.py` runs. The lock makes the delay mean what it says.
+
+    Keyed on the **host**, not on this script, so this scraper and the synonyms one
+    exclude each other rather than each holding a private lock and doubling the rate
+    between them.
+
+    `flock`, not a PID file: the kernel releases it when the process dies, so a
+    SIGKILLed run cannot strand a stale lock that someone has to `rm` by hand. The
+    pid written inside is only ever read back to name the holder in the error.
+
+    Returns the open handle — **keep a reference for the duration of the run**,
+    since closing it releases the lock.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = path.open('a+', encoding='utf-8')
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.seek(0)
+        holder = handle.read().strip() or 'holder unknown'
+        handle.close()
+        raise LockHeld(holder) from None
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f'pid {os.getpid()} since '
+                 f'{datetime.now(timezone.utc).isoformat(timespec="seconds")}\n')
+    handle.flush()
+    return handle
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -321,6 +375,22 @@ def main() -> int:
     if not args.input.exists():
         print(f'Input not found: {args.input}', file=sys.stderr)
         return 1
+
+    # Taken before the queue is planned, so a second run hears why it is stopping
+    # instead of a plan it will not carry out. `--dry-run` makes no requests and so
+    # stays lock-free: inspecting the queue while a scrape is going is legitimate,
+    # and `--merge-only` has already returned above for the same reason.
+    # Held for the rest of the run — `lock` looks unused, but closing it unlocks.
+    lock = None                                                       # noqa: F841
+    if not args.dry_run:
+        try:
+            lock = acquire_host_lock()                                # noqa: F841
+        except LockHeld as held:
+            print(f'Another dexonline scrape is already running ({held}).\n'
+                  f'Two at once halve the interval between requests, which is the '
+                  f'one thing --delay exists to prevent. Wait for it, or stop it '
+                  f'first.', file=sys.stderr)
+            return 1
 
     shortlist = load_shortlist(args.input)
     already_defined = load_already_defined(args.definitions_db)

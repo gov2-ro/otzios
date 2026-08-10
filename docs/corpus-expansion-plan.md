@@ -133,6 +133,63 @@ papers over a defect instead of adding evidence — and the fix is a few lines a
 
 I have not changed it. Flagging rather than fixing since it is outside what you asked for.
 
+### `subtitle_ro` cannot serve as evidence of modern usage — it is 1/6th folk-music TV
+
+Measured 2026-08-10, after this document first recommended wiring it into the verdict. That
+recommendation was wrong, and the reason is worth keeping.
+
+`process_subtitles.py:5-7` describes the corpus as "~13M pre-tokenised word tokens from 966
+YouTube clips (Digi24 news content)". The news half is real. The rest is not: comparing
+per-token rates against CulturaX — both modern corpora, so the comparison is legitimate —
+the most over-represented words are not news vocabulary but folk-song vocabulary:
+
+| word | subtitle occ / docs | CulturaX occ | over-representation |
+|---|---:|---:|---:|
+| `țurai` | 57 / 2 | 616 | 119× |
+| `mândruliță` | 41 / 15 | 216 | 242× |
+| `neicuță` | 26 / 7 | 273 | 122× |
+| `bunuț` | 42 / 30 | 546 | 99× |
+| `lai` | 3,226 / 65 | 12,467 | 332× |
+
+Reconstructing the clips those words come from (the dump's `Subtitle` table keeps `clipId`,
+so this is checkable locally) settles it — all seven sampled clips are folk-music
+programming, and two are transcribed lyrics rather than speech:
+
+- clip 59 — "festivalului Național de folclor Constantin Arvinte"
+- clip 194 — "Doina Timișului … Drumul Lung și frumos al jocului popular"
+- clip 318 — "regina muzicii populare românești Irina Loghin"
+- clip 918 — "festivalului concurs național de muzică populară Ciocârlia", and the transcript
+  is the song itself: *"nu te iubeam dorule dorule / Unde mă culcam Dormeam dorule…"*
+- clip 342 — lyrics plus visible ASR damage: *"cine vărui Că nu câș degetul în mic i pișe
+  soară cu soară"*
+
+Sizing it by clip, counting genre-naming words (`folclor`, `taraf`, `lăutari`, `doină`,
+`ansamblul`, … — programme billing, not lyrics):
+
+| folk threshold | share of tokens | share of **shortlist-word** occurrences | enrichment |
+|---|---:|---:|---:|
+| ≥ 3 genre markers | 15.6% | 27.5% | 1.76× |
+| ≥ 5 genre markers | 9.0% | 21.4% | 2.37× |
+
+**And 444 of the 2,446 shortlist words with any subtitle evidence (18%) appear *only* in folk
+clips.** For those, "attested in modern broadcast media" means "sung in a traditional song on
+television" — which is close to the definition of archaic, and the exact opposite of what the
+signal would have been read as saying. Wiring subtitle presence into `verdict()` as evidence
+of modern life would have rescued precisely the words the project exists to find.
+
+So: **do not score it, and do not surface it as a modern-usage signal.** Two honest uses
+remain, both optional:
+
+1. **Filter and re-run.** `clipId` is already the document unit, so dropping clips above a
+   genre-marker threshold and re-running `process_subtitles.py` yields ~11M tokens of
+   actual broadcast news. That corpus *could* carry a modern-usage signal.
+2. **Invert it.** "Occurs only in folk-music broadcast" is a genuine and interesting
+   register signal — a *traditional-song* flag, close in spirit to `regional_only`. That is
+   a feature, not a fix, and belongs behind a UI toggle like the other flags.
+
+Nothing consumes the column today — `subtitle_ppm` is written into `ui.db` and no PHP or JS
+reads it — so there is no live harm, only a trap for whoever wires it up next.
+
 ### CoRoLa's pre-computed frequency lists are downloadable — with a licence catch
 
 Zenodo record 7091535 is real and open: `corola_frequencies.zip`, **114.1 MB**, 24 files —
@@ -159,11 +216,14 @@ Ranked by evidence gained per unit of work. The first three need no new corpus p
 1. **Fix `hist_docs` in `aggregate_by_family`** (S). Credit documents proportionally, or take
    the max-share claimant rather than requiring ≥ 0.5. Recovers 170 words from a false
    `absent` and removes a confound from every measurement that follows.
-2. **Stop dropping `subtitle_occ` at the shortlist boundary, and use it** (S). Add it to
-   `make_shortlist`'s field list, and swap the UI's `subtitle_ppm` for the paradigm-rolled
-   count. 13.2M tokens of modern broadcast speech are already sitting in the database
-   informing nothing. Relabel it `modern_broadcast_news_ro` while touching it — Grok is right
-   that Digi24 subtitles are not a general conversational corpus.
+2. ~~**Stop dropping `subtitle_occ` at the shortlist boundary, and use it**~~ — **withdrawn
+   2026-08-10**, see the `subtitle_ro` section above. The corpus is ~1/6th folk-music
+   television, 18% of the shortlist words it attests appear *only* in those clips, and
+   scoring it would have rescued exactly the words the project is looking for. The plumbing
+   defects are real (the paradigm-rolled `subtitle_occ` is dropped while the surface-form
+   `subtitle_ppm` survives into `ui.db`) but nothing reads either, so fixing the plumbing on
+   a signal that must not be used would be churn. Either filter the folk clips and re-run, or
+   invert it into a traditional-song register flag — both are decisions, not chores.
 3. **Ingest CoRoLa frequency lists** (S–M, licence decision first). Download, join on lemma,
    add as a second modern signal. No streaming, no GPU, no multi-day run.
 4. **Ingest LUMRO** (M). 7.5M tokens, 175 files, trivial to parse. The real prize is the

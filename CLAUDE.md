@@ -352,6 +352,15 @@ Two things the parser has to get right, both learned from real output:
   put `vapor`, `fluviu` and `cioban` in "declining".
 - **Corpus counts are per surface form.** Always roll them up through
   `inflected_forms.db` before judging a lemma, or every verb reads as extinct.
+- **`subtitle_ro` is not a modern-usage signal — ~1/6th of it is folk-music television.**
+  `process_subtitles.py` calls it "Digi24 news content"; the news is real but so is a large
+  body of folklore programming, and the archaic vocabulary in it comes from *sung traditional
+  lyrics*. Measured: clips carrying ≥3 genre markers are 15.6% of tokens but 27.5% of all
+  shortlist-word occurrences, and **444 of the 2,446 shortlist words it attests appear only in
+  those clips**. Scoring subtitle presence as "alive today" would rescue precisely the words
+  the project exists to find. Nothing reads `subtitle_ppm` today; keep it that way until the
+  folk clips are filtered out (`clipId` is the document unit, so this is doable) or the signal
+  is inverted into a traditional-song flag. See `docs/corpus-expansion-plan.md`.
 - **In `aggregate_by_family`, documents are share-scaled like occurrences, and taken as a
   max rather than a sum.** Both halves matter. Summing double-counts a document holding two
   forms of the same lemma; crediting documents all-or-nothing (the old `share >= 0.5` rule)

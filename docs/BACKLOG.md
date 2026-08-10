@@ -57,7 +57,16 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
   Scale as of 2026-08-08's `ui.db`: **746 of 16,315 words have no definition, 33 of them
   in the `relevant` seam.** Small enough to diagnose case by case rather than guess.
 
-- [ ] **`scrape_definitions.py` has no host lock.** `scrape_synonyms.py` got one on
+- [x] **`scrape_definitions.py` has no host lock.** — **Fixed 260810.** `acquire_host_lock()`
+  + the `LockHeld` branch copied in, guarded on `not args.dry_run` (and `--merge-only` already
+  returns before it), locking the same `data/.dexonline.lock` path. Verified cross-script: with
+  `scrape_synonyms` holding the lock, a live `scrape_definitions` run exits 1 naming the holder
+  while `--dry-run` still prints its queue. Duplicated rather than imported, per the convention
+  below — **the lock *path* is the contract**, so if it drifts in one file the two silently stop
+  interlocking; that is the line to watch, and the point to lift it into a shared module is when
+  a third caller appears. Original note follows.
+
+  `scrape_synonyms.py` got one on
   2026-08-08 after two copies of it ran concurrently and halved the interval between
   requests, which is the one thing `--delay >= 3` exists to prevent. The lock is keyed on
   the **host** (`data/.dexonline.lock`), not on the script, precisely so the definitions
@@ -464,7 +473,11 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - Tagurile personalizate (`#tag-input`) **nu** avansează: le scrii într-un câmp text, iar
     mutarea ar smulge focusul din el.
 
-  - [ ] I have changed my mind, also advance on fav / lol - one tag is enough. We preioritize convenience and behaviour consistency.
+  - [x] I have changed my mind, also advance on fav / lol - one tag is enough. We preioritize
+    convenience and behaviour consistency. — **livrat deja** în `eb11974`: `store.js:161`
+    avansează la `fav`, `store.js:187` la `lol`/`meh`/`ascunde`, iar părintele bifat de mai sus
+    descrie exact același comportament. Era un copil nebifat sub un părinte bifat care spunea
+    același lucru (verificat 260810).
 
 - [ ] create 'Despre' page - put in header instead of 'Statistici' & 'Metodologie' which will be linked from 'Despre'. 
 
@@ -514,11 +527,19 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     Planul e ordonat după dovezi câștigate per efort; primele trei puncte nu cer niciun corpus nou:
 
     - [x] **1. `hist_docs` în `aggregate_by_family`** (S) — **rezolvat 260810**, vezi item separat mai jos.
-    - [ ] **2. `subtitle_occ` e aruncat la granița shortlist-ului** (S). E în fieldnames la
-      `validate_diachronic.py` dar nu în headerul CSV; supraviețuiește doar `subtitle_ppm`,
-      calculat din forma de suprafață (linia 634), nu din paradigmă. 13,2M tokeni de
-      broadcast modern care nu informează nimic — nici `verdict()`, nici `score()`. De
-      redenumit `modern_broadcast_news_ro` cu ocazia asta.
+    - [x] **2. `subtitle_occ`** — **investigat 260810, recomandarea retrasă.** `subtitle_ro`
+      nu poate fi semnal de uz modern: ~1/6 din corpus e televiziune de muzică populară.
+      Cuvintele cel mai supra-reprezentate față de CulturaX nu sunt de știri, ci de cântec
+      (`țurai` 119×, `mândruliță` 242×, `neicuță` 122×, `lai` 332×), iar reconstruind clipurile
+      din tabelul `Subtitle` (are `clipId`) toate cele 7 verificate sunt emisiuni de folclor —
+      două sunt versuri transcrise, nu vorbire. Clipurile cu ≥3 markeri de gen: **15,6% din
+      tokeni dar 27,5% din ocurențele cuvintelor din shortlist**, iar **444 din 2.446 de
+      cuvinte atestate apar *numai* acolo**. A pune asta în `verdict()` ar fi salvat exact
+      cuvintele pe care proiectul le caută. Defectele de plumbing sunt reale, dar nimeni nu
+      citește `subtitle_ppm` (nici PHP, nici JS), deci nu se repară un semnal care nu trebuie
+      folosit. Două ieșiri, ambele decizii: filtrează clipurile de folclor și re-rulează
+      `process_subtitles.py` (~11M tokeni de știri reale), sau inversează-l într-un flag de
+      registru „cântec tradițional", lângă `regional_only`.
     - [ ] **3. Liste de frecvențe CoRoLa** (S–M) — [Zenodo 7091535](https://zenodo.org/records/7091535),
       114,1 MB, 24 liste (12 word / 12 lemma), corpus 1B+ tokeni echilibrat pe 71 subdomenii.
       Descărcare liberă, fără procesare de corpus. **Licența e CC BY-NC-ND**: de folosit doar
