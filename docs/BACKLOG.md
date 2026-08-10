@@ -37,6 +37,27 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
   dictionary. A phonological-correspondence matcher (`v→b`, `tăli→tele`, `î/â`) against
   corpus-alive lemmas would close the gap.
 
+  **Sized 260811, and it is the biggest quality problem left.** Măsurat cu CoRoLa ca punct
+  intermediar în timp (vezi mai jos): **5.419 de cuvinte din shortlist (30,8%)** cad între
+  corpusul de referință și cel web, iar inspecția arată că bucket-ul e dominat nu de
+  vocabular pierdut, ci de **grafii vechi ale unor cuvinte foarte vii**:
+
+  | pe shortlist | culturax | perechea modernă | culturax |
+  |---|---:|---|---:|
+  | `țeară` | 527 | `țară` | 5.764.577 |
+  | `răpede` | 913 | `repede` | 2.914.729 |
+  | `biurou` | 317 | `birou` | 1.227.238 |
+  | `obicinuit` | 740 | `obișnuit` | 954.491 |
+  | `strein` | 1.924 | `străin` | 584.968 |
+  | `poroncă` | 228 | `poruncă` | 111.044 |
+
+  `variant_like` prinde **3,3%** din ele, fiindcă perechile astea nu împart paradigmă
+  (`strein`/`străin` au radicali diferiți). Nu e nevoie de CoRoLa ca să le detectezi —
+  CulturaX singur arată raportul. E nevoie de **generarea candidatului**: reguli
+  fonologice (`ea→a`, `o→u`, `iu→i`, `e→ă`, `-țiune→-ție`, `ct→pt`) plus testul „perechea
+  e de N ori mai frecventă în corpusul modern". CoRoLa a servit doar la a scoate populația
+  la suprafață.
+
 - [ ] **`oțios` sits in the `curiosity` seam.** Score 67: zero historical corpus
   attestation, 266 modern occurrences. Correct by the current rules, awkward for the
   project's namesake. Decide whether the naming question moves, or whether the

@@ -324,6 +324,42 @@ corpus* — rather than a term added to the modern one, plus a `specialist_alive
 for the legal register. The frequency lists carry no dates, so a post-2000 slice is not
 available from this source.
 
+#### The third panel was prototyped, and is not worth building
+
+Tested 2026-08-11 as a three-point time series — historical (Wikisource + LUMRO) → CoRoLa
+(1945+) → CulturaX (post-2010) — using percentile ranks per corpus, the project's own
+scale-free comparison. The hypothesis was that CoRoLa's middle position would separate
+"died before living memory" from "died recently", which is a genuinely different thing to
+know about a word.
+
+It does separate a large bucket — **5,419 shortlist words (30.8%)** fall between CoRoLa and
+CulturaX while holding their historical rank. But the bucket is not lost vocabulary. It is
+obsolete **spellings** of words that are entirely alive:
+
+| on the shortlist | CulturaX | modern twin | CulturaX |
+|---|---:|---|---:|
+| `țeară` | 527 | `țară` | 5,764,577 |
+| `răpede` | 913 | `repede` | 2,914,729 |
+| `biurou` | 317 | `birou` | 1,227,238 |
+| `strein` | 1,924 | `străin` | 584,968 |
+| `poroncă` | 228 | `poruncă` | 111,044 |
+| `monastire` | 1,243 | `mănăstire` | 235,375 |
+
+CoRoLa carries them because it starts in 1945; CulturaX does not because it starts in 2010.
+So the "recent fade" signal is mostly the modernization of spelling, not the loss of words.
+
+**This is worth more as a diagnostic than as a feature.** Those 5,419 rows are on the
+shortlist *today*, without CoRoLa, and `variant_like` catches only 3.3% of them — the pairs
+do not share an inflectional paradigm, which is exactly the gap the "Variant detection only
+catches paradigm-sharing pairs" backlog item describes. The fix is candidate generation by
+phonological correspondence plus a "the twin is N× more frequent in modern Romanian" test,
+and **CulturaX alone supplies that ratio**. CoRoLa is not needed for it; it only surfaced
+the population.
+
+So the dependency runs the other way round from what this document assumed: the reference
+panel is not blocked on a modelling decision, and variant detection is the higher-value
+piece of work. Do that first.
+
 #### One real bug fixed along the way
 
 `MODERN_RARE_OCC` and `MODERN_ALIVE_OCC` are absolute occurrence counts calibrated against
