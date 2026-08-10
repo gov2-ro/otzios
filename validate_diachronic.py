@@ -325,7 +325,6 @@ def load_form_lemma_map(db_path: Path) -> dict[str, list[str]]:
 
 
 SHARE_ALPHA = 1.0        # smoothing when splitting an ambiguous form's count
-DOMINANT_SHARE = 0.5     # a lemma must win this much of a form to inherit its doc count
 
 
 def aggregate_by_family(freqs: dict[str, tuple[int, int]],
@@ -360,21 +359,37 @@ def aggregate_by_family(freqs: dict[str, tuple[int, int]],
     undivided word-family total; the ratio between them is the "you would recognise a
     relative of this word" signal that `make_shortlist.py` scores on.
 
-    Occurrences are summed (distinct tokens, so exact). Documents take the max across the
-    forms a lemma dominates — a conservative lower bound on distinct documents, since
-    summing would double-count any document holding two forms of the same lemma.
+    Occurrences are summed (distinct tokens, so exact). Documents take the **max** across a
+    lemma's forms rather than the sum, since summing would double-count any document holding
+    two forms of the same lemma — and each form's document count is scaled by the same share
+    that splits its occurrences.
+
+    That scaling is load-bearing. Documents used to be all-or-nothing, credited only to a
+    claimant winning ≥ 50% of a form, which meant a lemma that never majority-claims *any* of
+    its forms accumulated occurrences and exactly zero documents:
+
+        văz    share 0.108 of `văz`  (888 occ / 392 docs)  →  96 occ,  0 docs
+        nalt   share 0.223 of `nalt` (439 occ / 300 docs)  →  98 occ,  0 docs
+        soli   share 0.418 of `soli` (317 occ / 149 docs)  →  132 occ, 0 docs
+
+    `verdict()` then reads `hist_occ >= 3 AND hist_docs >= 2`, so the docs half vetoed the occ
+    half and all three came out `absent` — the verdict reserved for "no evidence either way" —
+    while sitting in the relevant seam. That was 170 of the 5,780 shortlist rows with zero
+    historical documents. A form seen in 392 documents whose occurrences are 10.8% this
+    lemma's is evidence of roughly 42 documents, not of none; scaling says that, and keeps
+    documents on the same footing as the occurrences they are compared against.
     """
     if not form_lemma:
         return dict(freqs)
 
     occ: dict[str, float] = {}
-    doc: dict[str, int] = {}
+    doc: dict[str, float] = {}
     for word, (o, d) in freqs.items():
         lemmas = form_lemma.get(word) or [word]
         if len(lemmas) == 1:
             lemma = lemmas[0]
             occ[lemma] = occ.get(lemma, 0.0) + o
-            doc[lemma] = max(doc.get(lemma, 0), d)
+            doc[lemma] = max(doc.get(lemma, 0.0), float(d))
             continue
         # Prior: how prominent is each claimant lemma in its own right?
         weights = [freqs.get(lm, (0, 0))[0] + SHARE_ALPHA for lm in lemmas]
@@ -382,10 +397,9 @@ def aggregate_by_family(freqs: dict[str, tuple[int, int]],
         for lemma, w in zip(lemmas, weights):
             share = w / total
             occ[lemma] = occ.get(lemma, 0.0) + o * share
-            if share >= DOMINANT_SHARE:
-                doc[lemma] = max(doc.get(lemma, 0), d)
+            doc[lemma] = max(doc.get(lemma, 0.0), d * share)
 
-    return {w: (int(round(v)), doc.get(w, 0)) for w, v in occ.items()}
+    return {w: (int(round(v)), int(round(doc.get(w, 0.0)))) for w, v in occ.items()}
 
 
 def aggregate_loose(freqs: dict[str, tuple[int, int]],

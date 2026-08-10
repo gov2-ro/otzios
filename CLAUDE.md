@@ -205,10 +205,10 @@ downstream compares them in ppm.
 `make_shortlist.py` writes one CSV whose `seam` column splits it in two, because the
 project is chasing two different things:
 
-- **`relevant`** (~2.8k) — strong evidence of a word that was used and faded: historically
+- **`relevant`** (~3.0k) — strong evidence of a word that was used and faded: historically
   attested, near-absent today, broadly covered by dictionaries, still in one published
-  from 2005 on. **The default view is this seam minus the hide-flags below** (~2.3k).
-- **`curiosity`** (~13.4k) — everything else that still qualifies as a candidate.
+  from 2005 on. **The default view is this seam minus the hide-flags below** (~2.4k).
+- **`curiosity`** (~13.7k) — everything else that still qualifies as a candidate.
 
 The split is a weighted score (`make_shortlist.score`), not a ladder of thresholds. The
 signal that does the most work is **historical attestation strength**: `politeță` occurs
@@ -235,7 +235,7 @@ score and they do **not** decide the seam:
 at.** Penalising a flag in the score as well is double-counting, and it makes the flag
 unappealable: when regional words cost 25 points *and* were routed out of the seam, none
 could reach the relevant list, so the UI's "arată regionalisme" toggle had nothing to
-reveal. As it stands the relevant seam holds ~397 regional and ~77 variant words, hidden
+reveal. As it stands the relevant seam holds ~404 regional and ~129 variant words, hidden
 until asked for. The one score penalty that remains is for a *moderate* family ratio
 (4–25×), which is an evidence problem rather than a preference — the lemma's count is
 being propped up by its relatives.
@@ -243,7 +243,7 @@ being propped up by its relatives.
 `diminutive_like` is a fourth flag but not one of these three: it is **off by default**, so
 it never subtracts from what you see until you ask. That is also why it is spelled
 `hide_diminutives` rather than `show_`— see below. `mark_diminutives()`
-(`tools/build_ui_db.py`) sets it from the DEX definition saying "Diminutiv al lui X" (345
+(`tools/build_ui_db.py`) sets it from the DEX definition saying "Diminutiv al lui X" (351
 words) plus nine unambiguous suffixes whose stripped stem is a real lexeme (58 more).
 `-iță` is deliberately excluded: as often a feminine agent (`păstoriță`, `vorniciță`) as a
 diminutive. `tools/migrate_ui_db_diminutives.py` back-fills an existing `ui.db`.
@@ -278,7 +278,7 @@ Two things to preserve when touching these:
 ### `newest_dict_year` — last attestation
 
 The newest dictionary that still prints a word, from `Source.year` via `dict_sources.db`.
-97% coverage (15,862 of 16,315). Exposed as `sort=attested`, the `attested_before=<year>` /
+97% coverage (16,155 of 16,667). Exposed as `sort=attested`, the `attested_before=<year>` /
 `attested_after=<year>` filters (a band when both are set — `attested_after` is `>=`,
 `attested_before` is `<`, so they never overlap at the shared boundary year), and the lead
 chip in the detail panel's dictionary row.
@@ -286,9 +286,9 @@ chip in the detail panel's dictionary row.
 **Both filters are `curiosity`-seam instruments.** The `relevant` seam requires
 `in_current_dict` (2005+) to qualify, so `attested_after` is close to always true there and
 `attested_before` close to always false — neither says much there by construction. On
-`curiosity` both are sharp: 225 words were last printed before 1970, and that slice is
+`curiosity` both are sharp: 234 words were last printed before 1970, and that slice is
 almost entirely pre-1953-reform orthography (`desbatere`, `sburătoare`, `răsvrătit`,
-`vuet`); the ~11.4k at 2005+ are `attested_after`'s more ordinary end of the range.
+`vuet`); the ~12.8k at 2005+ are `attested_after`'s more ordinary end of the range.
 
 Rows with no year are excluded when a ceiling is set, and sort last. "Unknown" means the
 dictionary is unnamed or unmatched — it is not evidence that a word is old.
@@ -352,6 +352,13 @@ Two things the parser has to get right, both learned from real output:
   put `vapor`, `fluviu` and `cioban` in "declining".
 - **Corpus counts are per surface form.** Always roll them up through
   `inflected_forms.db` before judging a lemma, or every verb reads as extinct.
+- **In `aggregate_by_family`, documents are share-scaled like occurrences, and taken as a
+  max rather than a sum.** Both halves matter. Summing double-counts a document holding two
+  forms of the same lemma; crediting documents all-or-nothing (the old `share >= 0.5` rule)
+  gave a lemma that never majority-claims any of its forms zero documents while it still
+  accumulated occurrences — and since `verdict()` reads `hist_occ >= 3 AND hist_docs >= 2`,
+  the docs half silently vetoed the occ half. `văz` sat at 96 occurrences / 0 documents and
+  came out `absent` in the relevant seam; 170 shortlist rows were in that state.
 - **`dex_pos` comes from `Lexeme.modelType`, not from taxonomy tags.** The meaning-level
   tags cover ~3% of the list and bleed across variants — `visternic` (modelType `M`) came
   out "substantiv feminin" because the entry also covers `vistiernică`. `modelType` is on

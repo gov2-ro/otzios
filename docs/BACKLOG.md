@@ -504,6 +504,62 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   variante care poluează explorarea, `fost` / `văr` / `nepot`). De spart în verificări cu
   nume, plecând de acolo — nu e un blocant de soft-launch în forma asta.
 
+- [ ] use other corpuses? [romanian-nlp-datasets](https://github.com/AndyTheFactory/romanian-nlp-datasets), [LUMRO](https://github.com/upb-nlp/LUMRO), [RELATE](https://relate.racai.ro/) - Romanian Portal of Language Technologies, [Romanian text corpora](https://www.sketchengine.eu/corpora-and-languages/romanian-text-corpora/), [A Culturally-Rich Romanian NLP Dataset from "Who Wants to Be a Millionaire?" Videos](https://arxiv.org/html/2506.05991), [Statistics of a Large-Scale Romanian Corpus for Language Modelling](https://rjp.nipne.ro/2025_70_7-8/RomJPhys.70.111.pdf), [Resources and Tools for Computational Linguistics](https://nlp.unibuc.ro/resources.html), [Natural Language Processing Tools for Romanian – Going Beyond a Low-Resource Language](https://ixdea.org/wp-content/uploads/IxDEA_art/60/60_SP_1.pdf) etc?
+  
+  - [ ] see: [260810 Grok - extend corpuses analysis](/docs/reference/260810%20Grok%20-%20extend%20corpuses%20analysis.md), [Gemini - Romanian NLP Corpora and Tools](docs/reference/260810%20Gemini%20-%20Romanian%20NLP%20Corpora%20and%20Tools.md)
+
+  - **Răspunsul verificat: [`docs/corpus-expansion-plan.md`](corpus-expansion-plan.md)** (260810).
+    Cele două rapoarte de mai sus sunt utile dar neverificate — ambele descriu greșit ce face
+    pipeline-ul, iar Gemini recomandă exact comparația în ppm care e gotcha #1 din `CLAUDE.md`.
+    Planul e ordonat după dovezi câștigate per efort; primele trei puncte nu cer niciun corpus nou:
+
+    - [x] **1. `hist_docs` în `aggregate_by_family`** (S) — **rezolvat 260810**, vezi item separat mai jos.
+    - [ ] **2. `subtitle_occ` e aruncat la granița shortlist-ului** (S). E în fieldnames la
+      `validate_diachronic.py` dar nu în headerul CSV; supraviețuiește doar `subtitle_ppm`,
+      calculat din forma de suprafață (linia 634), nu din paradigmă. 13,2M tokeni de
+      broadcast modern care nu informează nimic — nici `verdict()`, nici `score()`. De
+      redenumit `modern_broadcast_news_ro` cu ocazia asta.
+    - [ ] **3. Liste de frecvențe CoRoLa** (S–M) — [Zenodo 7091535](https://zenodo.org/records/7091535),
+      114,1 MB, 24 liste (12 word / 12 lemma), corpus 1B+ tokeni echilibrat pe 71 subdomenii.
+      Descărcare liberă, fără procesare de corpus. **Licența e CC BY-NC-ND**: de folosit doar
+      ca intrare în `verdict`/`score`, niciodată publicat un număr derivat din CoRoLa în UI.
+    - [ ] **4. LUMRO** (M) — măsurat: 175 romane, **7,52M tokeni**, 111 autori, 1845–1920,
+      an în numele fișierului, diacritice cedilă (deja tratate de `dump_parser.normalize`).
+      50,6% din shortlist ia cel puțin un hit; **1.327 cuvinte ar trece pragul de atestare
+      istorică** pe care acum îl pică (toate `absent` în prezent).
+    - [ ] **5. Metadate CulturaX** (L, amânat) — `process_culturax.py` nu păstrează
+      `timestamp`/`url`/`source`. Ar separa dovada din 2013 de cea din 2023 și sutele de
+      gazde independente de o pagină de dicționar oglindită — dar cere reprocesarea a 40,3M
+      documente. De făcut după 1–4.
+
+    Nerecomandate acum: FuLG / OSCAR / CC-100 (tot Common Crawl, nu un eșantion independent);
+    MARCELL și corpusuri de domeniu (utile ca *control* care produce `specialist_alive`, nu ca
+    dovadă generală); datasetul „Who Wants to Be a Millionaire?" (prea mic pentru frecvențe).
+
+- [x] **`hist_docs` e 0 pentru lemele care nu domină nicio formă** (găsit și rezolvat 260810,
+  defect anterior). În `aggregate_by_family` (`validate_diachronic.py:376-388`) ocurențele se împart
+  proporțional între pretendenți, dar documentele sunt totul-sau-nimic: `if share >=
+  DOMINANT_SHARE` (0,5). O lemă care nu e niciodată pretendentul majoritar al *niciuneia*
+  dintre formele ei adună ocurențe și exact zero documente. Apoi `verdict()` cere
+  `hist_occ >= 3 AND hist_docs >= 2`, deci jumătatea „docs" o anulează pe cea „occ".
+
+  Măsurat pe shortlist: **5.780 rânduri (35,7%) au `hist_docs == 0`, dintre care 170 au
+  `hist_occ >= 3`** — atestate după propriul prag de ocurențe, dar forțate la `absent`.
+  `soli` (occ 132, share 0,418), `nalt` (occ 98, share 0,223) și `văz` (occ 96, share 0,108)
+  sunt toate în seam-ul **relevant**, deci se văd în vizualizarea implicită.
+
+  Aritmetica ocurențelor e corectă (0,108 × 888 = 96 ✓); doar documentele sunt problema.
+
+  **Rezolvat**: documentele se scalează acum cu același share ca ocurențele (`d * share`),
+  păstrând `max` peste forme în loc de sumă. `DOMINANT_SHARE` a dispărut. După rescore:
+  `hist_docs == 0 & hist_occ >= 3` a trecut de la **170 la 0**; 189 verdicte schimbate
+  (185 `absent` → `historical_only`); 77 cuvinte promovate `curiosity` → `relevant`.
+  `văz` primește 42 documente (392 × 0,108), `soli` 62, `nalt` 67.
+
+  Două cuvinte au mers invers — `arestui` și `barbetă`, docs 2→1 la `hist_occ` 3 — pentru că
+  erau exact pe pragul de zgomot și scalarea proporțională taie în ambele sensuri. E
+  comportamentul corect, nu un defect nou.
+
 - [ ] explain how to use the site, how it works, how tagging / lists work.
 
 - [ ] **`tests/test_store_sync.js` pică la „sync watermark stored"** (observat 260810, nu
@@ -515,7 +571,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 ---
 
-- check consistency, when a word is tagged by myself the tag is activated in the info box
+- [ ] check consistency, when a word is tagged by myself the tag is activated in the info box
 
 - [ ] build an even more straightforward quick tagging UI? annotation optimized ui.
 

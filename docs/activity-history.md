@@ -4,6 +4,91 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-10 — corpus expansion: verified the two LLM reports, measured LUMRO, found a `hist_docs` defect
+
+Turned the two reference reports (`docs/reference/260810 Grok …`, `260810 Gemini …`) into a
+checked plan: `docs/corpus-expansion-plan.md`. Neither report had been validated against the
+repo, and both describe the pipeline incorrectly in ways that matter.
+
+Corrections to the reports:
+
+- **Gemini recommends normalising to ppm for cross-corpus comparison** — the exact practice
+  that classified `zapciu` extinct on 1,322 modern hits, documented as gotcha #1 in
+  `CLAUDE.md` and at `validate_diachronic.py:190-211`. Its LLR suggestion is separate and good.
+- **Gemini's step 1 would empty the relevant seam**: it wants `(Înv.)`/`(Arh.)`/`(Reg.)` words
+  filtered out at lexicon generation. Oțios keeps them and treats `regional_only` as a UI flag;
+  the relevant seam holds ~397 regional words on purpose.
+- **Grok's P0 is half wrong.** `subtitle_ro` is not unwired — it is processed,
+  family-aggregated, and carried into `ui.db`. What is true is narrower: it enters neither
+  `verdict()` nor `score()`, and the paradigm-rolled `subtitle_occ` is dropped at the shortlist
+  boundary while the surface-form `subtitle_ppm` survives into the UI.
+
+Measured, not quoted:
+
+- **LUMRO**: 175 novels, **7,520,713 tokens**, 111 authors, 1845–1920 (median 1898), year in
+  every filename, cedilla diacritics already handled by `dump_parser.normalize`. 50.6% of the
+  shortlist takes at least one hit; **1,327 words would cross the historical-attestation bar
+  they currently fail**, all of them presently `absent`.
+- **CoRoLa frequency lists** (Zenodo 7091535) are real and openly downloadable — 114.1 MB, 24
+  lists over a balanced 1B+ token corpus, no processing required. Licence is **CC BY-NC-ND**,
+  so it can feed `verdict`/`score` but no CoRoLa-derived number may be published in the UI.
+
+**Defect found while testing the above.** In `aggregate_by_family`
+(`validate_diachronic.py:376-388`) occurrences are split proportionally between claimant
+lemmas but documents are all-or-nothing (`if share >= DOMINANT_SHARE`, 0.5). A lemma that
+never majority-claims any of its forms accumulates occurrences and exactly zero documents,
+and `verdict()`'s `hist_occ >= 3 AND hist_docs >= 2` then vetoes it. Across the shortlist:
+5,780 rows (35.7%) have `hist_docs == 0`, 170 of them with `hist_occ >= 3` — `soli` (132
+occ, 0.418 share), `nalt` (98, 0.223) and `văz` (96, 0.108) are all in the **relevant** seam.
+Logged in `docs/BACKLOG.md`; not fixed, since it was outside the request.
+
+Recommended order (first three need no new corpus processing): fix `hist_docs` → use
+`subtitle_occ` → CoRoLa lists → LUMRO → CulturaX metadata (deferred; 40.3M documents).
+
+**Item 1 landed the same day** — see the next entry.
+
+---
+
+## 2026-08-10 — fix: share-scaled document counts in `aggregate_by_family`, and rescore
+
+Documents in `aggregate_by_family` are now scaled by the same share that splits a form's
+occurrences (`d * share`), still combined with `max` across a lemma's forms rather than a
+sum. `DOMINANT_SHARE` is gone. The old rule credited a form's documents only to a claimant
+winning ≥ 50% of it, so a lemma that never majority-claims any of its forms accumulated
+occurrences and exactly zero documents — and `verdict()`'s `hist_occ >= 3 AND hist_docs >= 2`
+then let the docs half veto the occ half.
+
+Two regression tests added to `tests/test_rescore.py`: a non-dominant claimant must still be
+credited documents, and the document share must track the occurrence share. The existing
+`test_aggregate_documents_never_exceed_the_largest_contributing_form` uses unambiguous forms
+(share 1.0) and is unaffected. Full suite: 97 passed.
+
+Rescore (`validate_diachronic.py` → `make_shortlist.py` → `tools/build_ui_db.py`):
+
+- **`hist_docs == 0 AND hist_occ >= 3`: 170 → 0.** The false-`absent` population is gone.
+- 189 verdict changes, 185 of them `absent` → `historical_only`; 2 `absent` → `extinct`.
+- 77 words promoted `curiosity` → `relevant`, 2 demoted.
+- Shortlist 16,203 → 16,557 rows (375 new, 21 dropped); `ui.db` 16,667 words.
+- Seams now relevant 3,015 / curiosity 13,652; default view 2,381.
+- `văz` 0 → 42 documents (392 × 0.108), `soli` → 62, `nalt` → 67 — all three `absent` →
+  `historical_only`, all three in the relevant seam.
+
+Two words moved the other way: `arestui` and `barbetă`, both `hist_occ` 3 with documents
+2 → 1. They sat exactly on the noise floor, and proportional attribution cuts both ways.
+Correct behaviour rather than a new defect.
+
+**`data/word_ids.tsv`: 141 added, 0 deleted.** The first 26,338 lines are byte-identical to
+the pre-rescore file, so no id was renumbered or removed and every `?w=` link ever shared
+still resolves. A second `build_ui_db.py` run produced a byte-identical file, so the
+idempotency invariant holds too.
+
+Stale figures in `CLAUDE.md` refreshed against the new build (seam sizes, regional/variant
+counts in the relevant seam, `newest_dict_year` coverage, the pre-1970 and 2005+ slices,
+the diminutive count), and the share-scaling rule added to the gotchas so it is not
+"simplified" back into an all-or-nothing threshold.
+
+---
+
 ## 2026-08-10 — soft-launch UI pass: dexonline chip, desktop nav, mobile sheet, auto-advance
 
 Five items off `docs/BACKLOG.md` → **Soft-launch**. Verified in headless Chrome over CDP at

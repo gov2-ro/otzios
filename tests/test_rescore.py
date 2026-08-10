@@ -66,6 +66,26 @@ def test_aggregate_documents_never_exceed_the_largest_contributing_form():
     assert out['lemma'][1] == 7
 
 
+def test_aggregate_credits_documents_to_a_non_dominant_claimant():
+    """`văz` took 10.8% of a form seen in 392 documents and was credited 0 of them, because
+    documents used to require a >= 50% share. With 96 occurrences and 0 documents it failed
+    `verdict`'s `hist_docs >= 2` and came out `absent` while sitting in the relevant seam."""
+    freqs = {'văz': (888, 392), 'vedea': (7000, 3000)}
+    form_lemma = {'văz': ['văz', 'vedea']}
+    out = vd.aggregate_by_family(freqs, form_lemma)
+    assert out['văz'][1] > 0, 'a minority claimant still appears in documents'
+    assert out['văz'][1] < out['vedea'][1], 'and in fewer of them than the dominant lemma'
+
+
+def test_aggregate_document_share_matches_occurrence_share():
+    """Documents and occurrences are split by the same share, so the two stay on the footing
+    `verdict` compares them on."""
+    freqs = {'shared': (1000, 500), 'big': (9000, 0), 'small': (0, 0)}
+    out = vd.aggregate_by_family(freqs, {'shared': ['big', 'small']})
+    # `small` carries only the smoothing prior, so it takes a tiny, equal slice of both.
+    assert out['small'][0] / 1000 == pytest.approx(out['small'][1] / 500, rel=0.02)
+
+
 def test_loose_aggregation_over_counts_on_purpose():
     """The loose/disambiguated ratio is the archaic-variant signal, so it must not
     do the splitting."""
