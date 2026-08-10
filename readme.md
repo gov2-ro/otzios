@@ -41,20 +41,22 @@ flowchart TD
 
     subgraph P2["Phase 2 · Corpora"]
         WS["process_wikisource.py<br/>historical · 14.3M tokens"]
+        LU["process_lumro.py<br/>historical · 5.1M tokens<br/>175 novels, 1845–1920"]
         CX["process_culturax.py<br/>modern web · 17.0B tokens"]
-        WS & CX --> CORP[("corpus_frequencies.db")]
+        WS & LU & CX --> CORP[("corpus_frequencies.db")]
+        CO["process_corola.py<br/>reference · 638M tokens<br/>loaded, not in any panel"] -.-> CORP
     end
 
     subgraph P3["Phase 3 · Verdicts, scoring, UI"]
         DIA["validate_diachronic.py<br/>paradigm-level counts<br/>occurrence thresholds"]
         DIA --> DIA_OUT[("forgotten_words_diachronic.csv<br/>130k rows")]
         DIA_OUT --> SL["make_shortlist.py<br/>composite score"]
-        SL --> SL_OUT[("forgotten_words_shortlist.csv<br/>16,203 rows · 2 seams")]
-        SL_OUT --> UI["tools/build_ui_db.py"] --> UIDB[("public/data/ui.db<br/>16,315 words")]
+        SL --> SL_OUT[("forgotten_words_shortlist.csv<br/>17,577 rows · 2 seams")]
+        SL_OUT --> UI["tools/build_ui_db.py"] --> UIDB[("public/data/ui.db<br/>17,687 words")]
     end
 
     DEX --> C & IF & DS & DEFS
-    H --> WS & CX
+    H --> WS & LU & CX
     H --> DIA
     CORP --> DIA
     IFDB --> DIA
@@ -66,7 +68,7 @@ flowchart TD
     UIDB --> PHP["public/ · PHP app"]
 ```
 
-**Two things this diagram is built around**, both fixed in the 2026-08-08 rescore:
+**Three things this diagram is built around:**
 
 - **`inflected_forms.db` feeds `validate_diachronic.py`.** The corpus processors count raw
   tokens, so without the paradigm map a lemma is only ever credited with its citation form
@@ -74,10 +76,20 @@ flowchart TD
   "extinct".
 - **Thresholds are occurrence counts, never ppm.** Wikisource and CulturaX differ by
   1,187× in size, so a shared `0.1 ppm` floor meant "fewer than 1,697 modern hits" on one
-  side and "at least 1.43 historical hits" on the other.
+  side and "at least 1.43 historical hits" on the other. They *are* rescaled when the
+  modern panel itself grows (`scaled_modern_thresholds`), or adding a corpus would make
+  every word look more alive.
+- **Each side is a panel, not a corpus.** The historical side is Wikisource + LUMRO,
+  aggregated separately and merged, so documents sum across corpora but stay a max within
+  one. A corpus is only added after being measured: `subtitle_ro` is inert (≈1/6th of it is
+  folk-music television) and `corola_ro` is loaded but in no panel (it spans 1945+, so
+  presence in it is not evidence of *current* use). Both stories are in
+  `docs/corpus-expansion-plan.md`.
 
 `make_shortlist.py` splits its output into two seams via a `seam` column: **`relevant`**
-(2,815 — the default view) and **`curiosity`** (13,388). See `CLAUDE.md` → Seams.
+(3,495) and **`curiosity`** (14,082). The default view is the `relevant` seam minus four
+hide-flags — regional, paradigm variants, proper nouns and obsolete spellings — about 2,800
+words, each flag a one-click toggle. See `CLAUDE.md` → Seams.
 
 The legacy Wikipedia/OSCAR branch (`process_corpus.py`, `validate_forgotten_words.py`),
 `search_wild.py` and the old Flask UI now live in `archive/` — see `archive/README.md`.
@@ -139,9 +151,24 @@ python extract_taxonomy.py --sql data/dictionaries/dex-database.sql
 
 ### Phase 2b: Corpus validation — diachronic (recommended)
 
-Uses Wikisource RO (historical literary baseline) and CulturaX RO (modern web) to compute actual per-corpus frequencies. Designed to find words that appear in 19th-century literature but are absent from modern text.
+Uses Wikisource RO and LUMRO (historical) against CulturaX RO (modern web) to compute
+actual per-corpus frequencies. Designed to find words that appear in 19th-century
+literature but are absent from modern text.
 
 ```bash
+# LUMRO — 175 dated novels, 1845–1920. Download once, then a 3-second run.
+curl -sL -o data/raw/lumro.zip \
+    https://codeload.github.com/upb-nlp/LUMRO/zip/refs/heads/main
+python process_lumro.py --dry-run     # parse and count, write nothing
+python process_lumro.py               # → corpus_frequencies.db (lumro_ro)
+
+# CoRoLa — reference corpus, 638M tokens. Loaded but in NO panel: it spans 1945+, so
+# presence in it is not evidence of current use. CC BY-NC-ND, input only — no
+# CoRoLa-derived number may be published. See docs/corpus-expansion-plan.md.
+curl -sL -o data/raw/corola_frequencies.zip \
+    "https://zenodo.org/records/7091535/files/corola_frequencies.zip?download=1"
+python process_corola.py
+
 # Wikisource — test run (500 docs, ~10s)
 python process_wikisource.py --test
 
