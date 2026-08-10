@@ -1062,6 +1062,16 @@ body {
 
 /* Dicts */
 .fp-dicts { position: relative; line-height: 2; }
+/* Obsolete-spelling note in the detail panel. Type only, no fill: it is a caption on
+   the headword, not a status badge — see the Filtre-rail rule about fills in CLAUDE.md.
+   Tokens only, so every skin inherits it without a component rule. */
+.fp-spelling {
+  margin: .5rem 0 0;
+  font-size: .8125rem;
+  color: var(--text-3);
+}
+.fp-spelling strong { color: var(--text-2); font-weight: 600; }
+
 .fp-extra-label {
   font-family: var(--mono);
   font-size: 0.5625rem;

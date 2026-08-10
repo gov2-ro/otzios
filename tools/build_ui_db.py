@@ -303,6 +303,79 @@ def mark_diminutives(conn: sqlite3.Connection, lexemes_db: Path) -> None:
           f'({by_def:,} stated in the definition, {by_suffix:,} more by suffix)')
 
 
+# ── Archaic spellings ────────────────────────────────────────────────────────────
+#
+# A word can be on this list only because its *spelling* was modernized while the word
+# itself is thoroughly alive: `situațiune` is not forgotten Romanian, it is how people
+# wrote `situație` before the twentieth century tidied it up. `variant_like` cannot see
+# these — it keys on a shared inflectional paradigm, and `strein`/`străin` have different
+# stems — so they sit in the default view looking like finds.
+#
+# **These rules are deliberately narrow, and the narrowness is the design.** A flag that
+# hides is asymmetric: a false negative leaves things as they are, a false positive
+# removes a real word from the only view most people will ever look at, and nothing
+# surfaces it again. That is how `proper_noun_like` once hid `gheb`.
+#
+# Measured precision per rule over the built list (twin found / rule fires), which is why
+# the tempting general rules are absent:
+#
+#     -țiune → -ție          313 fires, 298 twins (95%)   kept
+#     sb/sd/sg → zb/zd/zg     26 fires,  26 twins (100%)  kept
+#     des+voiced → dez        26 fires,  24 twins (92%)   kept
+#     -ziune/-siune           34 fires,  25 twins (74%)   kept
+#     adv → av                 5 fires,   3 twins         kept
+#     -ea → -a               209 fires,  25 twins (12%)   REJECTED — pavea→pava,
+#                                                         zaharea→zahara are real words
+#     e → ă (1st syll)     2,300 fires,  69 twins (3%)    REJECTED — peți→păți are
+#                                                         different words entirely
+#     iu → i               1,037 fires,  88 twins (8%)    REJECTED — albiu→albi likewise
+#     o → u (1st syll)     1,984 fires, 124 twins (6%)    REJECTED — right answers
+#                                                         (coprins→cuprins) buried in noise
+#
+# Every rule must also clear TWIN_RATIO: the modern form has to be overwhelmingly more
+# common in the modern corpus, so a pair that is merely two live spellings stays visible.
+_SPELLING_RULES = [
+    (re.compile(r'țiune$'), 'ție'),
+    (re.compile(r'ziune$'), 'zie'),
+    (re.compile(r'siune$'), 'sie'),
+    (re.compile(r'^s(?=[bdg])'), 'z'),
+    (re.compile(r'^des(?=[bdgjlmnrv])'), 'dez'),
+    (re.compile(r'^adv'), 'av'),
+]
+TWIN_RATIO = 20
+
+
+def mark_archaic_spellings(conn: sqlite3.Connection, freq_db: Path) -> None:
+    """Populate words.archaic_spelling / words.spelling_of. Idempotent."""
+    print('Marking archaic spellings…')
+    conn.execute('UPDATE words SET archaic_spelling = 0, spelling_of = NULL')
+    if not freq_db.exists():
+        print(f'  (corpus_frequencies.db not found, skipped: {freq_db})')
+        return
+
+    fconn = sqlite3.connect(f'file:{freq_db}?mode=ro', uri=True)
+    modern = {w: o for w, o in fconn.execute(
+        "SELECT word, occurrence_count FROM corpus_word_frequency "
+        " WHERE corpus_name = 'culturax_ro'")}
+    fconn.close()
+
+    marked = []
+    for (word,) in conn.execute('SELECT word FROM words').fetchall():
+        own = modern.get(word, 0)
+        for pattern, repl in _SPELLING_RULES:
+            twin = pattern.sub(repl, word)
+            if twin == word:
+                continue
+            twin_n = modern.get(twin, 0)
+            if twin_n and twin_n >= TWIN_RATIO * max(own, 1):
+                marked.append((twin, word))
+                break
+
+    conn.executemany(
+        'UPDATE words SET archaic_spelling = 1, spelling_of = ? WHERE word = ?', marked)
+    print(f'  {len(marked):,} archaic spellings (twin ≥{TWIN_RATIO}× in the modern corpus)')
+
+
 def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None:
     if not shortlist.exists():
         sys.exit(f'Missing: {shortlist}')
@@ -364,6 +437,11 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             -- Set by mark_diminutives() below, after definitions are merged: the
             -- strongest signal is the DEX definition itself saying "Diminutiv al lui X".
             diminutive_like  INTEGER,
+            -- Set by mark_archaic_spellings(): the word is an obsolete spelling of a word
+            -- that is alive under a modern one (`situațiune` → `situație`). `spelling_of`
+            -- holds the modern twin so the UI can name it rather than just hiding a row.
+            archaic_spelling INTEGER,
+            spelling_of      TEXT,
             -- Scraped from dexonline.ro by scrape_synonyms.py. Not in the dump: the
             -- Litera dictionaries (Sinonime, Sinonime82, Antonime) are redacted to 23
             -- characters there, so `dict_count` knows a word is in them but not what
@@ -486,6 +564,7 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
 
     # After the definitions merge, not before — half the signal is the definition text.
     mark_diminutives(conn, Path('data/processed/lexemes.db'))
+    mark_archaic_spellings(conn, Path('data/processed/corpus_frequencies.db'))
 
     # Must run before the vocab table is built, or the POS dropdown lists the old
     # taxonomy-derived values that almost nothing matches.

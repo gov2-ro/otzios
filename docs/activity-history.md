@@ -49,6 +49,64 @@ Recommended order (first three need no new corpus processing): fix `hist_docs` �
 
 ---
 
+## 2026-08-11 — `archaic_spelling`: hide obsolete spellings of living words, narrowly
+
+The CoRoLa three-point experiment surfaced a population of shortlist entries that are not
+forgotten words but obsolete *spellings* of words in daily use — `situațiune` for
+`situație`, `sgomot` for `zgomot`, `advocat` for `avocat`. `variant_like` cannot see them:
+it keys on a shared inflectional paradigm, and these pairs have different stems.
+
+**A correction to the previous entry's framing.** That entry called the 5,421-word bucket
+"dominated by obsolete spellings" on the strength of its top 14 by historical rank. That
+sample was biased toward common words, and common words are exactly the ones whose spelling
+was modernized while the word survived. Further down, the bucket is full of genuine finds —
+`acaret`, `afion`, `agie`, `alișveriș`, `amploiat`, `acioaie`, `adamască`. Measured: those
+5,421 words include **1,861 of the 3,022 then in the default view, 61.6%**. A flag built on
+that signal would have gutted the site and hidden much of its best material.
+
+So the shipped flag is deliberately narrow. Each rule was measured for precision (twins
+found per rule firing) and only the clean ones kept:
+
+| rule | fires | twins | kept |
+|---|---:|---:|---|
+| `-țiune → -ție` | 313 | 298 (95%) | yes |
+| `sb/sd/sg → zb/zd/zg` | 26 | 26 (100%) | yes |
+| `des`+voiced `→ dez` | 26 | 24 (92%) | yes |
+| `-ziune/-siune` | 34 | 25 (74%) | yes |
+| `adv → av` | 5 | 3 | yes |
+| `-ea → -a` | 209 | 25 (12%) | **no** — `zaharea`→`zahara` are different words |
+| `e → ă` | 2,300 | 69 (3%) | **no** — `peți`→`păți` likewise |
+| `iu → i` | 1,037 | 88 (8%) | **no** — `albiu`→`albi` likewise |
+| `o → u` | 1,984 | 124 (6%) | **no** — right answers buried in noise |
+
+Every rule additionally requires a *named* twin at least 20× more frequent in CulturaX, so
+two live spellings never qualify. A hide-flag's false positives are invisible — the word
+simply is not there — which is why precision beats recall here, and why `proper_noun_like`
+once had to be narrowed after it hid `gheb`.
+
+Result: **291 words flagged, 110 of them in the default view** (2,912 → 2,802). All 47
+non-`-iune` hits were audited by hand — `desbate`→`dezbate`, `sgomot`→`zgomot`,
+`advocat`→`avocat` — with no visible false positives; several DEX definitions print the
+modern form themselves.
+
+`spelling_of` stores the twin and the detail panel names it ("Grafie veche pentru
+*situație*") rather than dropping the row silently, so the flag informs instead of just
+subtracting. UI wiring follows the existing contract: a `show_spellings` toggle (`show_*`,
+never `hide_*`, since an unchecked box submits nothing), registered in `AF_SPECS` and in
+**both** URL arrays in `app.js` — the writer is the half that fails silently. `.fp-spelling`
+is tokens-only, so every skin inherits it with no component rule.
+
+Verified end to end on a clean `php -S`: `situațiune` absent by default, present with
+`show_spellings=1`, and the panel note rendering only for flagged words. The long-running
+dev server on :8000 was serving stale PHP throughout and needs a restart. Python suite 105
+passes; the three JS API suites pass against a live server; `test_store_sync` still fails on
+the pre-existing bug already logged in the backlog.
+
+Still open, and needing something other than suffix rules: the irregular vowel
+correspondences — `strein`/`străin`, `țeară`/`țară`, `poroncă`/`poruncă`, `biurou`/`birou`.
+
+---
+
 ## 2026-08-11 — CoRoLa: the lemma problem solved, the corpus still not usable as "modern"
 
 Set out to reconcile CoRoLa's TTL lemmas to DEX's. The reconciliation turned out not to

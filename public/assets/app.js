@@ -994,6 +994,7 @@ var AF_SPECS = [
   { name: 'show_proper',    type: 'checkbox', label: function(){ return 'cu nume proprii'; } },
   { name: 'show_regional',  type: 'checkbox', label: function(){ return 'cu regionalisme'; } },
   { name: 'show_variants',  type: 'checkbox', label: function(){ return 'cu variante vechi'; } },
+  { name: 'show_spellings', type: 'checkbox', label: function(){ return 'cu grafii vechi'; } },
   // The chip used to print the raw seam value ("listă: curiosity") into an otherwise
   // Romanian bar. Labels are the ones already on the seam control itself.
   { name: 'seam',           type: 'radio',  def: 'relevant', label: function(v){
@@ -1147,7 +1148,7 @@ function applyUrlToForm() {
 
   // Explore: checkboxes. The show_* ones are inverted on purpose — an unchecked box
   // is not submitted, so a default-on hide_* could never be switched off.
-  ['hide_loanwords', 'hide_diminutives', 'show_proper', 'show_regional', 'show_variants'].forEach(function(name) {
+  ['hide_loanwords', 'hide_diminutives', 'show_proper', 'show_regional', 'show_variants', 'show_spellings'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     var el = form.querySelector('input[name=' + name + ']');
@@ -1219,7 +1220,7 @@ function syncUrlFromForm() {
   });
 
   // Explore: binary checkboxes
-  ['hide_loanwords', 'hide_diminutives', 'show_proper', 'show_regional', 'show_variants'].forEach(function(name) {
+  ['hide_loanwords', 'hide_diminutives', 'show_proper', 'show_regional', 'show_variants', 'show_spellings'].forEach(function(name) {
     var el = form.querySelector('input[name=' + name + ']');
     if (el && el.checked) params.set(name, '1');
   });

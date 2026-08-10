@@ -51,7 +51,23 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
   | `strein` | 1.924 | `străin` | 584.968 |
   | `poroncă` | 228 | `poruncă` | 111.044 |
 
-  `variant_like` prinde **3,3%** din ele, fiindcă perechile astea nu împart paradigmă
+  **Prima felie livrată 260811: `archaic_spelling`** (`mark_archaic_spellings()` în
+  `tools/build_ui_db.py`) — 291 de cuvinte, 110 din vederea implicită, cu `spelling_of`
+  arătat în panou („Grafie veche pentru *situație*"). Reguli **deliberat înguste**, doar
+  cele măsurate curate: `-țiune/-ziune/-siune`, `sb/sd/sg → z`, `des+voiced → dez`,
+  `adv → av`, fiecare cerând un geamăn numit de ≥20× mai frecvent în corpusul modern.
+  Auditate manual: 0 fals-pozitive vizibile din 47 de non-`-iune`.
+  **Regulile generale au fost măsurate și respinse**: `e → ă` trage de 2.300 de ori pentru
+  69 de perechi și ar echivala `peți` cu `păți` — cuvinte diferite; la fel `iu → i`
+  (`albiu`/`albi`) și `-ea → -a` (`zaharea`/`zahara`). Un flag care ascunde are
+  fals-pozitive invizibile, deci precizia bate acoperirea.
+  **De NU lărgit** la „tot ce cade între CoRoLa și CulturaX": populația aia e de 5.421 de
+  cuvinte, 61,6% din vederea implicită, și e plină de găsiri reale (`acaret`, `afion`,
+  `agie`, `alișveriș`, `amploiat`).
+
+  Rămâne deschis restul: `strein`/`străin`, `țeară`/`țară`, `poroncă`/`poruncă`,
+  `biurou`/`birou` — corespondențe vocalice neregulate, care cer altceva decât reguli de
+  sufix. `variant_like` prinde **3,3%** din ele, fiindcă perechile astea nu împart paradigmă
   (`strein`/`străin` au radicali diferiți). Nu e nevoie de CoRoLa ca să le detectezi —
   CulturaX singur arată raportul. E nevoie de **generarea candidatului**: reguli
   fonologice (`ea→a`, `o→u`, `iu→i`, `e→ă`, `-țiune→-ție`, `ct→pt`) plus testul „perechea

@@ -343,6 +343,14 @@ function build_word_filter(array $p): array {
         $conditions[] = '(variant_like IS NULL OR variant_like = 0)';
     }
 
+    // Obsolete spellings of words that are entirely alive under a modern one
+    // (`situațiune` → `situație`, `sgomot` → `zgomot`). Distinct from `variant_like`,
+    // which keys on a shared inflectional paradigm and so cannot see a pair whose
+    // stems differ. `spelling_of` names the modern twin, so the UI can say which.
+    if (db_has_column('archaic_spelling') && ($p['show_spellings'] ?? '') !== '1') {
+        $conditions[] = '(archaic_spelling IS NULL OR archaic_spelling = 0)';
+    }
+
     // Minimum historical attestation. Off by default so the no-corpus-signal words
     // (the `oțios` class) stay visible, but available as a filter.
     $hist_min = (int)trim($p['hist_min'] ?? '');

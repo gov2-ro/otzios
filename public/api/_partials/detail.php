@@ -72,6 +72,14 @@ $meta_parts = array_filter([
   </div>
   <?php endif; ?>
 
+  <!-- Obsolete spelling: name the living twin rather than leaving the reader to guess
+       why a word that looks ordinary is on a list of forgotten ones. Only ever set when
+       the modern form is >=20x more frequent in the modern corpus — see
+       mark_archaic_spellings() in tools/build_ui_db.py. -->
+  <?php if (!empty($w['archaic_spelling']) && !empty($w['spelling_of'])): ?>
+  <p class="fp-spelling">Grafie veche pentru <strong><?= e($w['spelling_of']) ?></strong>.</p>
+  <?php endif; ?>
+
   <!-- Synonyms / antonyms (scrape_synonyms.py; absent until a word has been scraped) -->
   <?php
     $syns = array_slice($synonyms, 0, 12);

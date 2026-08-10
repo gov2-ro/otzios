@@ -358,6 +358,13 @@ global $QUICK_TAGS, $POS_OPTIONS;
           arată variante vechi
         </label>
         <?php endif; ?>
+        <?php if (db_has_column('archaic_spelling')): ?>
+        <label class="fs-pill fs-pill-sm" title="Grafii ieșite din uz ale unor cuvinte foarte vii: situațiune → situație, sgomot → zgomot, advocat → avocat. Ascunse implicit.">
+          <span class="fs-check"></span>
+          <input type="checkbox" name="show_spellings" value="1">
+          arată grafii vechi
+        </label>
+        <?php endif; ?>
       </div>
 
     </div><!-- .fs-body -->

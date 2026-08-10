@@ -224,7 +224,7 @@ project is chasing two different things:
 
 - **`relevant`** (~3.5k) — strong evidence of a word that was used and faded: historically
   attested, near-absent today, broadly covered by dictionaries, still in one published
-  from 2005 on. **The default view is this seam minus the hide-flags below** (~2.9k).
+  from 2005 on. **The default view is this seam minus the hide-flags below** (~2.8k).
 - **`curiosity`** (~14.1k) — everything else that still qualifies as a candidate.
 
 The split is a weighted score (`make_shortlist.score`), not a ladder of thresholds. The
@@ -234,7 +234,7 @@ top of the list fills with words that were never really in circulation.
 
 ### Score vs. flags — keep these apart
 
-Three flags mark words most people will not want to see. They are **not** part of the
+Four flags mark words most people will not want to see. They are **not** part of the
 score and they do **not** decide the seam:
 
 - `regional_only` — a DEX regional/dialectal tag *without* also being tagged old.
@@ -247,6 +247,26 @@ score and they do **not** decide the seam:
 - `proper_noun_like` — DEX knows this spelling **only** as a capitalised headword. It must
   stay "only": flagging every collision hid ordinary words like `gheb` ("cocoașă") because
   DEX also lists the name `Gheb`.
+- `archaic_spelling` — an obsolete *spelling* of a word that is entirely alive under a
+  modern one: `situațiune`/`situație`, `sgomot`/`zgomot`, `advocat`/`avocat`. Not the same
+  as `variant_like`, which keys on a shared inflectional paradigm and therefore cannot see
+  a pair whose stems differ. `spelling_of` stores the modern twin, and the detail panel
+  names it ("Grafie veche pentru *situație*") rather than silently dropping the row.
+
+  **The rules are deliberately narrow and that is the design** — see
+  `mark_archaic_spellings()` in `tools/build_ui_db.py` for the measured precision of each.
+  Only `-țiune/-ziune/-siune → -ție/-zie/-sie`, `sb/sd/sg → zb/zd/zg`, `des+voiced → dez`
+  and `adv → av` are used, each additionally requiring a named twin at least 20× more
+  frequent in the modern corpus. The general-looking rules were measured and rejected:
+  `e → ă` fires 2,300 times to find 69 twins and would equate `peți` with `păți`, which are
+  different words. A hide-flag's false positives are invisible — the word simply is not
+  there — so precision beats recall by a wide margin here. Catches 291 words, 110 of them
+  in the default view.
+
+  Do **not** widen this by flagging everything that "fell between CoRoLa and CulturaX":
+  that population is 5,421 words and 61.6% of the default view, and it is full of genuine
+  finds (`acaret`, `afion`, `agie`, `alișveriș`, `amploiat`). See
+  `docs/corpus-expansion-plan.md`.
 
 **The score says how good the evidence is; the flags say what you would rather not look
 at.** Penalising a flag in the score as well is double-counting, and it makes the flag
@@ -267,9 +287,9 @@ diminutive. `tools/migrate_ui_db_diminutives.py` back-fills an existing `ui.db`.
 
 ### UI defaults
 
-`build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides all three
+`build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides all four
 flagged classes, and sorts by `quality_score DESC`. Every one is a visible one-click
-toggle — `seam`, `show_regional`, `show_variants`, `show_proper` — never a silent
+toggle — `seam`, `show_regional`, `show_variants`, `show_proper`, `show_spellings` — never a silent
 exclusion, because the point of opening this up is to learn where the lines are wrong.
 
 Two things to preserve when touching these:
