@@ -65,7 +65,7 @@ function updateWord(word, patch) {
 // carry the '.word-detail-panel' class instead, and handlers look up the nearest one
 // from the click/keydown target.
 
-var QUICK_TAG_EMOJIS = { ascunde: '🙈', lol: '😂', meh: '😐' };
+var QUICK_TAG_EMOJIS = { ascunde: '🙈', lol: '😂', meh: '⚠️' };
 var QUICK_TAG_KEYS   = Object.keys(QUICK_TAG_EMOJIS);
 var QT_EXPLAINER_KEY = 'otios.qtExplainerDismissed';
 
@@ -150,10 +150,15 @@ if (typeof document !== 'undefined' && document.body) {
       var bWord = bookBtn.dataset.word;
       if (!bWord) return;
       var bState = getWord(bWord);
-      updateWord(bWord, { bookmarked: !bState.bookmarked });
+      var nowFav = !bState.bookmarked;
+      updateWord(bWord, { bookmarked: nowFav });
       hydrateDetail(e.target.closest('.word-detail-panel'));
       if (typeof hydrateRows === 'function') hydrateRows(document.getElementById('word-list'));
       if (typeof updateBookmarkCount === 'function') updateBookmarkCount();
+      // Marking moves you on (see advanceAfterMark in app.js). Un-favouriting does
+      // not: that is a correction, and advancing would take you off the word you
+      // just came back to fix. The row survives a fav, hence removesRow = false.
+      if (nowFav && typeof advanceAfterMark === 'function') advanceAfterMark(bWord, false);
       return;
     }
 
@@ -172,9 +177,15 @@ if (typeof document !== 'undefined' && document.body) {
       updateWord(qWord, { tags: next });
       hydrateDetail(e.target.closest('.word-detail-panel'));
       if (typeof hydrateRows === 'function') hydrateRows(document.getElementById('word-list'));
-      // Newly hidden — pop the chip out of the grid instead of waiting for a re-search.
-      if (!wasTagged && (tag === 'ascunde' || tag === 'meh') && typeof fadeOutRow === 'function') {
-        fadeOutRow(qWord);
+      // Applying any quick tag moves you on to the next word; removing one does not
+      // (see advanceAfterMark in app.js). `ascunde`/`meh` additionally pop the row
+      // out of the grid instead of waiting for a re-search — that is what the second
+      // argument says. `advanceAfterMark` is index-only; joc.php loads this file
+      // without it and only ever needs the fade, hence the fallback.
+      var hides = (tag === 'ascunde' || tag === 'meh');
+      if (!wasTagged) {
+        if (typeof advanceAfterMark === 'function')         advanceAfterMark(qWord, hides);
+        else if (hides && typeof fadeOutRow === 'function') fadeOutRow(qWord);
       }
       return;
     }

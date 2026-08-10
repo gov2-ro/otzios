@@ -242,7 +242,8 @@
 [data-skin="govuk"] .verdict-badge,
 [data-skin="govuk"] #word-list.word-list-table .chip-vbadge,
 [data-skin="govuk"] .detail-tag,
-[data-skin="govuk"] .dict-chip {
+[data-skin="govuk"] .dict-chip,
+[data-skin="govuk"] .dex-link {
   border-radius: 0;
   font-family: var(--sans);
   font-weight: 700;
@@ -255,9 +256,11 @@
 
 /* ── 5. Buttons ─────────────────────────────────────────────────────────────
    govuk-button: green, square, and a 2px darker edge that the button sinks
-   into when pressed. */
-[data-skin="govuk"] .fs-apply,
-[data-skin="govuk"] .dex-link {
+   into when pressed.
+   `.dex-link` used to be in this group and is deliberately no longer: it is a
+   chip in the dictionary row now, not a call to action, so it takes the
+   `.dict-chip` treatment above instead of the green GDS button. */
+[data-skin="govuk"] .fs-apply {
   background: var(--gv-green);
   color: #ffffff;
   border: 2px solid transparent;
@@ -268,10 +271,8 @@
   letter-spacing: 0;
   text-decoration: none;
 }
-[data-skin="govuk"] .fs-apply:hover,
-[data-skin="govuk"] .dex-link:hover { background: var(--gv-green-2); opacity: 1; }
-[data-skin="govuk"] .fs-apply:active,
-[data-skin="govuk"] .dex-link:active { box-shadow: none; transform: translateY(2px); }
+[data-skin="govuk"] .fs-apply:hover { background: var(--gv-green-2); opacity: 1; }
+[data-skin="govuk"] .fs-apply:active { box-shadow: none; transform: translateY(2px); }
 
 /* ── 6. Links ───────────────────────────────────────────────────────────────
    GDS underlines links always and thickens the underline on hover rather than

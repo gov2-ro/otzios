@@ -52,15 +52,29 @@ $header_after      = $header_after      ?? '';
   </a>
 
   <nav class="top-nav" aria-label="Navigare principală">
-    <?php foreach (['joc', 'liste'] as $key):
+    <?php
+    /*
+     * `joc` and `liste` are here at every width. `stats` and `metod` are here
+     * only from 901px up, and in `footer.php` only below it — the same two
+     * destinations, one bar at a time, with the crossover at the width the
+     * footer nav already uses to drop its labels. Marked with
+     * `top-nav-item--wide` / `nav-item--wide`; app.css owns the swap, so there
+     * is no width where they render twice or not at all.
+     *
+     * The bar cannot take four labelled entries on a phone — that is the
+     * measurement the header/footer split was built on and it has not changed.
+     * What changed is the ask: on a desktop the bar has the room, and burying
+     * statistici and metodologie in the footer was hiding the two pages that
+     * explain what the site is.
+     */
+    foreach (['joc' => '', 'liste' => '', 'stats' => ' top-nav-item--wide', 'metod' => ' top-nav-item--wide'] as $key => $width_cls):
       $item = NAV_ITEMS[$key]; ?>
-      <a style="text-transform: uppercase;" class="top-nav-item<?= $key === $page ? ' is-current' : '' ?>"
+      <a style="text-transform: uppercase;" class="top-nav-item<?= $width_cls ?><?= $key === $page ? ' is-current' : '' ?>"
          href="<?= BASE . $item['path'] ?>" title="<?= e($item['label']) ?>"
          <?= $key === $page ? 'aria-current="page"' : '' ?>>
         <span class="nav-icon" aria-hidden="true"><?= $item['icon'] ?></span><span class="nav-label"><?= e($item['label']) ?></span>
       </a>
     <?php endforeach; ?>
-    
   </nav>
 
   <?= $header_center ?>

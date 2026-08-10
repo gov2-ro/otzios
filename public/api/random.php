@@ -4,7 +4,18 @@ require_once __DIR__ . '/_lib.php';
 
 // Random word that respects the current server-side filters (verdict, tier, POS,
 // taxonomy, explore ranges, word_tier) plus the text query — powers "🎲 surprise".
-['conditions' => $conditions, 'params' => $params] = build_word_filter($_GET);
+//
+// With a playlist open, the playlist *is* the selection: the form serializes its hidden
+// `w` input along with everything else, so a surprise word has to come from the shared
+// list rather than from the filters the reader never set. Same rule as api/search.php.
+$playlist   = playlist_words($_GET);
+$conditions = [];
+$params     = [];
+if ($playlist === null) {
+    ['conditions' => $conditions, 'params' => $params] = build_word_filter($_GET);
+} else {
+    playlist_condition($playlist, $conditions, $params);
+}
 
 $q = trim($_GET['q'] ?? '');
 if ($q !== '') {

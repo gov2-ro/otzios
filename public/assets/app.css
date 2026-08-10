@@ -136,12 +136,14 @@ body {
   color: var(--text-3);
 }
 
-/* ── Top nav (header.php) — joc + liste, and index.php's `?` shortcuts link.
-   Distinct from .site-nav in the footer: two destinations rather than five,
-   so icon + label always fit and there is no 900px breakpoint dropping the
-   label — a bare glyph pair next to the wordmark would be the one thing this
-   bar has room to avoid. */
+/* ── Top nav (header.php) — joc + liste at every width, statistici +
+   metodologie from 901px up, and index.php's `?` shortcuts link.
+   Icon + label always, with no breakpoint dropping the label: a bare glyph row
+   next to the wordmark is the one thing this bar has room to avoid. The two
+   wide-only entries are how that stays true — rather than shrinking four
+   entries to fit a phone, the phone keeps two and the footer keeps the rest. */
 .top-nav { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+
 .top-nav-item {
   display: inline-flex;
   align-items: center;
@@ -157,6 +159,19 @@ body {
 .top-nav-item:hover { color: var(--accent); }
 /* Same "underline, no fill" mark as .nav-item.is-current in the footer. */
 .top-nav-item.is-current { color: var(--text); border-bottom: 1px solid var(--accent); padding-bottom: 1px; }
+
+/* Statistici + metodologie render in BOTH bars; exactly one is ever visible.
+   901px is the footer nav's existing label/icon breakpoint rather than a new
+   one, so there is a single crossover in the file to keep in step.
+
+   These must stay *after* `.top-nav-item`'s own `display: inline-flex`: both
+   selectors are one class, so the cascade falls to source order, and declared
+   above it the hide silently lost and all four entries showed on a phone. */
+.top-nav-item--wide { display: none; }
+@media (min-width: 901px) {
+  .top-nav-item--wide { display: inline-flex; }
+  .site-nav .nav-item--wide { display: none; }
+}
 .shortcuts-link {
   display: inline-flex;
   align-items: center;
@@ -976,6 +991,9 @@ body {
   z-index: 2;
 }
 .fp-close:hover { color: var(--text); background: var(--surface); }
+/* Desktop shows the ✕; the mobile block swaps in the back arrow and moves the
+   button to the top-left corner. */
+.fp-close-back { display: none; }
 
 /* Head: word title + verdict + meta */
 .fp-head {
@@ -1150,22 +1168,28 @@ body {
 .fp-stats em { font-style: normal; opacity: .55; margin-right: 4px; }
 .fp-btns { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
 
-/* Dexonline link button */
+/* Dexonline link — a chip at the end of the dictionary row (.fp-dicts), not the
+   full-width filled button it was in `.fp-foot`. It is an outbound reference to
+   one more dictionary, which is precisely the row it now sits in; as a solid
+   block at the foot it outranked the definition, and every skin then amplified
+   it further because a big button invites being styled like one. Shaped off
+   .dict-chip so a skin that has already said something about dictionary chips
+   covers it for free, with the accent to keep it reading as actionable. */
 .dex-link {
-  display: block;
-  padding: 9px 12px;
-  background: var(--text);
-  color: var(--bg);
-  font-family: var(--sans);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-align: center;
+  display: inline-block;
+  font-size: 0.625rem;
+  padding: 1px 7px;
+  margin: 1px 3px 1px 0;
+  border-radius: 3px;
+  border: 1px solid var(--border-2);
+  background: var(--surface-2);
+  color: var(--accent);
+  font-family: var(--mono);
   text-decoration: none;
-  border-radius: var(--radius);
-  letter-spacing: 0.01em;
-  transition: opacity .15s;
+  white-space: nowrap;
+  transition: border-color .15s, color .15s;
 }
-.dex-link:hover { opacity: .85; }
+.dex-link:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Verdict badge */
 .verdict-badge {
@@ -1420,6 +1444,26 @@ body {
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* Playlist open: the server applies no filters at all to a curated list (see the note
+   in api/search.php), so the sheet says so and goes inert — everything except `sort`,
+   which still works on a shared list. The controls keep their values rather than being
+   reset or `disabled`: exiting the playlist has to hand back the same view you had.
+   `inert` is set from setPlaylistMode() in app.js; the opacity here only follows it. */
+.fs-playlist-note { display: none; }
+.filter-sheet[data-playlist] .fs-playlist-note {
+  display: block;
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-bg);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--accent);
+}
+.filter-sheet[data-playlist] .fs-reset { visibility: hidden; }
+.filter-sheet[data-playlist] [inert] { opacity: 0.4; }
 .fs-sort {
   flex: 1;
   min-width: 140px;
@@ -2208,9 +2252,46 @@ kbd {
   }
   #detail-panel.panel-open.share-focus { height: 82vh !important; }
 
-  /* Detail on mobile: smaller title */
+  /* ── Reading a definition hides both bars ──────────────────────────────────
+     The backlog asked for the sheet capped at 40% to give the list room. It is
+     still 60vh, because the definition is the thing you opened and 40% of a
+     phone does not hold one — measured, `poporanism` alone overflows it. The
+     room comes from the two bars instead: brand bar ~90px plus --statusbar-h
+     (96px here) is 186px of a 812px screen doing nothing you can act on while
+     reading. Hiding them takes the visible list from ~139px to ~325px, more
+     than double, and the sheet keeps its full height.
+
+     The way back is `.fp-close`, which becomes a back arrow in the top-left
+     corner below — with the header gone it is the only exit, so it moves to
+     where a thumb reaches for one and grows to a 44px target. */
+  body.detail-open .brand-bar,
+  body.detail-open #status-bar { display: none; }
+  body.detail-open { padding-bottom: 0; }
+  body.detail-open #detail-panel.panel-open { bottom: 0 !important; }
+
+  /* Detail on mobile: smaller title, and the close button moves to the left */
   .fp-title { font-size: 1.625rem !important; }
-  .fp-head { padding: 12px 36px 10px 14px !important; }
+  .fp-head { padding: 12px 14px 10px 14px !important; }
+  /* The left inset is for the back arrow, so it belongs only to the sheet that
+     has one. joc.php's `#panel-pane` reuses these `.fp-*` styles but hides
+     `.fp-close` (there is nothing to close — the pane is always up), and would
+     otherwise carry 46px of empty gutter on the narrowest screen it has. */
+  /* 58px, not 46: the button is a 44px target at left:6px, so it ends at 50 —
+     and skins that give it a border (beton) put a visible edge right there. */
+  #detail-panel .fp-head { padding-left: 58px !important; }
+  .fp-close {
+    right: auto;
+    left: 6px;
+    top: 6px;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+  }
+  .fp-close-x { display: none; }
+  .fp-close-back { display: inline; }
   .fp-btns { flex-wrap: wrap; }
   .qt-key { display: none; }
   .qt-btn { font-size: 0.6875rem; height: 28px; flex: 1 1 0; }

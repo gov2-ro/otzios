@@ -43,7 +43,7 @@ $QUICK_TAGS = [
 $QUICK_TAG_EMOJIS = [
     'ascunde' => '🙈',
     'lol'     => '😂',
-    'meh'     => '😐',
+    'meh'     => '⚠️',
 ];
 
 $POS_OPTIONS = [
@@ -266,6 +266,38 @@ function unpack_words(string $packed): array {
     return $out;
 }
 
+/**
+ * The words a playlist parameter names, or null when the request carries no playlist.
+ *
+ * `w=` is the packed form (base36 ids, see above), `words=` the legacy plaintext one.
+ * An empty array is a real answer for `w=`: one that decodes to nothing — mangled, or a
+ * version this build predates — must match no words rather than falling through to the
+ * whole list, which would silently serve 16k words under a "3 words in list" banner.
+ * A blank `words=` is treated as no playlist at all, which is how it has always behaved.
+ *
+ * Callers pair this with skipping build_word_filter(): a playlist is a list someone
+ * curated by hand, and the default filters would subtract from what they chose.
+ */
+function playlist_words(array $p): ?array {
+    $packed = trim((string) ($p['w'] ?? ''));
+    if ($packed !== '') return unpack_words($packed);
+
+    $raw = trim((string) ($p['words'] ?? ''));
+    if ($raw === '') return null;
+    $words = array_values(array_filter(array_map('trim', explode(',', $raw))));
+    return $words === [] ? null : $words;
+}
+
+/** `word IN (…)` for a playlist, or the never-matching condition for an empty one. */
+function playlist_condition(array $words, array &$conditions, array &$params): void {
+    if ($words === []) {
+        $conditions[] = '1=0';
+        return;
+    }
+    $conditions[] = 'word IN (' . implode(',', array_fill(0, count($words), '?')) . ')';
+    $params       = array_merge($params, array_values($words));
+}
+
 function build_word_filter(array $p): array {
     global $POS_OPTIONS;
     static $TIER_TOTAL    = 5;
@@ -427,6 +459,15 @@ function build_word_filter(array $p): array {
     // Hide loanwords (words common in English — en_zipf ≥ 4.0)
     if (db_has_column('en_zipf') && ($p['hide_loanwords'] ?? '') === '1') {
         $conditions[] = '(en_zipf IS NULL OR en_zipf < 4.0)';
+    }
+
+    // Hide diminutives (`noruleț`, `cuconiță`, `fecioraș`). Off by default, and a
+    // `hide_` rather than a `show_` for that reason: the toggle only ever subtracts, so
+    // an unchecked box submitting nothing is exactly the state it should mean. The 403
+    // marked words are mostly DEX saying so in the definition — see mark_diminutives()
+    // in tools/build_ui_db.py for why the suffix half of the rule is so narrow.
+    if (db_has_column('diminutive_like') && ($p['hide_diminutives'] ?? '') === '1') {
+        $conditions[] = '(diminutive_like IS NULL OR diminutive_like = 0)';
     }
 
     // Proper nouns are hidden by default now; `show_proper=1` brings them back. Phrased

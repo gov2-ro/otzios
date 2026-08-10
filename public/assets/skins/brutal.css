@@ -567,6 +567,7 @@
 
 [data-skin="brutal"] .detail-tag,
 [data-skin="brutal"] .dict-chip,
+[data-skin="brutal"] .dex-link,
 [data-skin="brutal"] .tag {
   border: 1px solid var(--ink);
   background: var(--surface-2);
@@ -614,18 +615,12 @@
 }
 [data-skin="brutal"] .qt-explainer strong { color: var(--on-hl); }
 
-[data-skin="brutal"] .dex-link {
-  background: var(--accent);
-  color: var(--on-accent);
-  border: var(--stroke) solid var(--ink);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: var(--tk-ui);
-  transition: transform .06s, box-shadow .06s;
-  box-shadow: var(--shadow-sm);
-}
-[data-skin="brutal"] .dex-link:hover { opacity: 1; box-shadow: var(--shadow); }
-[data-skin="brutal"] .dex-link:active { transform: translate(3px, 3px); box-shadow: none; }
+/* The dexonline link was a red accent slab with a drop shadow here — the single
+   loudest element in the panel, ahead of the headword. It is a chip in the
+   dictionary row now and picks up `.dict-chip` above; only the accent ink is
+   restated, so it still reads as the one outbound link among the names. */
+[data-skin="brutal"] .dex-link { color: var(--accent); }
+[data-skin="brutal"] .dex-link:hover { border-color: var(--accent); }
 
 [data-skin="brutal"] .fp-note textarea,
 [data-skin="brutal"] #tag-input {

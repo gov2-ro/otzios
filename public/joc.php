@@ -29,6 +29,7 @@ require_once __DIR__ . '/api/_lib.php';
     }
     .joc-mode.active { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
     .joc-score { font-family:var(--mono); font-size:0.75rem; color:var(--text-3); }
+    .joc-score-short { display:none; }
     /* Game card + word-detail pane: stacked on mobile, side-by-side on desktop. */
     .joc-layout { flex:1; display:flex; flex-direction:column; min-height:0; }
     .joc-main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:24px 16px; }
@@ -97,7 +98,31 @@ require_once __DIR__ . '/api/_lib.php';
     .panel-compare-label { font-family:var(--mono); font-size:0.6875rem; color:var(--text-3); margin-bottom:4px; }
     .panel-compare-def { font-family:var(--serif); font-size:0.9375rem; line-height:1.5; color:var(--text-2); }
 
-    @media (max-width:768px) { .joc-word { font-size:2.1em; } .joc-def { font-size:1.0625rem; } .joc-choice--def { font-size:0.9375rem; } }
+    /* Mobile: the card's desktop padding was eating the line length. `.joc-main`
+       (16px) plus `.joc-card` (28px) plus the border left 285px of text on a
+       375px phone — for a card whose whole job is four multi-line definitions
+       you have to read and compare. Halving both takes it to ~325px, and the
+       choices lose their own extra inset for the same reason. Vertical padding
+       comes down too: the page already scrolls under a fixed footer, so the
+       cheapest way to get a fourth option above the fold is to stop spending
+       50px on air above the first one. */
+    @media (max-width:768px) {
+      .joc-word { font-size:2.1em; }
+      .joc-def { font-size:1.0625rem; }
+      .joc-choice--def { font-size:0.9375rem; }
+      /* `corecte: 0 · ratate: 0` is 158px of a 362px bar; with the mode buttons
+         at 208px the trophy had nowhere to go but a third row. */
+      .joc-score-long { display:none; }
+      .joc-score-short { display:inline; }
+      .joc-main { padding:14px 10px; }
+      .joc-card { padding:20px 16px; border-radius:12px; }
+      .joc-choices { gap:8px; margin-top:16px; }
+      .joc-choice { padding:11px 12px; }
+      .joc-choice--def { padding:11px 12px; }
+      .joc-actions { margin-top:16px; gap:8px; }
+      .panel-compare { padding:12px 12px; }
+      .panel-placeholder { padding:14px 12px; }
+    }
 
     @media (min-width:900px) {
       .joc-layout { flex-direction:row; align-items:stretch; }
@@ -188,12 +213,18 @@ require_once __DIR__ . '/api/_lib.php';
 
     function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+    // Two spellings of the same tally, one shown per width (see .joc-score-long /
+    // .joc-score-short). The long one is 158px of a 362px bar, which pushed the
+    // trophy onto a third row and took the header to 121px — 14% of a phone
+    // screen spent on a bar above the card you are meant to be reading.
     function renderScore() {
       var el = document.getElementById('joc-score');
       if (mode === 'quiz' || mode === 'sense') {
         var s = getQuizStats(mode);
-        var total = s.total || 0, correct = s.correct || 0;
-        el.textContent = 'corecte: ' + correct + ' · ratate: ' + (total - correct);
+        var total = s.total || 0, correct = s.correct || 0, missed = total - correct;
+        el.innerHTML =
+          '<span class="joc-score-long">corecte: ' + correct + ' · ratate: ' + missed + '</span>' +
+          '<span class="joc-score-short" title="corecte · ratate">✓ ' + correct + ' · ✗ ' + missed + '</span>';
       } else {
         el.textContent = '';
       }

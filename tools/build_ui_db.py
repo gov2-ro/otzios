@@ -5,6 +5,7 @@ Run from repo root:
     python tools/build_ui_db.py
 """
 import csv
+import re
 import sqlite3
 import sys
 from collections import Counter
@@ -214,6 +215,94 @@ def merge_synonyms(conn: sqlite3.Connection, syn_db: Path) -> None:
     print(f'  {n:,} words given synonyms/antonyms')
 
 
+# ── Diminutives ──────────────────────────────────────────────────────────────────
+#
+# Two independent signals, unioned. Neither is complete on its own and both are kept
+# deliberately narrow, because the flag drives a hide-toggle: a false positive costs a
+# real word the moment someone switches it on.
+#
+# 1. DEX says so. The definition opens with "Diminutiv al lui X" — the dictionary's own
+#    statement, and the only signal that survives a phonetic alternation the spelling
+#    hides (`vătășel` → `vătaf`, `cărucioară` → `căruță`). Matched at the start of a
+#    meaning (the string start, or just after a `|` separator) and allowing one short
+#    parenthetical, so `(Ca termen de adresare) Diminutiv al lui văr` counts. What it
+#    must *not* match is a quotation that merely uses the word: `alintare` carries
+#    "Țîțacă e diminutiv, adică alintare a vorbei țață", which is about another word
+#    entirely — hence the required "al/a/ale/lui/de la" right after.
+#
+# 2. Unambiguous suffix + a base DEX knows. `-uleț -uliță -ișor -ișoară -cioară -uț -uță
+#    -șor -șoară`, and only when stripping the suffix (restoring a final `ă` for the
+#    feminine ones) lands on a real lexeme: `noruleț` → `nor`, `mescioară` → `mesă`.
+#    The suffixes left out are the productive-but-ambiguous ones: `-iță` is as often a
+#    feminine agent (`păstoriță`, `boieriță`, `vorniciță`) as a diminutive, and `-ic`,
+#    `-ică`, `-el`, `-ea`, `-aș` pull in `semitic`, `mastică`, `solemnel`, `livrea`,
+#    `birtaș`. Together they added ~340 words at maybe half precision, which is the
+#    wrong trade for a filter people turn on to *stop* seeing things.
+#
+# On the current build: 345 from the definitions, 58 more from the suffixes, 403 total.
+_DIMINUTIVE_DEF_RE = re.compile(
+    r'(?:^|\|)\s*(?:\([^)]{0,40}\)\s*)?[Dd]iminutiv\w*\s+(?:al|a|ale|lui|de\s+la)\b'
+)
+
+# suffix → the endings to try on the stem when looking the base form up
+_DIMINUTIVE_SUFFIXES = {
+    'uleț':   ('',),
+    'uliță':  ('ă',),
+    'ișor':   ('',),
+    'ișoară': ('ă',),
+    'cioară': ('ă',),
+    'șoară':  ('ă',),
+    'șor':    ('',),
+    'uță':    ('ă',),
+    'uț':     ('',),
+}
+
+
+def _diminutive_by_suffix(word: str, forms: set[str]) -> bool:
+    for suffix, endings in _DIMINUTIVE_SUFFIXES.items():
+        # +2: a stem shorter than that is not a word the suffix was added to.
+        if not word.endswith(suffix) or len(word) <= len(suffix) + 2:
+            continue
+        stem = word[:-len(suffix)]
+        for ending in endings:
+            base = stem + ending
+            if base != word and base in forms:
+                return True
+    return False
+
+
+def mark_diminutives(conn: sqlite3.Connection, lexemes_db: Path) -> None:
+    """Populate words.diminutive_like. Idempotent; safe to re-run."""
+    print('Marking diminutives…')
+    forms: set[str] = set()
+    if lexemes_db.exists():
+        lconn = sqlite3.connect(str(lexemes_db))
+        forms = {
+            f.lower() for (f,) in lconn.execute(
+                'SELECT formNoAccent FROM Lexeme '
+                " WHERE formNoAccent IS NOT NULL AND formNoAccent != ''")
+        }
+        lconn.close()
+    else:
+        print(f'  (lexemes.db not found, suffix rule skipped: {lexemes_db})')
+
+    conn.execute('UPDATE words SET diminutive_like = 0')
+    by_def = by_suffix = 0
+    marked = []
+    for word, definition in conn.execute('SELECT word, definition FROM words').fetchall():
+        hit_def = bool(definition) and _DIMINUTIVE_DEF_RE.search(definition) is not None
+        hit_suf = bool(forms) and _diminutive_by_suffix(word.lower(), forms)
+        if hit_def:
+            by_def += 1
+        if hit_suf and not hit_def:
+            by_suffix += 1
+        if hit_def or hit_suf:
+            marked.append((word,))
+    conn.executemany('UPDATE words SET diminutive_like = 1 WHERE word = ?', marked)
+    print(f'  {len(marked):,} diminutives '
+          f'({by_def:,} stated in the definition, {by_suffix:,} more by suffix)')
+
+
 def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None:
     if not shortlist.exists():
         sys.exit(f'Missing: {shortlist}')
@@ -272,6 +361,9 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             regional_only    INTEGER,
             variant_like     INTEGER,
             variant_of       TEXT,
+            -- Set by mark_diminutives() below, after definitions are merged: the
+            -- strongest signal is the DEX definition itself saying "Diminutiv al lui X".
+            diminutive_like  INTEGER,
             -- Scraped from dexonline.ro by scrape_synonyms.py. Not in the dump: the
             -- Litera dictionaries (Sinonime, Sinonime82, Antonime) are redacted to 23
             -- characters there, so `dict_count` knows a word is in them but not what
@@ -391,6 +483,9 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
 
     merge_dict_sources(conn, DICT_SOURCES_PATH)
     merge_synonyms(conn, SYNONYMS_PATH)
+
+    # After the definitions merge, not before — half the signal is the definition text.
+    mark_diminutives(conn, Path('data/processed/lexemes.db'))
 
     # Must run before the vocab table is built, or the POS dropdown lists the old
     # taxonomy-derived values that almost nothing matches.

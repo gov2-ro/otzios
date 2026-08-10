@@ -240,6 +240,14 @@ until asked for. The one score penalty that remains is for a *moderate* family r
 (4–25×), which is an evidence problem rather than a preference — the lemma's count is
 being propped up by its relatives.
 
+`diminutive_like` is a fourth flag but not one of these three: it is **off by default**, so
+it never subtracts from what you see until you ask. That is also why it is spelled
+`hide_diminutives` rather than `show_`— see below. `mark_diminutives()`
+(`tools/build_ui_db.py`) sets it from the DEX definition saying "Diminutiv al lui X" (345
+words) plus nine unambiguous suffixes whose stripped stem is a real lexeme (58 more).
+`-iță` is deliberately excluded: as often a feminine agent (`păstoriță`, `vorniciță`) as a
+diminutive. `tools/migrate_ui_db_diminutives.py` back-fills an existing `ui.db`.
+
 ### UI defaults
 
 `build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides all three
@@ -249,13 +257,23 @@ exclusion, because the point of opening this up is to learn where the lines are 
 
 Two things to preserve when touching these:
 
-1. **Toggles are `show_*`, not `hide_*`.** An unchecked checkbox is not submitted, so a
-   default-on `hide_*` could never be switched off.
+1. **A toggle that hides by default is `show_*`, never `hide_*`.** An unchecked checkbox is
+   not submitted, so a default-on `hide_*` could never be switched off. The reverse case is
+   fine and is what `hide_loanwords` and `hide_diminutives` are: they are off by default and
+   only ever subtract, so "unchecked submits nothing" is exactly the state they should mean.
 2. **Every filter needs registering in `public/assets/app.js` too**, or it works but the
    URL never reflects it and the state is unshareable: add it to `AF_SPECS` (the chip) and
    to the read/write arrays in `applyUrlToForm` / the URL writer — **there are two arrays,
    one per direction, and missing the writer is the silent half**. A default value goes in
    `URL_PARAM_DEFAULTS` so it is omitted from the URL when unchanged.
+3. **None of it applies to a playlist.** When `w=` (or legacy `words=`) is present,
+   `search.php`, `random.php` and `feed.php` skip `build_word_filter()` entirely and filter
+   on the word list alone — see `playlist_words()` / `playlist_condition()` in `_lib.php`.
+   A playlist is a list someone curated by hand, and the defaults above would quietly
+   subtract from it: a shared list of twenty words arriving as eleven, with nothing on the
+   page to explain the gap. `q` and `marks` still apply — the reader typed those. The UI
+   half is `setPlaylistMode()` in `app.js`, which marks the form `data-playlist` and sets
+   `inert` (not `disabled`, so the values survive the playlist) on every section but sort.
 
 ### `newest_dict_year` — last attestation
 
@@ -436,6 +454,25 @@ looks reasonable while you are writing that skin alone.
 no tick and no swatch, so the inverted block is the only thing saying which option is
 live — and it is app.css's own treatment, identical under every skin.
 
+### `.dex-link` is a chip in the dictionary row, not a button
+
+The dexonline link sits at the end of `.fp-dicts`, shaped off `.dict-chip` — one more
+dictionary reference among the names, which is what it is. It used to be a full-width
+filled block at the foot of the panel, and **every skin independently made it louder**:
+beton a red accent slab with a drop shadow, govuk the green GDS action button, registru a
+black rectangle in mono caps, tezaur a filled pill. The result was that the loudest element
+in the detail panel — ahead of the headword and the definition — was a link off the site.
+
+That is the same trap as the Filtre rail above, and it has the same cause: each skin looked
+reasonable while you were writing it alone. A big filled button invites being styled like a
+primary action, so the fix is the shape, not four more overrides. All four skins now add at
+most a colour to it (`registru` re-grounds because `--accent` there is the page's own ink,
+which says nothing on a chip among chips).
+
+**`.fp-dicts` renders even when a word has no `sources`**, because the link lives in it now;
+wrapping the row in `if ($sources)` would drop the link for exactly the words whose
+dictionary coverage is thinnest. Verified at 4.5:1 or better in all five skins × both themes.
+
 `govuk.css` was built partly to find where the contract runs out. It did: the black
 masthead, the yellow focus state, square marks, dotless tags, the green button and the
 inset rule all needed component rules. That list, and the two hooks worth adding if a
@@ -468,16 +505,30 @@ Before them, each page rolled its own bar and `stats.php` had no brand at all.
 <?php require __DIR__ . '/api/_partials/footer.php'; ?>
 ```
 
-**Identity plus the two live destinations at the top; the rest of travel and the display
-preferences at the bottom.** `header.php` is brand, a top nav of `joc` + `liste` (one click
-from anywhere — the two places people jump to mid-browse), and whatever is genuinely
-page-specific (search, count, play, filters). `footer.php` is `statistici` + `metodologie`
-+ GitHub, plus the text-scale/skin/theme toggles, since those are the same on every page.
-`cuvinte` (index) appears in neither — the brand mark already links home on every page, so a
-nav entry to the same place was pure redundancy. The split exists at all because the
-explorer's top bar was already carrying brand, search, count, play and filters, and a full
-five-entry nav plus three toggles is what broke it; `index.php` had already put its counts
-and legend in the bottom bar, which is also thumb-reachable on a phone.
+**Identity plus travel at the top as far as the width allows; the overflow and the display
+preferences at the bottom.** `header.php` is brand, a top nav, and whatever is genuinely
+page-specific (search, count, play, filters). `footer.php` is GitHub plus the
+text-scale/skin/theme toggles, since those are the same on every page. `cuvinte` (index)
+appears in neither — the brand mark already links home on every page, so a nav entry to the
+same place was pure redundancy. The split exists at all because the explorer's top bar was
+already carrying brand, search, count, play and filters, and a full five-entry nav plus
+three toggles is what broke it; `index.php` had already put its counts and legend in the
+bottom bar, which is also thumb-reachable on a phone.
+
+**`statistici` and `metodologie` are rendered by *both* partials, and app.css shows exactly
+one — the header from 901px up, the footer below it.** They carry `top-nav-item--wide` /
+`nav-item--wide` and there is no width at which they appear twice or vanish. The two
+statements this reconciles are both true and neither was negotiable: a phone bar cannot
+take four labelled nav entries (measured — that is what produced this split in the first
+place), and burying the two pages that *explain the project* in a footer under the display
+toggles hid them from the desktop reader who would actually follow them. `joc` and `liste`
+stay in the header at every width; they are the two places people jump to mid-browse.
+
+901px is reused deliberately: it is already the footer nav's label/icon breakpoint, so
+there is one crossover in `app.css` to keep in step rather than two that can drift.
+**`.top-nav-item--wide` must stay declared *after* `.top-nav-item`** — both are one class,
+so the cascade falls to source order, and above it the `display: none` silently loses and
+all four entries render on a phone.
 
 **Both partials now read `$page`**, so set it *before* requiring `header.php` (not only
 before `footer.php` as it used to be) — it marks the matching entry `aria-current="page"` in
@@ -496,22 +547,35 @@ everything else in the footer is universal) plus `$page`. The explorer's feed bu
 (`enterFeed()`) is currently `hidden` in the markup rather than wired to either bar — like
 the dormant 🎲 `surpriseWord()` button beside it, it has no home yet, not no code.
 
-Four things to preserve:
+Five things to preserve:
 
 1. **`NAV_ITEMS` lives in `_lib.php`**, not in either partial — a `const` in an included
    file cannot be guarded against a second include, and it sits with `VERDICTS`/`TIERS`
-   as the other list of user-facing strings drawn on every page. `header.php` reads
-   `NAV_ITEMS['joc']`/`['liste']` directly rather than duplicating path/icon/label;
-   `footer.php` loops `array_diff_key(NAV_ITEMS, array_flip(['index','joc','liste']))`.
+   as the other list of user-facing strings drawn on every page. `header.php` loops the
+   four keys it draws with their width class; `footer.php` loops
+   `array_diff_key(NAV_ITEMS, array_flip(['index','joc','liste']))` and tags each one
+   `nav-item--wide`. Both read path/icon/label from `NAV_ITEMS` rather than restating them.
 2. **The current page stays an `<a>`** with `aria-current="page"` and an accent underline.
    As a `<span>` it stopped matching every skin's `#status-bar a` rule and needed its own
    colour — and `var(--text)` is a *page*-ground token, which on beton's ink footer meant
    near-black on black. Never give this bar a colour of its own.
-3. **Every footer nav entry keeps an icon and a label.** Below 900px labels are hidden and
-   the icons carry the bar alone, so an entry without one would vanish. The top nav's two
-   entries keep both at every width — there was room, and a bare icon pair beside the
+3. **Every nav entry in either bar keeps an icon and a label.** Below 900px labels are
+   hidden and the icons carry the bar alone, so an entry without one would vanish — which
+   is also why the top nav is down to `joc` + `liste` there rather than shrinking four
+   entries to fit. Above 901px all four keep icon *and* label; a bare glyph row beside the
    wordmark is the one thing that bar has space to avoid.
-4. **`govuk` and `registru` force `.brand-bar` black in both themes**, so anything living in
+4. **On a phone, an open definition hides both bars.** `app.js` puts `detail-open` on
+   `<body>` when the sheet opens and takes it off in `closePanel()`; only the ≤768px block
+   acts on it, so a desktop window narrowed with the panel up lands in the right state with
+   no resize listener. The backlog asked instead for the sheet capped at 40% — it is still
+   60vh, because 40% of a phone does not hold a definition (measured: `poporanism` alone
+   overflows it) and the definition is what you opened. The room comes from the bars: ~186px
+   of a 812px screen, neither of which you can act on while reading. Visible list goes from
+   ~139px to ~325px and the sheet keeps its height. **With the header gone, `.fp-close` is
+   the only way out** — hence the second glyph in `detail.php`: a ✕ top-right on desktop, a
+   ← in the top-left corner at a 44px target on a phone. Both are in the markup with app.css
+   showing one, rather than a CSS `content` swap that assistive tech cannot see.
+5. **`govuk` and `registru` force `.brand-bar` black in both themes**, so anything living in
    it needs on-bar re-grounding in those two skin files (`--gv-on-bar`/`--rg-on-bar`) —
    `.top-nav-item`, `.shortcuts-link` and `kbd` all needed it when they moved up from the
    footer, a page-ground surface neither skin forces dark. The reverse also holds: a
@@ -543,6 +607,27 @@ records which one:
 
 This is why there is no per-word "add to list", no grid multi-select and no inline list
 editing: you curate by marking words while browsing, and publishing is one button.
+
+**Marking advances to the next word — all four marks, the same way.** `advanceAfterMark()`
+in `app.js`, called from both handlers in `store.js`. Three properties, each of which has a
+reason someone will otherwise remove:
+
+- **All four, not just the hiding ones.** The first cut advanced only on `meh`/`ascunde`, on
+  the argument that `fav` and `lol` are stackable on one word. That was overruled and the
+  reasoning is worth keeping: marking is a triage loop, one mark per word is the intended
+  interaction, and a loop where three keys move you on and one does not is a loop you have to
+  think about. Consistency beats the rare double-tag.
+- **Applying advances; removing does not.** Un-favouriting is a correction — advancing would
+  take you off the word you just came back to fix.
+- **`removesRow` is the only branch.** `meh`/`ascunde` also pop the row out, so the next row
+  must be resolved *before* the fade and re-found by element after it: resolving it later
+  races the animation, and taking it by index earlier leaves `selectedIdx` off by one the
+  moment the row goes — and that is the number `j`/`k` read. On the last row, fall back to
+  the previous word when the row is being removed and stay put when it is not; never wrap to
+  the top, which silently restarts the list.
+
+Custom tags typed into `#tag-input` deliberately do not advance — it would pull focus out of
+the field mid-typing.
 
 ### Moderation
 

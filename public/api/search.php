@@ -12,21 +12,28 @@ $marked_words = $marked_words_raw !== ''
     ? array_filter(array_map('trim', explode(',', $marked_words_raw)))
     : [];
 
-// Playlist: `w` is the compact form (base36 word ids, see pack_words() in _lib.php);
-// `words` is the original plaintext form, still honoured so links shared before the
-// codec existed keep working.
-$packed = trim($_GET['w'] ?? '');
-if ($packed !== '') {
-    $playlist_words = unpack_words($packed);
-} else {
-    $playlist_words_raw = trim($_GET['words'] ?? '');
-    $playlist_words = $playlist_words_raw !== ''
-        ? array_filter(array_map('trim', explode(',', $playlist_words_raw)))
-        : [];
-}
+// Playlist (`w=` packed, or the legacy plaintext `words=`) — see playlist_words().
+$playlist = playlist_words($_GET);
 
-// Build shared server-side filters
-['conditions' => $conditions, 'params' => $params, 'word_tier' => $word_tier] = build_word_filter($_GET);
+// Build the shared server-side filters — unless a playlist is open.
+//
+// A playlist is a list someone chose by hand: a shared list opened from lista.php, a
+// published bucket, a set of bookmarks. Running the default filters over it silently
+// subtracts from what the sender picked — the default view alone hides regionalisms,
+// old variants, proper nouns and the whole `curiosity` seam, so a shared list of twenty
+// words could arrive showing eleven, with nothing on the page to say why. Whoever
+// assembled the list has already done the filtering; `w=` means show exactly these.
+//
+// `q` and `marks` below still apply: those are things the *reader* just typed or picked,
+// not defaults they never chose. The UI dims the filter sheet while a playlist is open
+// (see setPlaylistMode() in app.js) so the two halves agree.
+$conditions = [];
+$params     = [];
+if ($playlist === null) {
+    ['conditions' => $conditions, 'params' => $params] = build_word_filter($_GET);
+} else {
+    playlist_condition($playlist, $conditions, $params);
+}
 
 // search-only: text search
 if ($q !== '') {
@@ -34,18 +41,6 @@ if ($q !== '') {
     $conditions[] = '(word LIKE ? OR word_normalized LIKE ?)';
     $params[]     = '%' . $q . '%';
     $params[]     = '%' . $q_norm . '%';
-}
-// Playlist filter — restrict to specific words
-if ($playlist_words !== []) {
-    $placeholders = implode(',', array_fill(0, count($playlist_words), '?'));
-    $conditions[] = "word IN ($placeholders)";
-    $params       = array_merge($params, array_values($playlist_words));
-} elseif ($packed !== '') {
-    // A `w` that decodes to nothing (mangled, or a version this build doesn't know)
-    // must not fall through to "no playlist filter" — silently serving all 25k words
-    // under a playlist banner reads as a bug. An empty grid beside the banner and its
-    // exit button explains itself.
-    $conditions[] = '1=0';
 }
 
 // Marks filter.

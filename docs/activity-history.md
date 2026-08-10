@@ -4,6 +4,151 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-10 — soft-launch UI pass: dexonline chip, desktop nav, mobile sheet, auto-advance
+
+Five items off `docs/BACKLOG.md` → **Soft-launch**. Verified in headless Chrome over CDP at
+390×844 and 1440×900 (`--headless=new` with `Emulation.setDeviceMetricsOverride`; the old
+`--headless` screenshot mode reports desktop layout at a mobile window size and produced one
+false overflow report before I switched).
+
+**`dexonline ↗` is a chip, not a button.** It moved from a full-width filled block at the
+foot of the detail panel into the end of the dictionary row (`.fp-dicts`), shaped off
+`.dict-chip`. The reason it needed a shape change rather than a colour change: **all four
+skins had independently made it louder** — beton a red accent slab with a drop shadow, govuk
+the green GDS action button, registru a black mono-caps rectangle, tezaur a filled pill — so
+the loudest element in the panel, ahead of the headword, was a link off the site. A big
+filled button invites being styled as a primary action. Each skin now adds at most a colour;
+`registru` re-grounds to the attestation border because its `--accent` is the page's own ink,
+which says nothing on a chip among chips. `.fp-dicts` now renders even without `sources`,
+since wrapping it in that condition would drop the link for exactly the words with the
+thinnest dictionary coverage. Contrast measured at ≥4.5:1 across 5 skins × 2 themes (worst
+4.52, govuk/dark).
+
+**`statistici` + `metodologie` in the top nav, desktop only.** Both partials render them and
+app.css shows exactly one — header from 901px up, footer below — via `top-nav-item--wide` /
+`nav-item--wide`. No width shows them twice or not at all. This does not undo the 260809
+header/footer split: a phone bar still cannot take four labelled entries, which is the
+measurement that split was built on. What changed is that on a desktop the bar has the room,
+and the two pages that explain the project were buried under the display toggles. 901px is
+the footer nav's existing label/icon breakpoint, reused so there is one crossover to keep in
+step rather than two that can drift. All four entries measured ≥5.27:1 on the bar in every
+skin (govuk and registru force it black; their existing `.brand-bar .top-nav-item` rules
+cover the new entries for free).
+
+*Caught in verification, not in writing:* `.top-nav-item--wide { display: none }` declared
+**before** `.top-nav-item { display: inline-flex }` loses on source order — both are one
+class — and all four entries rendered on a phone. Moved below it.
+
+**Mobile: an open definition hides both bars.** `body.detail-open`, set in `app.js` on panel
+open and cleared in `closePanel()`; only the ≤768px block acts on it, so a desktop window
+narrowed with the panel up lands right without a resize listener. The backlog asked for the
+sheet capped at 40% instead — it stays 60vh, because 40% of a phone does not hold a
+definition (`poporanism` alone overflows it) and the definition is what you opened. The room
+comes from the bars: ~186px of an 812px screen, neither actionable while reading. **Visible
+list 139px → 325px**, sheet keeps its height. `.fp-close` becomes a 44px back arrow in the
+top-left — with the header gone it is the only exit. Two glyphs in the markup with CSS
+showing one, rather than a `content` swap assistive tech cannot see.
+
+`joc.php` was the page actually short of room: a 121px header, because `corecte: 0 · ratate:
+0` is 158px of a 362px bar and pushed the trophy to a third row. Below 768px the tally reads
+`✓ 0 · ✗ 0` → **87px**. Card padding 28px → 16px takes the line length from 285px to ~325px
+on a 375px phone, for a card whose whole job is four definitions you read and compare.
+
+**Auto-advance on every mark** — fav, lol, meh and ascunde alike. Marking is a triage loop,
+and a loop where three keys move you on and one does not is a loop you have to think about;
+one mark per word is the intended interaction, so the ability to stack a second on the same
+word is not worth four controls that behave differently. (Built first as `meh`/`ascunde`
+only, precisely to keep fav+lol stackable — changed the same day on the owner's call:
+convenience and consistency win over the rare double-tag.)
+
+**Only applying a mark advances; removing one does not.** Un-favouriting is a correction, and
+advancing would take you off the word you just came back to fix. Verified: fav on a word
+moves to the next, returning to it and clicking again un-favs in place.
+
+`removesRow` is the sole difference between the two cases — `meh`/`ascunde` also pop the row
+out of the grid. `advanceAfterMark()` resolves the next row *before* the fade and re-finds it
+by element afterwards; resolving after would race the animation, and selecting by index
+before would leave `selectedIdx` off by one the moment the row is removed — the number `j`/`k`
+read. On the last row: fall back to the previous one when the row is being removed, and stay
+put when it is not, rather than wrapping to the top and silently restarting the list. Custom
+tags typed into `#tag-input` do not advance — that would pull focus out of the field.
+
+**Two smaller things.** `marks` now reads `nemarcate` / `marcate` (the old label also
+misspelled `annotate`); values stay `unmarked`/`marked`, which are URL state. And `marks` was
+in both URL arrays but missing from `AF_SPECS`, so it filtered the grid without ever showing
+a chip — the same one-directional registration gap the CLAUDE.md filter rule names, on the
+chip side. Added.
+
+**Already done, ticked not built:** "mobile, search input is always shown" — the magnifier
+work had already fixed it. Measured at 390×844, `#search` is `display:none` on load and the
+brand bar is a single 51px row. The backlog screenshot predates it or had an active query.
+
+**Deferred with the reasoning recorded in the backlog**, so they don't read as omissions:
+publishing top faves + demoting `meh` globally (221 annotations from 44 users, 106 of them
+one person's, 41 `meh` total — one person's taste silently reshaping everyone's default,
+against the visible-toggle rule, and gameable for the price of a cookie clear); the synonym
+count filter (2,066 of 16,315 scraped, zero in `curiosity` — decided it ships excluding
+unscraped words rather than counting them as 0); and "another data quality run", folded into
+the existing 260519 Data Audit section.
+
+*Pre-existing, untouched:* `tests/test_store_sync.js` fails at "sync watermark stored" and
+then throws on the next step. Confirmed against the committed `store.js` — not from this
+pass. `test_lists_api`, `test_game_api` and `test_moderation` all pass.
+
+## 2026-08-09 — diminutive filter, playlists ignore filters, the two frequencies explained
+
+**`ascunde diminutive`.** New `words.diminutive_like` (403 words, 96 of them in the default
+view), computed by `mark_diminutives()` in `tools/build_ui_db.py` and back-filled into an
+existing `ui.db` by `tools/migrate_ui_db_diminutives.py`. Two signals, unioned:
+
+- **DEX says so** (345) — the definition opens with *Diminutiv al lui X*, matched at the
+  start of a meaning and allowing one short parenthetical, so `(Ca termen de adresare)
+  Diminutiv al lui văr` counts. Requiring the *al/a/ale/lui/de la* is what keeps out
+  `alintare`, whose definition merely quotes a sentence about another word being a
+  diminutive. This is also the only signal that survives an alternation the spelling
+  hides: `vătășel` → `vătaf`, `cărucioară` → `căruță`.
+- **Unambiguous suffix + a base DEX knows** (58 more) — `-uleț -uliță -ișor -ișoară
+  -cioară -uț -uță -șor -șoară`, and only when the stripped stem is a real lexeme
+  (`noruleț` → `nor`). Measured before choosing the set: adding `-iță -ic -ică -el -ea
+  -aș` took it to ~740 but dragged in `păstoriță`, `boieriță`, `semitic`, `mastică`,
+  `livrea`, `birtaș` — the wrong trade for a control people switch on to *stop* seeing
+  things. `-iță` alone is ~90 words and would need the base's gender to disambiguate.
+
+Filter is `hide_diminutives=1`, off by default — a `hide_` rather than the `show_` form
+`CLAUDE.md` argues for, and correctly so: it only ever subtracts, so "unchecked submits
+nothing" is exactly the state it should mean, same as `hide_loanwords`. Registered in all
+three places a filter needs (`AF_SPECS`, both URL arrays).
+
+**A playlist is no longer filtered again.** Opening a shared list in the explorer ran it
+through the default filters, which hide the whole `curiosity` seam plus regionalisms, old
+variants and proper nouns — so a shared list of twenty words could arrive showing eleven,
+with nothing on the page saying why. `search.php`, `random.php` and `feed.php` now skip
+`build_word_filter()` entirely when `w=`/`words=` is present (new `playlist_words()` /
+`playlist_condition()` in `_lib.php`); `q` and `marks` still apply, since those are things
+the reader just typed rather than defaults they never chose. Client half: `setPlaylistMode()`
+marks the form `data-playlist`, sets `inert` on every section but sort, shows the reason in
+the sheet, and stops the chip bar claiming filters are live. `inert`, not `disabled`, so the
+values survive and exiting the playlist hands back the view you had. New case in
+`tests/test_lists_api.js` packs a `curiosity` word with a visible one and asserts both
+survive an explicit `seam=relevant`.
+
+**Metodologie: the two frequencies.** New `#frecvente` subsection in 05 — a comparison
+table (source, what it measures, scale, what 0 means), then the DEX half (prominence, not
+usage; the superscript is the same score ×100) and the Zipf half (wordfreq, `log10` per
+billion, the figure-skating aggregation, the value table). The point worth keeping:
+**16,178 of 16,203 shortlist words sit at Zipf 0**, because Romanian only has wordfreq's
+small list and its reliability floor is Zipf 3. The Zipf filter therefore doesn't grade
+forgottenness — it catches the handful of words that were never rare (`ridicată` 4.62,
+`jumătăți` 3.70, `brânzeturi` 3.47), mostly inflected forms that slipped in as lemmas.
+
+Two labels stating the opposite of that were fixed on the way past: the shortcuts legend
+said the DEX number meant "cu cât e mai mic, cu atât e mai rar", and the detail panel's
+Zipf tooltip said "sub 3,0 înseamnă ieșit din uz" (it means below wordfreq's floor). The
+legend now links to `#frecvente`. Also normalized 49 lines of cedilla `ş/ţ` in
+`metodologie.html` to the comma forms the rest of the page and the pipeline use.
+
+---
+
 ## 2026-08-09 — `attested_after`, the other half of the last-attestation filter
 
 `attested_before=<year>` (last attestation older than Y) existed; its counterpart didn't,

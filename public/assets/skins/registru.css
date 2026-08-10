@@ -312,6 +312,7 @@
 }
 [data-skin="registru"] .detail-tag,
 [data-skin="registru"] .dict-chip,
+[data-skin="registru"] .dex-link,
 [data-skin="registru"] .syn-chip {
   border-color: var(--border-2);
   font-family: var(--mono);
@@ -333,9 +334,10 @@
 
 /* ── 5. Buttons ─────────────────────────────────────────────────────────────
    button-primary: black rectangle, white mono caps, hovering to the grey
-   support tone rather than to an opacity. */
-[data-skin="registru"] .fs-apply,
-[data-skin="registru"] .dex-link {
+   support tone rather than to an opacity.
+   `.dex-link` was in this group and is deliberately out of it: it is a chip in
+   the dictionary row now, so it takes the `.dict-chip` treatment above. */
+[data-skin="registru"] .fs-apply {
   background: var(--text);
   color: var(--bg);
   border: 1px solid var(--text);
@@ -345,13 +347,16 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-[data-skin="registru"] .fs-apply:hover,
-[data-skin="registru"] .dex-link:hover {
+[data-skin="registru"] .fs-apply:hover {
   background: var(--rg-grey);
   border-color: var(--rg-grey);
   color: #FFFFFF;
   opacity: 1;
 }
+/* `--accent` under this skin is the page's own ink, which on a chip among other
+   chips says nothing — the last-attestation border colour is the row's existing
+   way of marking the one chip that is not just a name. */
+[data-skin="registru"] .dex-link { color: var(--text); border-color: var(--v-ext-bd); }
 
 /* button-secondary: the same rectangle inverted, for the rail's own controls. */
 [data-skin="registru"] .reset-btn,

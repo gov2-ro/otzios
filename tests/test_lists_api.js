@@ -73,6 +73,23 @@ const mark = (word, patch) => Object.assign(
   const empty = await f(`${BASE}/api/search.php?w=9.1.2`).then((r) => r.text());
   check(!/data-word="/.test(empty), 'an undecodable ?w= yields no rows, not all 25k');
 
+  // A curated list is not filtered again. The default view is seam=relevant, so a
+  // `curiosity` word is one the filters would drop — the recipient of a shared list
+  // must still see it, or the list silently shrinks between sender and reader.
+  const curio = await f(`${BASE}/api/search.php?seam=curiosity`).then((r) => r.text());
+  const hidden = (curio.match(/data-word="([^"]+)"/) || [])[1];
+  if (hidden) {
+    const mixed = await post(f, '/api/pack.php', { words: [words[0], hidden] });
+    const withDefaults = await f(
+      `${BASE}/api/search.php?w=${encodeURIComponent(mixed.body.w)}` +
+      '&seam=relevant&hide_diminutives=1&word_tier=forgotten').then((r) => r.text());
+    const got = [...withDefaults.matchAll(/data-word="([^"]+)"/g)].map((m) => m[1]);
+    check(got.includes(hidden) && got.includes(words[0]),
+          `filters are ignored inside a playlist (${hidden} survives seam=relevant)`);
+  } else {
+    check(false, 'could not find a curiosity-seam word to test playlist filtering');
+  }
+
   console.log('\n3. publish_bucket reads the bucket server-side');
   const noBucket = await lists(f, { action: 'publish_bucket', bucket: 'nope' });
   check(noBucket.status === 400, 'unknown bucket rejected');

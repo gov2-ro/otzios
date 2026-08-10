@@ -24,7 +24,13 @@ $meta_parts = array_filter([
     $etym_parts  ? e($etym_parts[0])  : null,
 ]);
 ?>
-<button class="fp-close" onclick="closePanel()">✕</button>
+<!-- One button, two glyphs: a ✕ top-right on desktop, a back arrow top-left on a
+     phone, where the sheet fills the screen and the header is hidden behind it —
+     "back" is what a full-screen sheet dismisses to, and top-left is where a
+     thumb looks for it. Both are in the markup and app.css shows one; a CSS
+     `content` swap would have made the visible glyph invisible to assistive
+     tech, which reads the accessible name below either way. -->
+<button class="fp-close" onclick="closePanel()" aria-label="Închide definiția"><span class="fp-close-x" aria-hidden="true">✕</span><span class="fp-close-back" aria-hidden="true">←</span></button>
 
 <!-- Head: word + verdict + meta -->
 <div class="fp-head">
@@ -87,11 +93,20 @@ $meta_parts = array_filter([
 
   <!-- Dictionaries. Names are listed in a click-open tooltip rather than inline —
        a word in ~20 dictionaries used to print ~20 chips into the body every time,
-       which is more chrome than the definition above it. -->
-  <?php if ($sources): ?>
+       which is more chrome than the definition above it.
+
+       **This row always renders**, even for a word with no `sources`, because the
+       dexonline link now ends it: as a chip among the other dictionary references
+       rather than the full-width filled button it used to be in `.fp-foot`. That
+       button was the loudest thing in the panel — louder than the definition —
+       and four skins each amplified it independently (beton a red slab, govuk a
+       green GDS button). Wrapping the row in `if ($sources)` would have made the
+       link vanish for exactly the words whose dictionary coverage is thinnest. -->
   <div class="fp-dicts">
+    <?php if ($sources): ?>
     <button type="button" class="fp-extra-label fp-dicts-toggle"
             aria-haspopup="true" aria-expanded="false">📚 în <?= $dict_count ?> <?= $dict_count === 1 ? 'dicționar' : 'dicționare' ?></button>
+    <?php endif; ?>
     <?php
     // Last attestation: the newest dictionary that still prints this word. A
     // lexicographic claim, independent of the corpus figures in the footer below —
@@ -104,19 +119,25 @@ $meta_parts = array_filter([
       <span class="dict-chip dict-chip--year"
             title="Cel mai recent dicționar din DEX care încă include acest cuvânt">ultima atestare <?= $attested ?></span>
     <?php endif; ?>
+    <a class="dex-link"
+       href="https://dexonline.ro/definitie/<?= urlenc($w['word']) ?>"
+       target="_blank" rel="noopener"
+       title="Deschide intrarea completă pe dexonline.ro (o)">dexonline ↗</a>
+    <?php if ($sources): ?>
     <div class="dict-tooltip" hidden>
       <?php foreach ($sources as $src): ?><span class="dict-chip"><?= e($src) ?></span><?php endforeach; ?>
     </div>
+    <?php endif; ?>
   </div>
-  <?php endif; ?>
 
 </div>
 
-<!-- Footer: stats + actions + dexonline -->
+<!-- Footer: corpus stats + marking actions. The dexonline link used to end this
+     block as a full-width button; it is a chip in the dictionary row above now. -->
 <div class="fp-foot">
 
   <div class="fp-stats">
-    <?php if ($w['zipf_frequency'] !== null): ?><span title="Frecvență Zipf în română — sub 3,0 înseamnă ieșit din uz"><em>zipf ro</em><?= number_format((float)$w['zipf_frequency'], 1) ?></span><?php endif; ?>
+    <?php if ($w['zipf_frequency'] !== null): ?><span title="Frecvență Zipf în română (wordfreq, log10 la un miliard de cuvinte) — sub 3,0 e sub pragul de fiabilitate, nu o estimare reală"><em>zipf ro</em><?= number_format((float)$w['zipf_frequency'], 1) ?></span><?php endif; ?>
     <?php if ($w['en_zipf'] !== null): ?><span title="Frecvență Zipf în engleză — o valoare mare sugerează un împrumut recent"><em>zipf en</em><?= number_format((float)$w['en_zipf'], 1) ?></span><?php endif; ?>
     <span title="Apariții la un milion de cuvinte în corpusul istoric (Wikisource)"><em>istoric</em><?= $w['hist_ppm'] !== null ? number_format((float)$w['hist_ppm'], 2) : '—' ?></span>
     <span title="Apariții la un milion de cuvinte în corpusul modern (CulturaX)"><em>modern</em><?= $w['modern_ppm'] !== null ? number_format((float)$w['modern_ppm'], 2) : '—' ?></span>
@@ -135,12 +156,8 @@ $meta_parts = array_filter([
   </div>
 
   <div id="qt-explainer" class="qt-explainer">
-    <span>★ <strong>fav</strong> și <strong>lol</strong> = cuvinte de păstrat. <strong>ascunde</strong> și <strong>meh</strong> = prea cunoscut, dispare din listă (îl regăsești în <em>settings</em>).</span>
+    <span>★ <strong>fav</strong> &amp; <strong>lol</strong> = cuvinte de păstrat.  / <strong>meh</strong> = prea cunoscut sau banal, dispare din listă (îl regăsești în <em>settings</em>).</span>
     <button type="button" id="qt-explainer-close" title="ascunde acest mesaj">✕</button>
   </div>
-
-  <a class="dex-link"
-     href="https://dexonline.ro/definitie/<?= urlenc($w['word']) ?>"
-     target="_blank" rel="noopener">↗ deschide pe dexonline.ro</a>
 
 </div>

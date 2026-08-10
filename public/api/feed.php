@@ -3,8 +3,16 @@ declare(strict_types=1);
 require_once __DIR__ . '/_lib.php';
 
 // A batch of random words (with definitions) for the card / swipe feed, respecting
-// the current filters. The client cycles through and fetches a fresh batch as needed.
-['conditions' => $conditions, 'params' => $params] = build_word_filter($_GET);
+// the current filters — or, when a playlist is open, drawn from the playlist alone
+// (see api/search.php for why a curated list is not filtered again).
+$playlist   = playlist_words($_GET);
+$conditions = [];
+$params     = [];
+if ($playlist === null) {
+    ['conditions' => $conditions, 'params' => $params] = build_word_filter($_GET);
+} else {
+    playlist_condition($playlist, $conditions, $params);
+}
 
 $q = trim($_GET['q'] ?? '');
 if ($q !== '') {

@@ -331,6 +331,15 @@
       margin: 22px 0 9px;
       letter-spacing: -.01em;
     }
+    /* One level below h3, for the two halves of a subsection that share a lead-in
+       (the DEX / Zipf pair in 05). Quieter than h3 by weight and colour, not by size. */
+    .article h4 {
+      font-family: var(--serif);
+      font-size: 0.9375em;
+      font-weight: 600;
+      color: var(--text-2);
+      margin: 18px 0 7px;
+    }
     .article p {
       font-size: 0.90625rem;
       line-height: 1.72;
@@ -755,16 +764,16 @@ forgotten_words_curated.csv  <span class="gold">140.308 candidați</span></div>
     <h3>Paradigme, nu forme de dicționar</h3>
     <p>
       Corpusurile numără <em>token-uri brute</em>, iar româna e puternic flexionară — așa că un
-      lemma primea doar apariţiile formei sale de dicţionar. <code>înmărmuri</code> ieşea cu 317
-      apariţii moderne, în timp ce <code>înmărmurit</code> singur are 5.846. Toate verbele erau
+      lemma primea doar aparițiile formei sale de dicționar. <code>înmărmuri</code> ieșea cu 317
+      apariții moderne, în timp ce <code>înmărmurit</code> singur are 5.846. Toate verbele erau
       astfel împinse spre „dispărut".
     </p>
     <p>
       Numărătorile sunt acum ridicate peste întreaga paradigmă, folosind tabelul
       <code>InflectedForm</code> din dump (2,27M forme → 1,63M perechi formă→lemma).
-      Formele revendicate de mai multe lemme (12%) sunt <strong>împărţite</strong> proporţional cu
+      Formele revendicate de mai multe lemme (12%) sunt <strong>împărțite</strong> proporțional cu
       cât de frecvent apare fiecare lemma ca headword — altfel <code>veșcă</code> (cercul sitei) ar
-      moşteni toate cele 339.710 apariţii ale lui <code>veste</code> prin pluralul comun
+      moșteni toate cele 339.710 apariții ale lui <code>veste</code> prin pluralul comun
       <code>vești</code>.
     </p>
 
@@ -773,16 +782,16 @@ forgotten_words_curated.csv  <span class="gold">140.308 candidați</span></div>
       Cele două corpusuri diferă de <strong>1.187×</strong> ca mărime. Un prag exprimat în
       <em>ppm</em> înseamnă lucruri complet diferite pe fiecare parte:
     </p>
-    <div class="demo"><span class="dim">acelaşi prag, două înţelesuri</span>
-culturax_ro   16.969.999.321 tokens  →  0,1 ppm = <span class="gold">1.697 apariţii</span>
-wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apariţii</span>
+    <div class="demo"><span class="dim">același prag, două înțelesuri</span>
+culturax_ro   16.969.999.321 tokens  →  0,1 ppm = <span class="gold">1.697 apariții</span>
+wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apariții</span>
 
-„absent din româna modernă" însemna deci <span class="gold">sub 1.697 de apariţii web</span>.
-<code>zapciu</code> are 1.322 — şi era clasificat <em>dispărut din uz</em>.</div>
+„absent din româna modernă" însemna deci <span class="gold">sub 1.697 de apariții web</span>.
+<code>zapciu</code> are 1.322 — și era clasificat <em>dispărut din uz</em>.</div>
     <p>
-      Pragurile sunt acum <strong>numere de apariţii</strong>, iar comparaţia istoric-vs-modern se
+      Pragurile sunt acum <strong>numere de apariții</strong>, iar comparația istoric-vs-modern se
       face pe <strong>rangul procentual</strong> al cuvântului în fiecare corpus (<code>rank_shift</code>),
-      care nu depinde de mărimea corpusului. <code>log_ratio</code> rămâne calculat, pentru comparaţie.
+      care nu depinde de mărimea corpusului. <code>log_ratio</code> rămâne calculat, pentru comparație.
     </p>
 
     <h3>Verdictele</h3>
@@ -792,31 +801,31 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
       <tbody>
         <tr class="row-ext">
           <td>extinct</td>
-          <td>atestat istoric (≥ 3 apariţii în ≥ 2 documente) şi <strong>zero</strong> apariţii moderne</td>
+          <td>atestat istoric (≥ 3 apariții în ≥ 2 documente) și <strong>zero</strong> apariții moderne</td>
         </tr>
         <tr class="row-hist">
           <td>historical_only</td>
-          <td>atestat istoric, sub 500 de apariţii moderne</td>
+          <td>atestat istoric, sub 500 de apariții moderne</td>
         </tr>
         <tr class="row-dec">
           <td>declining</td>
-          <td>atestat istoric, între 500 şi 1.999 de apariţii moderne</td>
+          <td>atestat istoric, între 500 și 1.999 de apariții moderne</td>
         </tr>
         <tr class="row-abs">
           <td>absent</td>
-          <td>fără temei istoric (sub 3 apariţii, sau într-un singur document) şi rar azi — DEX susţine singur cazul</td>
+          <td>fără temei istoric (sub 3 apariții, sau într-un singur document) și rar azi — DEX susține singur cazul</td>
         </tr>
         <tr>
           <td>alive / emerging</td>
-          <td>≥ 2.000 de apariţii moderne — în uz, indiferent de istorie. Eliminate din listă.</td>
+          <td>≥ 2.000 de apariții moderne — în uz, indiferent de istorie. Eliminate din listă.</td>
         </tr>
       </tbody>
     </table>
     <p>
-      Pragurile au fost calibrate prin eşantionarea listei pe benzi, nu ghicite: sub 20 de apariţii
-      stau <em>scoborâre, cârcioc, zapcierie</em>; între 20 şi 199 <em>madmoazelă, gheşeftar,
-      evhologhion</em>; între 200 şi 999 <em>jilişte, civilizaţiune, docar, calabalâc</em>; peste
-      3.000 <em>despotic, verişoară, călăreţ</em> — adică vocabular viu.
+      Pragurile au fost calibrate prin eșantionarea listei pe benzi, nu ghicite: sub 20 de apariții
+      stau <em>scoborâre, cârcioc, zapcierie</em>; între 20 și 199 <em>madmoazelă, gheșeftar,
+      evhologhion</em>; între 200 și 999 <em>jiliște, civilizațiune, docar, calabalâc</em>; peste
+      3.000 <em>despotic, verișoară, călăreț</em> — adică vocabular viu.
     </p>
 
     </table>
@@ -833,64 +842,135 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
 
   <!-- 05 ─────────────────────────────── -->
   <section id="scurtlista">
-    <h2><span class="num">05</span> Scurtlista şi cele două liste</h2>
+    <h2><span class="num">05</span> Scurtlista și cele două liste</h2>
     <p>
       <code>make_shortlist.py</code> reduce cele 130k rânduri diacronice la
-      <strong>16.203 cuvinte</strong> şi le împarte în două, fiindcă proiectul urmăreşte două
+      <strong>16.203 cuvinte</strong> și le împarte în două, fiindcă proiectul urmărește două
       lucruri diferite:
     </p>
     <table class="data-table">
-      <thead><tr><th>Listă</th><th>Ce conţine</th><th class="right">Cuvinte</th></tr></thead>
+      <thead><tr><th>Listă</th><th>Ce conține</th><th class="right">Cuvinte</th></tr></thead>
       <tbody>
         <tr class="tier-a">
           <td>relevante</td>
-          <td>dovadă solidă că un cuvânt a fost folosit şi s-a stins: atestat istoric, aproape
-              absent azi, prezent în multe dicţionare şi într-unul publicat după 2005</td>
+          <td>dovadă solidă că un cuvânt a fost folosit și s-a stins: atestat istoric, aproape
+              absent azi, prezent în multe dicționare și într-unul publicat după 2005</td>
           <td class="right">2.815</td>
         </tr>
         <tr class="tier-b">
-          <td>curiozităţi</td>
-          <td>restul candidaţilor — cuvinte rămase doar în dicţionare vechi sau specializate</td>
+          <td>curiozități</td>
+          <td>restul candidaților — cuvinte rămase doar în dicționare vechi sau specializate</td>
           <td class="right">13.388</td>
         </tr>
       </tbody>
     </table>
     <p>
-      Împărţirea e un <strong>scor ponderat</strong>, nu o scară de praguri. Semnalul care
-      cântăreşte cel mai mult e <strong>tăria atestării istorice</strong>: <code>politeță</code>
+      Împărțirea e un <strong>scor ponderat</strong>, nu o scară de praguri. Semnalul care
+      cântărește cel mai mult e <strong>tăria atestării istorice</strong>: <code>politeță</code>
       apare de 143 de ori în Wikisource, <code>celșag</code> de 4 ori. Fără el, scorul
       recompensează obscuritatea în sine, iar în capul listei ajung <em>potricală</em>,
-      <em>țarțam</em>, <em>sărciner</em> — rare, dar niciodată cu adevărat în circulaţie.
+      <em>țarțam</em>, <em>sărciner</em> — rare, dar niciodată cu adevărat în circulație.
     </p>
 
-    <h3>Frecvenţa DEX nu e frecvenţă de uz</h3>
+    <h3 id="frecvente">Cele două frecvențe: DEX și Zipf</h3>
     <p>
-      <code>Lexeme.frequency</code> se comportă ca un scor de <em>prezenţă în canonul literar</em>,
-      nu de folosire: <code>zapciu</code> (slujbaş otoman dispărut) stă la 0,96, în timp ce
-      <code>internet</code> e la 0,88 şi <code>pandemie</code> la 0,80. De aceea
-      <strong>frecvenţă DEX mare + absenţă din corpus</strong> e semnătura unui cuvânt uitat, iar
-      frecvenţa DEX mică înseamnă mai degrabă neologism sau regionalism obscur — capătul unde
+      Interfața arată două numere care sună la fel și nu măsoară nici pe departe același
+      lucru. Amândouă se pot filtra în panoul <em>explore</em>, deci merită citite corect.
+    </p>
+    <table class="data-table">
+      <thead><tr><th></th><th>frecvența DEX</th><th>Zipf</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>de unde vine</td>
+          <td>câmpul <code>Lexeme.frequency</code> din dumpul DEX</td>
+          <td>calculat de biblioteca <code>wordfreq</code>, din corpusuri externe</td>
+        </tr>
+        <tr>
+          <td>ce măsoară</td>
+          <td>importanța lexicografică — cât de central e cuvântul în dicționar</td>
+          <td>frecvența reală în texte, pe o scară logaritmică</td>
+        </tr>
+        <tr>
+          <td>scara</td>
+          <td>0–1 în bază, afișată 0–100 (exponentul mic de lângă cuvânt)</td>
+          <td>0–8, unde 3 = o apariție la un milion de cuvinte</td>
+        </tr>
+        <tr>
+          <td>0 înseamnă</td>
+          <td><strong>date lipsă</strong>, nu „cel mai rar"</td>
+          <td><strong>sub pragul de fiabilitate</strong>, nu „inexistent"</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>Frecvența DEX nu e frecvență de uz</h4>
+    <p>
+      <code>Lexeme.frequency</code> se comportă ca un scor de <em>prezență în canonul literar</em>,
+      nu de folosire: <code>zapciu</code> (slujbaș otoman dispărut) stă la 0,96, în timp ce
+      <code>internet</code> e la 0,88 și <code>pandemie</code> la 0,80. De aceea
+      <strong>frecvență DEX mare + absență din corpus</strong> e semnătura unui cuvânt uitat, iar
+      frecvența DEX mică înseamnă mai degrabă neologism sau regionalism obscur — capătul unde
       stau <em>vivliotică</em>, <em>tăligraf</em>, <em>sâroman</em>, adică vechi grafii ale unor
       cuvinte încă vii.
     </p>
+    <p>
+      Numărul afișat ca exponent lângă fiecare cuvânt este acest scor înmulțit cu 100, ca să
+      încapă în două cifre. <em>Oțios</em> apare deci ca <strong>85</strong>: un cuvânt pe care
+      DEX îl consideră canonic, dar pe care niciunul dintre cele două corpusuri nu-l conține.
+    </p>
+
+    <h4>Zipf: cât de des apare cuvântul, de fapt</h4>
+    <p>
+      Scorul Zipf vine din <a href="https://github.com/rspeer/wordfreq" target="_blank" rel="noopener"><code>wordfreq</code></a>,
+      o bibliotecă ce agregă tabele de frecvență din mai multe corpusuri per limbă (pentru
+      română: Wikipedia, subtitrări și web). Pentru fiecare cuvânt aruncă estimarea cea mai
+      mare și cea mai mică dintre surse și le mediază pe restul — o metrică „de patinaj
+      artistic", robustă la ciudățeniile unei singure surse. Scara este
+      <code>log10(apariții la un miliard de cuvinte)</code>:
+    </p>
+    <table class="data-table">
+      <thead><tr><th>Zipf</th><th>Frecvență</th><th>Intuiție</th></tr></thead>
+      <tbody>
+        <tr><td>7</td><td>1 la 100</td><td>extrem de comun (<em>de</em>, <em>și</em>)</td></tr>
+        <tr><td>6</td><td>1 la 1.000</td><td>cuvânt de conținut obișnuit</td></tr>
+        <tr><td>5</td><td>1 la 10.000</td><td>rezonabil de frecvent</td></tr>
+        <tr><td>4</td><td>1 la 100.000</td><td>rar, dar cunoscut</td></tr>
+        <tr><td>3</td><td>1 la 1.000.000</td><td>pragul de fiabilitate pentru română</td></tr>
+        <tr><td>0</td><td>—</td><td>sub prag: <code>wordfreq</code> nu returnează o estimare</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      <p><strong>Pe scurtlistă, Zipf e aproape mereu 0.</strong> Româna are la
+      <code>wordfreq</code> doar lista „mică", a cărei podea de încredere e Zipf 3 — iar
+      <strong>16.178 din cele 16.203 de cuvinte</strong> stau sub ea. Filtrul Zipf nu separă
+      deci cuvintele uitate între ele; el prinde exact cele câteva zeci de intrări care
+      <em>nu</em> sunt rare și n-ar fi trebuit să ajungă pe listă — <em>ridicată</em> (4,62),
+      <em>jumătăți</em> (3,70), <em>brânzeturi</em> (3,47), forme flexionare sau compuse
+      strecurate printre lemele reale.</p>
+      <p>Pentru „cât de uitat e cuvântul" numărătorile proprii ale proiectului —
+      <code>hist_occ</code> pe Wikisource și <code>modern_occ</code> pe CulturaX, rulate pe
+      paradigme întregi — spun mult mai mult decât oricare dintre cele două scoruri de mai sus.
+      Zipf a rămas ca sită rapidă și independentă (vezi <code>docs/wordfreq-recipe.md</code>),
+      nu ca verdict.</p>
+    </div>
 
     <h3>Trei etichete, separate de scor</h3>
     <p>
       Scorul spune <em>cât de bună e dovada</em>; etichetele spun <em>ce n-ai vrea să vezi</em> —
-      şi sunt ascunse implicit în interfaţă, cu un singur clic pentru a le readuce:
+      și sunt ascunse implicit în interfață, cu un singur clic pentru a le readuce:
     </p>
     <ul>
-      <li><strong>regional</strong> — marcat <em>regional</em>/<em>dialectal</em> fără a fi şi
+      <li><strong>regional</strong> — marcat <em>regional</em>/<em>dialectal</em> fără a fi și
           <em>învechit</em>. <code>regional|învechit</code> e un cuvânt care a murit;
           <code>regional</code> simplu e doar un termen local.</li>
       <li><strong>variantă veche</strong> — grafie veche a unui cuvânt încă folosit, detectată
-          prin raportul dintre numărătoarea nedivizată a familiei şi cea a lemmei:
+          prin raportul dintre numărătoarea nedivizată a familiei și cea a lemmei:
           <code>tinereță</code> stă la 298×, <code>veșcă</code> la 938×, iar un cuvânt rar
-          şi izolat la 1×.</li>
-      <li><strong>nume propriu</strong> — DEX cunoaşte grafia <em>doar</em> cu majusculă.</li>
+          și izolat la 1×.</li>
+      <li><strong>nume propriu</strong> — DEX cunoaște grafia <em>doar</em> cu majusculă.</li>
     </ul>
     <p>
-      Etichetele nu scad scorul. Penalizarea lor şi în scor însemna că niciun astfel de cuvânt
+      Etichetele nu scad scorul. Penalizarea lor și în scor însemna că niciun astfel de cuvânt
       nu putea ajunge în lista „relevante", deci butoanele care ar fi trebuit să le readucă nu
       aveau ce arăta.
     </p>
@@ -910,7 +990,7 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
       Nivelurile <em>corpus_*</em> au semnal de corpus. <code>dex_invechit_absent</code> e
       <em>materia întunecată</em>: cuvinte etichetate explicit <em>învechit</em> de editorii DEX,
       absente din orice corpus. <code>dex_absent_highfreq</code> captează cuvintele cu
-      legitimitate lexicografică mare dar zero urmă în corpusuri — cazul <em>oțios</em> însuşi.
+      legitimitate lexicografică mare dar zero urmă în corpusuri — cazul <em>oțios</em> însuși.
     </p>
   </section>
 
@@ -974,16 +1054,16 @@ Lexeme
   <section id="web">
     <h2><span class="num">08</span> Validare web <span class="dim">(retrasă)</span></h2>
     <p>
-      <code>search_wild.py</code> interoga DuckDuckGo şi Google Custom Search ca să vadă dacă un
+      <code>search_wild.py</code> interoga DuckDuckGo și Google Custom Search ca să vadă dacă un
       cuvânt mai apare pe web-ul românesc. A fost <strong>mutat în <code>archive/</code></strong>
       în august 2026: ajunsese la 47 din 25.305 de cuvinte (0,19%), iar
-      <code>build_ui_db.py</code> citea un fişier diferit de cel pe care îl scria.
+      <code>build_ui_db.py</code> citea un fișier diferit de cel pe care îl scria.
     </p>
     <p>
       Odată ce numărătorile de corpus se fac la nivel de paradigmă, întrebarea „mai e folosit
-      cuvântul?" primeşte răspuns din cele 17 miliarde de tokens CulturaX, fără cotă zilnică şi
+      cuvântul?" primește răspuns din cele 17 miliarde de tokens CulturaX, fără cotă zilnică și
       fără zgomotul potrivirilor cross-linguale. Partea care merită păstrată dacă validarea web
-      revine vreodată e lista de 23 de domenii de dicţionare care trebuiau excluse din rezultate.
+      revine vreodată e lista de 23 de domenii de dicționare care trebuiau excluse din rezultate.
     </p>
   </section>
 
@@ -1142,8 +1222,8 @@ Lexeme
       </li>
       <li class="milestone">
         <div class="tl-date">2026-08-08</div>
-        <div class="tl-what">Audit de calitate — numărători pe paradigme, praguri pe apariţii, două liste. Scurtlista: 25.305 → 16.203 cuvinte.</div>
-        <div class="tl-why">Trei erori care se compuneau: acelaşi prag de 0,1 ppm aplicat unor corpusuri diferite de 1.187× (deci „absent din româna modernă" însemna sub 1.697 de apariţii — <em>zapciu</em>, cu 1.322, era clasificat „dispărut din uz"); numărători pe forme de dicţionar, nu pe paradigme (<em>înmărmuri</em> 317 vs 6.376 pentru întreaga paradigmă); iar <em>declining</em> măsura registrul literar, nu declinul — 2.602 din 5.998 aveau peste 8.500 de apariţii moderne (<em>vapor</em>, <em>fluviu</em>, <em>cioban</em>, <em>palid</em>). Adăugat <code>extract_inflected_forms.py</code> (2,27M forme → lemma) şi anii dicţionarelor din tabelul <code>Source</code>. <code>dex_pos</code> reconstruit din <code>Lexeme.modelType</code>: acoperire 2,9% → 99,5%. Lista implicită trecută pe scor compozit, cu <em>relevante</em> / <em>curiozităţi</em> separate.</div>
+        <div class="tl-what">Audit de calitate — numărători pe paradigme, praguri pe apariții, două liste. Scurtlista: 25.305 → 16.203 cuvinte.</div>
+        <div class="tl-why">Trei erori care se compuneau: același prag de 0,1 ppm aplicat unor corpusuri diferite de 1.187× (deci „absent din româna modernă" însemna sub 1.697 de apariții — <em>zapciu</em>, cu 1.322, era clasificat „dispărut din uz"); numărători pe forme de dicționar, nu pe paradigme (<em>înmărmuri</em> 317 vs 6.376 pentru întreaga paradigmă); iar <em>declining</em> măsura registrul literar, nu declinul — 2.602 din 5.998 aveau peste 8.500 de apariții moderne (<em>vapor</em>, <em>fluviu</em>, <em>cioban</em>, <em>palid</em>). Adăugat <code>extract_inflected_forms.py</code> (2,27M forme → lemma) și anii dicționarelor din tabelul <code>Source</code>. <code>dex_pos</code> reconstruit din <code>Lexeme.modelType</code>: acoperire 2,9% → 99,5%. Lista implicită trecută pe scor compozit, cu <em>relevante</em> / <em>curiozități</em> separate.</div>
       </li>
     </ol>
   </section>

@@ -61,14 +61,59 @@ function hydrateRows(root) {
 
 // Pop a word chip out of the grid when it just got tagged ascunde/meh — called from
 // store.js's quick-tag click handler, right after the tag itself is persisted.
-function fadeOutRow(word) {
-  const rows = document.querySelectorAll('#word-list .word-row[data-word]');
-  for (const row of rows) {
+function fadeOutRow(word, onGone) {
+  const all = document.querySelectorAll('#word-list .word-row[data-word]');
+  for (const row of all) {
     if (row.dataset.word !== word) continue;
     row.classList.add('row-hiding');
-    row.addEventListener('animationend', function() { row.remove(); }, { once: true });
+    row.addEventListener('animationend', function() {
+      row.remove();
+      if (typeof onGone === 'function') onGone();
+    }, { once: true });
     return;
   }
+  // No row to fade (tagged from the joc page, or the word is already gone) —
+  // the caller still needs its continuation to run.
+  if (typeof onGone === 'function') onGone();
+}
+
+// **Every mark advances to the next word** — fav, lol, meh and ascunde alike.
+// One mark per word is the intended interaction, so the ability to stack a second
+// one on the same word is not worth four controls that behave differently: marking
+// is a triage loop, and a loop where three keys move you on and one does not is a
+// loop you have to think about. Convenience and consistency over the rare double-tag.
+//
+// Only *applying* a mark advances. Un-favouriting is a correction, and moving on
+// from a correction would take you off the word you just came back to fix.
+//
+// `removesRow` is the only difference between the two cases: `meh`/`ascunde` also
+// pop the row out of the grid, so the current row does not survive the move.
+//
+// For that case the next row is resolved *before* the fade and re-found by element
+// afterwards. Resolving it after removal would race the animation; selecting it by
+// index before removal would leave `selectedIdx` off by one the moment the fade
+// lands — and that is the number j/k read to decide where to go next.
+function advanceAfterMark(word, removesRow) {
+  const all = rows();
+  const idx = all.findIndex(function(r) { return r.dataset.word === word; });
+  if (idx < 0) { if (removesRow) fadeOutRow(word); return; }
+
+  if (!removesRow) {
+    // The row stays, so "next" only exists if there is one. On the last row, stay
+    // put rather than wrapping to the top, which would silently restart the list.
+    if (idx + 1 < all.length) selectRow(idx + 1);
+    return;
+  }
+
+  // At the end of the grid there is no next word — step back to the previous one
+  // rather than closing, so triaging the last row does not dump you out.
+  const nextEl = all[idx + 1] || all[idx - 1] || null;
+  fadeOutRow(word, function() {
+    if (!nextEl || !nextEl.isConnected) { closePanel(); return; }
+    const i = rows().indexOf(nextEl);
+    if (i >= 0) selectRow(i);   // not noClick: the click is what loads the panel
+    else closePanel();
+  });
 }
 
 // ── Bookmark count ──────────────────────────────────────────────────────────────
@@ -134,6 +179,24 @@ function copyPlaylistUrl() {
   });
 }
 
+// While a playlist is open the server ignores the filter sheet entirely (see
+// api/search.php) — the list was curated by whoever shared it, and filtering it again
+// would drop words from under them. This is the visible half of that: the sheet is
+// dimmed and inert, and the chip bar stops claiming filters are doing something.
+// `sort` stays live, so a shared list can still be reordered.
+function setPlaylistMode(on) {
+  const form = document.getElementById('filter-form');
+  if (!form) return;
+  if (on) form.setAttribute('data-playlist', '1');
+  else    form.removeAttribute('data-playlist');
+  // `inert` rather than `disabled`: the controls keep their values and keep being
+  // submitted, so exiting the playlist restores the view you had before it. It also
+  // takes them out of the tab order, which opacity alone would not.
+  form.querySelectorAll('.fs-body > .fs-section:not(.fs-section-top), .fs-tier')
+      .forEach(function(el) { el.inert = on; });
+  renderActiveFilters();
+}
+
 function exitPlaylist() {
   ['playlist-w', 'playlist-words'].forEach(function(id) {
     const el = document.getElementById(id);
@@ -141,6 +204,7 @@ function exitPlaylist() {
   });
   const banner = document.getElementById('playlist-banner');
   if (banner) banner.style.display = 'none';
+  setPlaylistMode(false);
   var params = new URLSearchParams(location.search);
   params.delete('w');
   params.delete('words');
@@ -155,6 +219,7 @@ function showPlaylistBanner(count) {
   const countEl = document.getElementById('playlist-count');
   if (banner) banner.style.display = '';
   if (countEl) countEl.textContent = count + (count === 1 ? ' cuvânt în listă' : ' cuvinte în listă');
+  setPlaylistMode(true);
 }
 
 // ── Play / exploration ───────────────────────────────────────────────────────────
@@ -465,6 +530,13 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
   }
   if (target.id === 'detail-panel') {
     target.classList.add('panel-open');
+    // Mobile reclaims the brand bar and the status bar while a definition is up —
+    // on a 375×812 phone those two are ~186px, 23% of the screen, and neither is
+    // doing anything you can act on while reading. The class is set at every width
+    // and the hiding is scoped to the mobile media query, so a desktop window
+    // narrowed with the panel open lands in the right state without a resize
+    // listener. `.fp-close` becomes the back arrow there — see app.css.
+    document.body.classList.add('detail-open');
     // On desktop, switch #app to side-by-side row layout
     if (window.innerWidth >= 769) {
       var app = document.getElementById('app');
@@ -671,6 +743,7 @@ function closePanel() {
   var panel = document.getElementById('detail-panel');
   panel.classList.remove('panel-open');
   panel.classList.remove('share-focus');
+  document.body.classList.remove('detail-open');
   var app = document.getElementById('app');
   if (app) app.classList.remove('has-panel');
   openWord = null;
@@ -904,11 +977,20 @@ var AF_SPECS = [
   { name: 'attested_after',  type: 'select', def: '', label: function(v){ return 'atestat ≥' + v; } },
   { name: 'attested_before', type: 'select', def: '', label: function(v){ return 'atestat <' + v; } },
   { name: 'dex_max',        type: 'select', def: 'all', label: function(v){ return 'DEX ' + (v === 'all' ? 'toate' : '≤' + v); } },
+  // `marks` was in both URL arrays but not here, so it filtered the grid without
+  // ever showing a chip — the same "registered in one direction only" gap the
+  // CLAUDE.md filter rule is about, on the chip side rather than the URL side.
+  { name: 'marks',          type: 'select', def: 'all', label: function(v){
+      if (v === 'unmarked')   return 'nemarcate';
+      if (v === 'marked')     return 'marcate';
+      if (v === 'bookmarked') return '★ favorite';
+      return v.indexOf('tag:') === 0 ? 'tag: ' + v.slice(4) : v; } },
   { name: 'zipf_min',       type: 'number',   label: function(v){ return 'zipf ≥' + v; } },
   { name: 'zipf_max',       type: 'number',   label: function(v){ return 'zipf ≤' + v; } },
   { name: 'dexfreq_min',    type: 'number',   label: function(v){ return 'dex ≥' + v; } },
   { name: 'dexfreq_max',    type: 'number',   label: function(v){ return 'dex ≤' + v; } },
   { name: 'hide_loanwords', type: 'checkbox', label: function(){ return 'fără împrumuturi'; } },
+  { name: 'hide_diminutives', type: 'checkbox', label: function(){ return 'fără diminutive'; } },
   { name: 'show_proper',    type: 'checkbox', label: function(){ return 'cu nume proprii'; } },
   { name: 'show_regional',  type: 'checkbox', label: function(){ return 'cu regionalisme'; } },
   { name: 'show_variants',  type: 'checkbox', label: function(){ return 'cu variante vechi'; } },
@@ -972,6 +1054,10 @@ function clearFilter(spec) {
 function renderActiveFilters() {
   var bar = document.getElementById('active-filters');
   if (!bar) return;
+  // Playlist open → the server applied no filters, so neither does the chip bar. The
+  // playlist banner right above it is the state that actually holds.
+  var form = document.getElementById('filter-form');
+  if (form && form.hasAttribute('data-playlist')) { bar.innerHTML = ''; return; }
   var chips = activeFilterChips();
   bar.innerHTML = '';
   chips.forEach(function(c) {
@@ -1061,7 +1147,7 @@ function applyUrlToForm() {
 
   // Explore: checkboxes. The show_* ones are inverted on purpose — an unchecked box
   // is not submitted, so a default-on hide_* could never be switched off.
-  ['hide_loanwords', 'show_proper', 'show_regional', 'show_variants'].forEach(function(name) {
+  ['hide_loanwords', 'hide_diminutives', 'show_proper', 'show_regional', 'show_variants'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     var el = form.querySelector('input[name=' + name + ']');
@@ -1133,7 +1219,7 @@ function syncUrlFromForm() {
   });
 
   // Explore: binary checkboxes
-  ['hide_loanwords', 'show_proper', 'show_regional', 'show_variants'].forEach(function(name) {
+  ['hide_loanwords', 'hide_diminutives', 'show_proper', 'show_regional', 'show_variants'].forEach(function(name) {
     var el = form.querySelector('input[name=' + name + ']');
     if (el && el.checked) params.set(name, '1');
   });

@@ -12,11 +12,19 @@
  * — already used it, it is thumb-reachable on a phone, and the top bar on the
  * explorer has no room left. See `header.php` for the other half of the split.
  *
- * **Only `statistici` and `metodologie` loop from `NAV_ITEMS` here.** `joc` and
- * `liste` moved to `header.php`'s top nav — reachable from every page now, not
- * just thumb-reach on a phone — and `cuvinte` (index) is dropped rather than
- * moved: the brand mark in every header already links home, so a second link to
- * the same place was pure redundancy.
+ * **Only `statistici` and `metodologie` loop from `NAV_ITEMS` here, and only
+ * below 901px.** `joc` and `liste` moved to `header.php`'s top nav — reachable
+ * from every page now, not just thumb-reach on a phone — and `cuvinte` (index)
+ * is dropped rather than moved: the brand mark in every header already links
+ * home, so a second link to the same place was pure redundancy.
+ *
+ * The two that remain are marked `nav-item--wide` and are **hidden from 901px
+ * up**, where `header.php` shows them instead (`top-nav-item--wide`). They are
+ * in both partials on purpose, with app.css picking exactly one: the header bar
+ * has the room on a desktop and burying the two explanatory pages in the footer
+ * was hiding them, but four labelled nav entries do not fit a phone bar — which
+ * is the measurement this split was built on in the first place. Above the
+ * crossover this bar keeps only the GitHub link.
  *
  * **Text scale / skin / theme moved here from `header.php`.** They are the same
  * three controls on every page, which is exactly what this partial is already
@@ -78,7 +86,7 @@ $footer_tools = $footer_tools ?? '';
         // needed a colour of its own — which on beton's ink footer came out near-black
         // on black. Anything a skin has already said about a link in this bar applies
         // to it for free this way, and `is-current` only adds an underline. ?>
-        <a class="nav-item<?= $key === $page ? ' is-current' : '' ?>"
+        <a class="nav-item nav-item--wide<?= $key === $page ? ' is-current' : '' ?>"
            href="<?= BASE . $item['path'] ?>" title="<?= e($item['label']) ?>"
            <?= $key === $page ? 'aria-current="page"' : '' ?>>
           <span class="nav-icon" aria-hidden="true"><?= $item['icon'] ?></span><span class="nav-label"><?= e($item['label']) ?></span>

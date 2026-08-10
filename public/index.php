@@ -139,6 +139,14 @@ global $QUICK_TAGS, $POS_OPTIONS;
       <button type="button" class="fs-close" onclick="toggleFilterDrawer()">✕</button>
     </div>
 
+    <!-- Shown only while a playlist is open (form gets data-playlist) — the server
+         ignores the filters for a curated list, so the sheet has to say so rather
+         than sit there looking live. -->
+    <p class="fs-playlist-note">
+      Listă deschisă — filtrele nu se aplică, ca să vezi toate cuvintele primite.
+      Ieși din listă ca să filtrezi.
+    </p>
+
     <!-- Scrollable body -->
     <div class="fs-body">
 
@@ -274,10 +282,15 @@ global $QUICK_TAGS, $POS_OPTIONS;
             <option value="0.30">DEX-rar ≤0.30</option>
           </select>
         </span>
+        <!-- „marcate" rather than „adnotate": the values cover every kind of meta
+             a reader can leave on a word — fav, a quick tag, a custom tag, a note —
+             and only the last of those is an annotation in the ordinary sense. The
+             option *values* stay `marked`/`unmarked` because they are URL state and
+             `markedWordsForFilter()` in app.js reads them. -->
         <select name="marks" class="fs-select tax-select" data-default="all">
           <option value="all">toate cuvintele</option>
-          <option value="unmarked">neanotate</option>
-          <option value="marked">annotate</option>
+          <option value="unmarked">nemarcate</option>
+          <option value="marked">marcate</option>
           <option value="bookmarked">☆ favorite</option>
           <?php foreach ($QUICK_TAGS as [$tag, $key]): ?>
           <option value="tag:<?= e($tag) ?>">tag: <?= e($tag) ?></option>
@@ -315,6 +328,13 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <span class="fs-check"></span>
           <input type="checkbox" name="hide_loanwords" value="1">
           ascunde împrumuturi
+        </label>
+        <?php endif; ?>
+        <?php if (db_has_column('diminutive_like')): ?>
+        <label class="fs-pill fs-pill-sm" title="Ascunde diminutivele (noruleț, cuconiță, fecioraș) — cuvinte pe care DEX le definește ca „diminutiv al lui…”">
+          <span class="fs-check"></span>
+          <input type="checkbox" name="hide_diminutives" value="1">
+          ascunde diminutive
         </label>
         <?php endif; ?>
         <?php if (db_has_column('proper_noun_like')): ?>
@@ -425,8 +445,8 @@ global $QUICK_TAGS, $POS_OPTIONS;
       <span class="lg"><i class="lg-sw lg-sw-hist"></i>istoric</span>
       <span class="lg"><i class="lg-sw lg-sw-abs"></i>absent</span>
       <span class="lg-sep"></span>
-      <span class="lg"><i class="lg-mark lg-inv">abc</i>învechit</span>
-      <span class="lg"><i class="lg-mark lg-fav">abc</i>favorit</span>
+      <span class="lg"><i class="lg-mark lg-inv">învechit</i></span>
+      <span class="lg"><i class="lg-mark lg-fav">favorit</i></span>
       <span class="lg"><i class="lg-freq">42</i>frecvență DEX</span>
     </span>
   <?php $footer_extra = ob_get_clean();
@@ -483,8 +503,13 @@ global $QUICK_TAGS, $POS_OPTIONS;
              the superscript number and (in the beton skin, which drops the
              verdict dot) the colour of the word itself. -->
         <tr><td colspan="2" class="shortcuts-group">Legendă</td></tr>
+        <!-- Not "cu cât e mai mic, cu atât e mai rar", which is what this said and is
+             the exact confusion the methodology page exists to clear up: the number is
+             lexicographic prominence, so zapciu (dispărut) sits at 96 and internet at 88. -->
         <tr><td><span class="legend-freq">42</span></td>
-            <td>Frecvență DEX, <strong>0–100</strong> — cu cât e mai mic, cu atât cuvântul e mai rar</td></tr>
+            <td>Frecvență DEX, <strong>0–100</strong> — cât de central e cuvântul în dicționar,
+                nu cât de des e folosit
+                (<a href="<?= BASE ?>/metodologie.html#frecvente">explicație</a>)</td></tr>
         <tr><td><span class="legend-sw" style="background:var(--v-ext-word,var(--v-ext))"></span></td>
             <td><em>dispărut din uz</em> — niciun semnal modern</td></tr>
         <tr><td><span class="legend-sw" style="background:var(--v-dec-word,var(--v-dec))"></span></td>

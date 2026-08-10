@@ -161,7 +161,8 @@
 [data-skin="tezaur"] .verdict-badge,
 [data-skin="tezaur"] #word-list.word-list-table .chip-vbadge,
 [data-skin="tezaur"] .detail-tag,
-[data-skin="tezaur"] .dict-chip { border-radius: 999px; }
+[data-skin="tezaur"] .dict-chip,
+[data-skin="tezaur"] .dex-link { border-radius: 999px; }
 
 /* ── Detail panel: the dictionary entry ─────────────────────────────────────
    Big serif headword, part of speech in italic underneath, definition set at
@@ -234,4 +235,5 @@
 
 [data-skin="tezaur"] #status-bar a { color: var(--text-2); }
 [data-skin="tezaur"] #status-bar a:hover { color: var(--accent); text-decoration: underline; }
-[data-skin="tezaur"] .dex-link { border-radius: 999px; font-weight: 600; }
+/* `.dex-link` is a chip in the dictionary row now, pilled with the rest of them
+   further up — this rule only kept it filled and bold as a button. */

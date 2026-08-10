@@ -282,14 +282,14 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] SEO Audit. Including `/llms.txt` 
 
-#### joc.php
+### joc.php
 - [ ] filter out too easy queries - word part/segment that repeats in definition
 - [ ] one word can have multiple definitions, include within the choices?
-- [x] mark words as unworthym, too simple 
+- [x] mark words as unworthy, too simple 
 - [x] add bookmarking, favorites, add to list here - by using the game we create an audit tool
 - [ ] show definition for failure
 - [ ] move game types in the mid of header nav? 
-- [ ] better emoji for meh - remove
+- [x] better emoji for meh - remove
 
 ## Misc
 
@@ -316,9 +316,9 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] **Garbled definitions from DEX dump extraction** — Root cause: `_parse_values` parsed `\n` as the literal letter `n`, leaving dump indentation spaces in the output. Fixed: added full escape table (`\n`, `\r`, `\t`) + `re.sub(r'\s+', ' ')` normalization in `_clean`. Re-ran `extract_definitions.py` + `--merge-only`. Garbled count: 3,152 → 0.
 
-- [ ] turn filters from the first row into checkboxes. all selected at first. so we can combine
+- [x] turn filters from the first row into checkboxes. all selected at first. so we can combine
 
-- [ ] create a statistics page. guide yourself by existing filters options. Maybe the statistics page could keep the existing filters - to create dynamic / sliceable statistics?
+- [x] create a statistics page. guide yourself by existing filters options. Maybe the statistics page could keep the existing filters - to create dynamic / sliceable statistics?
 
 - [x] **domain taxonomy contains compound nodes with semicolons** — resolved. `_normalize_sep()` in `build_ui_db.py` converts `'; '` → `'|'` before writing `dex_domain` to the DB; the `vocab` table then splits on `|` when counting. Result: `'mineralogie; minerit'` in the raw CSV becomes two separate vocab entries (`mineralogie`, `minerit`) and is filterable individually. Verified in current `ui.db`: no compound strings remain in vocab or in the `dex_domain` column.
 
@@ -326,11 +326,11 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] definitions have some bugs, `drăngălău` has the `constituent structural al oțelurilor călite și revenite` definition but on the web it doesn't have it https://dexonline.ro/definitie/dr%C3%A2ng%C4%83l%C4%83u/definitii — **resolved** by the same fix as the misalignment item above; `drăngălău` now reads from `scrape_definitions.py` because the DEX dump has no `DefinitionSimple.lexicon='drăngălău'` row.
 
-- [ ] see [260515 notes - missing oțios.md](260515 notes - missing oțios.md)
+- [x] see [260515 notes - missing oțios.md](260515 notes - missing oțios.md)
 
 - [ ] **[Upstream] Report DefinitionSimple truncation to dexonline developers** — both the old dump (`dex-database-1.sql`, 1.2 GB, Oct 2025) and the new dump (`dex-database.sql`, 1.5 GB, May 2026) contain only **61,041 rows** in `DefinitionSimple`, while `EntryDefinition` references **1,379,043** definition IDs — a 94.8% gap of dangling references. This means ~12.8k of our ~17.4k shortlist words have no extractable definition from the dump and must be scraped from dexonline.ro instead. The issue is not a bug in our extraction: `DefinitionSimple.lexicon` correctly identifies headwords; the referenced definition records simply are not present. Worth filing a bug or opening a discussion on the dexonline GitHub/forum so future dump consumers don't hit the same wall. Include: table row counts, the orphaned-reference count, and the impact (scraping as workaround).
 
-- [ ] track synonyms. count synonyms
+- [x] track synonyms. count synonyms
 
 - [ ] also filter by: masculin, feminin, neutru.
 
@@ -350,7 +350,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
   Codec is `pack_words()` / `unpack_words()` in `api/_lib.php`, exposed to the browser as `api/pack.php` so the client never carries the dictionary. `search.php` accepts `w=` and still honours the old `words=`, so links shared before this keep working. A `w=` that decodes to nothing (mangled, or a future version) yields an empty grid rather than falling through to all 25k words.
 
-- [ ] also count synonyms! - filter by the number of synonyms.
 
 - [ ] filter words that appear in only a few dictionaries? – but maybe those words are not interesting as the main scope of the project – we could use a separate db for ancient words?
 
@@ -364,19 +363,170 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
   - [ ] then maybe allow users to submit examples of rare words in the wild? - provide gSearch query - then let them submit
 
-- [ ] caută un cuvânt - what good is this for? - hide it at least under a magnifying icon
+- [x] caută un cuvânt - what good is this for? - hide it at least under a magnifying icon
 
 - [ ] make initial view a grid, split by columns? and the table view, also on 2 or 3 colums on desktop?
 
 - [ ] infinte scrolling ok, but update the url bar each say, 100 words, so one can pick up from there - besides the filters?
 
-- [ ] mode in each selected words are hidden - for exploration
+- [x] mode in each selected words are hidden - for exploration
 
 - [ ] make a list with _*-ațiune_
 
-- [ ] hide diminutive? - filter diminutive at least
+## Soft-launch
+ 
+- [x] hide diminutive? - filter diminutive at least — `diminutive_like` (403 words) +
+  „ascunde diminutive" în panoul explore. Semnal principal: definiția DEX care spune
+  „Diminutiv al lui X"; sufixele adaugă 58, dar numai cele neambigue (`-uleț -uliță -ișor
+  -ișoară -cioară -uț -uță -șor -șoară`) și numai când baza există în `lexemes.db`.
+  - [ ] `-iță` rămâne neacoperit: e la fel de des feminin de agent (*păstoriță*,
+    *vorniciță*) cât diminutiv (*clăiță*, *cuconiță*). Ar cere fie o listă manuală, fie
+    genul bazei din `lexemes.db` — ~90 de cuvinte în joc.
 
-- [ ] when showing words lists, filters should be disabled
+- [x] when showing words lists, filters should be disabled - or 'toate' — un playlist
+  (`?w=`) ocolește complet `build_word_filter()` în `search.php`/`random.php`/`feed.php`;
+  panoul de filtre devine `inert` și își spune motivul. `q` și `marks` rămân active.
+
+- [x] explain zipf and dex frequency in metodologie — secțiunea 05, `#frecvente`: tabel
+  comparativ, scara Zipf și faptul că 16.178 din 16.203 de cuvinte stau la Zipf 0 (sub
+  podeaua wordfreq pentru română), deci filtrul Zipf prinde intrușii, nu gradele de uitare.
+
+- [x] optimize UI 'deschide in dexonline', make small, inline with the tags — `.dex-link`
+  este acum un chip la capătul rândului de dicționare (`.fp-dicts`), modelat după
+  `.dict-chip`, nu un buton plin pe toată lățimea în `.fp-foot`. Toate cele patru skinuri îl
+  amplificau independent (beton — placă roșie cu umbră, govuk — buton verde GDS, registru —
+  dreptunghi negru cu majuscule mono, tezaur — pastilă plină), deci cel mai zgomotos element
+  din panou era un link în afara sitului, înaintea headword-ului și a definiției.
+  `.fp-dicts` se randează acum și fără `sources`: altfel linkul ar fi dispărut exact la
+  cuvintele cu cea mai slabă acoperire în dicționare. Contrast verificat ≥4.5:1 în 5 skinuri
+  × 2 teme (minimul e 4.52, govuk/dark).
+
+- [x] move Statistici & Metodologie in header — **doar pe desktop** (≥901px). Cele două
+  intrări se randează în ambele partiale și app.css afișează exact una: header de la 901px în
+  sus, footer sub. `top-nav-item--wide` / `nav-item--wide`; nu există lățime la care apar de
+  două ori sau deloc. Bara de pe telefon nu duce patru intrări cu etichetă — asta a produs
+  împărțirea header/footer din 260809 — dar pe desktop are loc, iar cele două pagini care
+  explică proiectul nu-și meritau locul îngropat sub comutatoarele de afișare.
+  - Capcană prinsă la verificare, nu la scriere: `.top-nav-item--wide` trebuie declarat
+    **după** `.top-nav-item`. Ambele au o singură clasă, deci decide ordinea din fișier —
+    declarat înainte, `display:none` pierde tăcut și apar toate patru pe telefon.
+
+- [ ] mobile
+
+  - [x] mobile, make more room for word list when definition is shown — header **și** footer
+    se ascund cât timp panoul e deschis (`body.detail-open`, pus în `app.js` la deschidere,
+    scos în `closePanel()`; doar blocul ≤768px reacționează, deci o fereastră îngustată pe
+    desktop nimerește starea corectă fără resize listener). Panoul rămâne la 60vh, **nu**
+    40% cum cerea nota: 40% dintr-un telefon nu încape o definiție (măsurat — `poporanism`
+    singur o depășește), iar definiția e lucrul pe care tocmai l-ai deschis. Spațiul vine din
+    bare: ~186px dintr-un ecran de 812px, niciuna utilă cât timp citești. Lista vizibilă:
+    ~139px → ~325px. Săgeata înapoi înlocuiește ✕ în colțul din stânga sus, țintă de 44px —
+    cu headerul ascuns e singura ieșire, deci merge unde o caută degetul.
+   See [260810 oțios mobile.jpg](docs/reference/screenshots/260810 oțios mobile.jpg), [260810 oțios mobile 2.jpg](docs/reference/screenshots/260810 oțios mobile 2.jpg)
+    - Header compact pe index: **deja era**. Măsurat la 390×844, `.brand-bar` e un singur
+      rând de 51px, cu toate cele patru grupuri pe aceeași linie.
+    - `joc.php` era însă la 121px: `corecte: 0 · ratate: 0` ocupă 158px dintr-o bară de 362px
+      și împingea trofeul pe al treilea rând. Sub 768px scorul se scrie `✓ 0 · ✗ 0`
+      (`.joc-score-long` / `.joc-score-short`) → 87px. Plus paddingurile cardului: 28px →
+      16px lateral, ceea ce duce lungimea liniei de la 285px la ~325px pe un telefon de
+      375px — pentru un card al cărui rost sunt patru definiții de citit și comparat.
+
+  - [x] mobile, search input is always shown — **era deja rezolvat** de mutarea căutării în
+    spatele lupei (`openSearch()` / `closeSearchIfEmpty()`). Verificat la 390×844: `#search`
+    are `display:none` la încărcare și se deschide doar la click, la `/`, sau dacă URL-ul
+    vine cu `q`. Captura din backlog e dintr-un build anterior sau cu o căutare activă.
+
+- [x] select[name="marks"] instead of anotate / neanotate - have marcate / nemarcate —
+  etichetele sunt acum `nemarcate` / `marcate` („annotate" era și scris greșit). *Valorile*
+  rămân `unmarked`/`marked`: sunt stare de URL, citită de `markedWordsForFilter()`.
+  - Găsit pe drum: `marks` era în ambele tablouri de URL din `app.js` dar lipsea din
+    `AF_SPECS`, deci filtra grila fără să arate vreun chip — exact golul „înregistrat într-o
+    singură direcție" pe care îl numește regula de filtre din CLAUDE.md, pe partea de chip.
+  - [ ] Rămâne deschis: un flag care să distingă etichetele publice de cele proprii. E o
+    funcționalitate separată și deocamdată nu există nimic public de care să le deosebești.
+
+- [x] After one word is marked, move to next — **la toate patru marcajele**: fav, lol, meh,
+  ascunde. Marcarea e o buclă de triaj, iar o buclă în care trei taste te duc mai departe și
+  una nu e o buclă la care trebuie să te gândești; un marcaj per cuvânt e interacțiunea
+  urmărită, deci posibilitatea de a pune două pe același cuvânt nu merită patru controale cu
+  comportamente diferite. (Prima variantă avansa doar la `meh`/`ascunde`, tocmai ca să lase
+  fav+lol pe același cuvânt — schimbat deliberat pe 260810: consecvență și comoditate.)
+  - **Doar aplicarea avansează, nu și scoaterea.** Un „un-fav" e o corectură, iar avansarea
+    te-ar lua exact de pe cuvântul la care tocmai te-ai întors ca să-l repari (verificat).
+  - `meh`/`ascunde` scot în plus rândul din grilă — singura diferență între cele două cazuri,
+    și tot ce spune al doilea argument al lui `advanceAfterMark()` (`app.js`). La ultimul rând
+    se cade înapoi pe cel dinainte, nu se închide panoul; când rândul rămâne pe loc și e
+    ultimul, nu se face wrap la început, pentru că asta ar reporni lista pe tăcute.
+  - Pentru cazul cu ștergere, rândul următor e reținut *înainte* de animație și regăsit după
+    element: rezolvat după ștergere s-ar bate cu animația, iar selectat după index înainte de
+    ștergere ar lăsa `selectedIdx` decalat cu unu de îndată ce dispare rândul — și ăsta e
+    exact numărul pe care îl citesc j/k.
+  - Tagurile personalizate (`#tag-input`) **nu** avansează: le scrii într-un câmp text, iar
+    mutarea ar smulge focusul din el.
+
+  - [ ] I have changed my mind, also advance on fav / lol - one tag is enough. We preioritize convenience and behaviour consistency.
+
+- [ ] create 'Despre' page - put in header instead of 'Statistici' & 'Metodologie' which will be linked from 'Despre'. 
+
+- [ ] Publish top faves list, hide/demote meh words for everyone else. Use the manual annotations for ordering the list.
+
+  **Amânat deliberat, nu uitat (260810).** Datele nu susțin încă partea a doua. În `app.db`
+  sunt 221 de adnotări de la 44 de utilizatori, dintre care 106 de la user 1 (adică de la
+  mine), și 41 de `meh` în total. Un „demote pentru toată lumea" construit pe atât înseamnă
+  gustul unei singure persoane care rescrie tăcut vederea implicită a tuturor — exact ce
+  interzice regula din CLAUDE.md, că nimic nu se scade din vederea implicită fără un comutator
+  vizibil, cu un click. E și ieftin de manipulat: identitatea e un token anonim de device,
+  deci N „utilizatori" distincți costă N ștergeri de cookie — același raționament pentru care
+  moderarea listelor **nu** are auto-hide după N raportări.
+
+  Partea întâi („publish top faves") e ieftină și nu ridică problema asta — `publish_bucket`
+  există deja — dar cu 8 favorite de la utilizatorul principal nu are ce publica. De reluat
+  când există trafic; e un item post-launch depus înainte de launch.
+
+- [ ] also count synonyms! - filter by the number of synonyms?
+
+  **Decis cum, nu încă făcut (260810): se livrează pe date parțiale, dar cinstit.** Acoperirea
+  e 2.066 din 16.315 cuvinte, și **zero** în seamul `curiosity` (`synonyms.db` are 2.075 de
+  rânduri; ~860 din seamul `relevant` n-au fost încă cerute). Un filtru „număr de sinonime"
+  ar arăta `0` pentru 14.249 de cuvinte care n-au fost niciodată verificate — exact capcana
+  pe care CLAUDE.md o numește deja pentru `frequency = 0`: lipsa datelor randată ca valoare
+  reală. Deci: `syn_count` în `build_ui_db.py`, iar filtrul **exclude** cuvintele nescrapate
+  în loc să le numere ca 0, cu eticheta spunând asta. Scrapingul complet (~14.2k cuvinte,
+  ~4.5h la podeaua de 1.2s, cu lock pe host) rămâne condiția ca filtrul să însemne ceva pe
+  `curiosity`.
+
+- [ ] reread backlog, tick what's already done against activity log, prioritize tasks. Publish PRs? 
+
+- [ ] another data quality run? – use more input sources?
+
+  Prea vag ca să fie un task: e un proiect. Reclamațiile concrete există deja, scrise, în
+  secțiunea **260519 Data Audit** de mai jos (definiții lipsă la formele feminine, grafii
+  variante care poluează explorarea, `fost` / `văr` / `nepot`). De spart în verificări cu
+  nume, plecând de acolo — nu e un blocant de soft-launch în forma asta.
+
+- [ ] explain how to use the site, how it works, how tagging / lists work.
+
+- [ ] **`tests/test_store_sync.js` pică la „sync watermark stored"** (observat 260810, nu
+  introdus atunci — reprodus și cu `store.js` din HEAD, deci e anterior). Verificarea e
+  `!!JSON.parse(ls['otios.sync']).since`, deci un `since` întors ca `0` sau lipsă o pică, iar
+  pasul următor moare pe `JSON.parse(undefined)`. De văzut dacă e starea `app.db` de dev sau
+  chiar `api/sync.php`. Celelalte trei suite JS trec.
+
+
+---
+
+- check consistency, when a word is tagged by myself the tag is activated in the info box
+
+- [ ] build an even more straightforward quick tagging UI? annotation optimized ui.
+
+- [ ] add straturi as per [straturi.mariuscomper.uk](https://straturi.mariuscomper.uk/)
+
+- [ ] rescriu metodologie după înțelegerea mea – then create a llm/human version tool, that shows the selected version in context - same page section
+
+- [ ] add contact, gform sau tally.so 
+
+- [ ] why don't se use the same set of filters pentru stats?
+
 
 ## Post launch
 
@@ -390,6 +540,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [x] quizzes — multiple-choice quiz (definition → pick the word, 4 same-POS choices, target word masked in the prompt) on `joc.php`, with streak/record in localStorage. Endpoint `api/quiz.php`.
 - [x] flash cards — word → reveal definition card on `joc.php` (shares `api/quiz.php`), with "păstrează" to bookmark. Button removed from the mode bar 2026-08-01; still reachable at `joc.php?mode=flash`.
 - [x] sensuri — reverse quiz (word → pick among 4 definitions) on `joc.php`, now the default mode. `api/quiz.php` returns an `options[]` array of `{word, definition}`; definitions are cleaned server-side (first segment before `|`, ≤200 chars) and low-quality entries are filtered out of the pool.
+- [ ] fomfleuri: create **eye movement** following word tagging UI. Sau Minority Report-like UI [gesture-synth](https://indecisiveeric.com/gesture-synth)
 
 ## 260519 Data Audit
 
