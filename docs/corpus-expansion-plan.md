@@ -273,11 +273,65 @@ look "extinct in CulturaX but ≥50 in CoRoLa" — mostly an artefact, not a dis
 Everyday vocabulary sits at 0.2–3× (`mamă` 3.0×, `copil` 1.5×, `pâine` 0.7×), so the list is
 not broken — it is dominated by legislation, and `articol` alone is 0.4% of all tokens.
 
-**What it would take.** Reconcile CoRoLa lemmas to DEX lemmas through `inflected_forms.db`
-rather than by string identity, so `strugur`'s count lands on `strugure`; and treat presence
-in the legal register as `specialist_alive` rather than plain alive. Both are real work and
-both are worth doing — CoRoLa is still the best register diversity available — but neither
-is a chore, and the naive version is worse than not doing it.
+#### The lemma problem is solved — the answer was the other file
+
+Attempted 2026-08-11. The reconciliation turned out not to need an algorithm: the archive
+also ships **surface-form** lists (`corola_word_freq_*`), and those match
+`corpus_word_frequency`'s invariant, so the existing `aggregate_by_family` does the rollup
+using DEX's paradigms and DEX's prominence split. `strugur` and `strugure` share
+`struguri`/`strugurii`/`strugurilor`, which is precisely the `veșcă`/`veste` case that
+machinery already handles.
+
+| pair | TTL lemma list | our rollup |
+|---|---:|---:|
+| `strugur` / `strugure` | **12,176** / 724 | 749 / **12,034** |
+| `gherghină` / `gheorghină` | **3,658** / 2 | 63 / **98** |
+| `cadră` / `cadru` | 51,181 / 73,660 | **103** / 119,496 |
+
+`process_corola.py` now loads the word list and drops the superseded lemma table. Never
+reintroduce the lemma lists.
+
+#### But it still cannot join the modern panel — it spans 1945
+
+Wired into `modern_occ` for exactly one build, then reverted on measurement. The blocker is
+not the legal skew and not the lemmatization; it is that **CoRoLa covers 1945 to the
+present**, so it is a reference corpus of the last eighty years rather than a picture of
+current usage. Against CulturaX, per token:
+
+| word | CoRoLa vs CulturaX |
+|---|---:|
+| `condițiune` | 112.8× |
+| `comisiune` | 49.6× |
+| `dorobanț` | 41.1× |
+| `poemă` | 23.3× |
+| `iscăli` | 15.7× |
+| `dijmă` | 8.3× |
+
+`condițiune` and `comisiune` are pre-1953-reform spellings — a corpus starting in 1945
+necessarily carries them. The effect on the build was 686 words off the shortlist and **35
+out of the `relevant` seam**, including `birjă`, `dorobanț`, `vechil`, `dijmă`, `cocoană`
+and `iscăli`. That is the project's best material vanishing from the default view because
+it appears in mid-century literature.
+
+The drops were real register signal rather than arithmetic — median CoRoLa contribution was
+37.7% of the pre-existing count against 3.8% panel growth, and the largest gainers were
+deverbal nouns in legal style (`rămânere`, `ajungere`, `discutare`, `analizare`). That
+diagnosis is sound; it just points at "alive in eighty years of published Romanian",
+which is a different claim from "alive now".
+
+**What it would take:** a third panel with its own meaning — *attested in the reference
+corpus* — rather than a term added to the modern one, plus a `specialist_alive` treatment
+for the legal register. The frequency lists carry no dates, so a post-2000 slice is not
+available from this source.
+
+#### One real bug fixed along the way
+
+`MODERN_RARE_OCC` and `MODERN_ALIVE_OCC` are absolute occurrence counts calibrated against
+CulturaX at one particular size, and nothing rescaled them when the panel grew. Adding any
+modern corpus therefore made every word look more alive, and pushed every word within the
+growth margin of a threshold across it. `scaled_modern_thresholds()` now rescales both bars
+by actual panel size against `CALIBRATION_MODERN_TOKENS`. This is latent for any future
+modern corpus, so it is kept even though CoRoLa was reverted.
 
 ## Recommended order
 

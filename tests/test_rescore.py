@@ -132,13 +132,51 @@ def test_verdict_declining_band():
 
 # ── Integration: the built database ───────────────────────────────────────────
 
+def _rare_floor():
+    """The `rare` floor the build actually used, not the unscaled constant.
+
+    `MODERN_RARE_OCC` is calibrated against a modern panel of a particular size and
+    `scaled_modern_thresholds()` rescales it when that panel grows, so a test pinned to
+    the bare constant fails the moment a modern corpus is added — which is exactly what
+    happened when CoRoLa was briefly wired in. Derive it the way the pipeline does.
+    """
+    freq_db = Path(__file__).parent.parent / 'data' / 'processed' / 'corpus_frequencies.db'
+    if not freq_db.exists():
+        return vd.MODERN_RARE_OCC
+    conn = sqlite3.connect(f'file:{freq_db}?mode=ro', uri=True)
+    try:
+        tokens = sum(vd.get_corpus_tokens(conn, c) for c in vd.MODERN_CORPORA)
+    finally:
+        conn.close()
+    return vd.scaled_modern_thresholds(tokens)[0]
+
+
 def test_no_alive_word_is_labelled_forgotten(db):
     """Nothing in the list may carry an extinct/historical verdict while being common."""
+    floor = _rare_floor()
     bad = db.execute(
         "SELECT word, modern_occ, verdict FROM words "
         " WHERE verdict IN ('extinct','historical_only') "
-        "   AND modern_occ >= ?", (vd.MODERN_RARE_OCC,)).fetchall()
+        "   AND modern_occ >= ?", (floor,)).fetchall()
     assert bad == [], [dict(r) for r in bad[:10]]
+
+
+def test_modern_thresholds_scale_with_the_panel():
+    """Adding a modern corpus must raise the bar in step, or every word within the
+    growth margin of a threshold crosses it on arithmetic alone."""
+    base = vd.CALIBRATION_MODERN_TOKENS
+    assert vd.scaled_modern_thresholds(base) == (vd.MODERN_RARE_OCC, vd.MODERN_ALIVE_OCC)
+    rare2, alive2 = vd.scaled_modern_thresholds(base * 2)
+    assert (rare2, alive2) == (vd.MODERN_RARE_OCC * 2, vd.MODERN_ALIVE_OCC * 2)
+    assert vd.scaled_modern_thresholds(0) == (vd.MODERN_RARE_OCC, vd.MODERN_ALIVE_OCC)
+
+
+def test_corola_is_not_in_the_modern_panel():
+    """CoRoLa spans 1945+, so presence in it is not evidence of *current* use: it
+    over-represents `condițiune` 112x and `dorobanț` 41x against CulturaX, and wiring it
+    in removed `birjă`, `dorobanț` and `vechil` from the relevant seam."""
+    assert vd.COROLA_CORPUS not in vd.MODERN_CORPORA
+    assert vd.COROLA_CORPUS not in vd.HIST_CORPORA
 
 
 def test_extinct_words_have_no_modern_occurrences(db):

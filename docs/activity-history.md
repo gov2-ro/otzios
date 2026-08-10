@@ -49,6 +49,67 @@ Recommended order (first three need no new corpus processing): fix `hist_docs` �
 
 ---
 
+## 2026-08-11 — CoRoLa: the lemma problem solved, the corpus still not usable as "modern"
+
+Set out to reconcile CoRoLa's TTL lemmas to DEX's. The reconciliation turned out not to
+need an algorithm, and the corpus turned out to be blocked by something else entirely.
+
+**The lemma fix was the other input file.** The archive also ships surface-form lists
+(`corola_word_freq_*`). Those match `corpus_word_frequency`'s per-surface-form invariant,
+so the existing `aggregate_by_family` does the rollup with DEX's paradigms and DEX's
+prominence split — and `strugur`/`strugure` genuinely share `struguri`, `strugurii`,
+`strugurilor`, which is exactly the `veșcă`/`veste` case that machinery was built for.
+
+| pair | TTL lemma list | our rollup |
+|---|---:|---:|
+| `strugur` / `strugure` | **12,176** / 724 | 749 / **12,034** |
+| `gherghină` / `gheorghină` | **3,658** / 2 | 63 / **98** |
+| `cadră` / `cadru` | 51,181 / 73,660 | **103** / 119,496 |
+
+`process_corola.py` now loads the word list (1,813,746 forms, 637.8M tokens) into
+`corpus_word_frequency` and drops the superseded `corola_lemma_frequency` table, so nobody
+finds a plausible-looking source of TTL lemmas to join against.
+
+**Then it was wired into the modern panel for one build, and reverted.** The blocker is
+neither the lemmatization nor the legal skew: **CoRoLa spans 1945 to the present**, so it
+is a reference corpus of the last eighty years, not a picture of current usage. Per token
+against CulturaX: `condițiune` 112.8×, `comisiune` 49.6×, `dorobanț` 41.1×, `poemă` 23.3×,
+`iscăli` 15.7×, `dijmă` 8.3×. The first two are pre-1953-reform spellings — a corpus
+starting in 1945 necessarily carries them.
+
+The build effect was 686 words off the shortlist and **35 out of the `relevant` seam**,
+including `birjă`, `dorobanț`, `vechil`, `dijmă`, `cocoană` and `iscăli` — the project's
+best material disappearing from the default view because it appears in mid-century
+literature. The drops were real register signal rather than arithmetic (median CoRoLa
+contribution 37.7% against 3.8% panel growth; the biggest gainers were legal-style deverbal
+nouns — `rămânere`, `ajungere`, `discutare`, `analizare`), but "alive in eighty years of
+published Romanian" is a different claim from "alive now". Using CoRoLa needs a third panel
+with its own meaning, not a term added to the modern one; the lists carry no dates, so no
+post-2000 slice is available.
+
+**One real bug fixed along the way, and kept.** `MODERN_RARE_OCC`/`MODERN_ALIVE_OCC` are
+absolute counts calibrated against CulturaX at one size, and nothing rescaled them when the
+panel grew — so adding any modern corpus made every word look more alive and pushed
+everything within the growth margin over a threshold. `scaled_modern_thresholds()` rescales
+both bars by actual panel size against `CALIBRATION_MODERN_TOKENS`. This is latent for any
+future modern corpus, so it stays even though CoRoLa was reverted. It also broke
+`test_no_alive_word_is_labelled_forgotten`, which was pinned to the bare constant; that test
+now derives the floor the way the pipeline does.
+
+A correction to my own reading during this pass: I first called the drop cluster at
+`modern_occ` 1991–1998 evidence of calibration drift. It was an artifact of sorting the
+dropped words by `modern_occ` descending — the shortlist excludes anything above the alive
+floor, so the top of that sort necessarily sits just under it. The distribution is normal
+(1–3 words per value). The rescaling is still correct on its own merits.
+
+Suite 103 → 105, adding a guard that the thresholds scale and that CoRoLa is in neither
+panel. Pipeline output is byte-for-byte back to the pre-CoRoLa state: shortlist 17,577,
+seams relevant 3,495 / curiosity 14,082, `ui.db` 17,687 words. `data/word_ids.tsv` gained 23
+ids from the experimental build and keeps them — ids are never withdrawn, so words that
+briefly appeared stay resolvable.
+
+---
+
 ## 2026-08-10 — corpus panel: LUMRO ingested and wired in; CoRoLa loaded and deliberately not
 
 Two new corpus processors, one of which is now driving verdicts and one of which is not.

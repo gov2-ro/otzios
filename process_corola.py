@@ -9,16 +9,41 @@ cares about. CoRoLa is the Romanian Academy's reference corpus: 1B+ tokens,
 balanced across 71 sub-domains, with a spoken component — register diversity rather
 than more crawl.
 
-**These counts are per LEMMA, not per surface form.** That is the opposite of
-`corpus_word_frequency`'s invariant (see CLAUDE.md, "Corpus counts are per surface
-form"), which is why they live in their own table and must NOT be passed through
-`validate_diachronic.aggregate_by_family`: the lists are already TTL-lemmatized, so
-rolling them up a second time would credit a lemma with its relatives' counts.
+**This loads the WORD list, not the lemma list, and that is the whole design.**
 
-**There are no document counts.** The published lists are frequency only. Nothing
-may apply a document threshold to CoRoLa, and a missing lemma means "not in the
-list", never "seen in zero documents" — the same trap as `frequency = 0` meaning
-no data rather than rarest.
+The first version of this script read `corola_lemma_freq_*`, and it could not be used:
+those lists are lemmatized by TTL, whose chosen headword is often the form this
+project holds as the *archaic variant*. `strugur` carried 12,176 against `strugure`'s
+724, `gherghină` 3,658 against `gheorghină`'s 2. Joining on the headword string handed
+the modern word's whole count to its obsolete spelling — marking exactly the words
+this project hunts for as alive.
+
+The fix is not to reconcile someone else's lemmas. It is to take the **surface-form**
+lists and let the existing machinery do the rollup, because that machinery already
+solves this problem: `strugur` and `strugure` share `struguri`, `strugurii` and
+`strugurilor`, so `validate_diachronic.aggregate_by_family` splits those forms between
+them by headword prominence — the same `veșcă`/`veste` disambiguation used for every
+other corpus. Counts therefore land on DEX's lemma inventory, computed from DEX's own
+paradigms, rather than on TTL's.
+
+So these rows go in `corpus_word_frequency` like Wikisource, LUMRO and CulturaX, and
+are counted exactly the same way downstream.
+
+**There are no document counts** — the published lists are frequency only, so
+`document_count` is 0 for every row. This is safe *only because CoRoLa is a modern
+panel*: `verdict()` reads `hist_occ`, `hist_docs` and `modern_occ`, and never a modern
+document count. **Never add this corpus to `HIST_CORPORA`** — there its zero documents
+would silently veto attestation, which is precisely the `hist_docs` bug fixed on
+2026-08-10.
+
+**A missing word means "not in the list", never "seen zero times"** — the same trap as
+`frequency = 0` meaning no data rather than rarest.
+
+**The list is legal-skewed.** Against CulturaX, `alin` is over-represented ~5,000,000×,
+`anexă` 178×, `prevedere` 175×, `articol` 18×, while everyday vocabulary sits at
+0.2–3×. That is worth knowing before reading any CoRoLa-driven verdict change: a word
+that survives only in legislation will look alive here, which is closer to right than
+calling it extinct but is not the same as general currency.
 
 **Licence: CC BY-NC-ND 4.0.** Non-commercial is satisfied (this project is not
 commercial). No-derivatives is why CoRoLa is an *input only*: it may inform a
@@ -51,10 +76,10 @@ from pathlib import Path
 FREQ_DB    = Path('data/processed/corpus_frequencies.db')
 SOURCE_ZIP = Path('data/raw/corola_frequencies.zip')
 
-# Lemma list, lowercased, diacritics kept. Lowercase because every lookup in this
-# project is lowercase; diacritics kept because `casă`/`casa` are different words and
-# the nodiacritics variants collapse exactly the distinctions we filter on.
-MEMBER = 'corola_lemma_freq_all_lowercase.tsv'
+# Surface-form list — see the docstring for why not the lemma list. Lowercased because
+# every lookup in this project is lowercase; diacritics kept because `casă`/`casa` are
+# different words and the nodiacritics variants collapse exactly what we filter on.
+MEMBER = 'corola_word_freq_all_lowercase.tsv'
 
 CORPUS_NAME = 'corola_ro'
 
@@ -67,15 +92,17 @@ def normalize(text: str) -> str:
 def init_db(db_path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     conn.executescript("""
-        -- Per-LEMMA counts, deliberately not in corpus_word_frequency: that table
-        -- holds surface forms and everything downstream rolls it up over paradigms.
-        -- No document_count column, because the published lists have none — an
-        -- absent column cannot be misread as a zero.
-        CREATE TABLE IF NOT EXISTS corola_lemma_frequency (
-            lemma             TEXT PRIMARY KEY,
-            occurrence_count  INTEGER NOT NULL,
-            last_updated      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        CREATE TABLE IF NOT EXISTS corpus_word_frequency (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            word          TEXT NOT NULL,
+            corpus_name   TEXT NOT NULL,
+            occurrence_count  INTEGER DEFAULT 0,
+            document_count    INTEGER DEFAULT 0,
+            last_updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(word, corpus_name)
         );
+        CREATE INDEX IF NOT EXISTS idx_corpus_word
+            ON corpus_word_frequency(word, corpus_name);
         CREATE TABLE IF NOT EXISTS processing_stats (
             id                      INTEGER PRIMARY KEY AUTOINCREMENT,
             corpus_name             TEXT NOT NULL,
@@ -92,7 +119,7 @@ def init_db(db_path: Path) -> sqlite3.Connection:
 
 
 def read_list(zip_path: Path, member: str) -> tuple[dict[str, int], int, int]:
-    """Return ({lemma: count}, rows_read, malformed)."""
+    """Return ({surface_form: count}, rows_read, malformed)."""
     freqs: dict[str, int] = {}
     rows = malformed = 0
     with zipfile.ZipFile(zip_path) as z:
@@ -103,19 +130,19 @@ def read_list(zip_path: Path, member: str) -> tuple[dict[str, int], int, int]:
                 if len(parts) != 2:
                     malformed += 1
                     continue
-                lemma, count = parts
+                word, count = parts
                 try:
                     n = int(count)
                 except ValueError:
                     malformed += 1
                     continue
-                lemma = normalize(lemma)
-                if not lemma:
+                word = normalize(word)
+                if not word:
                     malformed += 1
                     continue
                 # Normalization can collide two source rows (cedilla vs comma forms);
-                # summing is right — they are the same lemma written two ways.
-                freqs[lemma] = freqs.get(lemma, 0) + n
+                # summing is right — they are the same word written two ways.
+                freqs[word] = freqs.get(word, 0) + n
     return freqs, rows, malformed
 
 
@@ -141,7 +168,7 @@ def main() -> int:
     total = sum(freqs.values())
 
     print(f'  rows read       : {rows:,}')
-    print(f'  lemmas kept     : {len(freqs):,}')
+    print(f'  surface forms   : {len(freqs):,}')
     print(f'  malformed       : {malformed:,}')
     print(f'  total tokens    : {total:,}')
     print(f'  collisions      : {rows - malformed - len(freqs):,} '
@@ -152,21 +179,39 @@ def main() -> int:
         return 0
 
     conn = init_db(FREQ_DB)
-    existing = conn.execute('SELECT COUNT(*) FROM corola_lemma_frequency').fetchone()[0]
+
+    # The first version of this script wrote a per-lemma table. That approach was
+    # abandoned (see the docstring), and leaving the table behind would leave a
+    # plausible-looking source of TTL-lemmatized counts for someone to join against.
+    if conn.execute("SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name='corola_lemma_frequency'").fetchone():
+        conn.execute('DROP TABLE corola_lemma_frequency')
+        print('Dropped the superseded corola_lemma_frequency table.')
+
+    existing = conn.execute(
+        'SELECT COUNT(*) FROM corpus_word_frequency WHERE corpus_name = ?',
+        (CORPUS_NAME,)).fetchone()[0]
     if existing and not args.wipe:
-        print(f'\ncorola_lemma_frequency already holds {existing:,} lemmas. '
-              f'Pass --wipe to replace.', file=sys.stderr)
+        print(f'\n{CORPUS_NAME} already holds {existing:,} rows. Pass --wipe to replace.',
+              file=sys.stderr)
         return 1
     if args.wipe and existing:
-        conn.execute('DELETE FROM corola_lemma_frequency')
-        conn.execute('DELETE FROM processing_stats WHERE corpus_name = ?', (CORPUS_NAME,))
-        print(f'Wiped {existing:,} existing lemmas.')
+        conn.execute('DELETE FROM corpus_word_frequency WHERE corpus_name = ?', (CORPUS_NAME,))
+        conn.execute('DELETE FROM processing_stats     WHERE corpus_name = ?', (CORPUS_NAME,))
+        print(f'Wiped {existing:,} existing rows.')
 
     ts = datetime.now().isoformat()
-    conn.executemany(
-        'INSERT OR REPLACE INTO corola_lemma_frequency '
-        '(lemma, occurrence_count, last_updated) VALUES (?, ?, ?)',
-        [(w, c, ts) for w, c in freqs.items()])
+    # document_count is 0 throughout: the published lists carry no document counts.
+    # Safe only because CoRoLa is a modern panel and verdict() never reads a modern
+    # document count — see the docstring's warning about HIST_CORPORA.
+    conn.executemany("""
+        INSERT INTO corpus_word_frequency
+            (word, corpus_name, occurrence_count, document_count, last_updated)
+        VALUES (?, ?, ?, 0, ?)
+        ON CONFLICT(word, corpus_name) DO UPDATE SET
+            occurrence_count = excluded.occurrence_count,
+            last_updated     = excluded.last_updated
+    """, [(w, CORPUS_NAME, c, ts) for w, c in freqs.items()])
     elapsed = time.time() - started
     conn.execute("""
         INSERT INTO processing_stats
@@ -177,7 +222,7 @@ def main() -> int:
     conn.commit()
     conn.close()
 
-    print(f'\nDone in {elapsed:.0f}s → {FREQ_DB}  (table `corola_lemma_frequency`)')
+    print(f'\nDone in {elapsed:.0f}s → {FREQ_DB}  (corpus_name = {CORPUS_NAME!r})')
     print('Reminder: input only. No CoRoLa-derived count goes into ui.db (CC BY-NC-ND).')
     return 0
 

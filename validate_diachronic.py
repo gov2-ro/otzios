@@ -192,6 +192,29 @@ SUBTITLE_CORPUS = 'subtitle_ro'
 # headword (see process_corola.py and docs/corpus-expansion-plan.md).
 HIST_CORPORA = (HIST_CORPUS, LUMRO_CORPUS)
 
+# CoRoLa is loaded (process_corola.py) and deliberately **not** in the modern panel.
+#
+# It was wired in on 2026-08-11 and taken back out the same day, on measurement. The
+# reason is not the legal skew and not the lemmatization — the surface-form lists solved
+# that one, and our own paradigms put `strugur`'s count back on `strugure`. It is the
+# time span: **CoRoLa covers 1945 to the present**, so it is a reference corpus of the
+# last eighty years, not a picture of current usage. Against CulturaX, per token:
+#
+#     condițiune  112.8×    comisiune  49.6×    dorobanț  41.1×
+#     poemă        23.3×    iscăli     15.7×    dijmă      8.3×
+#
+# `condițiune` and `comisiune` are pre-1953-reform spellings; a corpus starting in 1945
+# necessarily contains them. Summing it into `modern_occ` therefore reads mid-century
+# literature as present-day life, and it removed 35 words from the *relevant* seam —
+# `birjă`, `dorobanț`, `vechil`, `dijmă`, `cocoană`, `iscăli` — which is the project's
+# best material disappearing from the default view.
+#
+# The frequency lists carry no dates, so a post-2000 slice cannot be taken. Using CoRoLa
+# needs a third panel ("attested in the reference corpus") with its own meaning, not a
+# term added to the modern one.
+COROLA_CORPUS  = 'corola_ro'
+MODERN_CORPORA = (MODERN_CORPUS,)
+
 SMOOTHING = 0.1   # per-million tokens; floor for log ratio
 
 RARITY_BINS = [(0.30, 'very_rare'), (0.50, 'rare'), (1.01, 'uncommon')]
@@ -218,6 +241,30 @@ RARITY_BINS = [(0.30, 'very_rare'), (0.50, 'rare'), (1.01, 'uncommon')]
 #   3k+       despotic, verișoară, călăreț, harababură, foiță      — alive
 MODERN_RARE_OCC  = 500    # below this, genuinely rare in modern Romanian
 MODERN_ALIVE_OCC = 2000   # at or above this, the word is simply in use
+
+# Those two numbers were calibrated against CulturaX alone, at this size. An absolute
+# occurrence count only means something relative to how much modern text was read, so
+# when the modern panel grows the bar has to grow with it — otherwise *adding* a corpus
+# makes every word look more alive, and every word sitting within the growth margin of a
+# threshold crosses it for no reason but arithmetic.
+#
+# Measured when CoRoLa joined the panel (+3.8% tokens): 820 words left the shortlist, and
+# they clustered at modern_occ 1991–1998 — directly under the 2,000 floor. That is drift,
+# not evidence. `scaled_modern_thresholds()` rescales both bars by actual panel size, so
+# the calibration above keeps meaning what it meant when it was sampled.
+#
+# This is not the ppm mistake in the comment above. That one compared *two panels of
+# wildly different sizes to each other*; this holds one panel's own bar steady as the
+# panel grows.
+CALIBRATION_MODERN_TOKENS = 16_969_999_321   # culturax_ro alone, the sampled baseline
+
+
+def scaled_modern_thresholds(modern_tokens: int) -> tuple[int, int]:
+    """(rare, alive) occurrence floors, rescaled to the current modern panel size."""
+    if not modern_tokens:
+        return MODERN_RARE_OCC, MODERN_ALIVE_OCC
+    scale = modern_tokens / CALIBRATION_MODERN_TOKENS
+    return round(MODERN_RARE_OCC * scale), round(MODERN_ALIVE_OCC * scale)
 
 # A single hit in a 14M-token corpus is noise, not attestation.
 HIST_MIN_OCC  = 3
@@ -528,7 +575,8 @@ def load_taxonomy(lexemes_db: Path) -> dict:
     return taxonomy
 
 
-def verdict(hist_occ: int, hist_docs: int, modern_occ: int, rank_shift: float) -> str:
+def verdict(hist_occ: int, hist_docs: int, modern_occ: int, rank_shift: float,
+            rare_occ: int = MODERN_RARE_OCC, alive_occ: int = MODERN_ALIVE_OCC) -> str:
     """Classify a lemma from paradigm-level occurrence counts.
 
     Counts, not ppm — see the MODERN_* / HIST_* constants for why. All inputs are
@@ -541,7 +589,7 @@ def verdict(hist_occ: int, hist_docs: int, modern_occ: int, rank_shift: float) -
     """
     attested_hist = hist_occ >= HIST_MIN_OCC and hist_docs >= HIST_MIN_DOCS
 
-    if modern_occ >= MODERN_ALIVE_OCC:
+    if modern_occ >= alive_occ:
         # Demonstrably in use today, whatever the history says.
         return 'emerging' if rank_shift <= -RANK_SHIFT_DECLINING else 'alive'
     if not attested_hist:
@@ -549,7 +597,7 @@ def verdict(hist_occ: int, hist_docs: int, modern_occ: int, rank_shift: float) -
         return 'absent'
     if modern_occ == 0:
         return 'extinct'
-    if modern_occ < MODERN_RARE_OCC:
+    if modern_occ < rare_occ:
         return 'historical_only'
     return 'declining'
 
@@ -576,7 +624,9 @@ def main() -> int:
     ws_tokens     = get_corpus_tokens(freq_conn, HIST_CORPUS)
     lumro_tokens  = get_corpus_tokens(freq_conn, LUMRO_CORPUS)
     hist_tokens   = ws_tokens + lumro_tokens
-    modern_tokens = get_corpus_tokens(freq_conn, MODERN_CORPUS)
+    cx_tokens     = get_corpus_tokens(freq_conn, MODERN_CORPUS)
+    corola_tokens = get_corpus_tokens(freq_conn, COROLA_CORPUS)   # reported, not counted
+    modern_tokens = sum(get_corpus_tokens(freq_conn, c) for c in MODERN_CORPORA)
 
     if hist_tokens == 0 and modern_tokens == 0:
         print('No completed corpus runs found in corpus_frequencies.db.')
@@ -595,10 +645,13 @@ def main() -> int:
         print(f'  {LUMRO_CORPUS:<20} {lumro_tokens:>15,} tokens')
     else:
         print(f'  {LUMRO_CORPUS:<20}  (no completed run — process_lumro.py)')
-    if modern_tokens:
-        print(f'  {MODERN_CORPUS:<20} {modern_tokens:>15,} tokens')
+    if cx_tokens:
+        print(f'  {MODERN_CORPUS:<20} {cx_tokens:>15,} tokens')
     else:
         print(f'  {MODERN_CORPUS:<20}  (no completed run)')
+    if corola_tokens:
+        print(f'  {COROLA_CORPUS:<20} {corola_tokens:>15,} tokens  '
+              f'(loaded, NOT in the modern panel — spans 1945+, see MODERN_CORPORA)')
     if subtitle_tokens:
         print(f'  {SUBTITLE_CORPUS:<20} {subtitle_tokens:>15,} tokens')
     else:
@@ -616,15 +669,21 @@ def main() -> int:
     print('Loading corpus frequencies...')
     ws_freqs       = load_corpus_freqs(freq_conn, HIST_CORPUS)     if ws_tokens       else {}
     lumro_freqs    = load_corpus_freqs(freq_conn, LUMRO_CORPUS)    if lumro_tokens    else {}
-    modern_freqs   = load_corpus_freqs(freq_conn, MODERN_CORPUS)   if modern_tokens   else {}
+    cx_freqs       = load_corpus_freqs(freq_conn, MODERN_CORPUS)   if cx_tokens       else {}
     subtitle_freqs = load_corpus_freqs(freq_conn, SUBTITLE_CORPUS) if subtitle_tokens else {}
     freq_conn.close()
 
-    # Citation-form view of the whole historical panel, for the diffable raw columns.
-    hist_freqs = dict(ws_freqs)
-    for w, (o, d) in lumro_freqs.items():
-        prev = hist_freqs.get(w, (0, 0))
-        hist_freqs[w] = (prev[0] + o, prev[1] + d)
+    def _sum_forms(*panels):
+        """Citation-form view of a whole panel, for the diffable raw columns."""
+        out: dict[str, tuple[int, int]] = {}
+        for panel in panels:
+            for w, (o, d) in panel.items():
+                prev = out.get(w, (0, 0))
+                out[w] = (prev[0] + o, prev[1] + d)
+        return out
+
+    hist_freqs   = _sum_forms(ws_freqs, lumro_freqs)
+    modern_freqs = _sum_forms(cx_freqs)
 
     print('Loading DEX taxonomy...')
     taxonomy = load_taxonomy(LEXEMES_DB)
@@ -656,7 +715,7 @@ def main() -> int:
     # merge_panels for why that order matters to the document counts.
     hist_fam     = merge_panels(aggregate_by_family(ws_freqs,    form_lemma),
                                 aggregate_by_family(lumro_freqs, form_lemma))
-    modern_fam   = aggregate_by_family(modern_freqs,   form_lemma)
+    modern_fam   = aggregate_by_family(cx_freqs, form_lemma)
     subtitle_fam = aggregate_by_family(subtitle_freqs, form_lemma)
     modern_loose = aggregate_loose(modern_freqs, form_lemma)
     print(f'  {len(hist_fam):,} historical / {len(modern_fam):,} modern lemmas')
@@ -669,6 +728,12 @@ def main() -> int:
         universe = candidates.keys() | hist_freqs.keys() | modern_freqs.keys()
     else:
         universe = candidates.keys()
+
+    rare_occ, alive_occ = scaled_modern_thresholds(modern_tokens)
+    if (rare_occ, alive_occ) != (MODERN_RARE_OCC, MODERN_ALIVE_OCC):
+        print(f'Modern thresholds rescaled to panel size '
+              f'({modern_tokens / CALIBRATION_MODERN_TOKENS:.3f}× the calibration corpus): '
+              f'rare {MODERN_RARE_OCC} → {rare_occ}, alive {MODERN_ALIVE_OCC} → {alive_occ}')
 
     S = args.smoothing
     hist_scale     = 1_000_000 / hist_tokens     if hist_tokens     else 0.0
@@ -730,7 +795,8 @@ def main() -> int:
             'modern_rank':        f'{modern_rank.get(word, 0.0):.4f}',
             'rank_shift':         f'{rank_shift:.4f}',
             'log_ratio':          f'{log_ratio:.4f}',
-            'verdict':            verdict(hf_occ, hf_doc, mf_occ, rank_shift),
+            'verdict':            verdict(hf_occ, hf_doc, mf_occ, rank_shift,
+                                           rare_occ, alive_occ),
             'dex_pos':            '|'.join(sorted(tax.get('pos',       set()))),
             'dex_register':       '|'.join(sorted(tax.get('register',  set()))),
             'dex_domain':         '|'.join(sorted(tax.get('domain',    set()))),

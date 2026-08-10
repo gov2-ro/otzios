@@ -556,14 +556,30 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
       `process_corola.py` → tabelul `corola_lemma_frequency` (1.457.518 leme, 665,9M tokeni,
       0 rânduri malformate). Licența: proiectul e necomercial și nu redistribuie nimic, deci
       se folosește **doar ca intrare** — niciun număr derivat din CoRoLa în `ui.db`.
-      **Nu se poate face join pe headword**, din două motive măsurate: (1) lemele TTL nu sunt
-      lemele DEX, iar headword-ul ales de TTL e adesea exact varianta pe care noi o ținem ca
-      arhaică — `strugur` 12.176 vs `strugure` 724, `gherghină` 3.658 vs `gheorghină` 2 —
-      deci un join pe șir mută tot uzul modern pe grafia ieșită din uz, exact cuvintele pe
-      care le căutăm; (2) lista distribuită e înclinată spre juridic, nu echilibrată: față de
-      CulturaX, `alin` ~5M×, `anexă` 178×, `prevedere` 175×, `articol` 18×, în timp ce
-      vocabularul comun stă la 0,2–3×. De reconciliat lemele prin `inflected_forms.db`
-      înainte de orice folosire.
+      - [x] **Problema lemelor: rezolvată 260811, dar nu cu un algoritm.** Arhiva conține și
+        liste de **forme de suprafață** (`corola_word_freq_*`), care respectă invariantul lui
+        `corpus_word_frequency`, deci `aggregate_by_family` face rollup-ul cu paradigmele DEX
+        și cu împărțirea după prominență. `strugur` și `strugure` chiar împart
+        `struguri`/`strugurii`/`strugurilor` — exact cazul `veșcă`/`veste`. Rezultat:
+        `strugur` 12.176 → **749**, `strugure` 724 → **12.034**; `gherghină` 3.658 → 63;
+        `cadră` 51.181 → 103. `process_corola.py` încarcă acum lista de cuvinte și șterge
+        tabelul de leme. **Nu reintroduce listele de leme.**
+      - [ ] **Blocantul real: CoRoLa acoperă 1945–prezent**, deci nu e un corpus „modern" în
+        sensul proiectului. Conectat la `modern_occ` pentru exact un build, apoi retras:
+        față de CulturaX, `condițiune` 112,8×, `comisiune` 49,6×, `dorobanț` 41,1×,
+        `iscăli` 15,7× — primele două sunt grafii dinainte de reforma din 1953, pe care un
+        corpus care începe în 1945 le conține inevitabil. Efect: 686 de cuvinte scoase din
+        shortlist și **35 din seamul `relevant`** — `birjă`, `dorobanț`, `vechil`, `dijmă`,
+        `cocoană`, `iscăli`. Adică exact materialul cel mai bun al proiectului, dispărut din
+        vederea implicită fiindcă apare în literatura de la mijlocul secolului.
+        Căderile erau semnal real, nu aritmetică (contribuția mediană CoRoLa 37,7% față de
+        3,8% creștere de panel; cei mai mari câștigători, nominalizări juridice —
+        `rămânere`, `ajungere`, `discutare`, `analizare`). Doar că înseamnă „viu în optzeci
+        de ani de română publicată", nu „viu acum".
+        **De făcut**: un *al treilea* panel cu înțelesul lui („atestat în corpusul de
+        referință") plus tratament `specialist_alive` pentru registrul juridic — nu un
+        termen adăugat la panelul modern. Listele n-au date, deci o felie post-2000 nu se
+        poate lua din sursa asta.
     - [x] **4. LUMRO** — **ingerat 260810** (`process_lumro.py`, în `HIST_CORPORA`).
       175 romane, **5,07M tokeni** cu tokenizatorul pipeline-ului (nu 7,52M — ăla era dintr-un
       regex mai larg), 111 autori, 1845–1920. Efect: **381 de cuvinte trec pragul de atestare**

@@ -369,17 +369,29 @@ Two things the parser has to get right, both learned from real output:
   put `vapor`, `fluviu` and `cioban` in "declining".
 - **Corpus counts are per surface form.** Always roll them up through
   `inflected_forms.db` before judging a lemma, or every verb reads as extinct.
-- **CoRoLa is loaded but deliberately not wired into any verdict.** `process_corola.py`
-  fills `corola_lemma_frequency` (1,457,518 lemmas, 665.9M tokens) and nothing reads it yet.
-  Two reasons, both measured. **(1) Its lemma inventory is not DEX's.** The lists are
-  TTL-lemmatized, and TTL's chosen headword is often the form this project holds as the
-  *archaic variant*: `strugur` 12,176 vs `strugure` 724, `gherghină` 3,658 vs `gheorghină` 2.
-  Joining on the headword string therefore hands a modern word's whole count to its obsolete
-  spelling — marking exactly the words we hunt for as alive. **(2) The distributed list is
-  legal-skewed**, not the balanced corpus the description promises: against CulturaX, `alin`
-  is over-represented ~5M×, `anexă` 178×, `prevedere` 175×, `articol` 18×, while everyday
-  vocabulary sits at 0.2–3×. Using it needs lemma reconciliation through
-  `inflected_forms.db` first; it is not a string join.
+- **CoRoLa is loaded and deliberately not in any panel — because it spans 1945+, not
+  because of its lemmas.** `process_corola.py` loads the **surface-form** lists (1,813,746
+  forms, 637.8M tokens) into `corpus_word_frequency`, so DEX's own paradigms do the rollup.
+  That solved the lemmatization problem completely: TTL's lists put 12,176 on `strugur` and
+  724 on `strugure`, and our `aggregate_by_family` puts it back — 749 and 12,034. Never load
+  its `corola_lemma_freq_*` lists; the fix was the input file, not a reconciliation
+  algorithm.
+  What blocks it is the **time span**. CoRoLa covers 1945 to the present, so presence in it
+  is not evidence of *current* use. Against CulturaX per token: `condițiune` 112.8×,
+  `comisiune` 49.6×, `dorobanț` 41.1×, `iscăli` 15.7× — the first two are pre-1953-reform
+  spellings, which a 1945-onward corpus necessarily contains. Wired into `modern_occ` for
+  one build, it removed 35 words from the **relevant** seam, `birjă`, `dorobanț`, `vechil`,
+  `dijmă` and `cocoană` among them: the project's best material, gone from the default view.
+  The frequency lists carry no dates, so no post-2000 slice can be taken. Using CoRoLa needs
+  a third panel with its own meaning ("attested in the reference corpus"), not a term added
+  to the modern one. Pinned by `test_corola_is_not_in_the_modern_panel`.
+- **Modern occurrence thresholds scale with the panel** (`scaled_modern_thresholds`).
+  `MODERN_RARE_OCC`/`MODERN_ALIVE_OCC` were sampled against CulturaX at
+  `CALIBRATION_MODERN_TOKENS`; an absolute count only means something relative to how much
+  modern text was read, so adding a corpus without rescaling makes every word look more
+  alive and pushes everything within the growth margin over a threshold. Any test pinned to
+  the bare constants breaks the moment a corpus is added — derive the floor the way
+  `tests/test_rescore._rare_floor()` does.
 - **`subtitle_ro` is not a modern-usage signal — ~1/6th of it is folk-music television.**
   `process_subtitles.py` calls it "Digi24 news content"; the news is real but so is a large
   body of folklore programming, and the archaic vocabulary in it comes from *sung traditional
