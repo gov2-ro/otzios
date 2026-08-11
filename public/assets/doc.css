@@ -1,0 +1,123 @@
+/* ══════════════════════════════════════════
+   DOCUMENT PAGES — sticky table of contents + side figures
+   ══════════════════════════════════════════
+
+   Shared by despre.php and metodologie.html. The two pages have separate stylesheets and
+   separate token blocks, but the token *names* match (--text, --text-2, --border,
+   --accent, --sans, --mono), so this file works in both without either owning it.
+
+   Layout is a three-column grid: TOC · content · gutter. The third column is not empty
+   space for its own sake — it is where the figures go, so a screenshot can sit beside the
+   prose it illustrates instead of interrupting it.
+
+   Everything here is desktop-only. Below the breakpoint the grid collapses to one column,
+   the TOC becomes a collapsed <details> at the top, and figures go full width — a phone
+   has no gutter to lend and no room for a persistent sidebar. */
+
+.doc-layout { display: block; }
+
+.doc-toc-title {
+  font-family: var(--mono, monospace);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-3);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.doc-toc ol, .doc-toc ul { list-style: none; margin: 0; padding: 0; }
+
+.doc-toc a {
+  display: block;
+  padding: 4px 0 4px 10px;
+  border-left: 2px solid var(--border);
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+.doc-toc a:hover { color: var(--accent); border-left-color: var(--border-2); }
+
+/* Scroll-spy. Colour *and* weight, not colour alone — on the skins whose accent is the
+   page's own ink (registru), colour by itself says nothing here. */
+.doc-toc a.is-current {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Sub-headings sit indented and quieter; they only appear on pages that have h3s. */
+.doc-toc a.is-sub { padding-left: 22px; font-size: 0.75rem; color: var(--text-3); }
+
+/* ── Mobile: a collapsed disclosure above the content ─────────────────────────── */
+.doc-toc-mobile {
+  margin: 0 0 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 4px);
+  padding: 10px 14px;
+}
+.doc-toc-mobile > summary {
+  cursor: pointer;
+  font-family: var(--mono, monospace);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-3);
+}
+.doc-toc-mobile[open] > summary { margin-bottom: 8px; }
+
+/* ── Desktop ──────────────────────────────────────────────────────────────────── */
+@media (min-width: 1080px) {
+  .doc-layout {
+    display: grid;
+    /* TOC · content · gutter for figures. The gutter is capped so the whole block stays
+       optically centred on a very wide screen rather than drifting left. */
+    grid-template-columns: 200px minmax(0, 720px) minmax(0, 260px);
+    column-gap: 40px;
+    justify-content: center;
+    align-items: start;
+  }
+
+  .doc-toc {
+    position: sticky;
+    /* Clears the brand bar, which is fixed on these pages. */
+    top: 66px;
+    align-self: start;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    grid-column: 1;
+  }
+  .doc-toc-mobile { display: none; }
+
+  .doc-body { grid-column: 2; }
+
+  /* Figures move out of the text column and into the gutter.
+     `float` rather than a grid cell on purpose: the text has to wrap back under a short
+     figure, and a figure has to sit next to the paragraph it belongs to rather than at a
+     row boundary the grid picked. The negative right margin is what puts it outside the
+     column — the width below is the *content* width, so it ends up ~44% of the text
+     column and about a third of the whole block. */
+  .doc-body figure {
+    float: right;
+    clear: right;
+    width: 300px;
+    margin: 4px -300px 20px 28px;
+  }
+
+  /* A screenshot that is taller than it is wide would still run down the page at this
+     width, so cap it and let the image scale inside. */
+  .doc-body figure img { max-height: 340px; width: auto; max-width: 100%; }
+  .doc-body figure.is-wide { width: 380px; margin-right: -300px; }
+  .doc-body figure.is-wide img { max-height: none; width: 100%; }
+}
+
+/* Small screens: the float is off, so a tall screenshot still should not eat the page. */
+@media (max-width: 1079px) {
+  .doc-body figure img { max-height: 60vh; width: auto; max-width: 100%; margin: 0 auto; }
+}
+
+/* Click a screenshot to see it at full size — the point of shrinking them is that the
+   detail is still reachable, not gone. */
+.doc-body figure a { display: block; text-decoration: none; }
+.doc-body figure a:hover img { border-color: var(--accent); }

@@ -733,6 +733,35 @@ and made the bug look like a rendering quirk rather than a missing class. If a n
 mostly text, it needs `page-doc`; check it at a *wide* viewport, because the mobile one
 will lie to you.
 
+## Document pages — `assets/doc.css` + `assets/doc.js`
+
+`despre.php` and `metodologie.html` share a sticky table of contents and a side-figure
+layout. They have separate stylesheets and separate token blocks, but the token *names*
+match (`--text`, `--accent`, `--sans`, `--mono`), so one file styles both without either
+owning it.
+
+The layout is a three-column grid — **TOC · content · gutter** — above 1080px, collapsing
+to one column below. The third column is not decoration: it is where figures go, so a
+screenshot sits beside the prose it illustrates instead of interrupting it. Figures
+`float: right` with a negative right margin rather than occupying a grid cell, because the
+text has to wrap back under a short figure and a figure has to sit next to *its* paragraph
+rather than at whatever row boundary the grid picks.
+
+Three things to know before touching it:
+
+- **`doc.js` has two modes.** `metodologie.html` ships a hand-written `<ol>` whose wording
+  is editorial (it shortens „Faza 2 — Validare diacronică" to „Faza 2"), so that list is
+  left alone and only gets scroll-spy. `despre.php` has no list, so one is built from its
+  headings. The contract is the same either way: a container with
+  `data-toc="<selector for the content>"`.
+- **Scroll-spy tracks the last heading *past* the reading line, not the intersecting
+  one.** Sections here run from two paragraphs to forty; "is visible" marks several at
+  once and flickers on every scroll tick.
+- **A page adopting this must raise its `max-width`.** `metodologie.html` capped `.article`
+  at 760px for a single column; as a grid that cap squeezes every track, and the page went
+  from 13.5k to 30k pixels tall before it was raised to 1240px. Same reason `.despre-wrap`
+  is 1240px.
+
 ## Page shell — header and footer partials
 
 All five pages (`index`, `stats`, `joc`, `lista`, `liste`) draw the same two partials.

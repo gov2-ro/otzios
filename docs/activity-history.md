@@ -4,6 +4,34 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — sticky contents and side figures on the document pages
+
+Asked for smaller screenshots pushed out of the text column, and a documentation-style
+sticky table of contents on both `despre.php` and `metodologie.html`.
+
+Shared as `assets/doc.css` + `assets/doc.js`, which works because the two pages use
+different stylesheets but the same token *names*. Layout is a three-column grid —
+TOC · content · gutter — above 1080px. The gutter exists to hold the figures: they
+`float: right` into it with a negative margin rather than taking a grid cell, because text
+has to wrap back under a short figure and a figure has to sit beside *its* paragraph rather
+than at a row boundary the grid chose. Screenshots are ~24–31% of the block width, capped
+at 340px tall, and click through to full size — the point of shrinking them is that the
+detail stays reachable.
+
+Measured effect on `despre.php`: **5,565px → 2,243px** of page at desktop width.
+
+`doc.js` runs in two modes. `metodologie.html` already had a hand-written TOC whose wording
+is editorial — it shortens „Faza 2 — Validare diacronică" to „Faza 2" — so that list is left
+exactly as written and only gains scroll-spy; `despre.php` has none, so one is built from
+its headings. Scroll-spy tracks the last heading *past* the reading line rather than the
+intersecting one, because sections here run from two paragraphs to forty and "is visible"
+marks several at once and flickers.
+
+One trap worth recording: **`metodologie.html` capped `.article` at 760px**, which was right
+for one column and squeezes every track of a three-column grid. The page went from 13.5k to
+**30k** pixels tall before the cap was raised — taller on desktop than on mobile, which is
+the tell.
+
 ## 2026-08-11 — the document pages could not be scrolled on desktop
 
 Reported against `despre.php`: no scrolling at desktop width, fine once the window was

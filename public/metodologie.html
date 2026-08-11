@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/doc.css">
   <style>
     /* ── Design tokens (mirror base.html) ── */
     :root {
@@ -296,6 +297,31 @@
     }
     .toc a { color: var(--text-2); text-decoration: none; transition: color .1s; }
     .toc a:hover { color: var(--accent); text-decoration: underline; }
+
+    /* Above the doc.css breakpoint the TOC leaves the flow and becomes the sticky rail:
+       no box, one column, and the leading-zero counters go — a numbered rail beside
+       sections that already print „01" in their own headings says it twice. */
+    @media (min-width: 1080px) {
+      /* The article was capped at 760px for a single column of prose. As a three-column
+         grid that cap squeezes every track — the text column collapsed and the page went
+         from 13.5k to 30k pixels tall. The cap has to grow with the layout. */
+      .article { max-width: 1240px; }
+
+      .toc {
+        background: none;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        margin-bottom: 0;
+      }
+      .toc ol { grid-template-columns: 1fr; gap: 0; }
+      .toc li { display: block; }
+      .toc li::before { content: none; }
+      /* The page underlines links by default, which in a rail of eleven reads as noise.
+         The accent border on the current entry is what carries state here. */
+      .toc a { color: var(--text-2); text-decoration: none; }
+      .toc a:hover { text-decoration: none; }
+    }
 
     /* Sections */
     .article section {
@@ -617,9 +643,9 @@
 <!-- ══════════════════════════════════════
      ARTICLE
 ══════════════════════════════════════ -->
-<article class="article">
+<article class="article doc-layout">
 
-  <div class="toc">
+  <nav class="toc doc-toc" data-toc=".doc-body" aria-label="Cuprins">
     <div class="toc-lbl">Pe această pagină</div>
     <ol>
       <li><a href="#de-ce">De ce acest proiect</a></li>
@@ -634,8 +660,9 @@
       <li><a href="#cronologie">Cronologie</a></li>
       <li><a href="#cod">Cod și date</a></li>
     </ol>
-  </div>
+  </nav>
 
+  <div class="doc-body">
   <!-- 01 ─────────────────────────────── -->
   <section id="de-ce">
     <h2><span class="num">01</span> De ce acest proiect</h2>
@@ -1313,6 +1340,8 @@ Lexeme
     </p>
   </section>
 
+  </div><!-- /.doc-body -->
+
 </article>
 
 <footer class="site-footer">
@@ -1361,5 +1390,6 @@ Lexeme
   </script>
   <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
   <noscript><img src="https://queue.simpleanalyticscdn.com/noscript.gif" alt="" referrerpolicy="no-referrer-when-downgrade"/></noscript>
+<script src="assets/doc.js"></script>
 </body>
 </html>

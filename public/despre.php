@@ -54,9 +54,10 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
+  <link rel="stylesheet" href="<?= BASE ?>/assets/doc.css">
   <?= otios_skin_links() ?>
   <style>
-    .despre-wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 64px; }
+    .despre-wrap { max-width: 1240px; margin: 0 auto; padding: 28px 20px 64px; }
     .despre-wrap h1 {
       font-family: var(--serif); font-size: 2rem; font-weight: 600;
       color: var(--text); margin: 0 0 6px;
@@ -77,8 +78,8 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
       background: var(--surface-2); border: 1px solid var(--border);
       border-radius: 3px; padding: 1px 5px; color: var(--text);
     }
-    /* Screenshots are evidence, not decoration — full width, bordered so they read as a
-       frame of the app rather than as part of this page's own layout. */
+    /* Size and placement come from doc.css — on desktop these float out into the gutter
+       beside the prose. Here only the frame. */
     .despre-shot { margin: 14px 0 20px; }
     .despre-shot img {
       display: block; width: 100%; height: auto;
@@ -112,7 +113,19 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
 <body class="page-doc">
   <?php $page = 'despre'; $brand_tag = 'despre'; require __DIR__ . '/api/_partials/header.php'; ?>
 
-  <div class="despre-wrap">
+  <div class="despre-wrap doc-layout">
+
+    <!-- Built from the h2s by assets/doc.js; sticky beside the text on desktop, a
+         collapsed disclosure above it on a phone. -->
+    <nav class="doc-toc" data-toc=".doc-body" aria-label="Cuprins">
+      <div class="doc-toc-title">Pe această pagină</div>
+    </nav>
+    <details class="doc-toc-mobile">
+      <summary>Pe această pagină</summary>
+      <div class="doc-toc" data-toc=".doc-body"></div>
+    </details>
+
+    <div class="doc-body">
     <h1>Despre Oțios</h1>
     <p class="despre-lede">
       Oțios caută cuvintele pe care româna le-a avut și le-a lăsat să cadă. Nu cuvinte rare,
@@ -158,8 +171,8 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
       <em>Filtre</em> ca să le vezi pe toate.
     </p>
 
-    <figure class="despre-shot">
-      <img src="<?= BASE ?>/assets/despre/grid.png" alt="Grila de cuvinte din Oțios, cu scorul de frecvență DEX lângă fiecare cuvânt" loading="lazy">
+    <figure class="despre-shot is-wide">
+      <a href="<?= BASE ?>/assets/despre/grid.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="<?= BASE ?>/assets/despre/grid.png" alt="Grila de cuvinte din Oțios, cu scorul de frecvență DEX lângă fiecare cuvânt" loading="lazy"></a>
       <figcaption>Lista. Cifra mică de lângă cuvânt e frecvența DEX — cât de bine e cuvântul
       așezat în canonul literar, nu cât de des e folosit.</figcaption>
     </figure>
@@ -174,7 +187,7 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
     </p>
 
     <figure class="despre-shot">
-      <img src="<?= BASE ?>/assets/despre/filtre.png" alt="Panoul de filtre, cu numărul de cuvinte lângă fiecare opțiune" loading="lazy">
+      <a href="<?= BASE ?>/assets/despre/filtre.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="<?= BASE ?>/assets/despre/filtre.png" alt="Panoul de filtre, cu numărul de cuvinte lângă fiecare opțiune" loading="lazy"></a>
       <figcaption>Panoul de filtre. Numerele se recalculează la fiecare schimbare.</figcaption>
     </figure>
 
@@ -201,7 +214,7 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
     </p>
 
     <figure class="despre-shot">
-      <img src="<?= BASE ?>/assets/despre/detail.png" alt="Panoul de detalii al unui cuvânt, cu definiția și butoanele de marcare" loading="lazy">
+      <a href="<?= BASE ?>/assets/despre/detail.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="<?= BASE ?>/assets/despre/detail.png" alt="Panoul de detalii al unui cuvânt, cu definiția și butoanele de marcare" loading="lazy"></a>
       <figcaption>Panoul de detalii: definiția, dicționarele în care apare, și butoanele de marcare.</figcaption>
     </figure>
 
@@ -217,8 +230,8 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
       lista altcuiva. O listă de douăzeci de cuvinte ajunge cu douăzeci.
     </p>
 
-    <figure class="despre-shot">
-      <img src="<?= BASE ?>/assets/despre/liste.png" alt="Pagina de liste, cu lista redacției și cele patru liste proprii" loading="lazy">
+    <figure class="despre-shot is-wide">
+      <a href="<?= BASE ?>/assets/despre/liste.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="<?= BASE ?>/assets/despre/liste.png" alt="Pagina de liste, cu lista redacției și cele patru liste proprii" loading="lazy"></a>
       <figcaption>Pagina <a href="<?= BASE ?>/liste.php">Liste</a>: alegerile redacției sus,
       cele patru liste proprii dedesubt.</figcaption>
     </figure>
@@ -233,9 +246,11 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
       <a href="<?= BASE ?>/stats.php">📊 Statistici — ce e în bază</a>
       <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">↗ Cod sursă pe GitHub</a>
     </div>
+    </div><!-- /.doc-body -->
   </div>
 
   <?php require __DIR__ . '/api/_partials/footer.php'; ?>
+  <script src="<?= BASE ?>/assets/doc.js"></script>
   <script src="<?= BASE ?>/assets/store.js"></script>
   <script src="<?= BASE ?>/assets/app.js"></script>
 </body>
