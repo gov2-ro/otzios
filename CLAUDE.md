@@ -96,8 +96,16 @@ python process_culturax.py         # modern      → corpus_frequencies.db
 python validate_diachronic.py      # → forgotten_words_diachronic.csv
 python make_shortlist.py           # → forgotten_words_shortlist.csv (both seams)
 python make_shortlist.py --stats   # dry run: seam and tier counts only
+python tools/export_editorial.py --user N   # app.db marks → data/editorial.tsv (optional)
 python tools/build_ui_db.py        # → public/data/ui.db
 ```
+
+`export_editorial.py` is the one step that reads the *deployed* `app.db`, so it runs
+wherever that file is. `--user` is required and never defaults — the dev `app.db` carries
+hundreds of test-fixture users, and a default would publish a fixture's taste as the site's
+editorial line. `--list-users` shows who has annotations; `--dry-run` prints the counts and
+writes nothing. It refuses to shrink the picks by more than half without `--force`, because
+a mistyped `--user` reads as "this curator marked nothing" and would blank the file.
 
 `scrape_definitions.py --merge` fills definition gaps from dexonline.ro for words the dump
 has no `DefinitionSimple` row for (keep `--delay ≥ 3`; the site is community-run).
@@ -281,6 +289,30 @@ hidden until asked for. The one score penalty that remains is for a *moderate* f
 (4–25×), which is an evidence problem rather than a preference — the lemma's count is
 being propped up by its relatives.
 
+- `editor_demote` — **the curator read this word and set it aside.** The only signal in the
+  project that is a person's judgement rather than a measured property, and the only human
+  signal allowed to *subtract*. It comes from `data/editorial.tsv` — tracked in git like
+  `word_ids.tsv`, written by `tools/export_editorial.py --user N` from `app.db`, folded in
+  by `build_ui_db.py` (or `tools/migrate_ui_db_editorial.py` for an existing `ui.db`).
+
+  **A file rather than a live read of `app.db`, for two reasons that both matter.** The
+  build runs on a laptop while `app.db` lives on the server outside the web root, so there
+  is no moment at which the builder can see production annotations. And a signal that
+  removes words from what every visitor sees has to be a diff with a git history and an
+  obvious undo — as a live query it is one person's clicking silently reshaping the site,
+  which is exactly the objection that deferred this feature for a year.
+
+  `editor_pick` is its twin and subtracts from nothing: it drives the ★ chip and the
+  „Alese" list on `liste.php`. **Neither is in `quality_score`**, for the same reason the
+  four class flags are not — a scored-in opinion cannot be appealed.
+
+  **Community marks never reach `ui.db`.** They are aggregated live from every user by
+  `vote_counts_subquery()` (`api/_appdb.php`) and may only *reorder*, via the `populare`
+  sort. Identity here is an anonymous device token, so N votes cost N cookie clears; if
+  votes could subtract, hiding a word would be cheaper than publishing a list — the same
+  reasoning that keeps auto-hide-after-N-reports out of list moderation. Pinned by
+  `tests/test_editorial.js`.
+
 `diminutive_like` is a fourth flag but not one of these three: it is **off by default**, so
 it never subtracts from what you see until you ask. `mark_diminutives()`
 (`tools/build_ui_db.py`) sets it from the DEX definition saying "Diminutiv al lui X" (351
@@ -290,14 +322,35 @@ diminutive. `tools/migrate_ui_db_diminutives.py` back-fills an existing `ui.db`.
 
 ### UI defaults
 
-`build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides three of
-the four flagged classes, and sorts by `quality_score DESC`. Every one is a visible
-control — `seam`, plus the four class rows — never a silent exclusion, because the point of
+`build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides four of
+the five flagged classes, and sorts by `quality_score DESC`. Every one is a visible
+control — `seam`, plus the five class rows — never a silent exclusion, because the point of
 opening this up is to learn where the lines are wrong.
 
-**The four classes are one three-state control each: `hide` / `show` / `only`** (Romanian
-„fără / cu / doar"), on the params `regional`, `variants`, `spellings`, `diminutives`. Only
-the default differs — `hide` for the first three, `show` for diminutives.
+**`sort=populare` blends the derived score with what people marked** —
+`quality_score + 4·ln(1+votes)`, signed, rounded into bands (`VOTE_BOOST_SQL`). Bands
+rather than `LN()` because SQLite's math functions are a compile-time option a shared host
+may lack. It is deliberately **not** the default: votes come from anonymous device tokens,
+so this stays something a reader asks for. Two things to keep:
+
+- **The damping is the anti-abuse measure, not a curve preference.** The `relevant` seam
+  spans 92–121 with 76% of its 3,495 words inside a ten-point band, so a linear weight of
+  even 5/vote lets four votes carry a word from the median to the top forty. On the ladder,
+  each *doubling* of the vote count is worth about two more points — measured: `barabor`
+  carries 20 ★ votes (every one of them a test fixture) and the blend moves it 92 → 104,
+  well short of `văz` at 121.
+- **`search.php` joins the vote counts only for this sort**, and the subquery's key column
+  is aliased `vote_word` — joined as `word` it would make every unqualified `word` in
+  `build_word_filter()`'s conditions ambiguous, and those conditions are shared with the
+  un-joined query.
+
+**The five classes are one three-state control each: `hide` / `show` / `only`** (Romanian
+„fără / cu / doar"), on the params `regional`, `variants`, `spellings`, `diminutives`,
+`editorial`. Only the default differs — `hide` for all but diminutives, which is `show`.
+
+Adding the fifth was three lines in `app.js` rather than nine, because `CLASS_PARAMS` is
+concatenated into both URL arrays *and* both tab guards. That is what the array is for;
+keep new classes going through it rather than adding literals.
 
 Two things to preserve when touching these:
 
@@ -479,7 +532,7 @@ Two things the parser has to get right, both learned from real output:
 - **One script per pipeline stage.** No package layout until 3+ modules share helpers.
   `dump_parser.py` is the one shared helper — three extractors use its quote-aware scanner.
 - **Romanian normalization:** lowercase → cedilla-to-comma diacritics (`ş→ș`, `ţ→ț`) → `unicodedata.normalize('NFC', …)`. Canonical implementation: `dump_parser.normalize`.
-- **Generated artifacts go under `data/`** (gitignored). Never commit `*.db`, `*.csv`, or `data/` contents — except `data/word_ids.tsv`, which is tracked on purpose.
+- **Generated artifacts go under `data/`** (gitignored). Never commit `*.db`, `*.csv`, or `data/` contents — except `data/word_ids.tsv` and `data/editorial.tsv`, both tracked on purpose (durable share ids; curator marks).
 - **`frequency = 0` means no data, not "rarest".** Filter with `frequency > 0` or `> 0.01`.
 
 ## Visual skins

@@ -18,6 +18,7 @@ except ImportError:
 
 sys.path.insert(0, str(Path(__file__).parent))
 from word_ids import apply_to_db as _apply_word_ids
+from editorial import apply_to_db as _apply_editorial
 
 SHORTLIST_PATH  = Path('data/processed/forgotten_words_shortlist.csv')
 RARE_PATH       = Path('data/processed/rare_words_wordfreq.csv')
@@ -447,7 +448,17 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             -- characters there, so `dict_count` knows a word is in them but not what
             -- they say.
             synonyms         TEXT,
-            antonyms         TEXT
+            antonyms         TEXT,
+            -- Curator marks, from data/editorial.tsv via tools/export_editorial.py.
+            -- Deliberately NOT part of quality_score: the score says how good the
+            -- evidence is, these say what a human thought, and mixing them makes the
+            -- judgement unappealable — the same reason the four class flags stay out
+            -- of it. `editor_demote` is the only signal in the project allowed to
+            -- subtract from the default view, and only through a visible control.
+            -- Community marks never reach this table: they are aggregated live and may
+            -- only reorder. See vote_counts_subquery() in public/api/_appdb.php.
+            editor_pick      INTEGER,
+            editor_demote    INTEGER
         )
     """)
 
@@ -664,6 +675,13 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     else:
         print('lexemes.db not found — proper_noun_like left NULL')
 
+    # Curator picks and demotes. Like the word ids below, this runs after every insert
+    # path has landed so a mark cannot miss the row it belongs to.
+    print('Applying curator marks…')
+    picks, demotes, missing = _apply_editorial(conn)
+    print(f'  {picks} pick, {demotes} demote'
+          + (f' ({missing} in the file are not in this shortlist)' if missing else ''))
+
     # Permanent word ids for the compact ?w= share URLs. Runs last, so every
     # insert path (shortlist + rare-in-use) has landed and no word is missed.
     print('Assigning permanent word ids…')
@@ -684,6 +702,9 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     conn.execute('CREATE INDEX idx_words_default    '
                  'ON words(word_tier, seam, quality_score DESC)')
     conn.execute('CREATE INDEX idx_words_modern_occ ON words(modern_occ)')
+    # The ★ list is `WHERE editor_pick = 1` over the whole table, and the default view
+    # adds `editor_demote = 0` to every query.
+    conn.execute('CREATE INDEX idx_words_editor      ON words(editor_pick, editor_demote)')
 
     conn.commit()
     conn.close()

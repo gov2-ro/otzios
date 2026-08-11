@@ -440,7 +440,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - [ ] `-iță` rămâne neacoperit: e la fel de des feminin de agent (*păstoriță*,
     *vorniciță*) cât diminutiv (*clăiță*, *cuconiță*). Ar cere fie o listă manuală, fie
     genul bazei din `lexemes.db` — ~90 de cuvinte în joc.
-  - [ ] check definition! - _"Diminutiv al lui ..."_
+  - [ ] hide by default
 
 - [x] when showing words lists, filters should be disabled - or 'toate' — un playlist
   (`?w=`) ocolește complet `build_word_filter()` în `search.php`/`random.php`/`feed.php`;
@@ -531,7 +531,48 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] create 'Despre' page - put in header instead of 'Statistici' & 'Metodologie' which will be linked from 'Despre'. 
 
-- [ ] Publish top faves list, hide/demote meh words for everyone else. Use the manual annotations for ordering the list.
+- [x] Publish top faves list, hide/demote meh words for everyone else. Use the manual annotations for ordering the list.
+
+  **Livrat 260811.** Obiecția de mai jos n-a fost anulată, ci ocolită prin construcție:
+  cele două semnale sunt separate, și **doar unul are voie să scadă**.
+
+  | semnal | sursă | ascunde | reordonează |
+  |---|---|---|---|
+  | curator | marcajele unui singur user, exportate într-un fișier urmărit în git | ✅ printr-un control vizibil | — |
+  | comunitate | marcajele tuturor, agregate live | ❌ niciodată | ✅ |
+
+  Astfel, un vot falsificat cumpără poziție, nu ștergere — exact raționamentul pentru care
+  moderarea listelor **nu** are auto-hide după N raportări. Piesele:
+
+  - **`data/editorial.tsv`** (urmărit în git, ca `word_ids.tsv`) ← `tools/export_editorial.py
+    --user N` ← `app.db`. Un fișier, nu o citire live, din două motive: build-ul rulează pe
+    laptop iar `app.db` e pe server (deci n-au cum să se vadă), și o scădere din vederea
+    implicită trebuie să fie un diff cu istoric, nu clickul cuiva. → `words.editor_pick` /
+    `editor_demote` prin `tools/build_ui_db.py` sau `tools/migrate_ui_db_editorial.py`.
+  - **A cincea clasă „respinse"** (`fără`/`cu`/`doar`), implicit `fără`. O linie în
+    `$class_modes` și una în `$CLASS_ROWS`; în `app.js` a fost de ajuns `CLASS_PARAMS`,
+    care duce automat parametrul în ambele direcții de URL și în ambele gard-uri de tab.
+  - **Sortarea `populare`** = `quality_score + 4·ln(1+voturi)`, rotunjit în benzi
+    (`VOTE_BOOST_SQL`, `_lib.php`) fiindcă `LN()` e opțiune de compilare în SQLite. Benzi,
+    nu liniar, pentru că seamul `relevant` are 3.495 de cuvinte între 92 și 121: **fiecare
+    dublare a numărului de voturi valorează încă vreo două puncte**, deci al 20-lea vot
+    aduce ~0,2 unde primul aducea 2,8. Nu e sortarea implicită.
+  - **„Alese"** pe `liste.php`, din `ui.db`, fără rând în `lists` — deci există și pe o
+    instalare fără niciun utilizator. Fără filtru de seam: 4 din cele 11 alegeri sunt în
+    `curiosity`, ceea ce e chiar semnalul că pragul e discutabil.
+  - **★** pe rândurile alese (`word_row.php`), în ambele vederi.
+
+  **Măsurat pe datele reale, și e chiar demonstrația:** `barabor` are 20 de voturi ★, toate
+  de la conturi-fixture din suita de teste (`tester`, `owner-mod-test`, `pluto`). Cu blendul,
+  urcă de la 92 la 104 — mișcare vizibilă, dar rămâne mult sub `văz` (121). `subdialect` ar
+  fi ajuns la 124, adică primul, dacă n-ar fi fost marcat `demote` de curator. Adică: exact
+  scenariul de sockpuppet a apărut singur, din teste, fără atacator — și l-a ținut în frâu
+  amortizarea, nu norocul.
+
+  Rămâne deschis: `--reset-fixtures` în suita de teste (fiecare rulare lasă un user nou în
+  `app.db` de dev, iar ei sunt tot semnalul de vot de acolo).
+
+  <details><summary>Obiecția inițială, păstrată pentru context</summary>
 
   **Amânat deliberat, nu uitat (260810).** Datele nu susțin încă partea a doua. În `app.db`
   sunt 221 de adnotări de la 44 de utilizatori, dintre care 106 de la user 1 (adică de la
@@ -545,6 +586,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   Partea întâi („publish top faves") e ieftină și nu ridică problema asta — `publish_bucket`
   există deja — dar cu 8 favorite de la utilizatorul principal nu are ce publica. De reluat
   când există trafic; e un item post-launch depus înainte de launch.
+
+  </details>
 
 - [ ] also count synonyms! - filter by the number of synonyms?
 
@@ -1134,3 +1177,49 @@ because they are content/data decisions, not styling.
   **Open question raised while drafting the explainer copy**: draft text said words tagged `ascunde` **or `lol`** disappear from the list — but `lol` = "amuzant" is a positive vibe tag, so that reads like a typo for `meh` (whose own definition was written as "ascunde, said differently"). Resolved: `ascunde` + `meh` are the two hide/quality tags, `fav` + `lol` are the two keep/vibe tags.
 
   **Implemented 2026-08-06**: `ascunde`/`lol`/`meh` replace the old five quick-tags everywhere — `_lib.php` (`$QUICK_TAGS`, `$QUICK_TAG_EMOJIS`), `store.js` (`QUICK_TAG_EMOJIS`, `qtKeyToTag`), the quick-tag buttons in `detail.php`, the shortcuts legend and keyboard handler (`a`/`f`/`m`, freed up from the retired `ignore`/`boring`/`remove`/`simple` keys — `f` deliberately carried over from the old `funny` binding since `lol` is its direct descendant). `quiz.php`'s quiz-exclusion filter now excludes on `tag:ascunde` OR `tag:meh` (previously `tag:simple` only). Custom tag input + note textarea removed from the detail panel (still functional server-side/in `sync.php` for existing data, just no longer exposed in the UI). A dismissable `#qt-explainer` banner explains the four tags on first view, persisted via `localStorage['otios.qtExplainerDismissed']`; every quick-tag button also carries a `title` tooltip with the same explanation for after it's dismissed. `ascunde`+`meh` both get the stronger red "extinct" active color in `app.css` (was `remove`-only) to visually flag the hide action; `lol` keeps the default amber "tagged" color.
+
+## Publishing a paper (2026-08-11)
+
+- [ ] **Decide whether to write one, and settle the evaluation question either way.**
+  Full assessment in **`docs/publication-assessment.md`** — what is publishable (the
+  paradigm rollup as a method; the four measured negative results — ppm across a 1,187×
+  size gap, CoRoLa's 1945+ span, subtitle folk-music contamination, LUMRO authors-vs-novels;
+  the 16,941-word resource), what blocks it, and candidate venues.
+
+  The blocker is the same one `docs/conceptual-roadmap.md` §2 named and nobody has closed:
+  **there is no evaluation against any ground truth.** `ARCHAIC_TAGS`
+  (`make_shortlist.py:58`) is a *feature*, never held-out labels, so the project cannot
+  currently say whether the corpus signal beats DEX `frequency` alone, beats `wordfreq`
+  alone, or whether the hand-set `SCORE_*` weights beat uniform ones.
+
+  First two steps are ~a day each and are worth doing **whether or not a paper happens** —
+  they are the only way to know if the corpus half of the pipeline is earning its keep:
+
+  1. hold out `învechit`/`arhaizant` as labels with those tags stripped from the features,
+     report P/R/AUC;
+  2. baselines — DEX frequency alone, `wordfreq` alone, modern count alone.
+
+  Then: Beta-binomial bound on zero counts instead of the `hist_occ`/`hist_docs` floors
+  (roadmap §5, and see the thin-corpus entry at the top of this file), a `SCORE_*` ablation,
+  and a native-speaker "am auzit / n-am auzit" pass — note the existing four marks are
+  aesthetic, not recognition, so that needs its own question.
+
+  Licensing is a separate blocker for any dataset release: DEX dump, CulturaX and the LUMRO
+  novels have three different answers, and the novels are the one that could stop it.
+
+- [ ] **`--star` is below AA in light mode on two skins** — measured 2026-08-11 with a
+  Playwright contrast probe against the word row: `paper` **2.22:1**, `tezaur` **1.98:1**,
+  with `registru` (4.10) and `velin` (3.26) passing only the 3:1 graphic bar. It is used by
+  `.fav-star` (`app.css:1272`), the reader's own favourite marker, so this is a real
+  legibility problem and not a theoretical one.
+
+  Found while placing the curator-pick ★, which was moved to `--accent` instead (that clears
+  4.5:1 in all six skins × both themes, worst case brutal light at 4.55:1). Deliberately not
+  fixed at the same time: darkening `--star` enough for AA takes `#D4A017` to roughly
+  `#8A6400`, which stops reading as gold — that is a palette decision across five skins, not
+  a bug fix to fold into an unrelated change.
+
+  The probe is ~30 lines of Playwright and worth keeping as a tool: it resolves a token to
+  its computed colour, walks up for the first non-transparent ground, and prints the ratio
+  per skin × theme. Would catch the whole class of "this skin looked fine while I was
+  writing it alone" problems that the skins section of CLAUDE.md keeps naming.

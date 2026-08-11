@@ -971,9 +971,11 @@ document.querySelectorAll('.tax-select').forEach(function(sel) {
 
 // ── Active-filter chips (at-a-glance, individually removable) ────────────────────
 
-// The four special classes, in one place — they are `forgotten`-tab-only controls and
-// three separate lists here would have to be kept in step by hand.
-var CLASS_PARAMS = ['regional', 'variants', 'spellings', 'diminutives'];
+// The special classes, in one place — they are `forgotten`-tab-only controls and
+// three separate lists here would have to be kept in step by hand. Adding one here
+// registers it in both URL directions and both tab guards at once, which is the whole
+// reason this array exists rather than five literals.
+var CLASS_PARAMS = ['regional', 'variants', 'spellings', 'diminutives', 'editorial'];
 
 var AF_SPECS = [
   { name: 'q',              type: 'text',     label: function(v){ return '„' + v + '”'; } },
@@ -1005,6 +1007,7 @@ var AF_SPECS = [
   { name: 'variants',    type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'variante vechi'; } },
   { name: 'spellings',   type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'grafii vechi'; } },
   { name: 'diminutives', type: 'radio', def: 'show', label: function(v){ return (v === 'only' ? 'doar ' : 'fără ') + 'diminutive'; } },
+  { name: 'editorial',   type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ')  + 'respinse'; } },
   // The chip used to print the raw seam value ("listă: curiosity") into an otherwise
   // Romanian bar. Labels are the ones already on the seam control itself.
   { name: 'seam',           type: 'radio',  def: 'relevant', label: function(v){
@@ -1119,6 +1122,7 @@ var URL_PARAM_DEFAULTS = {
   variants:    'hide',
   spellings:   'hide',
   diminutives: 'show',
+  editorial:   'hide',
 };
 
 function applyUrlToForm() {

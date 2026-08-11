@@ -23,7 +23,7 @@ if (!defined('OTIOS_PRIVATE_DIR')) {
 }
 define('APP_DB_PATH', OTIOS_PRIVATE_DIR . '/app.db');
 
-const APP_DB_VERSION = 3;
+const APP_DB_VERSION = 4;
 
 // The four annotation buckets a user actually produces, and the annotated_words_subquery()
 // argument that selects each. A published list is a snapshot of one of these, which is why
@@ -145,6 +145,44 @@ function annotated_words_subquery(string $marks, int $user_id): ?array {
         return ["$base AND tags LIKE ? ESCAPE '\\'", [$user_id, $needle]];
     }
     return null;
+}
+
+/**
+ * Per-word community vote counts, as a joinable `SELECT word, votes` fragment.
+ *
+ * **One user is one vote.** The annotations PK is (user_id, word), so there is exactly
+ * one row per person per word and a plain SUM is already a distinct-user count. A word
+ * someone both favourited and lol'd counts once, which matches the marking loop's own
+ * "one mark per word is the intended interaction" — see the Lists section of CLAUDE.md.
+ *
+ * ★ and 😂 are +1, ⚠️ meh is −1, 🙈 ascunde is not a vote (it is "get this out of my
+ * way", not a judgement about the word). A row carrying both a positive mark and meh
+ * counts positive: the explicit ★ is the more deliberate of the two.
+ *
+ * This never filters anything. Community marks may only reorder — see the `populare`
+ * entry in $SORT_OPTIONS. Identity here is an anonymous device token, so N votes cost
+ * N cookie clears; letting them subtract would make hiding a word cheaper than
+ * publishing a list, which is the same reasoning that kept auto-hide-after-N-reports
+ * out of list moderation below.
+ *
+ * The '%"lol"%' quoting is annotated_words_subquery()'s convention: the quotes make the
+ * match exact, so `lol` cannot match a custom tag like `lolz`.
+ *
+ * The key column is aliased `vote_word` on purpose. Joined against `words` it would
+ * otherwise make every unqualified `word` in build_word_filter()'s conditions ambiguous,
+ * and those conditions are shared with the un-joined query — so the alternative is
+ * qualifying every one of them for the benefit of a single sort.
+ */
+function vote_counts_subquery(): string {
+    return "SELECT word AS vote_word,
+                   SUM(CASE
+                         WHEN bookmarked = 1 OR tags LIKE '%\"lol\"%' THEN  1
+                         WHEN tags LIKE '%\"meh\"%'                   THEN -1
+                         ELSE 0
+                       END) AS votes
+              FROM app.annotations
+             WHERE deleted = 0
+             GROUP BY word";
 }
 
 /**
@@ -305,6 +343,13 @@ CREATE TABLE IF NOT EXISTS reports (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_once ON reports(list_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_reports_queue ON reports(status, created_at);
 SQL);
+    }
+
+    if ($version < 4) {
+        // vote_counts_subquery() groups by word across every user. The only other index
+        // is (user_id, seq) for the sync delta, which cannot serve that — so without
+        // this the `populare` sort full-scans annotations on every request.
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_annotations_word ON annotations(word)');
     }
 
     $pdo->exec('PRAGMA user_version = ' . APP_DB_VERSION);

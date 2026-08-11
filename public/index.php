@@ -159,6 +159,10 @@ global $QUICK_TAGS, $POS_OPTIONS;
         <select name="sort" class="fs-sort">
           <?php if (db_has_column('quality_score')): ?>
           <option value="quality">↓ cele mai potrivite</option>
+          <!-- Scorul, amestecat cu marcajele tuturor. Nu e sortarea implicită: identitatea
+               e un token anonim de device, deci votul rămâne ceva ce ceri, nu ceva ce
+               primești pe prima pagină. Vezi VOTE_BOOST_SQL în api/_lib.php. -->
+          <option value="populare">↓ populare</option>
           <?php endif; ?>
           <option value="rare">↓ rarest modern</option>
           <option value="declined">↓ most declined</option>
@@ -336,6 +340,8 @@ global $QUICK_TAGS, $POS_OPTIONS;
            'Grafii ieșite din uz ale unor cuvinte foarte vii: situațiune → situație, sgomot → zgomot, advocat → avocat.'],
           ['diminutives', 'diminutive_like', 'diminutive', 'show',
            'Diminutive (noruleț, cuconiță, fecioraș) — cuvinte pe care DEX le definește ca „diminutiv al lui…”.'],
+          ['editorial', 'editor_demote', 'respinse', 'hide',
+           'Cuvinte citite și lăsate deoparte ⚠️ — rămân în bază, doar că nu apar implicit. „doar” ți le arată exact pe ele, ca să vezi unde am greșit.'],
         ], function ($row) { return db_has_column($row[1]); }));
         ?>
         <?php foreach ($CLASS_ROWS as [$name, $col, $label, $default, $tip]): ?>

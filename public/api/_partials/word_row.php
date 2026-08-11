@@ -26,7 +26,11 @@ $meta_str = implode(' · ', $meta_parts);
 // numbers and abbreviations (`89`, `s.f.`, `EXT`, `📚12`), which a screen reader would
 // read out as exactly that. Naming the row explicitly keeps the announcement to the
 // word and its verdict; the chips are hidden from the tree individually below.
-$row_label = $w['word'] . ($verdict_lbl ? ', ' . $verdict_lbl : '');
+// `editor_pick` may be absent on a ui.db built before the column existed; empty() covers
+// both that and the 0 case. It goes in the accessible name because the ★ chip below is
+// aria-hidden like every other chip, and unlike them it is not restating a visible number.
+$is_pick   = !empty($w['editor_pick']);
+$row_label = $w['word'] . ($verdict_lbl ? ', ' . $verdict_lbl : '') . ($is_pick ? ', ales' : '');
 ?>
 <div class="<?= e($classes) ?>"
      role="option"
@@ -45,6 +49,7 @@ $row_label = $w['word'] . ($verdict_lbl ? ', ' . $verdict_lbl : '');
      hx-swap="innerHTML">
   <span class="verdict-dot" aria-hidden="true"></span>
   <span class="word-text"><?= e($w['word']) ?></span>
+  <?php if ($is_pick): ?><span class="chip-pick" aria-hidden="true" title="Ales — pus deoparte pentru că merită">★</span><?php endif; ?>
   <?php if ($freq !== null): ?><span class="chip-freq" aria-hidden="true" title="Frecvență DEX: <?= $freq ?>/100 — cu cât e mai mic, cu atât cuvântul e mai rar"><?= $freq ?></span><?php endif; ?>
   <?php if ($meta_str): ?><span class="chip-meta" aria-hidden="true"><?= e($meta_str) ?></span><?php endif; ?>
   <span class="chip-vbadge" aria-hidden="true" title="<?= e($verdict_lbl) ?>"><?= e($verdict_abbr) ?></span>

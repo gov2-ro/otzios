@@ -31,7 +31,53 @@ $SORT_OPTIONS = [
     // not "ancient", and 453 of ~16k words have none.
     'attested' => 'newest_dict_year ASC NULLS LAST, word ASC',
     'alpha'    => 'word ASC',
+    // 'populare' is filled in below — it needs VOTE_BOOST_SQL, and it is only usable
+    // when app.db can be attached, which search.php checks.
 ];
+
+/**
+ * The damped vote weight added to quality_score by the `populare` sort.
+ *
+ * This is `4·ln(1 + |votes|)`, signed, rounded into bands. Bands rather than a call to
+ * LN() because SQLite's math functions are a compile-time option
+ * (SQLITE_ENABLE_MATH_FUNCTIONS) that a shared-host PHP build may not have — and
+ * because a banded ladder is how make_shortlist.py already expresses a damped weight.
+ *
+ *     |votes|   1   2   3–4   5–8   9–16   17–32   33–64   65+
+ *     boost     3   4    6     8     10      12      15     18
+ *
+ * **Each doubling of the vote count is worth about two more points.** That is the whole
+ * anti-abuse argument: the 20th vote adds ~0.2 where the 1st added 2.8, so stuffing has
+ * sharply diminishing returns. The scale matters — the `relevant` seam's quality_score
+ * spans 92–121, with 76% of its 3,495 words inside a ten-point band, so a linear weight
+ * of even 5/vote would let four votes carry a word from the median to the top forty.
+ * Against that span, 20 forged votes buy ~12 points: real movement, not the top.
+ *
+ * Votes can only ever reorder. Nothing here removes a row — see vote_counts_subquery().
+ */
+const VOTE_BOOST_SQL = "
+    CASE
+      WHEN COALESCE(v.votes, 0) = 0 THEN 0
+      ELSE (CASE WHEN v.votes < 0 THEN -1 ELSE 1 END) *
+           (CASE
+              WHEN ABS(v.votes) =  1 THEN  3
+              WHEN ABS(v.votes) =  2 THEN  4
+              WHEN ABS(v.votes) <= 4 THEN  6
+              WHEN ABS(v.votes) <= 8 THEN  8
+              WHEN ABS(v.votes) <= 16 THEN 10
+              WHEN ABS(v.votes) <= 32 THEN 12
+              WHEN ABS(v.votes) <= 64 THEN 15
+              ELSE 18
+            END)
+    END";
+
+// Derived score blended with what people actually marked. Not the default: identity is
+// an anonymous device token, so this stays a control a reader opts into rather than the
+// front page. Ties fall back to the plain quality order.
+$SORT_OPTIONS['populare'] =
+    'COALESCE(quality_score, 0) + (' . VOTE_BOOST_SQL . ') DESC, '
+    . 'quality_score DESC NULLS LAST, dex_frequency DESC';
+
 define('DEFAULT_SORT', 'quality');
 
 $QUICK_TAGS = [
@@ -343,6 +389,14 @@ function build_word_filter(array $p): array {
     //                distinct from `variants`, which keys on a shared paradigm and so
     //                cannot see a pair whose stems differ
     //   diminutives  noruleț, cuconiță — shown by default, unlike the other three
+    //   editorial    the curator read the word and marked it ⚠️ meh. Unlike the four
+    //                above this is a person's judgement rather than a measured
+    //                property, which is exactly why it is a control and not a term in
+    //                quality_score: a scored-in opinion cannot be appealed. It is also
+    //                the *only* human signal permitted to subtract — community marks
+    //                are aggregated live and may only reorder (see the `populare` sort),
+    //                because identity here is an anonymous device token and hiding a
+    //                word must not be cheaper than publishing a list.
     //
     // Each is one three-state control (`hide` / `show` / `only`) rather than a checkbox.
     // The checkbox form forced the polarity to differ per class: an unchecked box is not
@@ -366,13 +420,16 @@ function build_word_filter(array $p): array {
         ['variants',    'variant_like',     'hide', 'show_variants',    'show'],
         ['spellings',   'archaic_spelling', 'hide', 'show_spellings',   'show'],
         ['diminutives', 'diminutive_like',  'show', 'hide_diminutives', 'hide'],
+        ['editorial',   'editor_demote',    'hide', '',                 'hide'],
     ];
     $only_cols = [];
     foreach ($class_modes as [$param, $col, $default, $legacy, $legacy_mode]) {
         if (!db_has_column($col)) { continue; }
         $mode = trim($p[$param] ?? '');
         if (!in_array($mode, ['hide', 'show', 'only'], true)) {
-            $mode = (($p[$legacy] ?? '') === '1') ? $legacy_mode : $default;
+            // A '' legacy name means the class is newer than the checkbox era and has no
+            // old links to honour — don't let it read $p[''].
+            $mode = ($legacy !== '' && ($p[$legacy] ?? '') === '1') ? $legacy_mode : $default;
         }
         if ($mode === 'hide') {
             $conditions[] = "(COALESCE($col, 0) = 0)";

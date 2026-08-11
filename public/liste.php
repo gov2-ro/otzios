@@ -17,6 +17,37 @@ $user    = current_user();
 $user_id = (int) $user['id'];
 $pdo     = app_db();
 
+// ── Alese — the curator's picks ───────────────────────────────────────────────
+//
+// Read from ui.db, not from a `lists` row, and that is the point: it needs no user, no
+// publish step and no app.db state, so it is there on a fresh install with zero visitors
+// and cannot be emptied by the moderation queue. The words come from data/editorial.tsv
+// (tools/export_editorial.py), so what is featured is a tracked file with a git history
+// rather than whatever someone last clicked.
+//
+// Deliberately not filtered by seam. Four of the current picks sit in `curiosity` —
+// which is a fact worth showing rather than hiding: the seam is a score threshold, and
+// a human liking a word below it is exactly the signal that the threshold is arguable.
+
+$featured = [];
+if (db_has_column('editor_pick')) {
+    // Ordered the same way the `populare` sort orders the explorer: the derived score
+    // blended with what everyone marked. Falls back to the score alone when app.db
+    // cannot be attached, so the list renders either way.
+    $has_votes = attach_app_db();
+    $from  = $has_votes
+        ? 'words LEFT JOIN (' . vote_counts_subquery() . ') v ON v.vote_word = words.word'
+        : 'words';
+    $order = $has_votes
+        ? 'COALESCE(quality_score, 0) + (' . VOTE_BOOST_SQL . ') DESC, quality_score DESC'
+        : 'quality_score DESC';
+
+    $featured = db()->query(
+        "SELECT words.word FROM $from WHERE editor_pick = 1 ORDER BY $order"
+    )->fetchAll(PDO::FETCH_COLUMN);
+}
+$featured_packed = $featured ? pack_words($featured) : '';
+
 // ── The four buckets ──────────────────────────────────────────────────────────
 
 $buckets = [];
@@ -79,6 +110,15 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
     .liste-note { font-family: var(--mono); font-size: 0.6875rem; color: var(--text-4); margin: 8px 0 0; }
 
     .bucket-emoji { font-size: 1rem; }
+    /* Marked out with the accent on the leading edge rather than a fill: this card sits
+       above the reader's own lists, and a filled block there reads as the page's
+       background instead of as one card among them. Same reasoning as the Filtre rail
+       and .dex-link in CLAUDE.md — every skin will otherwise reach for a slab here. */
+    .list-card--featured { border-left: 2px solid var(--accent); padding-left: 12px; }
+    .featured-words {
+      font-family: var(--serif); font-size: 0.9375rem; color: var(--text-2);
+      margin: 8px 0 0; line-height: 1.6;
+    }
     .list-card.is-empty .list-name,
     .list-card.is-empty .bucket-emoji { opacity: .45; }
     .list-hint { color: var(--text-3); font-size: 0.8125rem; margin: 6px 0 0; }
@@ -97,6 +137,30 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
       Cuvintele pe care le marchezi în timp ce explorezi se adună singure în patru liste.
       Publică una și primești un link de trimis mai departe.
     </p>
+
+    <!-- ── Alese ──────────────────────────────────────────────────────────── -->
+    <?php if ($featured): ?>
+    <section class="liste-section">
+      <h2>Alese</h2>
+      <div class="list-card list-card--featured">
+        <div class="list-card-top">
+          <span class="bucket-emoji">★</span>
+          <span class="list-name">alese pe îndelete</span>
+          <span class="list-count"><?= $n_words(count($featured)) ?></span>
+        </div>
+        <p class="list-desc">
+          Cuvinte citite unul câte unul și puse deoparte pentru că merită.
+          Ordinea amestecă scorul din pipeline cu marcajele tuturor.
+        </p>
+        <p class="featured-words"><?= e(implode(' · ', array_slice($featured, 0, 12)))
+          . (count($featured) > 12 ? ' …' : '') ?></p>
+        <div class="list-actions">
+          <a class="playlist-btn" href="<?= BASE ?>/?w=<?= e($featured_packed) ?>&amp;sort=populare">deschide în explorator</a>
+          <button class="playlist-btn" data-act="copy-w" data-packed="<?= e($featured_packed) ?>">copiază link</button>
+        </div>
+      </div>
+    </section>
+    <?php endif; ?>
 
     <!-- ── Buckets ────────────────────────────────────────────────────────── -->
     <section class="liste-section">

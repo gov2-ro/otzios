@@ -757,6 +757,29 @@ body {
   flex: none;          /* the word absorbs the cell's slack, never the number */
 }
 
+/* Curator pick. Unlike the three chips below this one shows in *both* views: it is the
+   only mark on a row that is a judgement rather than a restatement of a number, and in
+   cloud view — where the row is just the word — it is the only thing that could carry
+   it. No background: a fill would make the picked rows read as a different kind of
+   object rather than a noted one.
+
+   --accent, deliberately not --star, for two reasons. Gold already means "*you*
+   favourited this" (.fav-star, same token) and these are different claims — one is
+   yours, one is the site's. And --star fails contrast in light mode: measured 2.22:1
+   on paper and 1.98:1 on tezaur against the row, where --accent clears 4.5:1 in all
+   six skins × both themes (worst case brutal light, 4.55:1). At 10px this is small
+   text, which is the bar CLAUDE.md already sets for the --text-4 freq superscript. */
+.chip-pick {
+  font-size: 0.625rem;
+  color: var(--accent);
+  vertical-align: baseline;
+  position: relative;
+  top: -0.4em;
+  line-height: 0;
+  flex: none;
+}
+.word-row[data-selected] .chip-pick { color: rgba(250,247,241,.85); }
+
 /* Table-mode-only chips (hidden in cloud view) */
 .chip-meta   { display: none; }
 .chip-vbadge { display: none; }

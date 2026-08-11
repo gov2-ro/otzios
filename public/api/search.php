@@ -84,16 +84,29 @@ global $SORT_OPTIONS;
 // Fall back if this ui.db predates the rescore and has no quality_score column, so an
 // old database still serves rather than 500-ing on an unknown column.
 $default_sort = db_has_column('quality_score') ? DEFAULT_SORT : 'rare';
+
+// `populare` blends quality_score with what people marked, so it — and only it — needs
+// the vote counts joined in. An install with no app.db (or one we cannot attach) falls
+// back to the default order rather than failing: votes are an enhancement to the
+// ordering, never a precondition for serving the list.
+$from = 'words';
+if ($sort === 'populare' && attach_app_db()) {
+    $from = 'words LEFT JOIN (' . vote_counts_subquery() . ') v ON v.vote_word = words.word';
+} elseif ($sort === 'populare') {
+    $sort = $default_sort;
+}
 $order_by = $SORT_OPTIONS[$sort] ?? $SORT_OPTIONS[$default_sort];
 
-// Count total matching rows
+// Count total matching rows. Deliberately on `words` alone: the LEFT JOIN is 1:1 (the
+// subquery groups by word), so it cannot change the count, and keeping it out means the
+// count query is identical on every sort.
 $count_sql  = "SELECT COUNT(*) FROM words $where";
 $count_stmt = db()->prepare($count_sql);
 $count_stmt->execute($params);
 $total = (int)$count_stmt->fetchColumn();
 
-// Fetch page
-$page_stmt = db()->prepare("SELECT * FROM words $where ORDER BY $order_by LIMIT ? OFFSET ?");
+// Fetch page. `words.*` rather than `*` so the joined columns stay out of the row.
+$page_stmt = db()->prepare("SELECT words.* FROM $from $where ORDER BY $order_by LIMIT ? OFFSET ?");
 $page_stmt->execute(array_merge($params, [PAGE_SIZE, $offset]));
 $words = $page_stmt->fetchAll();
 

@@ -4,6 +4,93 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — editorial picks and community votes
+
+The year-old backlog item („Publish top faves list, hide/demote meh words for everyone
+else") shipped, with its own objection designed around rather than waived. That objection
+was: one person's taste silently rewriting everyone's default view, on an identity model
+where N votes cost N cookie clears.
+
+The resolution is that **the two signals are separate and only one may subtract.** Curator
+marks come from `data/editorial.tsv` — tracked in git like `word_ids.tsv`, exported from
+`app.db` by `tools/export_editorial.py --user N` — and become `words.editor_pick` /
+`editor_demote`. They can hide, through a fifth `fără/cu/doar` control („respinse", default
+`fără`). Community marks never touch `ui.db`: they are aggregated live by
+`vote_counts_subquery()` and may only reorder, through a new `populare` sort. Forging votes
+buys rank, never removal.
+
+A file rather than a live read of `app.db` for two reasons that both hold independently:
+the build runs on a laptop while `app.db` is on the server, so they never see each other;
+and a signal that removes words from what every visitor sees has to be a reviewable diff.
+
+Two measurements shaped the blend. First, `quality_score` is far more compressed than it
+looks — the whole `relevant` seam is 3,495 words between 92 and 121, with 76% inside a
+ten-point band, so a linear weight of 5/vote would let four votes carry a word from the
+median to the top forty. Hence `4·ln(1+votes)` rounded into bands (`VOTE_BOOST_SQL`; bands
+because SQLite's `LN()` is a compile-time option): **each doubling of the votes is worth
+about two more points.**
+
+Second, and this is the part worth remembering: **the sockpuppet scenario had already
+happened by accident.** `barabor` carried 20 distinct-user ★ votes, `subdialect` 19,
+`jbârc` 13 — and every single voter was a test-suite fixture account (`tester`,
+`owner-mod-test`, `pluto`), created by `test_lists_api.js` and `test_moderation.js` runs.
+`_lib.php` already recorded that `jbârc`/`barabor`/`hâșăi` at the top is "the opposite of
+what the list is for", so a naive vote sort would have reproduced exactly the wrong list,
+from the test suite, with no attacker involved. Under the shipped blend `barabor` goes
+92 → 104: real movement, well short of `văz` at 121. `subdialect` would have reached 124
+and topped the list — it is `editor_demote`, so the curator's veto held.
+
+Also: „Alese" on `liste.php`, rendered from `ui.db` with no `lists` row, so it exists on an
+install with zero users; deliberately unfiltered by seam, since 4 of the 11 picks sit in
+`curiosity` and that is the signal that the threshold is arguable. ★ chip on picked rows in
+both views. `tests/test_editorial.js` pins the two invariants; `APP_DB_VERSION` 4 adds
+`idx_annotations_word`, without which the vote aggregate full-scans on every request.
+
+**The ★ chip started on `--star` and moved to `--accent`, for two reasons found in the
+Playwright pass.** Contrast: `--star` measures **2.22:1 on paper light and 1.98:1 on
+tezaur light** against the word row, where `--accent` clears 4.5:1 in all six skins ×
+both themes (worst case brutal light, 4.55:1) — and at 10px this is small text, the bar
+CLAUDE.md already sets for the `--text-4` freq superscript. Meaning: gold already says
+"*you* favourited this" (`.fav-star`, same token), and a curator pick is a different
+claim. Both problems had the same fix.
+
+That measurement also turns up a **pre-existing** finding filed to the backlog: `.fav-star`
+uses `--star` at the same failing ratios, so the user's own favourite marker is below AA in
+light mode on two skins. Not touched here — darkening the token ripples through the palette
+and that is a design decision, not a bug fix.
+
+Visual pass driven by Playwright rather than by eye (`npx playwright`, headless Chromium):
+five class rows render in all six skins, the „doar"/„cu"/„fără" round-trip writes *and
+clears* `?editorial=` (the writer half is the one that silently breaks), the chip reads
+„DOAR RESPINSE", and carrying „doar" onto the rare tab returns 110 words rather than 0 with
+the class section correctly hidden.
+
+Left open: each test run still leaves a fresh anonymous user in the dev `app.db`, and those
+users are the entire vote signal there.
+
+## 2026-08-11 — is this worth a paper?
+
+Asked and answered in `docs/publication-assessment.md`, written to be picked at later
+rather than acted on. Verdict: yes, but not the paper that exists today.
+
+Three things are genuinely publishable — the paradigm rollup as a *method* (DEX's own 2.27M
+inflected forms in place of a lemmatizer, with the `strugur`/`strugure` 12,176→749 receipt),
+the four measured negative results (ppm across a 1,187× size gap; CoRoLa's 1945+ span
+disqualifying it as a modern signal; `subtitle_ro`'s folk-music sixth, where 444 of 2,446
+attested shortlist words appear only in those clips; LUMRO's 111 authors vs 175 novels), and
+the 16,941-word resource itself. The negative results are the strongest material and the
+part nobody else publishes.
+
+The blocker is one thing and it is not new: `conceptual-roadmap.md` §2 named it and it is
+still open — no evaluation against any ground truth, `ARCHAIC_TAGS` being a feature rather
+than held-out labels. Backlog entry under "Publishing a paper (2026-08-11)" carries the
+two ~one-day steps that would settle it, which are worth doing whether or not a paper
+follows: they are the only way to know whether the corpus half beats DEX `frequency` alone.
+
+Also recorded: the historical panel's ~7.25M counted occurrences make zero counts
+statistically empty (roadmap §5), and dataset licensing has three different answers across
+the DEX dump, CulturaX and the LUMRO novels.
+
 ## 2026-08-11 — the class filters become one three-state control each
 
 The Filtre sheet carried six checkboxes for the flag classes, and two of them did nothing.

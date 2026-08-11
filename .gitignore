@@ -3,10 +3,15 @@ data/*
 # Permanent word→id map behind the ?w= share URLs. Tracked on purpose: an id has
 # to mean the same word forever, so losing this file breaks every shared link.
 !data/word_ids.tsv
+# Curator marks behind the ★ picks and the „respinse" filter. Tracked on purpose: it is
+# the only signal allowed to subtract from the default view, so it has to be reviewable
+# as a diff rather than a live read of one person's clicking.
+!data/editorial.tsv
 /tmp
 /data/*
 !/data/ignore_sites.txt
 !/data/word_ids.tsv
+!/data/editorial.tsv
 *.code-workspace
 */_obsolete
 */*.log
