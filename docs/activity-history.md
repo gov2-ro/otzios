@@ -4,6 +4,38 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — clean URLs, and only portrait figures float
+
+Two corrections to the morning's document layout.
+
+**Figures come back inside the content column, and only portrait ones float.** Pushing
+every figure out into a gutter left the prose narrow and the right edge ragged, and a
+landscape screenshot squeezed to a quarter width is unreadable anyway. So the rule is now
+orientation rather than size: portrait floats right at 25% with the text wrapping beside
+it, landscape stays in the flow at full width. The third grid column is gone and both
+pages sit at 1110px (200 TOC + 44 gap + 820 text). `despre.php` measures 3,023px — up from
+2,243 when everything was tiny and out in the margin, down from 5,565 before any of this.
+
+**`/despre` instead of `/despre.php`.** Two rewrites in a new `public/.htaccess`, each
+firing only when the path is not already a real file and the extension-ful version exists.
+No `RewriteBase` — the conditions test `%{REQUEST_FILENAME}`, so it works at any URL depth,
+which this app needs.
+
+The interesting decision is what is *not* there: **no redirect from `/despre.php` back to
+the slug.** It would look tidier and it would break the app. Every API call goes to an
+explicit `api/*.php`, and `sync`, `lists`, `profile` and `game` are POSTs — a 301 on a POST
+is not required to preserve the method, and browsers historically turn it into a GET, so
+the write silently becomes a read. Excluding `/api/` would work but makes the file a list
+of exceptions the next endpoint has to remember to join. Both spellings resolve; canonical
+tags name the slug.
+
+**`php -S` ignores `.htaccess` entirely**, which is exactly the shape of gap where a broken
+link ships because nobody could see it locally. `tools/dev-router.php` mirrors the two
+rules so dev matches production; it lives outside `public/` because anything in there is
+deployed and would be reachable over HTTP. Verified with it: every slug, both legacy
+spellings, all assets, and a POST to `api/sync.php` — zero failed requests across all six
+pages.
+
 ## 2026-08-11 — sticky contents and side figures on the document pages
 
 Asked for smaller screenshots pushed out of the text column, and a documentation-style

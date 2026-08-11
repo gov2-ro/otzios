@@ -34,14 +34,14 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
   <?= otios_skin_boot() ?>
   <title><?= e($og_title) ?></title>
   <meta name="description" content="<?= e($og_desc) ?>">
-  <link rel="canonical" href="<?= e(otios_abs_url('/despre.php')) ?>">
+  <link rel="canonical" href="<?= e(otios_abs_url('/despre')) ?>">
 
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Oțios">
   <meta property="og:locale" content="ro_RO">
   <meta property="og:title" content="<?= e($og_title) ?>">
   <meta property="og:description" content="<?= e($og_desc) ?>">
-  <meta property="og:url" content="<?= e(otios_abs_url('/despre.php')) ?>">
+  <meta property="og:url" content="<?= e(otios_abs_url('/despre')) ?>">
   <meta property="og:image" content="<?= e(otios_abs_url('/screenshot-otzios.png')) ?>">
   <meta property="og:image:alt" content="Lista de cuvinte uitate din Oțios">
 
@@ -57,7 +57,7 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
   <link rel="stylesheet" href="<?= BASE ?>/assets/doc.css">
   <?= otios_skin_links() ?>
   <style>
-    .despre-wrap { max-width: 1240px; margin: 0 auto; padding: 28px 20px 64px; }
+    .despre-wrap { max-width: 1110px; margin: 0 auto; padding: 28px 20px 64px; }
     .despre-wrap h1 {
       font-family: var(--serif); font-size: 2rem; font-weight: 600;
       color: var(--text); margin: 0 0 6px;
@@ -171,13 +171,13 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
       <em>Filtre</em> ca să le vezi pe toate.
     </p>
 
-    <figure class="despre-shot is-wide">
+    <figure class="despre-shot">
       <a href="<?= BASE ?>/assets/despre/grid.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="<?= BASE ?>/assets/despre/grid.png" alt="Grila de cuvinte din Oțios, cu scorul de frecvență DEX lângă fiecare cuvânt" loading="lazy"></a>
       <figcaption>Lista. Cifra mică de lângă cuvânt e frecvența DEX — cât de bine e cuvântul
       așezat în canonul literar, nu cât de des e folosit.</figcaption>
     </figure>
 
-    <h2>Filtrele îți spun ce ascund</h2>
+    <h2>Filtre</h2>
     <p>
       Fiecare filtru arată <strong>câte cuvinte ar întoarce</strong>, recalculat după
       tot ce ai ales deja, și fiecare secțiune are un <span class="despre-key">?</span> cu
@@ -186,7 +186,7 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
       unde am tras linia greșit.
     </p>
 
-    <figure class="despre-shot">
+    <figure class="despre-shot is-portrait">
       <a href="<?= BASE ?>/assets/despre/filtre.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="<?= BASE ?>/assets/despre/filtre.png" alt="Panoul de filtre, cu numărul de cuvinte lângă fiecare opțiune" loading="lazy"></a>
       <figcaption>Panoul de filtre. Numerele se recalculează la fiecare schimbare.</figcaption>
     </figure>
@@ -213,7 +213,7 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
       listă</strong>.
     </p>
 
-    <figure class="despre-shot">
+    <figure class="despre-shot is-portrait">
       <a href="<?= BASE ?>/assets/despre/detail.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="<?= BASE ?>/assets/despre/detail.png" alt="Panoul de detalii al unui cuvânt, cu definiția și butoanele de marcare" loading="lazy"></a>
       <figcaption>Panoul de detalii: definiția, dicționarele în care apare, și butoanele de marcare.</figcaption>
     </figure>
@@ -230,9 +230,9 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
       lista altcuiva. O listă de douăzeci de cuvinte ajunge cu douăzeci.
     </p>
 
-    <figure class="despre-shot is-wide">
+    <figure class="despre-shot">
       <a href="<?= BASE ?>/assets/despre/liste.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="<?= BASE ?>/assets/despre/liste.png" alt="Pagina de liste, cu lista redacției și cele patru liste proprii" loading="lazy"></a>
-      <figcaption>Pagina <a href="<?= BASE ?>/liste.php">Liste</a>: alegerile redacției sus,
+      <figcaption>Pagina <a href="<?= BASE ?>/liste">Liste</a>: alegerile redacției sus,
       cele patru liste proprii dedesubt.</figcaption>
     </figure>
 
@@ -242,8 +242,8 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
       funcționat, care e adesea partea mai utilă.
     </p>
     <div class="despre-more">
-      <a href="<?= BASE ?>/metodologie.html">🧐 Metodologie — cum se măsoară</a>
-      <a href="<?= BASE ?>/stats.php">📊 Statistici — ce e în bază</a>
+      <a href="<?= BASE ?>/metodologie">🧐 Metodologie — cum se măsoară</a>
+      <a href="<?= BASE ?>/stats">📊 Statistici — ce e în bază</a>
       <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">↗ Cod sursă pe GitHub</a>
     </div>
     </div><!-- /.doc-body -->

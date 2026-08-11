@@ -191,16 +191,16 @@ const TIERS = [
  */
 const NAV_ITEMS = [
     'index'  => ['path' => '/',                 'icon' => '◈',  'label' => 'cuvinte'],
-    'joc'    => ['path' => '/joc.php',          'icon' => '🎮', 'label' => 'joc'],
-    'liste'  => ['path' => '/liste.php',        'icon' => '📋', 'label' => 'liste'],
-    'despre' => ['path' => '/despre.php',       'icon' => 'ℹ️', 'label' => 'despre'],
+    'joc'    => ['path' => '/joc',          'icon' => '🎮', 'label' => 'joc'],
+    'liste'  => ['path' => '/liste',        'icon' => '📋', 'label' => 'liste'],
+    'despre' => ['path' => '/despre',       'icon' => 'ℹ️', 'label' => 'despre'],
     // Still real pages and still marked `aria-current` when you are on them — they are
     // simply not in either nav any more. `despre` links to both, which is the shape the
     // bar could actually afford: three labelled entries competing for a phone bar is the
     // measurement that split this nav between header and footer in the first place, and
     // a reader who wants the method has nearly always read the overview first.
-    'stats'  => ['path' => '/stats.php',        'icon' => '📊', 'label' => 'statistici'],
-    'metod'  => ['path' => '/metodologie.html', 'icon' => '🧐', 'label' => 'metodologie'],
+    'stats'  => ['path' => '/stats',        'icon' => '📊', 'label' => 'statistici'],
+    'metod'  => ['path' => '/metodologie', 'icon' => '🧐', 'label' => 'metodologie'],
 ];
 
 /**

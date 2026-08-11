@@ -77,7 +77,7 @@ $stmt = $pdo->prepare(
 $stmt->execute();
 $public_lists = $stmt->fetchAll();
 
-$list_url = fn(array $r): string => BASE . '/lista.php?l=' . urlenc($r['slug']);
+$list_url = fn(array $r): string => BASE . '/lista?l=' . urlenc($r['slug']);
 $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
 ?>
 <!DOCTYPE html>

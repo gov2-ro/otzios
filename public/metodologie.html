@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="canonical" href="metodologie">
   <link rel="stylesheet" href="assets/doc.css">
   <style>
     /* ── Design tokens (mirror base.html) ── */
@@ -302,10 +303,11 @@
        no box, one column, and the leading-zero counters go — a numbered rail beside
        sections that already print „01" in their own headings says it twice. */
     @media (min-width: 1080px) {
-      /* The article was capped at 760px for a single column of prose. As a three-column
-         grid that cap squeezes every track — the text column collapsed and the page went
-         from 13.5k to 30k pixels tall. The cap has to grow with the layout. */
-      .article { max-width: 1240px; }
+      /* The article was capped at 760px for a single column of prose. As a grid that cap
+         squeezes every track — the text column collapsed and the page went from 13.5k to
+         30k pixels tall, taller on desktop than on mobile, which was the tell. The cap has
+         to grow with the layout. */
+      .article { max-width: 1110px; }
 
       .toc {
         background: none;
@@ -590,8 +592,10 @@
   <a href="./" class="nav-brand">Oțios</a>
   <div class="nav-links">
     <a href="./">Cuvinte</a>
-    <a href="metodologie.html" class="current">Metodologie</a>
-    <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">GitHub</a>
+    <a href="despre">Despre</a>
+    <a href="metodologie" class="current">Metodologie</a>
+
+    <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" aria-label="GitHub" style="color: var(--text3); line-height: 1; display: inline-flex; align-items: center; flex-shrink: 0; float: right; margin-top: 1px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path></svg></a>
     <div class="scale-stepper" role="group" aria-label="Mărime text">
       <button type="button" class="scale-btn" data-scale-btn="down" onclick="stepTextScale(-1)" title="Text mai mic">A−</button>
       <button type="button" class="scale-btn" data-scale-btn="up" onclick="stepTextScale(1)" title="Text mai mare">A+</button>
@@ -648,17 +652,18 @@
   <nav class="toc doc-toc" data-toc=".doc-body" aria-label="Cuprins">
     <div class="toc-lbl">Pe această pagină</div>
     <ol>
-      <li><a href="#de-ce">De ce acest proiect</a></li>
-      <li><a href="#sursa">Sursa datelor</a></li>
-      <li><a href="#faza1">Faza 1 — Analiza dicționarului</a></li>
-      <li><a href="#faza2">Faza 2 — Validare diacronică</a></li>
-      <li><a href="#scurtlista">Scurtlista</a></li>
-      <li><a href="#taxonomie">Taxonomie și metadate</a></li>
-      <li><a href="#ui">Interfața de cercetare</a></li>
-      <li><a href="#web">Validare web</a></li>
-      <li><a href="#limite">Limite și capcane</a></li>
+      <li><a href="#de-ce">Despre</a></li>
+      <!-- <li><a href="#sursa">Sursa datelor</a></li> -->
+      <li><a href="#faza1">Analiza dicționarului</a></li>
+      <li><a href="#faza2">Validare diacronică</a></li>
+      <li><a href="#scurtlista">Lista de cuvinte</a></li>
+      <li><a href="#taxonomie">Taxonomie / metadate</a></li>
+      <li><a href="#ui">UI</a></li>
+      <!-- <li><a href="#web">Validare web</a></li> -->
+      <li><a href="#limite">Limite</a></li>
+      <li><a href="#cod">Cod sursă</a></li>
       <li><a href="#cronologie">Cronologie</a></li>
-      <li><a href="#cod">Cod și date</a></li>
+      
     </ol>
   </nav>
 
@@ -905,7 +910,7 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
 
   <!-- 05 ─────────────────────────────── -->
   <section id="scurtlista">
-    <h2><span class="num">05</span> Scurtlista și cele două liste</h2>
+    <h2><span class="num">05</span> 'Lista restrânsă' / shortlist și cele două liste</h2>
     <p>
       <code>make_shortlist.py</code> reduce cele 130k rânduri diacronice la
       <strong>17.577 cuvinte</strong> și le împarte în două, fiindcă proiectul urmărește două
@@ -1003,7 +1008,7 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
       </tbody>
     </table>
     <div class="callout">
-      <p><strong>Pe scurtlistă, Zipf e aproape mereu 0.</strong> Româna are la
+      <p><strong>Pe <em>lista restrânsă</em>, Zipf e aproape mereu 0.</strong> Româna are la
       <code>wordfreq</code> doar lista „mică", a cărei podea de încredere e Zipf 3 — iar
       <strong>17.537 din cele 17.687 de cuvinte</strong> stau sub ea. Filtrul Zipf nu separă
       deci cuvintele uitate între ele; el prinde exact cele câteva zeci de intrări care
@@ -1104,7 +1109,7 @@ Lexeme
 
     <h3>Definiții</h3>
     <p>
-      <code>DefinitionSimple</code> acoperă ~4.600 din cei 17.577 candidați de pe scurtlistă.
+      <code>DefinitionSimple</code> acoperă ~4.600 din cei 17.577 candidați de pe <em>lista restrânsă</em>.
       Restul de ~18.500 sunt completați prin <code>scrape_definitions.py</code>, care extrage
       blocul de sinteză de la <code>dexonline.ro/definitie/{cuvant}</code> la 3s/request
       (respectând serverul comunitar, care este întreținut de voluntari).
@@ -1116,7 +1121,7 @@ Lexeme
     <h2><span class="num">07</span> Interfața de cercetare</h2>
     <p>
       <code>ui/app.py</code> este o aplicație web locală construită cu Flask 3.0 + HTMX 2.0
-      pentru explorarea interactivă a scurtlistei. Nu este un produs public — este un instrument
+      pentru explorarea interactivă a listei. Nu este un produs public — este un instrument
       de cercetare și curare, rulând local pe mașina cercetătorului.
     </p>
     <ul>
@@ -1181,9 +1186,34 @@ Lexeme
     </ul>
   </section>
 
+
+
   <!-- 10 ─────────────────────────────── -->
+  <section id="cod">
+    <h2><span class="num">10</span> Cod și date</h2>
+    <p>
+      &rarr;    &emsp;   <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" aria-label="GitHub" style="color: var(--text2); line-height: 1; display: inline-block; position: relative; bottom: -3px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path></svg></a><a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">/gov2-ro/otzios</a> &middot;
+    <small>Python 3.11+, datasets, pyarrow, wordfreq, simplemma, flask, htmx, bs4, ddgs.</small>  
+    </p>
+    
+    <!-- <ul class="sources">
+      <li><span><code>README.md</code><br><span>Pipeline end-to-end, contracte de date, descrieri de coloane, sample results.</span></span></li>
+      <li><span><code>docs/BACKLOG.md</code><br><span>Probleme deschise P0–P3, cu context complet pentru fiecare.</span></span></li>
+      <li><span><code>docs/activity-history.md</code><br><span>Jurnal de sesiuni — motivele din spatele fiecărei decizii non-evidente.</span></span></li>
+      <li><span><code>docs/conceptual-roadmap.md</code><br><span>Critica metodologică: ce înseamnă cu adevărat „uitat", limitele abordărilor de frecvență.</span></span></li>
+      <li><span><code>docs/corpus-options.md</code><br><span>Catalog de corpusuri românești deschise cu note de acces (OSCAR, CoRoLa, CC-100, Wikisource).</span></span></li>
+      <li><code>CLAUDE.md</code><span>Ghid de colaborare: convenții, mediu, pipeline end-to-end, gotchas.</span></li>
+    </ul>
+    <p>
+      Sursa de date principală — dumpul MySQL DEX Online — este disponibilă public la
+      <a href="https://wiki.dexonline.ro/wiki/Informa%C8%9Bii#Desc%C4%83rcare" target="_blank" rel="noopener">wiki.dexonline.ro</a>.
+      Corpusurile sunt pe HuggingFace: Wikisource RO (acces public), CulturaX RO (necesită
+      autentificare și acceptarea termenilor).
+    </p> -->
+  </section>
+  <!-- 11 ─────────────────────────────── -->
   <section id="cronologie">
-    <h2><span class="num">10</span> Cronologie</h2>
+    <h2><span class="num">11</span> Cronologie</h2>
     <p>
       Cum a evoluat proiectul, în pașii principali. Distilat din jurnalul de activitate
       (<code>docs/activity-history.md</code>) și istoricul de commit-uri.
@@ -1291,55 +1321,25 @@ Lexeme
       <li>
         <div class="tl-date">2026-05-19</div>
         <div class="tl-what">Toggle „uitate" / „rare în uz" în UI — Flask și PHP.</div>
-        <div class="tl-why">Scurtlista conținea și cuvinte rare-în-uz (Zipf 3.0–4.5 cu <code>dex_register</code> non-gol). UI-ul a primit un pill toggle care comută între cele două mulțimi fără reload complet.</div>
+        <div class="tl-why">Lista conținea și cuvinte rare-în-uz (Zipf 3.0–4.5 cu <code>dex_register</code> non-gol). UI-ul a primit un pill toggle care comută între cele două mulțimi fără reload complet.</div>
       </li>
       <li class="milestone">
         <div class="tl-date">2026-05-19</div>
-        <div class="tl-what">Nivel C — <code>dex_absent_highfreq</code>. Fix rare list. Scurtlista: 16.879 → 23.112 cuvinte.</div>
+        <div class="tl-what">Nivel C — <code>dex_absent_highfreq</code>. Fix rare list. Listă cuvinte: 16.879 → 23.112 cuvinte.</div>
         <div class="tl-why">Nivelul C captează cuvinte cu legitimitate DEX ridicată (frequency ≥ 0.85) dar zero urmă în corpusuri — cazul <em>oțios</em> însuși. Fix rare list: <code>rare_in_use</code> acum necesită <code>dex_register</code> non-gol (elimină <em>neurologie</em>, <em>cowboy</em>, <em>manipulat</em> din lista de cuvinte rare).</div>
       </li>
       <li class="milestone">
         <div class="tl-date">2026-08-08</div>
-        <div class="tl-what">Audit de calitate — numărători pe paradigme, praguri pe apariții, două liste. Scurtlista: 25.305 → 16.203 cuvinte.</div>
+        <div class="tl-what">Audit de calitate — numărători pe paradigme, praguri pe apariții, două liste. Listă cuvinte: 25.305 → 16.203 cuvinte.</div>
         <div class="tl-why">Trei erori care se compuneau: același prag de 0,1 ppm aplicat unor corpusuri diferite de 1.187× (deci „absent din româna modernă" însemna sub 1.697 de apariții — <em>zapciu</em>, cu 1.322, era clasificat „dispărut din uz"); numărători pe forme de dicționar, nu pe paradigme (<em>înmărmuri</em> 317 vs 6.376 pentru întreaga paradigmă); iar <em>declining</em> măsura registrul literar, nu declinul — 2.602 din 5.998 aveau peste 8.500 de apariții moderne (<em>vapor</em>, <em>fluviu</em>, <em>cioban</em>, <em>palid</em>). Adăugat <code>extract_inflected_forms.py</code> (2,27M forme → lemma) și anii dicționarelor din tabelul <code>Source</code>. <code>dex_pos</code> reconstruit din <code>Lexeme.modelType</code>: acoperire 2,9% → 99,5%. Lista implicită trecută pe scor compozit, cu <em>relevante</em> / <em>curiozități</em> separate.</div>
       </li>
       <li class="milestone">
         <div class="tl-date">2026-08-11</div>
-        <div class="tl-what">Panel istoric dublu (LUMRO), documente proporționale, grafii vechi ascunse. Scurtlista: 16.203 → 17.577 cuvinte.</div>
+        <div class="tl-what">Panel istoric dublu (LUMRO), documente proporționale, grafii vechi ascunse. Listă cuvinte: 16.203 → 17.577 cuvinte.</div>
         <div class="tl-why">Patru schimbări, fiecare măsurată înainte de a fi acceptată. <strong>(1)</strong> În agregarea pe paradigme, documentele se credită proporțional, ca ocurențele; regula veche le dădea totul-sau-nimic la un prag de 50%, așa că o lemă care nu domina <em>nicio</em> formă aduna apariții și exact zero documente — <em>văz</em> stătea la 96 de apariții și 0 documente și ieșea „fără dovezi", în lista implicită. 170 de rânduri erau în starea asta; acum niciunul. <strong>(2)</strong> <code>process_lumro.py</code> adaugă 175 de romane datate (1845–1920, 111 autori) ca al doilea panel istoric: 381 de cuvinte trec pragul de atestare, 509 urcă în lista „relevante", niciunul nu coboară. Unitatea de document e <em>autorul</em>, nu romanul — din 1.425 de cuvinte atestate de LUMRO, 638 veneau de la un singur scriitor. <strong>(3)</strong> Două corpusuri au fost respinse după măsurare: subtitrările (o șesime televiziune de muzică populară, deci „atestat la TV" însemna „cântat într-un cântec vechi") și CoRoLa (acoperă 1945–prezent, deci scotea <em>birjă</em>, <em>dorobanț</em>, <em>vechil</em> din vederea implicită). <strong>(4)</strong> Eticheta <em>grafie veche</em>: 291 de cuvinte care sunt scrieri ieșite din uz ale unor cuvinte vii (<em>situațiune</em>, <em>sgomot</em>, <em>advocat</em>), cu regulile ținute înadins înguste.</div>
       </li>
     </ol>
   </section>
-
-  <!-- 11 ─────────────────────────────── -->
-  <section id="cod">
-    <h2><span class="num">11</span> Cod și date</h2>
-    <p>
-      Tot codul este Python 3.11+, fără framework-uri grele. Pipeline-ul rulează pe stdlib
-      cu câteva dependențe mici: <code>datasets</code>, <code>pyarrow</code>, <code>wordfreq</code>,
-      <code>simplemma</code>, <code>flask</code>, <code>htmx</code>, <code>ddgs</code>,
-      <code>beautifulsoup4</code>.
-    </p>
-    <ul class="sources">
-      <li><code>README.md</code><span>Pipeline end-to-end, contracte de date, descrieri de coloane, sample results.</span></li>
-      <li><code>docs/BACKLOG.md</code><span>Probleme deschise P0–P3, cu context complet pentru fiecare.</span></li>
-      <li><code>docs/activity-history.md</code><span>Jurnal de sesiuni — motivele din spatele fiecărei decizii non-evidente.</span></li>
-      <li><code>docs/conceptual-roadmap.md</code><span>Critica metodologică: ce înseamnă cu adevărat „uitat", limitele abordărilor de frecvență.</span></li>
-      <li><code>docs/corpus-options.md</code><span>Catalog de corpusuri românești deschise cu note de acces (OSCAR, CoRoLa, CC-100, Wikisource).</span></li>
-      <li><code>CLAUDE.md</code><span>Ghid de colaborare: convenții, mediu, pipeline end-to-end, gotchas.</span></li>
-    </ul>
-    <p>
-      Codul sursă este disponibil pe
-      <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">github.com/gov2-ro/otzios</a>.
-    </p>
-    <p>
-      Sursa de date principală — dumpul MySQL DEX Online — este disponibilă public la
-      <a href="https://wiki.dexonline.ro/wiki/Informa%C8%9Bii#Desc%C4%83rcare" target="_blank" rel="noopener">wiki.dexonline.ro</a>.
-      Corpusurile sunt pe HuggingFace: Wikisource RO (acces public), CulturaX RO (necesită
-      autentificare și acceptarea termenilor).
-    </p>
-  </section>
-
   </div><!-- /.doc-body -->
 
 </article>

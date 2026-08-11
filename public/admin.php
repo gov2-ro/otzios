@@ -169,7 +169,7 @@ $resolved = (int) $pdo->query("SELECT COUNT(*) FROM reports WHERE status != 'ope
     <div class="adm-head">
       <h1>Moderare</h1>
       <span class="adm-sub"><?= count($open) ?> în așteptare · <?= $resolved ?> rezolvate</span>
-      <a class="adm-sub" href="<?= BASE ?>/liste.php" style="margin-left:auto">← liste</a>
+      <a class="adm-sub" href="<?= BASE ?>/liste" style="margin-left:auto">← liste</a>
     </div>
 
     <?php if ($notice !== ''): ?>
@@ -183,7 +183,7 @@ $resolved = (int) $pdo->query("SELECT COUNT(*) FROM reports WHERE status != 'ope
     <?php foreach ($open as $r): ?>
       <div class="adm-card">
         <div class="adm-card-head">
-          <a href="<?= BASE ?>/lista.php?l=<?= urlenc($r['slug']) ?>" target="_blank" rel="noopener">
+          <a href="<?= BASE ?>/lista?l=<?= urlenc($r['slug']) ?>" target="_blank" rel="noopener">
             <?= e($r['title']) ?>
           </a>
           <span class="adm-badge"><?= (int) $r['n_reports'] ?> raportări</span>

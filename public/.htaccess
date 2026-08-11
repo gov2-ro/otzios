@@ -1,0 +1,50 @@
+# Oțios — Apache config for the deployed app folder.
+#
+# Only the contents of public/ are deployed, so this file ships with them. It works at any
+# URL depth without a RewriteBase, because every condition tests %{REQUEST_FILENAME},
+# which Apache has already resolved to an absolute path.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # ── Extensionless URLs: /despre → /despre.php, /metodologie → /metodologie.html ──
+    #
+    # Fires only when the requested path is not already a real file or directory *and* the
+    # extension-ful version exists, so nothing that resolves on its own is touched.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME}.php -f
+    RewriteRule ^(.+?)/?$ $1.php [L]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME}.html -f
+    RewriteRule ^(.+?)/?$ $1.html [L]
+
+    # There is deliberately NO redirect from /despre.php back to /despre.
+    #
+    # It would look tidier and it would break the app. Every API call goes to an explicit
+    # `api/*.php`, and several of them are POSTs — sync.php, lists.php, profile.php,
+    # game.php. A 301 on a POST is not required to preserve the method, and browsers
+    # historically turn it into a GET, so the write silently becomes a read. Excluding
+    # /api/ from such a rule would work, but it makes the file a list of exceptions that
+    # the next endpoint has to remember to join.
+    #
+    # Both spellings therefore resolve, and each page names the slug in its <link
+    # rel="canonical"> so search engines are told which one counts.
+</IfModule>
+
+# Long-lived caching for fingerprint-free static assets is deliberately NOT set here:
+# app.css and app.js are referenced without a version query, so a stale cache would pin a
+# reader to an old UI. The skin files already carry an mtime query string (see _skins.php)
+# and are the only ones safe to cache hard.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(png|jpg|jpeg|gif|svg|webp|ico)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+</IfModule>
+
+# Belt and braces over the data/ directory's own .htaccess — SQLite must never be served.
+<FilesMatch "\.(db|db-wal|db-shm|sqlite3?)$">
+    Require all denied
+</FilesMatch>

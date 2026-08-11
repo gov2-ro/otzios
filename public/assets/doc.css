@@ -6,13 +6,15 @@
    separate token blocks, but the token *names* match (--text, --text-2, --border,
    --accent, --sans, --mono), so this file works in both without either owning it.
 
-   Layout is a three-column grid: TOC · content · gutter. The third column is not empty
-   space for its own sake — it is where the figures go, so a screenshot can sit beside the
-   prose it illustrates instead of interrupting it.
+   Layout is a two-column grid: sticky TOC · content. Figures stay inside the content
+   column — portrait ones float to its right edge so the prose wraps beside them, landscape
+   ones stay in the flow at full width. A floated *landscape* screenshot is unreadable at a
+   quarter width and leaves the text in a gutter of its own, which is why the rule is
+   orientation and not size.
 
    Everything here is desktop-only. Below the breakpoint the grid collapses to one column,
-   the TOC becomes a collapsed <details> at the top, and figures go full width — a phone
-   has no gutter to lend and no room for a persistent sidebar. */
+   the TOC becomes a collapsed <details> at the top, and no figure floats — a phone has no
+   room for a persistent sidebar and none to lend a float. */
 
 .doc-layout { display: block; }
 
@@ -71,10 +73,11 @@
 @media (min-width: 1080px) {
   .doc-layout {
     display: grid;
-    /* TOC · content · gutter for figures. The gutter is capped so the whole block stays
-       optically centred on a very wide screen rather than drifting left. */
-    grid-template-columns: 200px minmax(0, 720px) minmax(0, 260px);
-    column-gap: 40px;
+    /* TOC · content. No third column: figures live *inside* the text column now — a
+       gutter only earns its width if something sits in it, and pushing figures out
+       there left the prose narrow and the right edge ragged. */
+    grid-template-columns: 200px minmax(0, 820px);
+    column-gap: 44px;
     justify-content: center;
     align-items: start;
   }
@@ -92,29 +95,26 @@
 
   .doc-body { grid-column: 2; }
 
-  /* Figures move out of the text column and into the gutter.
-     `float` rather than a grid cell on purpose: the text has to wrap back under a short
-     figure, and a figure has to sit next to the paragraph it belongs to rather than at a
-     row boundary the grid picked. The negative right margin is what puts it outside the
-     column — the width below is the *content* width, so it ends up ~44% of the text
-     column and about a third of the whole block. */
-  .doc-body figure {
+  /* **Only portrait figures float.** A tall screenshot beside the text costs one column
+     of prose and saves a screenful of scrolling; a wide one floated does the opposite —
+     squeezed to a quarter width it becomes unreadable, and the text beside it is left in
+     a gutter of its own. So: portrait to the side, landscape in flow at full width. */
+  .doc-body figure.is-portrait {
     float: right;
     clear: right;
-    width: 300px;
-    margin: 4px -300px 20px 28px;
+    width: 25%;
+    margin: 4px 0 18px 28px;
   }
+  .doc-body figure.is-portrait img { width: 100%; height: auto; max-height: none; }
 
-  /* A screenshot that is taller than it is wide would still run down the page at this
-     width, so cap it and let the image scale inside. */
-  .doc-body figure img { max-height: 340px; width: auto; max-width: 100%; }
-  .doc-body figure.is-wide { width: 380px; margin-right: -300px; }
-  .doc-body figure.is-wide img { max-height: none; width: 100%; }
+  /* Landscape stays in the flow, full column, and must clear any floated neighbour so it
+     does not end up wedged beside one. */
+  .doc-body figure:not(.is-portrait) { clear: both; margin: 18px 0 22px; }
 }
 
-/* Small screens: the float is off, so a tall screenshot still should not eat the page. */
+/* Small screens: no floats, and a tall screenshot still should not eat the page. */
 @media (max-width: 1079px) {
-  .doc-body figure img { max-height: 60vh; width: auto; max-width: 100%; margin: 0 auto; }
+  .doc-body figure img { max-height: 70vh; width: auto; max-width: 100%; margin: 0 auto; }
 }
 
 /* Click a screenshot to see it at full size — the point of shrinking them is that the

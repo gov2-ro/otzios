@@ -740,12 +740,14 @@ layout. They have separate stylesheets and separate token blocks, but the token 
 match (`--text`, `--accent`, `--sans`, `--mono`), so one file styles both without either
 owning it.
 
-The layout is a three-column grid — **TOC · content · gutter** — above 1080px, collapsing
-to one column below. The third column is not decoration: it is where figures go, so a
-screenshot sits beside the prose it illustrates instead of interrupting it. Figures
-`float: right` with a negative right margin rather than occupying a grid cell, because the
-text has to wrap back under a short figure and a figure has to sit next to *its* paragraph
-rather than at whatever row boundary the grid picks.
+The layout is a two-column grid — **sticky TOC · content** — above 1080px, collapsing to
+one column below. Figures stay *inside* the content column: **portrait ones float right at
+25%** so the prose wraps beside them, landscape ones stay in the flow at full width. The
+rule is orientation, not size, and it is worth keeping that way — a landscape screenshot
+squeezed to a quarter width is unreadable, and it leaves the text in a gutter of its own.
+`float` rather than a grid cell because text has to wrap back under a short figure and a
+figure has to sit next to *its* paragraph rather than at whatever row boundary the grid
+picks.
 
 Three things to know before touching it:
 
@@ -759,8 +761,8 @@ Three things to know before touching it:
   once and flickers on every scroll tick.
 - **A page adopting this must raise its `max-width`.** `metodologie.html` capped `.article`
   at 760px for a single column; as a grid that cap squeezes every track, and the page went
-  from 13.5k to 30k pixels tall before it was raised to 1240px. Same reason `.despre-wrap`
-  is 1240px.
+  from 13.5k to **30k** pixels tall before it was raised — taller on desktop than on
+  mobile, which is the tell. Both pages sit at 1110px (200 TOC + 44 gap + 820 text).
 
 ## Page shell — header and footer partials
 
@@ -970,6 +972,36 @@ than `copy()`, because in WAL mode the committed data is split across `app.db` a
 
 This does not replace an off-machine backup. A snapshot beside the original survives a bad
 migration or a mistaken delete, not a lost disk.
+
+## Clean URLs — `public/.htaccess`
+
+`/despre` serves `despre.php`, `/metodologie` serves `metodologie.html`. Two rewrites, each
+firing only when the requested path is not already a real file or directory *and* the
+extension-ful version exists, so nothing that resolves on its own is touched. No
+`RewriteBase`: every condition tests `%{REQUEST_FILENAME}`, which Apache has already
+resolved to an absolute path, so this works at any URL depth.
+
+**There is deliberately no redirect from `/despre.php` back to `/despre`.** It would look
+tidier and it would break the app: every API call goes to an explicit `api/*.php` and
+several are POSTs (`sync`, `lists`, `profile`, `game`). A 301 on a POST is not required to
+preserve the method and browsers historically turn it into a GET, so the write silently
+becomes a read. Excluding `/api/` would work but makes the file a list of exceptions the
+next endpoint has to remember to join. Both spellings resolve; each page names the slug in
+its `<link rel="canonical">`.
+
+**`php -S` ignores `.htaccess`**, so local dev would 404 on every slug and a broken link
+would ship unseen. Use the router:
+
+```bash
+php -S 127.0.0.1:8011 -t public tools/dev-router.php
+```
+
+It mirrors those two rules and nothing else, and lives in `tools/` on purpose — only the
+contents of `public/` are deployed, so a router placed there would be reachable over HTTP.
+
+**On nginx** the equivalent is `try_files $uri $uri.php $uri.html $uri/ =404;` alongside
+the `location ~ \.(db|db-wal|db-shm|sqlite3?)$ { deny all; }` block the deploy section
+already requires.
 
 ## Deploying to a subfolder
 

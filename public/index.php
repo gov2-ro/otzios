@@ -544,7 +544,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
         <tr><td><span class="legend-freq">42</span></td>
             <td>Frecvență DEX, <strong>0–100</strong> — cât de central e cuvântul în dicționar,
                 nu cât de des e folosit
-                (<a href="<?= BASE ?>/metodologie.html#frecvente">explicație</a>)</td></tr>
+                (<a href="<?= BASE ?>/metodologie#frecvente">explicație</a>)</td></tr>
         <tr><td><span class="legend-sw" style="background:var(--v-ext-word,var(--v-ext))"></span></td>
             <td><em>dispărut din uz</em> — niciun semnal modern</td></tr>
         <tr><td><span class="legend-sw" style="background:var(--v-dec-word,var(--v-dec))"></span></td>
