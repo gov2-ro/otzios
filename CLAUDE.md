@@ -715,6 +715,24 @@ Skin files load with an mtime query string, so edits show on plain reload. A sto
 whose file has since been deleted falls back to `DEFAULT_SKIN` (the valid list is baked
 into the pre-paint boot script).
 
+## App shells vs documents — `body.page-doc`
+
+`app.css` styles `body` as the **explorer's** shell: `height: 100vh; overflow: hidden`, a
+flex column whose `#word-list-container` scrolls inside itself. Every page that loads
+app.css inherits that, and for a page that is simply prose it means **the page cannot be
+scrolled at all**.
+
+`liste.php`, `lista.php` and `despre.php` therefore set `class="page-doc"` on `<body>`,
+which restores `height: auto; min-height: 100vh; overflow: visible`. `index.php`,
+`joc.php` and `stats.php` are real shells and keep the default (`stats.php` says so with
+its own inline style).
+
+**This hid for months because it only broke on desktop.** The `max-width: 768px` block
+already relaxes `body { overflow: visible }`, so narrowing the window made the page scroll
+and made the bug look like a rendering quirk rather than a missing class. If a new page is
+mostly text, it needs `page-doc`; check it at a *wide* viewport, because the mobile one
+will lie to you.
+
 ## Page shell — header and footer partials
 
 All five pages (`index`, `stats`, `joc`, `lista`, `liste`) draw the same two partials.

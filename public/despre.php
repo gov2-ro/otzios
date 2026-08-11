@@ -109,7 +109,7 @@ $og_desc  = 'Cum sunt găsite cuvintele uitate ale limbii române: două corpusu
     .despre-more a:hover { border-color: var(--accent); color: var(--accent); }
   </style>
 </head>
-<body>
+<body class="page-doc">
   <?php $page = 'despre'; $brand_tag = 'despre'; require __DIR__ . '/api/_partials/header.php'; ?>
 
   <div class="despre-wrap">

@@ -128,7 +128,7 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
     .list-actions a.playlist-btn { text-decoration: none; display: inline-block; }
   </style>
 </head>
-<body>
+<body class="page-doc">
   <?php $page = 'liste'; $brand_tag = 'liste'; require __DIR__ . '/api/_partials/header.php'; ?>
 
   <div class="lista-wrap">

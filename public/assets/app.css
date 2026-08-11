@@ -73,6 +73,15 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* The default here is the *explorer's* shell: a viewport-height flex column whose word
+   grid scrolls inside itself, so the page behind it must not scroll. Every page that
+   loads app.css inherits that, which is wrong for the ones that are simply documents —
+   liste, lista and despre are ordinary long pages and could not be scrolled at all above
+   768px. (Below it they worked, because the mobile block already relaxes body overflow,
+   which is exactly why this hid for so long: the bug only existed on desktop.)
+
+   So: app shells keep the default, documents opt out with `page-doc` on <body>.
+   index.php, joc.php and stats.php are shells; anything that is mostly prose is not. */
 body {
   font-family: var(--sans);
   font-size: 0.9375rem;
@@ -85,6 +94,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
+}
+body.page-doc {
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
 }
 
 /* ══════════════════════════════════════════

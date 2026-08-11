@@ -4,6 +4,27 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — the document pages could not be scrolled on desktop
+
+Reported against `despre.php`: no scrolling at desktop width, fine once the window was
+narrowed. That last part is the whole diagnosis — the `max-width: 768px` block already
+relaxes `body { overflow: visible }`, so the bug existed **only** on desktop, which is
+also why it had gone unnoticed.
+
+`app.css` styles `body` as the explorer's app shell — `height: 100vh; overflow: hidden`, a
+flex column whose `#word-list-container` scrolls inside itself. Every page loading app.css
+inherits it, and for a page that is just prose that means no scrolling at all. Measured:
+`despre.php` had 5,565px of content in an 800px window with `overflow: hidden`.
+
+**`liste.php` had the same bug** — 2,418px of content, same lock. So this was pre-existing
+and the new page merely inherited it; `lista.php` (a shared word list, and the page most
+likely to arrive from someone else's link) is in the same family and was fixed with them.
+
+Fix is a `body.page-doc` opt-out restoring `height: auto; min-height: 100vh; overflow:
+visible`. Shells keep the default: verified after the change that `#word-list-container`
+still scrolls internally on the explorer, and that stats/index/joc still hold their fixed
+viewport.
+
 ## 2026-08-11 — a Despre page, and the tag explainer finally stays dismissed
 
 **The explainer bug was not where it looked.** `dismissQtExplainer()` wrote to

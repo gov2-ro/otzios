@@ -98,7 +98,7 @@ $desc  = $row && $row['description'] !== ''
     .lista-report button:hover { color: var(--text-2); }
   </style>
 </head>
-<body>
+<body class="page-doc">
   <!-- A shared list is often someone's first page on the site, which is most of
        why the header is shared: an arriving visitor gets the brand, the way back
        into the explorer and the display controls without this page restating any
