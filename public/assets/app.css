@@ -836,19 +836,6 @@ body.page-doc {
   border-left: 2px solid var(--border-2);
 }
 
-/* Facet counts — how many words each filter option would return, given everything else
-   that is set. Deliberately quiet: a number beside every option is a lot of numbers, so
-   they sit in --text-3 at mono-small and never compete with the option's own label. */
-.fs-count {
-  font-family: var(--mono);
-  font-size: 0.625rem;
-  color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-  margin-left: 2px;
-}
-/* Zero is still clickable — it just says there is nothing there. */
-.fs-count.is-zero { opacity: .55; }
-
 /* Table-mode-only chips (hidden in cloud view) */
 .chip-meta   { display: none; }
 .chip-vbadge { display: none; }
@@ -1344,7 +1331,9 @@ body.page-doc {
   font-weight: 600;
 }
 #bookmark-btn:hover { border-color: var(--v-dec); color: var(--v-dec-tx); background: var(--v-dec-bg); }
-#bookmark-btn.active { border-color: var(--v-dec); color: var(--v-dec-tx); background: var(--v-dec-bg); font-weight: 700; }
+/* `.fp-btns` for the same reason as `.qt-btn.active` below — an id plus an attribute
+   selector is only (1,1,0), which `[data-skin="x"] #bookmark-btn` matches exactly. */
+.fp-btns #bookmark-btn.active { border-color: var(--v-dec); color: var(--v-dec-tx); background: var(--v-dec-bg); font-weight: 700; }
 .fav-star { color: var(--star); }
 
 /* Quick tags */
@@ -1379,12 +1368,33 @@ body.page-doc {
   text-align: center;
   line-height: 0.875rem;
 }
-.qt-btn.active { background: var(--v-dec-bg); border-color: var(--v-dec-bd); color: var(--v-dec-tx); font-weight: 700; }
-.qt-btn.active .qt-key { background: var(--v-dec-bg); border-color: var(--v-dec-bd); color: var(--v-dec-tx); }
-.qt-btn[data-qtkey="a"].active { background: var(--v-ext-bg); border-color: var(--v-ext-bd); color: var(--v-ext-tx); }
-.qt-btn[data-qtkey="a"].active .qt-key { background: var(--v-ext-bg); border-color: var(--v-ext-bd); color: var(--v-ext-tx); }
-.qt-btn[data-qtkey="m"].active { background: var(--v-ext-bg); border-color: var(--v-ext-bd); color: var(--v-ext-tx); }
-.qt-btn[data-qtkey="m"].active .qt-key { background: var(--v-ext-bg); border-color: var(--v-ext-bd); color: var(--v-ext-tx); }
+/* ── The marked state, and why these selectors carry `.fp-btns` ──────────────────
+ *
+ * A quick-tag button is a **toggle**: clicking an already-applied tag removes it
+ * (store.js's `.qt-btn` handler). If the applied state does not show, the panel invites
+ * you to press `lol` on a word that is already `lol` — and the click un-tags it. So this
+ * is the affordance, not decoration.
+ *
+ * `.fp-btns` is here purely for specificity. As bare `.qt-btn.active` these rules are
+ * (0,2,0) — exactly the weight of a skin's own `[data-skin="x"] .qt-btn`, which loads
+ * after app.css and therefore *won*: a skin restyling the button's resting background
+ * silently repainted the pressed one to match, with no rule anywhere mentioning
+ * `.active`. Measured: `brutal` and `registru` had both flattened fav/lol/meh to one
+ * appearance, and brutal's own comment claimed "the pressed one is filled solid" while
+ * its only `.active` rule set a border colour the base rule had already set.
+ *
+ * At (0,3,0) a skin's base rule can no longer reach the pressed state, and since
+ * everything below is token-driven, a new skin gets a visible marked state in its own
+ * palette for free. A skin that wants its own treatment overrides `.fp-btns .qt-btn.active`
+ * — deliberately, which is the point. Same reasoning as the `.fs-pill` and `.dex-link`
+ * notes in CLAUDE.md: fix the shape once rather than re-fix every skin.
+ */
+.fp-btns .qt-btn.active { background: var(--v-dec-bg); border-color: var(--v-dec-bd); color: var(--v-dec-tx); font-weight: 700; }
+.fp-btns .qt-btn.active .qt-key { background: var(--v-dec-bg); border-color: var(--v-dec-bd); color: var(--v-dec-tx); }
+.fp-btns .qt-btn[data-qtkey="a"].active { background: var(--v-ext-bg); border-color: var(--v-ext-bd); color: var(--v-ext-tx); }
+.fp-btns .qt-btn[data-qtkey="a"].active .qt-key { background: var(--v-ext-bg); border-color: var(--v-ext-bd); color: var(--v-ext-tx); }
+.fp-btns .qt-btn[data-qtkey="m"].active { background: var(--v-ext-bg); border-color: var(--v-ext-bd); color: var(--v-ext-tx); }
+.fp-btns .qt-btn[data-qtkey="m"].active .qt-key { background: var(--v-ext-bg); border-color: var(--v-ext-bd); color: var(--v-ext-tx); }
 
 .qt-dismissed .qt-explainer { display: none; }
 .qt-explainer {

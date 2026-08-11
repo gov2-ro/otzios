@@ -25,14 +25,20 @@ define('APP_DB_PATH', OTIOS_PRIVATE_DIR . '/app.db');
 
 const APP_DB_VERSION = 4;
 
-// The four annotation buckets a user actually produces, and the annotated_words_subquery()
+// The annotation buckets a user actually produces, and the annotated_words_subquery()
 // argument that selects each. A published list is a snapshot of one of these, which is why
 // `lists.source_tag` stores a key from here — it is what "actualizează" re-reads.
+//
+// **Three, not four: `ascunde` is retired.** It said the same thing as `meh` ("not what I
+// am looking for") with a harsher name, and its button is already commented out of
+// detail.php. The tag itself is *not* forgotten — `api/quiz.php` still reads `tag:ascunde`
+// literally when picking distractors, and old annotations keep working — it simply is no
+// longer a bucket you can publish. A list already published from it keeps its row and its
+// words; it loses only "actualizează", which is what retiring the source means.
 const LIST_BUCKETS = [
-    'fav'     => ['marks' => 'bookmarked',   'emoji' => '★',  'label' => 'favorite'],
-    'lol'     => ['marks' => 'tag:lol',      'emoji' => '😂', 'label' => 'lol'],
-    'ascunde' => ['marks' => 'tag:ascunde',  'emoji' => '🙈', 'label' => 'ascunde'],
-    'meh'     => ['marks' => 'tag:meh',      'emoji' => '😐', 'label' => 'meh'],
+    'fav' => ['marks' => 'bookmarked', 'emoji' => '★',  'label' => 'favorite'],
+    'lol' => ['marks' => 'tag:lol',    'emoji' => '😂', 'label' => 'lol'],
+    'meh' => ['marks' => 'tag:meh',    'emoji' => '😐', 'label' => 'meh'],
 ];
 
 // Input caps. Enforced server-side so the API can't be used as free storage.

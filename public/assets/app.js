@@ -529,47 +529,12 @@ document.addEventListener('click', function(e) {
   panel.hidden = open;
 });
 
-// ── Facet counts ────────────────────────────────────────────────────────────────
-//
-// Every option in the sheet shows how many words it *would* return, given everything
-// else currently set. The numbers arrive on #facet-data as one out-of-band attribute
-// (see search.php / word_list.php) because the sheet lives outside the swapped region.
-//
-// Server-side these are true facet counts: each group is counted with its own filter
-// switched off, so „curiozități" answers "how many if I pick this instead" rather than
-// 0. See facet_counts() in api/_lib.php.
-function applyFacetCounts() {
-  var src = document.getElementById('facet-data');
-  if (!src) return;
-  var data;
-  try { data = JSON.parse(src.dataset.facets || '{}'); } catch (e) { return; }
-  var at = function(path) {
-    var parts = path.split('.'), v = data;
-    for (var i = 0; i < parts.length; i++) { if (v == null) return null; v = v[parts[i]]; }
-    return typeof v === 'number' ? v : null;
-  };
-  document.querySelectorAll('#filter-form [data-facet]').forEach(function(el) {
-    var n = at(el.dataset.facet);
-    if (el.tagName === 'OPTION') {
-      // A select option cannot hold a child element, so the count goes into its text —
-      // and the base label has to be kept on data-label or it is lost after one pass.
-      el.textContent = el.dataset.label + (n === null ? '' : ' (' + n.toLocaleString('ro-RO') + ')');
-    } else {
-      el.textContent = n === null ? '' : n.toLocaleString('ro-RO');
-      // A zero-count option is still clickable — it just says so.
-      el.classList.toggle('is-zero', n === 0);
-    }
-  });
-}
 
 document.body.addEventListener('htmx:afterSwap', function(e) {
   const target = e.detail.target;
   if (target.id === 'word-list') {
     selectedIdx = -1;
     hydrateRows(target);
-    // The facet payload rides along as an OOB swap on #facet-data, which htmx has already
-    // applied by the time this runs.
-    applyFacetCounts();
     // Highlight the word from a shared URL after the list renders
     if (openWord) {
       var all = rows();
@@ -1374,9 +1339,9 @@ document.addEventListener('htmx:configRequest', function(e) {
 
 // ── Word lists ──────────────────────────────────────────────────────────────────
 //
-// The lists themselves live on liste.php — the four buckets (fav / lol / ascunde /
-// meh) plus whatever has been published from them. All this page needs is the fav
-// bucket, for the status-bar share button.
+// The collections themselves live on liste.php — the three buckets (fav / lol / meh),
+// each card carrying whatever has been published from it. All this page needs is the
+// fav bucket, for the status-bar share button.
 
 function bookmarkedWords() {
   const r = getResearch();

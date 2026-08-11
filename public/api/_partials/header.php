@@ -77,7 +77,7 @@ $header_after      = $header_after      ?? '';
     <?php endforeach; ?>
   </nav>
 
-  <?= $header_center ?>
+  <?= $header_center ?> 
   <div class="brand-right">
   <?= $header_nav_extra ?>  
   <?= $header_tools ?>

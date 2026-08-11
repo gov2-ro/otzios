@@ -797,6 +797,56 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 ## Server-side accounts — follow-ups (2026-08-02)
 
 - [ ] **Account claiming via Google OAuth** — the device token is the account today, so clearing cookies loses it and one person on two devices is two users. Schema is ready: `users.auth_provider` / `auth_subject` / `email` are nullable and `devices.user_id` is re-pointable, so this is ~120 lines of vanilla PHP plus a device-merge query, no migration.
+
+- [ ] **Transferable link code — assessment (2026-08-12).** Raised as "can't we use a browser
+  signature so one browser doesn't make duplicate lists, and later let someone copy a token to
+  another device". Two separate things; the first is a non-problem and the second is the OAuth
+  item above without the OAuth.
+
+  **There is no per-browser duplication to fix.** The prompt for this was ~40 near-identical
+  public lists in the dev directory. Measured: 49 public lists across **49 distinct `user_id`s**,
+  and zero duplicate `(user_id, source_tag)` pairs — `publish_bucket`'s one-list-per-bucket rule
+  holds. They are automated test runs: `tests/test_lists_api.js` (nickname `tester`) and
+  `tests/test_moderation.js` (`owner-mod-test`) each open a fresh cookie jar per run and say so
+  in their own headers. A real browser holds one identity for 400 days. Cleanup:
+  `DELETE FROM lists WHERE user_id IN (SELECT id FROM users WHERE nickname IN ('tester','owner-mod-test'));`
+
+  **Browser fingerprinting is the wrong instrument, and would be worse than the status quo.**
+  It fails in both directions and both are bad. *False merges:* two people on a shared laptop, or
+  the same browser build behind one NAT, collapse into one account — and an account here is
+  writeable data, so each could read and delete the other's marks and lists. *False splits:* the
+  UA string changes on every browser update, so the signature drifts and mints a fresh user
+  anyway — the exact failure it was meant to prevent, now silent instead of only on a cookie
+  clear. It also breaks the test suite specifically: `test_moderation.js` needs two distinct
+  users on one machine (an owner and a stranger) to assert you cannot report your own list, and
+  fingerprinting collapses them. And it is a tracking technique on a site whose whole identity
+  story is currently one random token. **Do not implement this.**
+
+  **The transferable code is the right shape and the schema already carries it.** N `devices`
+  rows may share one `user_id` and `devices.user_id` is re-pointable — the `_auth.php` header
+  names this as the upgrade path. Nothing has ever used it: 858 users, 858 devices, exactly one
+  each, because there is no endpoint to add a second. The real problem it solves is not
+  desktop↔mobile so much as **clearing cookies loses everything, permanently, with no warning.**
+
+  Design, when it is picked up:
+  - **Never hand out the device cookie itself.** It is `httponly` precisely so JS cannot read it,
+    and it is a 400-day permanent account key — pasted into a chat or caught in a screenshot,
+    that is forever. Mint a *separate* link code: short-lived (~10 min), single-use, its own
+    table with `expires_at` / `used_at`, redemption rate-limited through the existing
+    `rate_limit()`.
+  - **Generate on the device that holds the data, redeem on the empty one.** That direction makes
+    the hard case rare.
+  - **The merge is the actual work, not the token.** The redeeming browser usually already has an
+    anonymous user with its own annotations. Three options: re-point the new device and abandon
+    what it had; move the rows with last-write-wins (`store.js` already has those semantics from
+    sync); or refuse to link when the target has data. Start with the first plus a plain warning —
+    the second also needs conflict rules for `lists`, since two `fav` lists under one user breaks
+    `publish_bucket`'s one-per-bucket assumption.
+  - **It does not weaken the anti-abuse reasoning** recorded in CLAUDE.md and in the no-auto-hide
+    note below. Linking lets many devices share one user; it does not let one device be many
+    users. Votes are counted per user, so it slightly *reduces* inflation.
+  - **No UI surface exists to hang it on.** Probably a "cont" block in the footer or a small
+    settings page — that is a design decision, not a leftover.
 - [ ] **Spaced repetition off `game_events`** — every answer is logged with word, correctness and response time. Enough to resurface words a user got wrong, and to compute a real per-word difficulty score (which is also a research signal: which "forgotten" words are genuinely unrecognisable).
 - [ ] **Word difficulty stats** — aggregate `game_events` by word to show a global correct-rate. Feeds the stats page and could rank the shortlist by how forgotten a word actually is in practice, not just by corpus frequency.
 - [ ] **JSON export button** — the data is already reachable via `api/sync.php` with `{"since":0}`; only a download button is missing. Closes the older "exported as json" item properly.

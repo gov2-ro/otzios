@@ -102,7 +102,7 @@
   .doc-body figure.is-portrait {
     float: right;
     clear: right;
-    width: 25%;
+    width: 36%;
     margin: 4px 0 18px 28px;
   }
   .doc-body figure.is-portrait img { width: 100%; height: auto; max-height: none; }

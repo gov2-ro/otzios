@@ -129,11 +129,6 @@ global $QUICK_TAGS, $POS_OPTIONS;
         hx-target="#word-list"
         hx-include="#filter-form, #search">
 
-    <!-- OOB landing spot for the per-option counts. hx-swap-oob replaces an element that
-         must already exist, so this placeholder has to be here or the payload is dropped
-         silently on every request. Filled by applyFacetCounts() in app.js. -->
-    <span id="facet-data" hidden data-facets="{}"></span>
-
     <!-- Drag handle (drawer only) -->
     <div class="fs-handle-wrap"><div class="fs-handle"></div></div>
 
@@ -196,12 +191,12 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <label class="fs-pill" title="Cuvinte cu dovezi puternice că au fost folosite și s-au stins: atestate istoric, aproape absente azi, în dicționare multe, încă într-unul tipărit din 2005 încoace.">
             <span class="fs-check"></span>
             <input type="checkbox" name="seam[]" value="relevant" checked>
-            relevante <span class="fs-count" data-facet="seam.relevant"></span>
+            relevante
           </label>
           <label class="fs-pill" title="Restul candidaților: încă îndeplinesc condițiile, dar dovada e mai slabă — adesea cuvinte care n-au circulat niciodată cu adevărat.">
             <span class="fs-check"></span>
             <input type="checkbox" name="seam[]" value="curiosity">
-            curiozități <span class="fs-count" data-facet="seam.curiosity"></span>
+            curiozități
           </label>
         </div>
       </div>
@@ -309,9 +304,9 @@ global $QUICK_TAGS, $POS_OPTIONS;
         <select name="modern" class="fs-select tax-select" data-default=""
                 title="Cât de mult mai apare cuvântul în româna de azi (corpus CulturaX)">
           <option value="">urme azi: oricâte</option>
-          <option value="2" data-facet="modern.2" data-label="încă în circulație">încă în circulație</option>
-          <option value="1" data-facet="modern.1" data-label="urme slabe">urme slabe</option>
-          <option value="0" data-facet="modern.0" data-label="fără nicio urmă">fără nicio urmă</option>
+          <option value="2">încă în circulație</option>
+          <option value="1">urme slabe</option>
+          <option value="0">fără nicio urmă</option>
         </select>
         <?php endif; ?>
         <!-- „marcate" rather than „adnotate": the values cover every kind of meta
@@ -332,8 +327,8 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <span class="fs-row-label">definiție</span>
           <div class="seg seg-sm">
             <label class="seg-opt"><input type="radio" name="has_def" value="" checked> orice</label>
-            <label class="seg-opt"><input type="radio" name="has_def" value="1"> da <span class="fs-count" data-facet="has_def.1"></span></label>
-            <label class="seg-opt"><input type="radio" name="has_def" value="0"> nu <span class="fs-count" data-facet="has_def.0"></span></label>
+            <label class="seg-opt"><input type="radio" name="has_def" value="1"> da</label>
+            <label class="seg-opt"><input type="radio" name="has_def" value="0"> nu</label>
           </div>
         </div>
       </div>
@@ -368,7 +363,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
         <?php foreach ($CLASS_ROWS as [$name, $col, $label, $default, $tip, $words]): ?>
         <?php [$off_val, $off_label] = $name === 'editorial' ? ['back', $words[0]] : ['hide', $words[0]]; ?>
         <div class="fs-row" title="<?= e($tip) ?>">
-          <span class="fs-row-label"><?= e($label) ?> <span class="fs-count" data-facet="<?= e($name) ?>.only"></span></span>
+          <span class="fs-row-label"><?= e($label) ?></span>
           <div class="seg seg-sm">
             <label class="seg-opt"><input type="radio" name="<?= e($name) ?>" value="<?= e($off_val) ?>"<?= $default === $off_val ? ' checked' : '' ?>> <?= e($off_label) ?></label>
             <label class="seg-opt"><input type="radio" name="<?= e($name) ?>" value="show"<?= $default === 'show' ? ' checked' : '' ?>> <?= e($words[1]) ?></label>

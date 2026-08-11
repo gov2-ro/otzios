@@ -153,12 +153,16 @@ $meta_parts = array_filter([
   </div>
 
   <div class="fp-btns">
-    <button id="bookmark-btn" data-word="<?= e($w['word']) ?>" title="fav (f) — păstrează, cuvânt de care ești mândru"><span class="qt-key">f</span><span class="fav-star">★</span> fav</button>
+    <?php /* `aria-pressed="false"` is in the markup rather than only set by JS: the panel
+             is server-rendered and hydrateDetail() runs a tick later, so without it the
+             buttons announce as plain buttons for that tick — and as nothing at all if
+             the script fails. hydrateDetail() flips it to the word's real state. */ ?>
+    <button id="bookmark-btn" aria-pressed="false" data-word="<?= e($w['word']) ?>" title="fav (f) — păstrează, cuvânt de care ești mândru"><span class="qt-key">f</span><span class="fav-star">★</span> fav</button>
     <div id="tags-row" data-word="<?= e($w['word']) ?>">
       <div class="quick-tags">
-        <!-- <button type="button" class="qt-btn" data-qtkey="a" title="ascunde (a) — neinteresant, prea cunoscut. Dispare din listă, îl regăsești în settings"><span class="qt-key">a</span>ascunde</button> -->
-        <button type="button" class="qt-btn" data-qtkey="l" title="lol (l) — amuzant, de păstrat"><span class="qt-key">l</span>lol</button>
-        <button type="button" class="qt-btn" data-qtkey="m" title="meh (m) — la fel ca ascunde, doar zis altfel. Dispare din listă, îl regăsești în settings"><span class="qt-key">m</span>meh</button>
+        <!-- <button type="button" class="qt-btn" aria-pressed="false" data-qtkey="a" title="ascunde (a) — neinteresant, prea cunoscut. Dispare din listă, îl regăsești în settings"><span class="qt-key">a</span>ascunde</button> -->
+        <button type="button" class="qt-btn" aria-pressed="false" data-qtkey="l" title="lol (l) — amuzant, de păstrat"><span class="qt-key">l</span>lol</button>
+        <button type="button" class="qt-btn" aria-pressed="false" data-qtkey="m" title="meh (m) — la fel ca ascunde, doar zis altfel. Dispare din listă, îl regăsești în settings"><span class="qt-key">m</span>meh</button>
       </div>
     </div>
   </div>

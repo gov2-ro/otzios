@@ -4,6 +4,102 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-12 — Colecții, marked tags that show as marked, static despre, no facet counts
+
+**Renamed to „Colecții" in the UI only.** Page title, `<h1>`, section headings, the
+`liste.php` toasts, the despre section and admin's back-link. The table, the endpoint, the
+`/liste` URL and `lists.source_tag` are untouched — `/liste` is a shared-link surface and
+the rest is stored data. `NAV_ITEMS`' label was already changed in the working tree.
+despre's „Cele două liste" stays: it names the *seams*, a different sense of the word.
+
+**`ascunde` retired as a bucket — three, not four.** Removed from `LIST_BUCKETS`, which is
+the single declaration point, so `liste.php`, `publish_bucket` and `refresh` all follow.
+The tag itself still works: `api/quiz.php` reads `tag:ascunde` literally and old
+annotations still resolve. Its bullet is gone from despre's mark list. `index.php`'s
+shortcut table still lists the `a` key — pre-existing, left alone.
+
+**„Alese" removed** from `liste.php` as duplicating „Colecțiile mele" for the reader who is
+also the curator. `editor_pick` still drives the ★ chip; it just has no card here. The
+`ui.db` query, `$featured_packed` and the `.list-card--featured` / `.featured-words` CSS
+went with it.
+
+**„Publicate de mine" folded into the bucket cards.** The same collection used to appear
+twice under two names — „favorite" above and „favorite — pax1" below — with its actions
+split between them. A published row is a *state* of the bucket, so each card now carries
+both: `actualizează` / `fă privată` / `șterge` when published, `publică` when not, and a
+quiet line naming the published title with a link to its page. Three details:
+
+- **`publică` is always `publish_bucket`,** including re-publishing something made private
+  — it reuses the row *and* refills it, so it cannot serve a stale snapshot. `toggle-public`
+  now only ever goes the other way.
+- **The card shows the live bucket count** and names the published one separately when they
+  differ, which is the only thing that makes „actualizează" legible as an action.
+- **`șterge` says which of the two it removes** — the snapshot goes, the marks stay.
+
+**„Alte liste" added** for anything with no bucket to fold into: hand-assembled lists and
+ones published from `ascunde` before it was retired. Hidden when empty. Without it, the
+section that used to show them was the only way to reach them.
+
+**A marked word's tag now shows as marked in the detail panel.** The logic was never
+missing — `hydrateDetail()` has toggled `.active` on `.qt-btn` and `#bookmark-btn` all
+along. Two skins were flattening it in CSS: as bare `.qt-btn.active` the rule is (0,2,0),
+the same weight as `[data-skin="x"] .qt-btn`, which loads after `app.css` and won. So
+`brutal` and `registru` repainted the pressed button to match the resting one without any
+rule naming `.active` — brutal's own comment promised "the pressed one is filled solid"
+while its only `.active` rule set a border colour the base rule had already set. Since
+pressing an applied tag *removes* it, the panel was inviting you to un-tag by accident.
+
+Fixed by shape rather than by two more overrides: the active rules carry `.fp-btns` (0,3,0)
+so a skin's base rule cannot reach them, and being token-driven they give any future skin a
+visible marked state in its own palette for free. `brutal` and `registru` then got
+deliberate inverted-block treatments matching what each already says with `.seg-opt`. Also
+mirrored into `aria-pressed` — the state was colour-only. Verified with headless Chrome
+across all six skins × light and dark; the third instance of this pattern, so it is written
+up in CLAUDE.md beside the Filtre rail and `.dex-link` notes.
+
+**`despre.php` → `despre.html`.** Once the live counts from `ui.db` were cut from the copy,
+the only PHP left was the shell — a database dependency for a page that prints nothing from
+it. `/despre` resolves with no rewrite change: `.htaccess` and `tools/dev-router.php` both
+try `$uri.php` then `$uri.html`. Built from the actual rendered output rather than by
+hand-editing, so nothing was missed. Four things are now hand-maintained and the file's
+header comment names all four: the baked skin list and `DEFAULT_SKIN` in the pre-paint boot
+script, the inlined copy of the header nav, relative paths in place of `BASE` (which is what
+keeps the /oțios/ subfolder deploy working — do not "tidy" them to absolute), and a relative
+`og:image` with `og:url` dropped, since `otios_abs_url()` derived the host from the request
+and a static file has none. Verified against all five skins via the boot script and rendered
+at 1100px.
+
+**Per-option facet counts removed.** The filter sheet showed, beside each option, how many
+words it would return given everything else set. Correct, and cut anyway: only a few groups
+were ever wired, so the sheet read as half-instrumented, and the numbers cost a row —
+„listă" wrapped to two lines because `relevante 2.682` and `curiozități 12.860` no longer fit
+side by side. Gone: `facet_counts()` + `facet_predicate_is_usable()` (`_lib.php`), the
+`$facets` call site in `search.php`, the `#facet-data` OOB payload in `word_list.php` and its
+placeholder in `index.php`, `applyFacetCounts()` in `app.js`, the `.fs-count` CSS, and every
+`data-facet` / `data-label` hook. CLAUDE.md keeps the two properties a future implementation
+would need (neutral value per group, one query per group) and the rule that it comes back for
+all groups or none.
+
+**Identity model assessed, not built** — `docs/BACKLOG.md`, under "Server-side accounts".
+Short version: browser fingerprinting is the wrong instrument (false merges give strangers
+each other's data, false splits happen on every UA change, and it collapses the two distinct
+users `test_moderation.js` needs); a short-lived single-use link code is the right one, and
+`devices.user_id` already supports N devices per user — 858 users have exactly one device
+each only because no endpoint can add a second.
+
+**The duplicate public lists were test fixtures, not a bug.** 49 public rows, 49 distinct
+`user_id`s, zero (user, source_tag) duplicates — the per-user constraint holds.
+`tests/test_lists_api.js` (nickname `tester`) and `tests/test_moderation.js`
+(`owner-mod-test`) each mint fresh anonymous users per run and leave their lists behind, as
+their own headers say. Only the dev `app.db` is affected.
+
+Verified against a copy of `app.db` with a device token minted for the real user, so the
+published/stale/orphan states all rendered with real data. `test_lists_api.js`,
+`test_moderation.js` and `test_editorial.js` pass; `test_store_sync.js` fails identically
+on a stashed tree, so it is unrelated.
+
+---
+
 ## 2026-08-11 — clean URLs, and only portrait figures float
 
 Two corrections to the morning's document layout.

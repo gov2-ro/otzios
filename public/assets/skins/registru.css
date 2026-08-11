@@ -374,6 +374,24 @@
   border-color: var(--text);
   color: var(--text);
 }
+/* A marked word's button is the block inverted — the same thing this skin says with
+   `.seg-opt`, so the two toggles read alike. Without a rule here the base `.qt-btn`
+   above (0,2,0, loaded after app.css) silently outranked app.css's `.qt-btn.active`
+   and a tagged word looked untagged. app.css now carries `.fp-btns` for that reason;
+   this matches it so the override stays deliberate rather than accidental. */
+[data-skin="registru"] .fp-btns .qt-btn.active,
+[data-skin="registru"] .fp-btns #bookmark-btn.active {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+[data-skin="registru"] .fp-btns .qt-btn.active .qt-key,
+[data-skin="registru"] .fp-btns #bookmark-btn.active .qt-key {
+  background: transparent;
+  border-color: currentColor;
+  color: inherit;
+}
+[data-skin="registru"] .fp-btns #bookmark-btn.active .fav-star { color: inherit; }
 
 /* Links are black and underlined, thickening on hover — there is no link hue
    in this system, so the underline is the whole affordance. */

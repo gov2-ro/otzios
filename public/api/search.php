@@ -126,13 +126,8 @@ if ($page * PAGE_SIZE < $total) {
     $next_url     = BASE . '/api/search.php?' . http_build_query($args);
 }
 
-// Facet counts for the filter sheet. Only on page 1 (the sheet does not change as you
-// scroll) and never for a playlist, where the filters do not apply at all.
-$facets = ($page === 1 && $playlist === null) ? facet_counts($_GET) : null;
-
 header('Content-Type: text/html; charset=utf-8');
 render('word_list.php', [
-    'facets'   => $facets,
     'words'    => $words,
     'total'    => $total,
     'page'     => $page,

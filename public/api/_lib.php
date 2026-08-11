@@ -192,7 +192,7 @@ const TIERS = [
 const NAV_ITEMS = [
     'index'  => ['path' => '/',                 'icon' => '◈',  'label' => 'cuvinte'],
     'joc'    => ['path' => '/joc',          'icon' => '🎮', 'label' => 'joc'],
-    'liste'  => ['path' => '/liste',        'icon' => '📋', 'label' => 'liste'],
+    'liste'  => ['path' => '/liste',        'icon' => '📋', 'label' => 'colecții'],
     'despre' => ['path' => '/despre',       'icon' => 'ℹ️', 'label' => 'despre'],
     // Still real pages and still marked `aria-current` when you are on them — they are
     // simply not in either nav any more. `despre` links to both, which is the shape the
@@ -649,75 +649,3 @@ function build_word_filter(array $p): array {
     return ['conditions' => $conditions, 'params' => $params, 'word_tier' => $word_tier];
 }
 
-/**
- * How many words each filter option would return, given everything else the reader has set.
- *
- * These are **facet counts**, not plain counts: a group's own choice is excluded from the
- * base it counts against. Otherwise every option in a group but the chosen one reads 0 —
- * „relevante" would say 2,682 and „curiozități" 0, which tells you nothing about what
- * clicking it would do. Excluding the group's own condition makes each number the answer
- * to "how many if I pick this instead".
- *
- * One query per group rather than one per option: conditional aggregation counts every
- * option of a group in a single pass. Eight scans of an 18k-row table, not forty.
- *
- * Returns ['seam' => ['relevant' => n, …], 'verdict' => […], …]. Groups whose column is
- * missing from this ui.db are simply absent, and the caller renders no number.
- */
-function facet_counts(array $p): array {
-    // group => [param it owns, value that means "this group filters nothing", options]
-    //
-    // A *neutral value*, not unset(). Removing the param reinstates its default, and most
-    // of these default to subtracting — so `unset('seam')` counts curiozități against a
-    // relevante-only base and reports 0, and every class reports 0 for the words it hides.
-    // Each group has to be explicitly switched off, not merely left unspecified.
-    $groups = [
-        'seam'        => ['seam', 'relevant,curiosity',
-                          ['relevant' => "seam = 'relevant'", 'curiosity' => "seam = 'curiosity'"]],
-        'modern'      => ['modern', '',
-                          ['0' => 'modern_band = 0', '1' => 'modern_band = 1', '2' => 'modern_band = 2']],
-        'regional'    => ['regional',    'show', ['only' => 'COALESCE(regional_only,0) = 1']],
-        'variants'    => ['variants',    'show', ['only' => 'COALESCE(variant_like,0) = 1']],
-        'spellings'   => ['spellings',   'show', ['only' => 'COALESCE(archaic_spelling,0) = 1']],
-        'diminutives' => ['diminutives', 'show', ['only' => 'COALESCE(diminutive_like,0) = 1']],
-        'editorial'   => ['editorial',   'show', ['only' => 'COALESCE(editor_demote,0) = 1']],
-        'has_def'     => ['has_def',     '',
-                          ['1' => 'definition IS NOT NULL', '0' => 'definition IS NULL']],
-    ];
-
-    $out = [];
-    foreach ($groups as $name => [$param, $neutral, $options]) {
-        // Rebuild the filter with this group switched off, so its options are counted
-        // against everything *else* the reader has chosen.
-        $rest = $p;
-        $rest[$param] = $neutral;
-        ['conditions' => $conds, 'params' => $args] = build_word_filter($rest);
-        $where = $conds ? 'WHERE ' . implode(' AND ', $conds) : '';
-
-        $sel = [];
-        foreach ($options as $key => $predicate) {
-            // Column may not exist on an older ui.db; skip the whole group if so.
-            if (!facet_predicate_is_usable($predicate)) { continue 2; }
-            $sel[] = "SUM(CASE WHEN $predicate THEN 1 ELSE 0 END)";
-        }
-        if ($sel === []) { continue; }
-
-        $stmt = db()->prepare('SELECT ' . implode(', ', $sel) . " FROM words $where");
-        $stmt->execute($args);
-        $row = $stmt->fetch(PDO::FETCH_NUM) ?: [];
-        $out[$name] = array_combine(array_keys($options), array_map('intval', $row));
-    }
-    return $out;
-}
-
-/** True when every bare column named in a facet predicate exists in this ui.db. */
-function facet_predicate_is_usable(string $predicate): bool {
-    preg_match_all('/\b([a-z_]+)\b/', $predicate, $m);
-    foreach ($m[1] as $tok) {
-        if (in_array($tok, ['coalesce', 'is', 'not', 'null', 'when', 'then', 'else', 'end',
-                            'case', 'sum'], true)) continue;
-        if (in_array($tok, ['relevant', 'curiosity'], true)) continue;
-        if (!db_has_column($tok)) return false;
-    }
-    return true;
-}

@@ -116,8 +116,13 @@ function hydrateDetail(root) {
   if (!word) return;
   var state = getWord(word);
 
+  // `.active` is the visible half and `aria-pressed` the spoken one. Both are needed:
+  // these are toggles — pressing an applied tag removes it — and a state said only in
+  // colour is no state at all to a screen reader, or to anyone who cannot separate the
+  // two hues a given skin picked.
   if (bookEl) {
     bookEl.classList.toggle('active', !!state.bookmarked);
+    bookEl.setAttribute('aria-pressed', state.bookmarked ? 'true' : 'false');
   }
 
   if (noteEl) noteEl.value = state.note || '';
@@ -125,7 +130,10 @@ function hydrateDetail(root) {
   if (tagsEl) {
     tagsEl.querySelectorAll('.qt-btn[data-qtkey]').forEach(function(btn) {
       var tag = qtKeyToTag(btn.dataset.qtkey);
-      if (tag) btn.classList.toggle('active', (state.tags || []).includes(tag));
+      if (!tag) return;
+      var on = (state.tags || []).includes(tag);
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
 
     tagsEl.querySelectorAll('.custom-tag').forEach(function(el) { el.remove(); });

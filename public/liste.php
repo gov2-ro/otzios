@@ -2,13 +2,20 @@
 declare(strict_types=1);
 require_once __DIR__ . '/api/_auth.php';
 
-// The lists hub: /liste.php
+// The collections hub: /liste.php
 //
-// "Your lists" are the four buckets you already fill while browsing — fav, lol,
-// ascunde, meh. They are not stored as lists; they are derived from your annotations
-// on every request, so they can never drift out of date. A row in the `lists` table is
-// a *published snapshot* of one of them, which is why publishing is one button rather
+// "Your collections" are the three buckets you already fill while browsing — fav, lol,
+// meh. They are not stored as lists; they are derived from your annotations on every
+// request, so they can never drift out of date. A row in the `lists` table is a
+// *published snapshot* of one of them, which is why publishing is one button rather
 // than a list-building flow.
+//
+// **One card per bucket, published or not.** There used to be a second section listing
+// the published rows, which meant the same collection appeared twice under two different
+// names — „favorite" above and „favorite — pax1" below — with the actions split between
+// them: publish up here, refresh/unpublish/delete down there. The published row is a
+// *state* of the bucket, not a sibling of it, so the card carries both and the actions
+// change with the state.
 //
 // Server-rendered like lista.php: the bucket links carry packed ?w= URLs that PHP can
 // build directly from ui.db, so opening a bucket in the explorer needs no JavaScript.
@@ -17,38 +24,28 @@ $user    = current_user();
 $user_id = (int) $user['id'];
 $pdo     = app_db();
 
-// ── Alese — the curator's picks ───────────────────────────────────────────────
-//
-// Read from ui.db, not from a `lists` row, and that is the point: it needs no user, no
-// publish step and no app.db state, so it is there on a fresh install with zero visitors
-// and cannot be emptied by the moderation queue. The words come from data/editorial.tsv
-// (tools/export_editorial.py), so what is featured is a tracked file with a git history
-// rather than whatever someone last clicked.
-//
-// Deliberately not filtered by seam. Four of the current picks sit in `curiosity` —
-// which is a fact worth showing rather than hiding: the seam is a score threshold, and
-// a human liking a word below it is exactly the signal that the threshold is arguable.
+// ── My published lists, keyed by the bucket they came from ────────────────────
 
-$featured = [];
-if (db_has_column('editor_pick')) {
-    // Ordered the same way the `populare` sort orders the explorer: the derived score
-    // blended with what everyone marked. Falls back to the score alone when app.db
-    // cannot be attached, so the list renders either way.
-    $has_votes = attach_app_db();
-    $from  = $has_votes
-        ? 'words LEFT JOIN (' . vote_counts_subquery() . ') v ON v.vote_word = words.word'
-        : 'words';
-    $order = $has_votes
-        ? 'COALESCE(quality_score, 0) + (' . VOTE_BOOST_SQL . ') DESC, quality_score DESC'
-        : 'quality_score DESC';
+$stmt = $pdo->prepare('SELECT * FROM lists WHERE user_id = ? ORDER BY updated_at DESC');
+$stmt->execute([$user_id]);
+$my_lists = $stmt->fetchAll();
 
-    $featured = db()->query(
-        "SELECT words.word FROM $from WHERE editor_pick = 1 ORDER BY $order"
-    )->fetchAll(PDO::FETCH_COLUMN);
+$published = [];   // bucket key → list row, folded into that bucket's card
+$orphans   = [];   // everything else: hand-assembled lists, and retired buckets
+foreach ($my_lists as $l) {
+    $tag = (string) ($l['source_tag'] ?? '');
+    if ($tag !== '' && isset(LIST_BUCKETS[$tag]) && !isset($published[$tag])) {
+        $published[$tag] = $l;
+    } else {
+        // Not silently dropped with the section that used to show them. A list created
+        // through `create` + `add` has no bucket to fold into, and one published from
+        // `ascunde` before that bucket was retired has no card left — hiding either
+        // would make someone's list unreachable rather than tidy.
+        $orphans[] = $l;
+    }
 }
-$featured_packed = $featured ? pack_words($featured) : '';
 
-// ── The four buckets ──────────────────────────────────────────────────────────
+// ── The buckets ───────────────────────────────────────────────────────────────
 
 $buckets = [];
 foreach (LIST_BUCKETS as $key => $meta) {
@@ -58,14 +55,13 @@ foreach (LIST_BUCKETS as $key => $meta) {
     $valid = filter_existing_words($words);
     $words = array_values(array_filter($words, fn($w) => isset($valid[$w])));
 
-    $buckets[$key] = $meta + ['words' => $words, 'count' => count($words), 'packed' => pack_words($words)];
+    $buckets[$key] = $meta + [
+        'words'  => $words,
+        'count'  => count($words),
+        'packed' => pack_words($words),
+        'list'   => $published[$key] ?? null,
+    ];
 }
-
-// ── My published lists ────────────────────────────────────────────────────────
-
-$stmt = $pdo->prepare('SELECT * FROM lists WHERE user_id = ? ORDER BY updated_at DESC');
-$stmt->execute([$user_id]);
-$my_lists = $stmt->fetchAll();
 
 // ── Everyone's public lists ───────────────────────────────────────────────────
 
@@ -86,8 +82,8 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
-  <title>Liste — Oțios</title>
-  <meta name="description" content="Listele tale de cuvinte uitate și listele publicate de alții.">
+  <title>Colecții — Oțios</title>
+  <meta name="description" content="Colecțiile tale de cuvinte uitate și cele publicate de alții.">
   <!-- The public directory has no report/takedown path yet (see docs/BACKLOG.md,
        "Moderation for public lists"), so it stays out of search results until it does.
        In-app discovery is unaffected. -->
@@ -110,15 +106,10 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
     .liste-note { font-family: var(--mono); font-size: 0.6875rem; color: var(--text-4); margin: 8px 0 0; }
 
     .bucket-emoji { font-size: 1rem; }
-    /* Marked out with the accent on the leading edge rather than a fill: this card sits
-       above the reader's own lists, and a filled block there reads as the page's
-       background instead of as one card among them. Same reasoning as the Filtre rail
-       and .dex-link in CLAUDE.md — every skin will otherwise reach for a slab here. */
-    .list-card--featured { border-left: 2px solid var(--accent); padding-left: 12px; }
-    .featured-words {
-      font-family: var(--serif); font-size: 0.9375rem; color: var(--text-2);
-      margin: 8px 0 0; line-height: 1.6;
-    }
+    /* The published-as line. Deliberately quiet type rather than another card: it states
+       a state of the bucket above it, and a second card is what this page had before. */
+    .list-pub-note { font-size: 0.8125rem; color: var(--text-3); margin: 6px 0 0; }
+    .list-pub-note a { color: var(--text-2); }
     .list-card.is-empty .list-name,
     .list-card.is-empty .bucket-emoji { opacity: .45; }
     .list-hint { color: var(--text-3); font-size: 0.8125rem; margin: 6px 0 0; }
@@ -129,50 +120,31 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
   </style>
 </head>
 <body class="page-doc">
-  <?php $page = 'liste'; $brand_tag = 'liste'; require __DIR__ . '/api/_partials/header.php'; ?>
+  <?php $page = 'liste'; $brand_tag = 'colecții'; require __DIR__ . '/api/_partials/header.php'; ?>
 
   <div class="lista-wrap">
-    <h1 class="liste-h1">Liste</h1>
+    <h1 class="liste-h1">Colecții</h1>
     <p class="liste-lede">
-      Cuvintele pe care le marchezi în timp ce explorezi se adună singure în patru liste.
+      Cuvintele pe care le marchezi în timp ce explorezi se adună singure în trei colecții.
       Publică una și primești un link de trimis mai departe.
     </p>
 
-    <!-- ── Alese ──────────────────────────────────────────────────────────── -->
-    <?php if ($featured): ?>
-    <section class="liste-section">
-      <h2>Alese</h2>
-      <div class="list-card list-card--featured">
-        <div class="list-card-top">
-          <span class="bucket-emoji">★</span>
-          <span class="list-name">alese pe îndelete</span>
-          <span class="list-count"><?= $n_words(count($featured)) ?></span>
-        </div>
-        <p class="list-desc">
-          Cuvinte citite unul câte unul și puse deoparte pentru că merită.
-          Ordinea amestecă scorul din pipeline cu marcajele tuturor.
-        </p>
-        <p class="featured-words"><?= e(implode(' · ', array_slice($featured, 0, 12)))
-          . (count($featured) > 12 ? ' …' : '') ?></p>
-        <div class="list-actions">
-          <a class="playlist-btn" href="<?= BASE ?>/?w=<?= e($featured_packed) ?>&amp;sort=populare">deschide în explorator</a>
-          <button class="playlist-btn" data-act="copy-w" data-packed="<?= e($featured_packed) ?>">copiază link</button>
-        </div>
-      </div>
-    </section>
-    <?php endif; ?>
-
     <!-- ── Buckets ────────────────────────────────────────────────────────── -->
     <section class="liste-section">
-      <h2>Listele mele</h2>
-      <?php foreach ($buckets as $key => $b): $empty = $b['count'] === 0; ?>
-      <div class="list-card<?= $empty ? ' is-empty' : '' ?>">
+      <h2>Colecțiile mele</h2>
+      <?php foreach ($buckets as $key => $b):
+        $empty = $b['count'] === 0;
+        $l     = $b['list'];
+      ?>
+      <div class="list-card<?= $empty && !$l ? ' is-empty' : '' ?>"<?= $l ? ' data-id="' . (int) $l['id'] . '"' : '' ?>>
         <div class="list-card-top">
           <span class="bucket-emoji"><?= $b['emoji'] ?></span>
           <span class="list-name"><?= e($b['label']) ?></span>
           <span class="list-count"><?= $n_words($b['count']) ?></span>
+          <?php if ($l && $l['is_public']): ?><span class="list-pub">publică</span><?php endif; ?>
         </div>
-        <?php if ($empty): ?>
+
+        <?php if ($empty && !$l): ?>
           <p class="list-hint">
             <?= $key === 'fav'
                 ? 'Apasă f pe un cuvânt care îți place și apare aici.'
@@ -180,22 +152,56 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
           </p>
         <?php else: ?>
           <div class="list-actions">
-            <a class="playlist-btn" href="<?= BASE ?>/?w=<?= e($b['packed']) ?>">deschide în explorator</a>
-            <button class="playlist-btn" data-act="copy-w" data-packed="<?= e($b['packed']) ?>">copiază link</button>
-            <button class="playlist-btn" data-act="publish" data-bucket="<?= e($key) ?>">publică</button>
+            <?php if (!$empty): ?>
+              <a class="playlist-btn" href="<?= BASE ?>/?w=<?= e($b['packed']) ?>">deschide în explorator</a>
+            <?php endif; ?>
+
+            <?php if ($l && $l['is_public']): ?>
+              <!-- The published page's link, not the packed one: once a collection has a
+                   page of its own, that is the address worth sending. -->
+              <button class="playlist-btn" data-act="copy-url" data-url="<?= e($list_url($l)) ?>">copiază link</button>
+            <?php elseif (!$empty): ?>
+              <button class="playlist-btn" data-act="copy-w" data-packed="<?= e($b['packed']) ?>">copiază link</button>
+            <?php endif; ?>
+
+            <?php if ($l): ?>
+              <button class="playlist-btn" data-act="refresh" data-id="<?= (int) $l['id'] ?>"
+                      title="Reia cuvintele marcate acum în „<?= e($b['label']) ?>”">actualizează</button>
+            <?php endif; ?>
+
+            <?php if ($l && $l['is_public']): ?>
+              <button class="playlist-btn" data-act="toggle-public" data-id="<?= (int) $l['id'] ?>"
+                      data-public="1">fă privată</button>
+            <?php elseif (!$empty): ?>
+              <!-- Always `publish_bucket`, never `update {is_public:1}` — it reuses the
+                   existing row *and* refills it from the annotations, so re-publishing a
+                   collection that was made private cannot hand out a stale snapshot. -->
+              <button class="playlist-btn" data-act="publish" data-bucket="<?= e($key) ?>">publică</button>
+            <?php endif; ?>
+
+            <?php if ($l): ?>
+              <button class="playlist-btn" data-act="delete" data-id="<?= (int) $l['id'] ?>">șterge</button>
+            <?php endif; ?>
           </div>
+
+          <?php if ($l): $stale = (int) $l['item_count'] !== $b['count']; ?>
+          <p class="list-pub-note">
+            <?= $l['is_public'] ? 'Publicată ca' : 'Salvată privat ca' ?>
+            <a href="<?= $list_url($l) ?>">„<?= e($l['title']) ?>”</a><?php if ($stale): ?>
+            · <?= $n_words((int) $l['item_count']) ?> în versiunea publicată — apasă
+            <em>actualizează</em> ca s-o aduci la zi<?php endif; ?>.
+          </p>
+          <?php endif; ?>
         <?php endif; ?>
       </div>
       <?php endforeach; ?>
     </section>
 
-    <!-- ── Published ──────────────────────────────────────────────────────── -->
+    <!-- ── Anything that has no bucket to fold into ───────────────────────── -->
+    <?php if ($orphans): ?>
     <section class="liste-section">
-      <h2>Publicate de mine</h2>
-      <?php if (!$my_lists): ?>
-        <p class="lists-empty">Nimic publicat încă. Apasă <em>publică</em> pe una din listele de mai sus.</p>
-      <?php endif; ?>
-      <?php foreach ($my_lists as $l): ?>
+      <h2>Alte liste</h2>
+      <?php foreach ($orphans as $l): ?>
       <div class="list-card" data-id="<?= (int) $l['id'] ?>">
         <div class="list-card-top">
           <span class="list-name"><?= e($l['title']) ?></span>
@@ -208,23 +214,21 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
           <?php if ($l['is_public']): ?>
             <button class="playlist-btn" data-act="copy-url" data-url="<?= e($list_url($l)) ?>">copiază link</button>
           <?php endif; ?>
-          <?php if (isset(LIST_BUCKETS[$l['source_tag'] ?? ''])): ?>
-            <button class="playlist-btn" data-act="refresh" data-id="<?= (int) $l['id'] ?>"
-                    title="Reia cuvintele din lista „<?= e(LIST_BUCKETS[$l['source_tag']]['label']) ?>”">actualizează</button>
-          <?php endif; ?>
           <button class="playlist-btn" data-act="toggle-public" data-id="<?= (int) $l['id'] ?>"
                   data-public="<?= $l['is_public'] ? '1' : '0' ?>"><?= $l['is_public'] ? 'fă privată' : 'publică' ?></button>
           <button class="playlist-btn" data-act="delete" data-id="<?= (int) $l['id'] ?>">șterge</button>
         </div>
       </div>
       <?php endforeach; ?>
+      <p class="liste-note">Liste făcute de mână sau rămase dintr-un marcaj scos din uz. Nu se mai actualizează singure.</p>
     </section>
+    <?php endif; ?>
 
     <!-- ── Directory ──────────────────────────────────────────────────────── -->
     <section class="liste-section">
-      <h2>Liste publice</h2>
+      <h2>Colecții publice</h2>
       <?php if (!$public_lists): ?>
-        <p class="lists-empty">Nicio listă publică deocamdată. A ta poate fi prima.</p>
+        <p class="lists-empty">Nicio colecție publică deocamdată. A ta poate fi prima.</p>
       <?php endif; ?>
       <?php foreach ($public_lists as $l): ?>
       <div class="list-card">
@@ -236,7 +240,7 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
         <?php if ($l['description'] !== ''): ?><p class="list-desc"><?= e($l['description']) ?></p><?php endif; ?>
       </div>
       <?php endforeach; ?>
-      <p class="liste-note">Listele publice sunt scrise de vizitatori. Nu sunt verificate.</p>
+      <p class="liste-note">Colecțiile publice sunt făcute de vizitatori. Nu sunt verificate.</p>
     </section>
   </div>
 
@@ -267,7 +271,7 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
     function ensureNickname() {
       return otiosMe().then(function(me) {
         if (me && me.nickname) return me.nickname;
-        var name = prompt('Sub ce nume publici lista?');
+        var name = prompt('Sub ce nume publici colecția?');
         if (!name || name.trim().length < 2) return null;
         return fetch(OTIOS_BASE + '/api/profile.php', {
           method: 'POST', credentials: 'same-origin',
@@ -300,7 +304,7 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
         ensureNickname().then(function(name) {
           if (!name) { toast('Ai nevoie de un nume ca să publici'); return; }
           listsApi({ action: 'publish_bucket', bucket: btn.dataset.bucket }).then(function(res) {
-            if (res.status !== 200) { toast('Nu am putut publica lista'); return; }
+            if (res.status !== 200) { toast('Nu am putut publica colecția'); return; }
             location.reload();
           });
         });
@@ -308,7 +312,7 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
       }
       if (act === 'refresh') {
         listsApi({ action: 'refresh', id: id }).then(function(res) {
-          if (res.status !== 200) { toast('Nu am putut actualiza lista'); return; }
+          if (res.status !== 200) { toast('Nu am putut actualiza colecția'); return; }
           location.reload();
         });
         return;
@@ -329,7 +333,9 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
         return;
       }
       if (act === 'delete') {
-        if (!confirm('Ștergi lista?')) return;
+        // The card is the bucket now, so this has to say which of the two it removes:
+        // the published snapshot goes, the marked words stay where they were.
+        if (!confirm('Ștergi versiunea publicată? Cuvintele marcate rămân în colecția ta.')) return;
         listsApi({ action: 'delete', id: id }).then(function() { location.reload(); });
       }
     });

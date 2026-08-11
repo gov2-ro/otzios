@@ -603,10 +603,27 @@
   opacity: .65;
   font-weight: 700;
 }
-[data-skin="brutal"] .qt-btn.active,
-[data-skin="brutal"] #bookmark-btn.active { border-color: var(--ink); }
+/* The pressed one really is filled solid now. It used to say only
+   `border-color: var(--ink)` — which the base rule two blocks up already set — so a
+   marked word looked exactly like an unmarked one and the panel invited you to press
+   `lol` on a word that was already `lol`. Carries `.fp-btns` to sit above app.css's
+   own (0,3,0) active rules; see the note at those. */
+[data-skin="brutal"] .fp-btns .qt-btn.active,
+[data-skin="brutal"] .fp-btns #bookmark-btn.active {
+  background: var(--ink);
+  color: var(--on-ink);
+  border-color: var(--ink);
+}
+/* The key badge inverts with it — `currentColor` is now paper on ink. */
+[data-skin="brutal"] .fp-btns .qt-btn.active .qt-key,
+[data-skin="brutal"] .fp-btns #bookmark-btn.active .qt-key {
+  border-color: currentColor;
+  background: transparent;
+  color: inherit;
+  opacity: .75;
+}
 [data-skin="brutal"] .fav-star { color: inherit; }
-[data-skin="brutal"] #bookmark-btn.active .fav-star { color: inherit; }
+[data-skin="brutal"] .fp-btns #bookmark-btn.active .fav-star { color: inherit; }
 
 [data-skin="brutal"] .qt-explainer {
   border: var(--stroke) solid var(--ink);

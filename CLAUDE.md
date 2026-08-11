@@ -308,9 +308,10 @@ being propped up by its relatives.
   obvious undo — as a live query it is one person's clicking silently reshaping the site,
   which is exactly the objection that deferred this feature for a year.
 
-  `editor_pick` is its twin and subtracts from nothing: it drives the ★ chip and the
-  „Alese" list on `liste.php`. **Neither is in `quality_score`**, for the same reason the
-  four class flags are not — a scored-in opinion cannot be appealed.
+  `editor_pick` is its twin and subtracts from nothing: it drives the ★ chip. (It also
+  drove an „Alese" card on `liste.php` until 2026-08-12 — see **Lists** below.)
+  **Neither is in `quality_score`**, for the same reason the four class flags are not — a
+  scored-in opinion cannot be appealed.
 
   **Community marks never reach `ui.db`.** They are aggregated live from every user by
   `vote_counts_subquery()` (`api/_appdb.php`) and may only *reorder*, via the `populare`
@@ -342,19 +343,29 @@ subtracts. **Sinking is not self-explaining** — measured, the first demoted wo
 position 2,556 of 2,682, page 11 — which is exactly why the three-state control stays:
 without it there would be nothing to undo. Pinned by `test_editorial.js` §2c.
 
-**Every option shows how many words it would return** — `facet_counts()` in `_lib.php`,
-shipped to the sheet as one out-of-band `#facet-data` attribute and applied by
-`applyFacetCounts()` in `app.js`. Two things to preserve:
+**There are no per-option counts, and that was a decision** (removed 2026-08-12). The sheet
+briefly showed, beside every option, how many words it would return given everything else
+set — `facet_counts()` in `_lib.php`, shipped as one out-of-band `#facet-data` attribute and
+applied by `applyFacetCounts()` in `app.js`. It was correct and it was cut anyway: the
+numbers were only ever wired to a few groups, so the sheet read as half-instrumented, and
+they cost a row. „listă" wrapped onto two lines because `relevante 2.682` and
+`curiozități 12.860` no longer fit side by side — a control the rail is meant to make
+scannable, made taller by the number explaining it.
 
-- **Each group is counted with its own filter switched off**, via an explicit *neutral
+Do not re-add it piecemeal. If it comes back it is all groups or none, and the wrapping has
+to be solved first. Two things the removed implementation got right and a new one would
+need again:
+
+- **Each group must be counted with its own filter switched off**, via an explicit *neutral
   value*, not `unset()`. Removing a param reinstates its default, and most of these
   default to subtracting — `unset('seam')` counts curiozități against a relevante-only
-  base and reports 0. Every group has to be actively neutralised.
-- **One query per group, not per option.** Conditional aggregation counts every option of
+  base and reports 0.
+- **One query per group, not per option.** Conditional aggregation counted every option of
   a group in one pass: eight scans of an 18k-row table, 12–40 ms, rather than forty.
 
-`#facet-data` must exist in `index.php` as an empty placeholder — `hx-swap-oob` replaces an
-element that is already in the DOM, and without it htmx drops the payload silently.
+Git history has the whole thing (`facet_counts`, `facet_predicate_is_usable`,
+`applyFacetCounts`, `.fs-count`, the `#facet-data` placeholder and the `data-facet` hooks)
+if it is ever wanted back.
 
 **Each filter section has a „?" that reveals a one-line explainer** (`fs_label()` in
 `_lib.php`). A real button and paragraph rather than a `title=` tooltip: a title needs a
@@ -694,6 +705,41 @@ which says nothing on a chip among chips).
 wrapping the row in `if ($sources)` would drop the link for exactly the words whose
 dictionary coverage is thinnest. Verified at 4.5:1 or better in all five skins × both themes.
 
+### A skin must never be able to flatten a *state* — hence `.fp-btns` on the marked rules
+
+The quick-tag buttons (`fav` / `lol` / `meh` in the detail panel) are **toggles**: pressing
+an applied tag removes it. So the applied state is the affordance, not decoration — without
+it the panel invites you to press `lol` on a word that is already `lol`, and the click
+un-tags it.
+
+`app.css` styles that state as `.fp-btns .qt-btn.active` / `.fp-btns #bookmark-btn.active`,
+and the `.fp-btns` is there **purely for specificity**. As bare `.qt-btn.active` the rule is
+(0,2,0) — exactly the weight of a skin's own `[data-skin="x"] .qt-btn`, which loads after
+`app.css` and therefore won. A skin restyling the button's *resting* background silently
+repainted the pressed one to match, with no rule anywhere naming `.active`. Measured
+2026-08-12: `brutal` and `registru` had both flattened fav/lol/meh to a single appearance,
+and brutal's own comment claimed "the pressed one is filled solid" while its only `.active`
+rule set a border colour the base rule two blocks above had already set. `#bookmark-btn` has
+the same problem for the same reason — an id plus an attribute selector is only (1,1,0),
+which `[data-skin="x"] #bookmark-btn` matches exactly.
+
+At (0,3,0) a skin's base rule can no longer reach the pressed state, and because everything
+in those rules is token-driven, **a new skin gets a visible marked state in its own palette
+for free**. A skin that wants its own treatment overrides `.fp-btns .qt-btn.active`
+deliberately, which is the point. `brutal` and `registru` now do (both invert to a solid
+block, matching what each already says with `.seg-opt`).
+
+This is the third instance of one pattern, after the Filtre rail and `.dex-link` above, and
+the generalisation is worth stating: **a token gives a skin a colour to change; a state
+needs a rule a skin cannot outrank by accident.** When you add a component with an on/off
+appearance, put the "on" rule out of reach of `[data-skin] .thing` and check it in all five
+skins — the failure is invisible while you are writing any one skin.
+
+`.active` is also mirrored into `aria-pressed` by `hydrateDetail()` (`store.js`), with
+`aria-pressed="false"` in `detail.php`'s markup so the buttons do not announce as plain
+buttons for the tick before hydration. A state said only in colour is no state at all to a
+screen reader, or to anyone who cannot separate the two hues a given skin picked.
+
 `govuk.css` was built partly to find where the contract runs out. It did: the black
 masthead, the yellow focus state, square marks, dotless tags, the green button and the
 inset rule all needed component rules. That list, and the two hooks worth adding if a
@@ -722,7 +768,7 @@ flex column whose `#word-list-container` scrolls inside itself. Every page that 
 app.css inherits that, and for a page that is simply prose it means **the page cannot be
 scrolled at all**.
 
-`liste.php`, `lista.php` and `despre.php` therefore set `class="page-doc"` on `<body>`,
+`liste.php`, `lista.php` and `despre.html` therefore set `class="page-doc"` on `<body>`,
 which restores `height: auto; min-height: 100vh; overflow: visible`. `index.php`,
 `joc.php` and `stats.php` are real shells and keep the default (`stats.php` says so with
 its own inline style).
@@ -735,14 +781,14 @@ will lie to you.
 
 ## Document pages — `assets/doc.css` + `assets/doc.js`
 
-`despre.php` and `metodologie.html` share a sticky table of contents and a side-figure
+`despre.html` and `metodologie.html` share a sticky table of contents and a side-figure
 layout. They have separate stylesheets and separate token blocks, but the token *names*
 match (`--text`, `--accent`, `--sans`, `--mono`), so one file styles both without either
 owning it.
 
 The layout is a two-column grid — **sticky TOC · content** — above 1080px, collapsing to
 one column below. Figures stay *inside* the content column: **portrait ones float right at
-25%** so the prose wraps beside them, landscape ones stay in the flow at full width. The
+36%** so the prose wraps beside them, landscape ones stay in the flow at full width. The
 rule is orientation, not size, and it is worth keeping that way — a landscape screenshot
 squeezed to a quarter width is unreadable, and it leaves the text in a gutter of its own.
 `float` rather than a grid cell because text has to wrap back under a short figure and a
@@ -753,7 +799,7 @@ Three things to know before touching it:
 
 - **`doc.js` has two modes.** `metodologie.html` ships a hand-written `<ol>` whose wording
   is editorial (it shortens „Faza 2 — Validare diacronică" to „Faza 2"), so that list is
-  left alone and only gets scroll-spy. `despre.php` has no list, so one is built from its
+  left alone and only gets scroll-spy. `despre.html` has no list, so one is built from its
   headings. The contract is the same either way: a container with
   `data-toc="<selector for the content>"`.
 - **Scroll-spy tracks the last heading *past* the reading line, not the intersecting
@@ -785,7 +831,7 @@ already carrying brand, search, count, play and filters, and a full five-entry n
 three toggles is what broke it; `index.php` had already put its counts and legend in the
 bottom bar, which is also thumb-reachable on a phone.
 
-**`despre.php` is the nav's third entry, and it replaced `statistici` + `metodologie`
+**`despre` is the nav's third entry, and it replaced `statistici` + `metodologie`
 rather than joining them.** Three labelled entries competing for a phone bar is the
 measurement this header/footer split was built on; a fourth broke it again. Both pages are
 linked from `despre` instead — and a reader who wants the method has nearly always read the
@@ -801,6 +847,12 @@ take four labelled nav entries (measured — that is what produced this split in
 place), and burying the two pages that *explain the project* in a footer under the display
 toggles hid them from the desktop reader who would actually follow them. `joc` and `liste`
 stay in the header at every width; they are the two places people jump to mid-browse.
+
+That is about the `despre` *entry*, drawn on the pages that use the partials. **The despre
+page itself no longer draws either one** — it is static `despre.html` since 2026-08-12, with
+the header nav inlined as a copy and no footer at all. `NAV_ITEMS` is still the source of
+truth everywhere else; the copy in that one file is hand-maintained, and its own header
+comment says so.
 
 901px is reused deliberately: it is already the footer nav's label/icon breakpoint, so
 there is one crossover in `app.css` to keep in step rather than two that can drift.
@@ -865,12 +917,55 @@ Five things to preserve:
 `lista.php` sets `$brand_tag` but deliberately no `$page`: it is not `liste.php`, so
 nothing in the nav should render as current and stop being clickable.
 
-## Lists
+## Lists — „Colecții" in the UI
 
-**The four buckets are the lists.** `fav` / `lol` / `ascunde` / `meh` (declared once in
+**The page is called Colecții; the table, the endpoint and the URL are still `lists` /
+`lista` / `liste`.** The rename is user-facing wording only — `/liste` is a shared-link
+surface and `lists.source_tag` is stored data, so neither moved. The one place the old
+word survives on screen is despre's „Cele două liste", which is about the *seams* and is
+a different sense of the word.
+
+**The three buckets are the collections.** `fav` / `lol` / `meh` (declared once in
 `LIST_BUCKETS`, `api/_appdb.php`) are derived from `app.db.annotations` on every request via
 `bucket_words()` — never stored, so they cannot drift out of date. `liste.php` shows them
-alongside your published lists and a directory of everyone's.
+and a directory of everyone's public ones.
+
+**`ascunde` was retired as a bucket** — it said what `meh` says with a harsher name, and
+its button was already commented out of `detail.php`. The tag is *not* forgotten:
+`api/quiz.php` reads `tag:ascunde` literally when picking distractors and old annotations
+still resolve. It is only no longer publishable. Anything published from it before the
+retirement keeps its row and its words, and surfaces under „Alte liste" (below) with
+„actualizează" gone — which is what retiring a source means. `index.php`'s shortcut table
+still lists the `a` key; that predates this and is a separate decision.
+
+**One card per bucket, published or not** — there is no second „Publicate de mine"
+section. It used to list the published rows, so the same collection appeared twice under
+two names („favorite" above, „favorite — pax1" below) with its actions split between them:
+publish up here, refresh/unpublish/delete down there. A published row is a *state* of the
+bucket, not a sibling of it. Three consequences worth keeping:
+
+- **„publică" always means `publish_bucket`**, never `update {is_public:1}` — including
+  re-publishing one that was made private. `publish_bucket` reuses the existing row *and*
+  refills it, so re-publishing cannot hand out a stale snapshot. `toggle-public` is left
+  doing only the one direction that needs no refill (`fă privată`).
+- **The card shows the live bucket count**, and names the published count separately when
+  the two differ („9 cuvinte în versiunea publicată — apasă *actualizează*"). Showing one
+  number for both is how a published list silently goes stale.
+- **`șterge` on a bucket card removes the published snapshot, not the marks**, so its
+  confirm says so. On the old page the button sat on a row that *was* only the snapshot;
+  here it sits on the bucket.
+
+**„Alte liste" is the escape hatch and must not be dropped.** Anything whose `source_tag`
+is `''` (hand-assembled through `create` + `add`) or names a retired bucket has no card to
+fold into. Rendering only the three buckets would make those unreachable rather than tidy.
+The section hides itself when empty, which is the normal case.
+
+**The „Alese" card was removed** from this page (2026-08-12) as duplicating „Colecțiile
+mele" for the one reader who is also the curator. `editor_pick` still drives the ★ chip in
+the explorer and still comes from `data/editorial.tsv`; it simply has no surface on
+`liste.php` any more. If it is ever wanted back, the argument for it was that it needs no
+user, no publish step and no app.db state — it reads `ui.db` directly, so it is there on a
+fresh install with zero visitors.
 
 A row in the `lists` table is a **published snapshot** of a bucket. `lists.source_tag`
 records which one:
@@ -975,13 +1070,15 @@ migration or a mistaken delete, not a lost disk.
 
 ## Clean URLs — `public/.htaccess`
 
-`/despre` serves `despre.php`, `/metodologie` serves `metodologie.html`. Two rewrites, each
+`/despre` serves `despre.html`, `/metodologie` serves `metodologie.html`. Both are plain
+`.html` now; the rewrite tries `$uri.php` first and then `$uri.html`, so neither needed a
+rule of its own. Two rewrites, each
 firing only when the requested path is not already a real file or directory *and* the
 extension-ful version exists, so nothing that resolves on its own is touched. No
 `RewriteBase`: every condition tests `%{REQUEST_FILENAME}`, which Apache has already
 resolved to an absolute path, so this works at any URL depth.
 
-**There is deliberately no redirect from `/despre.php` back to `/despre`.** It would look
+**There is deliberately no redirect from `/despre.html` back to `/despre`.** It would look
 tidier and it would break the app: every API call goes to an explicit `api/*.php` and
 several are POSTs (`sync`, `lists`, `profile`, `game`). A 301 on a POST is not required to
 preserve the method and browsers historically turn it into a GET, so the write silently
