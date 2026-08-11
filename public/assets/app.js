@@ -983,8 +983,6 @@ var AF_SPECS = [
       if (v === 'marked')     return 'marcate';
       if (v === 'bookmarked') return '★ favorite';
       return v.indexOf('tag:') === 0 ? 'tag: ' + v.slice(4) : v; } },
-  { name: 'zipf_min',       type: 'number',   label: function(v){ return 'zipf ≥' + v; } },
-  { name: 'zipf_max',       type: 'number',   label: function(v){ return 'zipf ≤' + v; } },
   { name: 'dexfreq_min',    type: 'number',   label: function(v){ return 'dex ≥' + v; } },
   { name: 'dexfreq_max',    type: 'number',   label: function(v){ return 'dex ≤' + v; } },
   // The four special classes. Three states each, so the chip has to name which one is
@@ -1154,8 +1152,8 @@ function applyUrlToForm() {
     if (el) el.value = val;
   });
 
-  // Explore: number inputs (zipf_min, zipf_max, dexfreq_min, dexfreq_max)
-  ['zipf_min', 'zipf_max', 'dexfreq_min', 'dexfreq_max'].forEach(function(name) {
+  // Explore: number inputs (the zipf pair went with the dead wordfreq filter)
+  ['dexfreq_min', 'dexfreq_max'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     var el = form.querySelector('input[name=' + name + ']');
@@ -1232,7 +1230,7 @@ function syncUrlFromForm() {
   });
 
   // Explore: number inputs
-  ['zipf_min', 'zipf_max', 'dexfreq_min', 'dexfreq_max'].forEach(function(name) {
+  ['dexfreq_min', 'dexfreq_max'].forEach(function(name) {
     var el = form.querySelector('input[name=' + name + ']');
     if (el && el.value.trim()) params.set(name, el.value.trim());
   });

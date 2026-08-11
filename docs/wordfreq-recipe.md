@@ -1,5 +1,14 @@
 # wordfreq recipe — the pragmatic path
 
+> **Status (2026-08-11): this screen feeds nothing.** The `rare_in_use` tab it filled was
+> removed. wordfreq's Romanian list has no resolution at the low end — measured over 60,000
+> candidates, **99.6% score exactly 0.00** because the library has never heard of them, so
+> its lowest real scores are ordinary words (`haz` 3.31, `bețiv` 3.22) while `zapciu`,
+> `vornic` and `logofăt` are all 0.00 and indistinguishable. A tier defined on that band
+> could only ever hold common words, at any threshold. The idea it was reaching for is now
+> the `urme azi` filter, measured on CulturaX. The script still runs standalone; do not wire
+> it back into `ui.db`. See docs/BACKLOG.md and CLAUDE.md.
+
 For this project's actual goal — *produce a defensible list of Romanian
 dictionary words that aren't in common modern use* — `wordfreq` plus
 lemmatization probably collapses Phase 2 into a one-line lookup. This doc

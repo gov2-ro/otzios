@@ -4,6 +4,38 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — clearing the open items: two removed, two closed won't-fix
+
+Triage of what today's work left behind, with the two questionable ones measured first
+rather than guessed.
+
+**Removed the `zipf` explore filter.** wordfreq scored 17,533 of 17,577 words at exactly
+`0.00`, so any floor above zero left 44 rows out of 18,270. It was the last place wordfreq
+touched the UI, and the same resolution problem that got the „rare" tab deleted. Same call
+as `hide_loanwords` and `proper_noun_like`-as-a-browsing-filter: a control that reveals
+nothing is worse than no control.
+
+**Fixed `.fav-star` at 3:1, not 4.5:1, and that distinction is the fix.** I had filed this
+as needing a palette decision because 4.5:1 turns the gold brown (`#D4A017` → `#8E6B0F`).
+That bar was wrong: the ★ sits *inside a button that says the word „fav" beside it*, so the
+colour carries no information and it is a graphical mark (WCAG 1.4.11), not text. At 3:1
+the gold survives — `#AE8313`, `#B38105`, `#AB7617`.
+
+Worth noting how the first attempt was still wrong: I computed against the *row* ground
+when the button has its own background, which left paper at 2.83 and velin at 2.87 —
+"fixed" and still failing. Re-measured against the real ground in-browser; all six skins ×
+both themes now clear 3:1.
+
+**Closed won't-fix, both measured:** inflected forms as headwords is 80 words, *none* in
+the `relevant` seam, and most are legitimate nominalised infinitives (`zimbire`,
+`trândăvire`, `dormire`) — the real offenders went with the deleted tier. And dropping the
+inert `en_zipf` column would be a schema migration for zero benefit; the rule that matters
+is written down instead.
+
+Also: `docs/wordfreq-recipe.md` now carries a status banner saying the screen feeds
+nothing, and the editorial marks were re-exported (13 pick / 191 demote in `app.db`, of
+which 12 and 176 exist in the rebuilt shortlist).
+
 ## 2026-08-11 — the main list picks up 706 words the stale candidate file was hiding
 
 The unfinished half of the morning's stale-file fix. `create_curated_list.py` had been

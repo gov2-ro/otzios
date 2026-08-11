@@ -353,17 +353,15 @@ global $QUICK_TAGS, $POS_OPTIONS;
         <?php endforeach; ?>
       </div>
 
-      <!-- Explore: numeric ranges (zipf, DEX frequency) -->
+      <!-- Explore: numeric ranges.
+           The zipf range that used to sit here is gone. wordfreq has no Romanian data for
+           17,533 of the 17,577 words it was offered against — they all score exactly 0.00
+           — so `zipf ≥` anything above zero left 44 rows out of 18,270. A slider that
+           looks continuous and has two states is worse than no slider, which is the same
+           call already made for `hide_loanwords` and for `proper_noun_like` as a browsing
+           filter. The `zipf_frequency` column stays; it is just not a control. -->
       <div class="fs-section">
         <div class="fs-label">explore</div>
-        <?php if (db_has_column('zipf_frequency')): ?>
-        <div class="fs-range-row" title="Scor Zipf română wordfreq (0–8)">
-          <span class="fs-range-label">zipf</span>
-          <input type="number" name="zipf_min" step="0.1" min="0" max="8" placeholder="min" class="fs-input">
-          <span class="fs-range-sep">–</span>
-          <input type="number" name="zipf_max" step="0.1" min="0" max="8" placeholder="max" class="fs-input">
-        </div>
-        <?php endif; ?>
         <div class="fs-range-row" title="Frecvență editorială DEX 0–100">
           <span class="fs-range-label">dex</span>
           <input type="number" name="dexfreq_min" step="1" min="0" max="100" placeholder="min" class="fs-input">

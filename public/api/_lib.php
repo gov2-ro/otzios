@@ -49,7 +49,7 @@ $SORT_OPTIONS = [
  * **Each doubling of the vote count is worth about two more points.** That is the whole
  * anti-abuse argument: the 20th vote adds ~0.2 where the 1st added 2.8, so stuffing has
  * sharply diminishing returns. The scale matters — the `relevant` seam's quality_score
- * spans 92–121, with 76% of its 3,495 words inside a ten-point band, so a linear weight
+ * spans 92–121, with 76% of its 3,499 words inside a ten-point band, so a linear weight
  * of even 5/vote would let four votes carry a word from the median to the top forty.
  * Against that span, 20 forged votes buy ~12 points: real movement, not the top.
  *
@@ -541,13 +541,11 @@ function build_word_filter(array $p): array {
 
     // ── Explore filters ────────────────────────────────────────────────────────
 
-    // Zipf range (wordfreq Zipf scale 0–8)
-    if (db_has_column('zipf_frequency')) {
-        $zipf_min = isset($p['zipf_min']) && $p['zipf_min'] !== '' ? (float)$p['zipf_min'] : null;
-        $zipf_max = isset($p['zipf_max']) && $p['zipf_max'] !== '' ? (float)$p['zipf_max'] : null;
-        if ($zipf_min !== null) { $conditions[] = 'zipf_frequency >= ?'; $params[] = $zipf_min; }
-        if ($zipf_max !== null) { $conditions[] = 'zipf_frequency <= ?'; $params[] = $zipf_max; }
-    }
+    // The zipf range filter is gone. wordfreq scores 17,533 of 17,577 of these words at
+    // exactly 0.00 — it has no Romanian data for them — so any floor above zero left 44
+    // rows out of 18,270. Same reason `hide_loanwords` went and `proper_noun_like` stopped
+    // being a browsing filter: a control that reveals nothing is worse than no control.
+    // The column stays for the detail panel and for `sort=rare`'s neighbours.
 
     // DEX frequency range (0–100 UI scale → 0–1 storage)
     $dexfreq_min = isset($p['dexfreq_min']) && $p['dexfreq_min'] !== '' ? (float)$p['dexfreq_min'] : null;

@@ -1207,7 +1207,7 @@ because they are content/data decisions, not styling.
   Licensing is a separate blocker for any dataset release: DEX dump, CulturaX and the LUMRO
   novels have three different answers, and the novels are the one that could stop it.
 
-- [ ] **`--star` is below AA in light mode on two skins** — measured 2026-08-11 with a
+- [x] **`--star` is below AA in light mode on two skins** — measured 2026-08-11 with a
   Playwright contrast probe against the word row: `paper` **2.22:1**, `tezaur` **1.98:1**,
   with `registru` (4.10) and `velin` (3.26) passing only the 3:1 graphic bar. It is used by
   `.fav-star` (`app.css:1272`), the reader's own favourite marker, so this is a real
@@ -1218,6 +1218,21 @@ because they are content/data decisions, not styling.
   fixed at the same time: darkening `--star` enough for AA takes `#D4A017` to roughly
   `#8A6400`, which stops reading as gold — that is a palette decision across five skins, not
   a bug fix to fold into an unrelated change.
+
+  **Fixed 2026-08-11 at 3:1, not 4.5:1, and the distinction is the whole fix.** `.fav-star`
+  is a ★ *inside a button that says the word „fav" beside it* — the colour carries no
+  information, so it is a graphical mark (WCAG 1.4.11) rather than text. At 4.5:1 the gold
+  goes brown (`#D4A017` → `#8E6B0F`); at 3:1 it stays gold:
+
+  | | was | now | |
+  |---|---|---|---|
+  | `app.css` (paper) | `#D4A017` | `#AE8313` | 2.22 → 3.03 |
+  | `tezaur` | `#E0A106` | `#B38105` | 1.98 → 3.23 |
+  | `velin` | `#B07A18` | `#AB7617` | 2.87 → 3.03 |
+
+  Measured against the *button's* ground, not the page's — the first calculation used the
+  row background and was off by ~0.2, which is the kind of error that makes a "fixed"
+  contrast still fail. All six skins × both themes verified in-browser afterwards.
 
   The probe is ~30 lines of Playwright and worth keeping as a tool: it resolves a token to
   its computed colour, walks up for the first non-transparent ground, and prints the ratio
@@ -1380,3 +1395,22 @@ because they are content/data decisions, not styling.
   with the rare tab. `en_zipf >= 4.0` matches **0** of the 18,270 words on the list (724
   have any value at all), so it cannot come back as a filter here without first finding a
   population it separates.
+
+- [x] **The `zipf` explore filter is removed** — 2026-08-11. wordfreq scored 17,533 of
+  17,577 words at exactly `0.00`, so any floor above zero left 44 rows out of 18,270. Same
+  call already made for `hide_loanwords` and for `proper_noun_like` as a browsing filter:
+  a control that reveals nothing is worse than no control. The `zipf_frequency` column
+  stays; it is simply not offered as a filter.
+
+- [ ] **Closed as won't-fix: inflected forms as headwords.** Measured 2026-08-11 against
+  the rebuilt shortlist: **80 words** whose only DEX `modelType` is `T`/`IL`, **none of
+  them in the `relevant` seam**, and most are legitimate nominalised infinitives
+  (`zimbire`, `trândăvire`, `dormire`, `spășire`) rather than junk. The real offenders
+  (`țipând`, `citarea`, `patinoare`) were in the deleted `rare_in_use` tier and went with
+  it. Not worth a pipeline change.
+
+- [ ] **Closed as won't-fix: dropping the `en_zipf` column.** It is inert — its only
+  consumer was `hide_loanwords` — but a column costs nothing and a schema migration for
+  zero benefit costs more. The rule that matters is written down instead: `en_zipf >= 4.0`
+  matches 0 of the 18,270 words here, so it cannot come back as a filter without first
+  finding a population it separates.

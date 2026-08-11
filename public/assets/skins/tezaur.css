@@ -39,7 +39,7 @@
   --accent-bg: #E8F0FE;
   --on-accent: #FFFFFF;
   --badge-bg:  #12181F;
-  --star:      #E0A106;
+  --star:      #B38105;
 
   /* Four hues, each as tint / edge / text — this is the pill ramp, and the -tx
      values are what the headword is actually painted in. Every -tx on its own
