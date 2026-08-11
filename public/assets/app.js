@@ -898,26 +898,33 @@ document.querySelectorAll('#filter-form label.pill input[type=radio]').forEach(f
 
 // Three groups of controls are meaningful on only one tab, so each is shown only there.
 // The DEX-rare ceiling and the loanword toggle apply to `rare_in_use`; the seam split and
-// the five special classes apply to `forgotten`. The 290 rare-in-use words come from a
+// the five special classes apply to `forgotten`. The 219 rare-in-use words come from a
 // different pipeline (validate_with_wordfreq.py): they are all stored as seam 'relevant',
 // and exactly one of them (`foișor`, a diminutive) carries any class flag — so both sets
 // of controls would look live there and do essentially nothing.
-(function() {
+//
+// Named rather than an IIFE-local so it can be re-run after applyUrlToForm(). It has to
+// be: applyUrlToForm() sets the radios *without* dispatching `change` — deliberately, so
+// it does not fire a second htmx search on load — and this runs during script evaluation,
+// when word_tier is still the markup default. So a deep link or reload of
+// `?word_tier=rare_in_use` left all three sections in the state for the *other* tab:
+// seam and classes visible where they do nothing, and the DEX ceiling + loanword toggle
+// hidden on the one tab where they work. Clicking the tab was fine, which is what kept
+// this hidden. Fixed by calling it again below, after the URL is applied.
+function syncTabControls() {
   const rareOnly  = document.getElementById('dex-rare-control');
   const seamOnly  = document.getElementById('seam-control');
   const classOnly = document.getElementById('class-control');
   if (!rareOnly && !seamOnly && !classOnly) return;
-  function sync() {
-    const sel  = document.querySelector('#filter-form input[name=word_tier]:checked');
-    const rare = !!sel && sel.value === 'rare_in_use';
-    if (rareOnly)  rareOnly.style.display  = rare ? '' : 'none';
-    if (seamOnly)  seamOnly.style.display  = rare ? 'none' : '';
-    if (classOnly) classOnly.style.display = rare ? 'none' : '';
-  }
-  document.querySelectorAll('#filter-form input[name=word_tier]')
-    .forEach(function(r) { r.addEventListener('change', sync); });
-  sync();
-})();
+  const sel  = document.querySelector('#filter-form input[name=word_tier]:checked');
+  const rare = !!sel && sel.value === 'rare_in_use';
+  if (rareOnly)  rareOnly.style.display  = rare ? '' : 'none';
+  if (seamOnly)  seamOnly.style.display  = rare ? 'none' : '';
+  if (classOnly) classOnly.style.display = rare ? 'none' : '';
+}
+document.querySelectorAll('#filter-form input[name=word_tier]')
+  .forEach(function(r) { r.addEventListener('change', syncTabControls); });
+syncTabControls();
 
 // Tax-select active highlight
 document.querySelectorAll('.tax-select').forEach(function(sel) {
@@ -1028,6 +1035,11 @@ function activeFilterChips() {
     var rare = wordTier === 'rare_in_use';
     if ((spec.name === 'dex_max' || spec.name === 'hide_loanwords') && !rare) return;
     if (CLASS_PARAMS.indexOf(spec.name) !== -1 && rare) return;
+    // `seam` was missing from this list even though build_word_filter() has always
+    // ignored it on the rare tab (all 219 words there are seam 'relevant'). A URL
+    // carrying seam=curiosity onto that tab therefore chipped „listă: curiozități"
+    // over an unfiltered list — the chip claiming a filter that was not applied.
+    if (spec.name === 'seam' && rare) return;
     if (spec.type === 'text' || spec.type === 'number') {
       var el = form.querySelector('input[name=' + spec.name + ']');
       if (el && el.value.trim()) chips.push({ spec: spec, text: spec.label(el.value.trim()) });
@@ -1292,6 +1304,10 @@ document.getElementById('filter-form') && document.getElementById('filter-form')
 
 // Apply URL params to form before HTMX fires its initial load request
 applyUrlToForm();
+// …then re-gate the tab-specific sections, because applyUrlToForm() may have just changed
+// word_tier and it does not dispatch `change`. Without this a deep link to the rare tab
+// shows the seam and class controls (which do nothing there) and hides the DEX ceiling.
+syncTabControls();
 
 // A query already in the URL means search is already in use — leave the box
 // open rather than collapsing an active search behind the magnifier.

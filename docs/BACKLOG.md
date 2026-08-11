@@ -1276,3 +1276,54 @@ because they are content/data decisions, not styling.
   `moștenesc` are all in `rare_in_use` as if they were lemmas. Pre-existing — the old tier
   had `fotografia`, `japoneză`, `ardeleană`. `inflected_forms.db` already has the
   form→lemma map (1.63M rows) that would catch these.
+
+- [x] **Tab-gated filter sections were wrong on every deep link** — Fixed 2026-08-11.
+  `applyUrlToForm()` sets the radios without dispatching `change` (deliberately — a
+  dispatch would fire a second htmx search on load), and the gating ran during script
+  evaluation, when `word_tier` was still the markup default. So opening or reloading
+  `?word_tier=rare_in_use` left **all three** sections in the other tab's state: `seam`
+  and `clase` visible where they do nothing, and `#dex-rare-control` — the DEX ceiling and
+  the loanword toggle — *hidden on the one tab where they work*. Clicking the tab was
+  always correct, which is what kept this invisible.
+
+  Fixed by naming the function `syncTabControls()` and calling it again after
+  `applyUrlToForm()`. Also added `seam` to the tab guard in `activeFilterChips()`: it was
+  the one tab-specific param missing there, so a URL carrying `seam=curiosity` onto the
+  rare tab chipped „listă: curiozități" over a list that was never filtered —
+  `build_word_filter()` has always ignored seam on that tab.
+
+  This is the three-places rule in CLAUDE.md failing at a fourth place nobody had listed:
+  the *initial* state, as distinct from the change handler.
+
+- [x] **`rare_in_use` judged verbs by their infinitive** — Fixed 2026-08-11, and this was
+  the real cause of the common words, not the tag bleed blamed earlier the same day.
+
+  wordfreq measures surface strings. Romanian verbs are heavily inflected, so a citation
+  form is systematically rarer than the verb: `mărturisi` 3.41 vs `mărturisit` 4.01,
+  `asemăna` 3.11 vs `aseamănă` 3.79, `păți` 3.08 vs `pățit` 3.87. Judging a lemma by its
+  infinitive calls every common verb rare — **the exact mistake CLAUDE.md already names
+  for the corpus side** ("always roll them up through `inflected_forms.db`, or every verb
+  reads as extinct"). The rare branch never got that rollup.
+
+  Second failure, same fix: the gate ran on *simplemma's* lemma, and the lemmatizer picks
+  homograph verbs — `secret` (4.75) → `secreta` "to secrete" (3.15), `dor` (4.50) →
+  `durea`, `greșit` (4.67) → `greși`, `ceartă` (4.00) → `certa`. It was testing a
+  different word. Keying the rollup on the surface form uses DEX's own paradigm, which
+  cannot drift like that.
+
+  `paradigm_zipf()` takes the **max** Zipf over the headword's whole DEX paradigm — max,
+  because the question is "is any form of this in current use?", and Zipf is a log scale
+  so summing it means nothing. Computed lazily (only rows that clear the floor *and* carry
+  an archaic register can reach the branch), which is ~17s over 145k candidates instead of
+  walking the paradigm table for every row.
+
+  299 → **219**. Gone: `secret`, `dor`, `greșit`, `ceartă`, `cronică`, `spori`, `oaste`,
+  `poruncă`, `viteaz`, `mărturisi`, `înainta`, `păzi`, `topi`, `închina`, `asemăna`.
+  Kept: `aba`, `aman`, `amanet`, `bacșiș`, `balaban`, `baltag`, `bir`, `beletristică`,
+  `sfetnic`, `braniște`, `zidire`, `răgea`.
+
+  **Residue, characterised:** archaic nouns that are homographs of common verb forms —
+  `judec`, `leg`, `ucid` are DEX nouns (modelType M/N, so the `T`/`IL` filter does not
+  catch them) whose spelling is also a 1st-person verb form, and wordfreq counts both. Not
+  separable without sense-level frequency data. Plus the irreducible tag bleed
+  (`abatere`, `balsam`, `berbec`, `bici` — one archaic sense among many).

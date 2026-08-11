@@ -4,6 +4,49 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — the rare tier judged verbs by their infinitive
+
+Pushed back on: the tier was still full of common words after the morning's fix, and the
+relevante/curiozități control did nothing on that tab. Both were right, and the first
+diagnosis had been wrong.
+
+**I had blamed meaning-level tag bleed and called it unfixable.** That is real but it was
+not the main cause. The main cause is that wordfreq measures *surface strings*, and
+Romanian verbs are heavily inflected, so a citation form is systematically rarer than the
+verb: `mărturisi` 3.41 against `mărturisit` 4.01, `asemăna` 3.11 against `aseamănă` 3.79,
+`păți` 3.08 against `pățit` 3.87. Judging a lemma by its infinitive calls every common
+verb rare — **the exact mistake CLAUDE.md already names for the corpus side**, where the
+rule is "always roll them up through `inflected_forms.db`, or every verb reads as
+extinct". The rare branch never got that rollup; the main pipeline has had it for months.
+
+The giveaway was words *above* the ceiling sitting inside the tier: `secret` 4.75,
+`dor` 4.50, `greșit` 4.67, `ceartă` 4.00. Those are the second failure — the gate ran on
+simplemma's lemma, and the lemmatizer picks homograph verbs (`secret` → `secreta` "to
+secrete" 3.15, `dor` → `durea`, `greșit` → `greși`). It was testing a different word.
+
+One fix covers both: `paradigm_zipf()` takes the max Zipf over the headword's whole DEX
+paradigm, keyed on the **surface form** so no lemmatizer can redirect it. Max rather than
+sum, because the question is "is any form of this in current use?" and Zipf is a log scale.
+Lazy, so it costs 17s over 145k candidates rather than walking the paradigm table for
+every row. 299 → 219.
+
+**The second complaint was a real UI bug and older than any of this.** `applyUrlToForm()`
+sets the radios without dispatching `change`, and the tab gating ran at script-evaluation
+time with `word_tier` still at its markup default. So any deep link or reload of
+`?word_tier=rare_in_use` left all three tab-specific sections in the *other* tab's state —
+seam and classes visible where they do nothing, and the DEX ceiling hidden on the one tab
+where it works. Clicking the tab was always correct, which is exactly why nobody saw it.
+Fixed by re-running the gate after the URL is applied. `seam` was also missing from
+`activeFilterChips()`'s tab guard, so a stale `seam=curiosity` chipped „listă: curiozități"
+over a list that had never been filtered by it.
+
+CLAUDE.md's "three places" rule for tab-specific controls turns out to have a fourth: the
+*initial* state, as distinct from the change handler.
+
+Residue is now narrow and named: archaic nouns homographic with common verb forms
+(`judec`, `leg`, `ucid` — DEX nouns, so the `T`/`IL` filter misses them), plus the tag
+bleed. Neither is separable without sense-level frequency data.
+
 ## 2026-08-11 — the rare tier was running on a three-month-old bug
 
 Asked why `credit`, `ecran`, `universitate`, `ceapă`, `pian`, `cannabis` were showing up

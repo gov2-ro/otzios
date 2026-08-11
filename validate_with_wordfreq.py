@@ -52,6 +52,43 @@ ARCHAIC_REGISTER_MARKERS = frozenset({
 })
 
 
+INFLECTED_DB = Path('data/processed/inflected_forms.db')
+
+
+def paradigm_zipf(word: str, conn, zipf_fn, cache: dict) -> float | None:
+    """Highest Zipf over the word's whole DEX paradigm, or None if DEX has no paradigm.
+
+    wordfreq measures *surface strings*, and Romanian verbs are heavily inflected, so
+    the citation form is systematically rarer than the verb: `mărturisi` is 3.41 while
+    `mărturisit` is 4.01, `asemăna` 3.11 while `aseamănă` 3.79. Judging the lemma by its
+    infinitive therefore calls every common verb rare — the exact mistake CLAUDE.md
+    already names for the corpus side ("always roll them up through inflected_forms.db,
+    or every verb reads as extinct"). The rare tier never got that rollup.
+
+    Keying on the surface form rather than on simplemma's lemma also fixes a second
+    failure: the lemmatizer picks homograph verbs, sending `secret` (4.75) to `secreta`
+    "to secrete" (3.15), `dor` (4.50) to `durea`, `greșit` (4.67) to `greși`. The gate
+    was testing a different word. DEX's own paradigm for the headword cannot drift like
+    that.
+
+    Max rather than sum: this asks "is any form of this word in current use?", which is
+    the question the `rare_in_use` tier is posing. Summing would mix a frequency estimate
+    into what is a presence test, and Zipf is a log scale — summing it means nothing.
+    """
+    if word in cache:
+        return cache[word]
+    rows = conn.execute(
+        """SELECT i.form FROM lexeme l
+             JOIN inflected i ON i.lexeme_id = l.lexeme_id
+            WHERE l.lemma = ?""",
+        (word,),
+    ).fetchall()
+    forms = {normalize_romanian(f) for (f,) in rows if f}
+    result = max((zipf_fn(f, 'ro') for f in forms), default=None) if forms else None
+    cache[word] = result
+    return result
+
+
 def has_archaic_register(dex_register: str) -> bool:
     """True if the semicolon-joined dex_register contains an archaic/rare marker."""
     if not dex_register:
@@ -159,6 +196,18 @@ def main() -> int:
         return 1
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
+    # DEX's own inflection paradigms, for the rollup in paradigm_zipf(). Optional: an
+    # install that has not run extract_inflected_forms.py still tiers, just on the
+    # citation form alone — which is the pre-2026-08-11 behaviour, and worse.
+    infl_conn = None
+    if INFLECTED_DB.exists():
+        import sqlite3
+        infl_conn = sqlite3.connect(f'file:{INFLECTED_DB}?mode=ro', uri=True)
+    else:
+        print(f'! {INFLECTED_DB} not found — tiering on the citation form alone, which '
+              f'calls common verbs rare. Run extract_inflected_forms.py.', file=sys.stderr)
+    para_cache: dict[str, float | None] = {}
+
     rows_in = 0
     counts = {'forgotten': 0, 'rare_in_use': 0, 'common': 0}
     zero_zipf = 0
@@ -206,10 +255,22 @@ def main() -> int:
             else:
                 register_ok = bool((row.get('dex_register') or '').strip())
 
+            # The ceiling is tested against the whole paradigm, not the citation form.
+            # Without this the tier fills with common verbs whose infinitive happens to
+            # be a rare string, and with nouns the lemmatizer mapped onto a rarer verb.
+            # Falls back to the citation Zipf when DEX has no paradigm for the headword.
+            #
+            # Computed lazily: only a row that already clears the floor *and* carries an
+            # archaic register can reach the branch that reads it, which is a few thousand
+            # of the ~145k candidates. Doing it for every row walks the whole paradigm
+            # table to decide rows whose tier is already settled.
             if zipf < args.threshold:
                 tier = 'forgotten'
-            elif zipf < args.upper_threshold and register_ok:
-                tier = 'rare_in_use'
+            elif register_ok:
+                para = (paradigm_zipf(word, infl_conn, zipf_frequency, para_cache)
+                        if infl_conn else None)
+                usage = para if para is not None else zipf
+                tier = 'rare_in_use' if usage < args.upper_threshold else 'common'
             else:
                 tier = 'common'
 
