@@ -4,6 +4,42 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — the main list picks up 706 words the stale candidate file was hiding
+
+The unfinished half of the morning's stale-file fix. `create_curated_list.py` had been
+re-run, taking the candidate list from 140,308 to 145,358 words, but `validate_diachronic.py`
+reads that file as its candidate set and had not been re-run — so the shortlist was still
+built from the old, smaller one.
+
+Re-ran the phase: **17,577 → 18,270 words, +706 added, 13 removed.** `word_ids.tsv` +706
+with zero deletions, so every shared link still resolves. Only 5 of the new words land in
+`relevant` (`boboni`, `brodărie`, `bulucbașa`, `bâț`, `bălăi`); the other 701 are
+`curiosity`, and they are exactly the obscure end — `alergaci`, `alnicie`, `amăgie`,
+`arcășel`, `baistruc`, `baraboiște`.
+
+The 13 that left are all junk the old candidate list had been carrying: `chaise-longue`,
+`córdoba`, `balneo-climatic`, `calea-valea`, `mai-mare`, `brânzeturi`, `viscere`,
+`neogreacă`, `paciuli` — hyphenated compounds, foreign phrases and plurals. Two of them
+were `sirius` and `weltanschauung`, which is why `proper_noun_like` now marks **zero**
+words rather than two. That flag was already documented as no longer a browsing filter for
+exactly that reason; it is now empty.
+
+Worth recording separately, because it looked like a crisis and was not: **the main list's
+taxonomy was never affected by the stale file.** `validate_diachronic` calls its own
+`load_taxonomy()` against `lexemes.db` with the corrected join, so the curated CSV only
+ever supplied *which words to consider*, not their tags. `visternic` reads
+`figurat|rar|învechit` throughout. The deleted rare tier was the only thing that read the
+stale taxonomy columns.
+
+Counts refreshed across CLAUDE.md: relevant 3,499, curiosity 14,771, default view 2,685,
+`newest_dict_year` coverage 17,806 of 18,270, archaic spellings 107 in the default view,
+440 regional words in the relevant seam.
+
+Also found while checking what was still actionable: **the `zipf` explore filter is dead**
+on the main list — 17,533 of 17,577 words score exactly 0.00, so `zipf_min` above zero
+leaves 44 words. Same wordfreq resolution problem as the deleted tab, in the last place
+wordfreq still touches the UI. Filed rather than removed.
+
 ## 2026-08-11 — the „rare" tab is deleted, and `urme azi` takes its place
 
 Three fixes to that tab in one day and it still showed `bețiv`, `haz`, `ocoli`, `haiduc`.

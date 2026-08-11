@@ -120,7 +120,7 @@ ever shared, silently. `tests/test_rescore.py` asserts it too.
 
 **Filling definition gaps — `scrape_definitions.py`:**
 
-`extract_definitions.py` recovers ~4.6k of the 17.4k shortlist words from the DEX MySQL dump (the dump's `DefinitionSimple` table is the source of truth — its `lexicon` column is the headword, not a dictionary identifier). The remaining ~12.8k shortlist words have no entry there and must be scraped from dexonline.ro.
+`extract_definitions.py` recovers ~4.6k of the 18.3k shortlist words from the DEX MySQL dump (the dump's `DefinitionSimple` table is the source of truth — its `lexicon` column is the headword, not a dictionary identifier). The remaining ~12.8k shortlist words have no entry there and must be scraped from dexonline.ro.
 
 ```bash
 python scrape_definitions.py --dry-run --limit 5         # smoke test, no HTTP
@@ -234,10 +234,10 @@ downstream compares them in ppm.
 `make_shortlist.py` writes one CSV whose `seam` column splits it in two, because the
 project is chasing two different things:
 
-- **`relevant`** (~3.5k) — strong evidence of a word that was used and faded: historically
+- **`relevant`** (3,499) — strong evidence of a word that was used and faded: historically
   attested, near-absent today, broadly covered by dictionaries, still in one published
-  from 2005 on. **The default view is this seam minus the hide-flags below** (~2.8k).
-- **`curiosity`** (~14.1k) — everything else that still qualifies as a candidate.
+  from 2005 on. **The default view is this seam minus the hide-flags below** (2,685).
+- **`curiosity`** (14,771) — everything else that still qualifies as a candidate.
 
 The split is a weighted score (`make_shortlist.score`), not a ladder of thresholds. The
 signal that does the most work is **historical attestation strength**: `politeță` occurs
@@ -259,9 +259,11 @@ score and they do **not** decide the seam:
 - `proper_noun_like` — DEX knows this spelling **only** as a capitalised headword. It must
   stay "only": flagging every collision hid ordinary words like `gheb` ("cocoașă") because
   DEX also lists the name `Gheb`. **No longer a browsing filter** — narrowing it to "only"
-  left 2 words in the whole database (`sirius`, `weltanschauung`, both `curiosity`), so a
-  default hide plus a toggle was a control that revealed nothing while quietly subtracting
-  two rows. The column still gates the word of the day (`index.php`) and quiz distractors
+  left 2 words in the whole database (`sirius`, `weltanschauung`), so a default hide plus a
+  toggle was a control that revealed nothing while quietly subtracting two rows. As of the
+  2026-08-11 rebuild it marks **zero**: both of those words left the shortlist when the
+  candidate list was regenerated, along with `chaise-longue`, `córdoba` and the other
+  hyphenated compounds. The column still gates the word of the day (`index.php`) and quiz distractors
   (`api/quiz.php`), which is a different question from what a reader may browse.
 - `archaic_spelling` — an obsolete *spelling* of a word that is entirely alive under a
   modern one: `situațiune`/`situație`, `sgomot`/`zgomot`, `advocat`/`avocat`. Not the same
@@ -276,7 +278,7 @@ score and they do **not** decide the seam:
   frequent in the modern corpus. The general-looking rules were measured and rejected:
   `e → ă` fires 2,300 times to find 69 twins and would equate `peți` with `păți`, which are
   different words. A hide-flag's false positives are invisible — the word simply is not
-  there — so precision beats recall by a wide margin here. Catches 291 words, 110 of them
+  there — so precision beats recall by a wide margin here. Catches 291 words, 107 of them
   in the default view.
 
   Do **not** widen this by flagging everything that "fell between CoRoLa and CulturaX":
@@ -288,7 +290,7 @@ score and they do **not** decide the seam:
 at.** Penalising a flag in the score as well is double-counting, and it makes the flag
 unappealable: when regional words cost 25 points *and* were routed out of the seam, none
 could reach the relevant list, so the UI's regionalisme control had nothing to reveal on
-„cu" or „doar". As it stands the relevant seam holds 431 regional and 152 variant words,
+„cu" or „doar". As it stands the relevant seam holds 440 regional and 152 variant words,
 hidden until asked for. The one score penalty that remains is for a *moderate* family ratio
 (4–25×), which is an evidence problem rather than a preference — the lemma's count is
 being propped up by its relatives.
@@ -319,8 +321,7 @@ being propped up by its relatives.
 
 `diminutive_like` is a fourth flag but not one of these three: it is **off by default**, so
 it never subtracts from what you see until you ask. `mark_diminutives()`
-(`tools/build_ui_db.py`) sets it from the DEX definition saying "Diminutiv al lui X" (351
-words) plus nine unambiguous suffixes whose stripped stem is a real lexeme (58 more).
+(`tools/build_ui_db.py`) sets it from the DEX definition saying "Diminutiv al lui X" (as of the last build, 458 words in total) plus nine unambiguous suffixes whose stripped stem is a real lexeme.
 `-iță` is deliberately excluded: as often a feminine agent (`păstoriță`, `vorniciță`) as a
 diminutive. `tools/migrate_ui_db_diminutives.py` back-fills an existing `ui.db`.
 
@@ -338,7 +339,7 @@ may lack. It is deliberately **not** the default: votes come from anonymous devi
 so this stays something a reader asks for. Two things to keep:
 
 - **The damping is the anti-abuse measure, not a curve preference.** The `relevant` seam
-  spans 92–121 with 76% of its 3,495 words inside a ten-point band, so a linear weight of
+  spans 92–121 with 76% of its 3,499 words inside a ten-point band, so a linear weight of
   even 5/vote lets four votes carry a word from the median to the top forty. On the ladder,
   each *doubling* of the vote count is worth about two more points — measured: `barabor`
   carries 20 ★ votes (every one of them a test fixture) and the blend moves it 92 → 104,
@@ -418,7 +419,7 @@ fourth option would be a control with nothing behind it.
 ### `newest_dict_year` — last attestation
 
 The newest dictionary that still prints a word, from `Source.year` via `dict_sources.db`.
-97% coverage (17,146 of 17,687). Exposed as `sort=attested`, the `attested_before=<year>` /
+97% coverage (17,806 of 18,270). Exposed as `sort=attested`, the `attested_before=<year>` /
 `attested_after=<year>` filters (a band when both are set — `attested_after` is `>=`,
 `attested_before` is `<`, so they never overlap at the shared boundary year), and the lead
 chip in the detail panel's dictionary row.
@@ -426,9 +427,9 @@ chip in the detail panel's dictionary row.
 **Both filters are `curiosity`-seam instruments.** The `relevant` seam requires
 `in_current_dict` (2005+) to qualify, so `attested_after` is close to always true there and
 `attested_before` close to always false — neither says much there by construction. On
-`curiosity` both are sharp: 285 words were last printed before 1970, and that slice is
+`curiosity` both are sharp: 288 words were last printed before 1970, and that slice is
 almost entirely pre-1953-reform orthography (`desbatere`, `sburătoare`, `răsvrătit`,
-`vuet`); the ~13.2k at 2005+ are `attested_after`'s more ordinary end of the range.
+`vuet`); the ~13.8k at 2005+ are `attested_after`'s more ordinary end of the range.
 
 Rows with no year are excluded when a ceiling is set, and sort last. "Unknown" means the
 dictionary is unnamed or unmatched — it is not evidence that a word is old.

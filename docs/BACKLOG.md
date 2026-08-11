@@ -1364,3 +1364,19 @@ because they are content/data decisions, not styling.
 
   Left open: `en_zipf` is now an unused column (its only consumer was `hide_loanwords`),
   and `docs/wordfreq-recipe.md` still describes the tab as live.
+
+- [ ] **The `zipf` explore filter is dead on the main list.** 17,533 of 17,577 words score
+  exactly `0.00` — wordfreq has no Romanian data for them — so `zipf_min` above zero leaves
+  **44** words out of 18,270. It is the last place wordfreq still touches the UI, and the
+  same resolution problem that got the „rare" tab deleted: the library's Romanian
+  vocabulary bottoms out well above the range this project cares about.
+
+  Options: drop `zipf_min`/`zipf_max` from the sheet; or relabel it honestly as "wordfreq
+  knows this word" (a 44-word set, which is at least a true statement); or keep the column
+  and stop offering it as a filter. Any of the three beats a slider that looks continuous
+  and has two states.
+
+- [ ] **`en_zipf` is now an unused column.** Its only consumer was `hide_loanwords`, removed
+  with the rare tab. `en_zipf >= 4.0` matches **0** of the 18,270 words on the list (724
+  have any value at all), so it cannot come back as a filter here without first finding a
+  population it separates.
