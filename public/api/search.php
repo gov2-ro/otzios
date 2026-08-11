@@ -84,18 +84,27 @@ global $SORT_OPTIONS;
 // Fall back if this ui.db predates the rescore and has no quality_score column, so an
 // old database still serves rather than 500-ing on an unknown column.
 $default_sort = db_has_column('quality_score') ? DEFAULT_SORT : 'rare';
+if ($sort === '') { $sort = $default_sort; }
 
-// `populare` blends quality_score with what people marked, so it — and only it — needs
-// the vote counts joined in. An install with no app.db (or one we cannot attach) falls
-// back to the default order rather than failing: votes are an enhancement to the
-// ordering, never a precondition for serving the list.
+// `populare` is the default and blends quality_score with what people marked, so it — and
+// only it — needs the vote counts joined in. An install with no app.db (or one we cannot
+// attach) falls back to plain quality rather than failing: votes are an enhancement to the
+// ordering, never a precondition for serving the list. That fallback matters more now that
+// this is the default, which is why it lands on FALLBACK_SORT rather than on
+// $default_sort — the latter is `populare` itself, and would loop.
 $from = 'words';
-if ($sort === 'populare' && attach_app_db()) {
-    $from = 'words LEFT JOIN (' . vote_counts_subquery() . ') v ON v.vote_word = words.word';
-} elseif ($sort === 'populare') {
-    $sort = $default_sort;
+if ($sort === 'populare') {
+    if (attach_app_db()) {
+        $from = 'words LEFT JOIN (' . vote_counts_subquery() . ') v ON v.vote_word = words.word';
+    } else {
+        $sort = db_has_column('quality_score') ? FALLBACK_SORT : 'rare';
+    }
 }
-$order_by = $SORT_OPTIONS[$sort] ?? $SORT_OPTIONS[$default_sort];
+$order_by = $SORT_OPTIONS[$sort] ?? $SORT_OPTIONS[FALLBACK_SORT];
+
+// Curator-demoted words sink to the end of whatever order is in force, rather than being
+// removed from it. Prefixed to every sort, including the user's chosen one.
+$order_by = demote_order_sql($_GET) . $order_by;
 
 // Count total matching rows. Deliberately on `words` alone: the LEFT JOIN is 1:1 (the
 // subquery groups by word), so it cannot change the count, and keeping it out means the
@@ -117,8 +126,13 @@ if ($page * PAGE_SIZE < $total) {
     $next_url     = BASE . '/api/search.php?' . http_build_query($args);
 }
 
+// Facet counts for the filter sheet. Only on page 1 (the sheet does not change as you
+// scroll) and never for a playlist, where the filters do not apply at all.
+$facets = ($page === 1 && $playlist === null) ? facet_counts($_GET) : null;
+
 header('Content-Type: text/html; charset=utf-8');
 render('word_list.php', [
+    'facets'   => $facets,
     'words'    => $words,
     'total'    => $total,
     'page'     => $page,

@@ -83,6 +83,19 @@ const annotate = (f, changes) => f(`${BASE}/api/sync.php`, {
   check(m0.length > 0 && m2.length > 0, `bands are populated (${m0.length} / … / ${m2.length})`);
   check(!m0.some((w) => m2.includes(w)), 'a word cannot be both „fără urme" and „în circulație"');
 
+  console.log('\n2c. „în spate" demotes — it must not remove anything');
+  // The whole point of the 2026-08-11 change: editor_demote sinks a word to the end of
+  // the order instead of dropping it from the result set. If someone turns this back into
+  // a WHERE clause, these two counts diverge and this fails.
+  const back = await search(u, 'editorial=back');
+  const norm = await search(u, 'editorial=show');
+  check(back.length === norm.length,
+    `„în spate" and „normal" return the same words (${back.length} vs ${norm.length})`);
+  if (only.length) {
+    check(!back.slice(0, 20).some((w) => only.includes(w)),
+      'no demoted word appears in the first 20 rows under „în spate"');
+  }
+
   console.log('\n3. A playlist is immune to the demote');
   // Take demoted words straight from „doar" and ask for them back as a playlist.
   if (only.length >= 3) {

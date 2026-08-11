@@ -328,15 +328,48 @@ diminutive. `tools/migrate_ui_db_diminutives.py` back-fills an existing `ui.db`.
 ### UI defaults
 
 `build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides four of
-the five flagged classes, and sorts by `quality_score DESC`. Every one is a visible
-control — `seam`, plus the five class rows — never a silent exclusion, because the point of
-opening this up is to learn where the lines are wrong.
+the five flagged classes, **demotes rather than hides the fifth**, and sorts by
+`populare`. Every one is a visible control — `seam`, plus the five class rows — never a
+silent exclusion, because the point of opening this up is to learn where the lines are
+wrong.
+
+**`editorial` is the one class that does not subtract.** Its states are `back` (default) /
+`show` / `only`, and `back` is applied in the ORDER BY by `demote_order_sql()`, not as a
+WHERE clause — a curator-demoted word sinks to the end instead of leaving the list. That
+removed an asymmetry worth keeping removed: the curator's judgement used to be the only
+human signal allowed to subtract, while the community's could only reorder. Now neither
+subtracts. **Sinking is not self-explaining** — measured, the first demoted word lands at
+position 2,556 of 2,682, page 11 — which is exactly why the three-state control stays:
+without it there would be nothing to undo. Pinned by `test_editorial.js` §2c.
+
+**Every option shows how many words it would return** — `facet_counts()` in `_lib.php`,
+shipped to the sheet as one out-of-band `#facet-data` attribute and applied by
+`applyFacetCounts()` in `app.js`. Two things to preserve:
+
+- **Each group is counted with its own filter switched off**, via an explicit *neutral
+  value*, not `unset()`. Removing a param reinstates its default, and most of these
+  default to subtracting — `unset('seam')` counts curiozități against a relevante-only
+  base and reports 0. Every group has to be actively neutralised.
+- **One query per group, not per option.** Conditional aggregation counts every option of
+  a group in one pass: eight scans of an 18k-row table, 12–40 ms, rather than forty.
+
+`#facet-data` must exist in `index.php` as an empty placeholder — `hx-swap-oob` replaces an
+element that is already in the DOM, and without it htmx drops the payload silently.
+
+**Each filter section has a „?" that reveals a one-line explainer** (`fs_label()` in
+`_lib.php`). A real button and paragraph rather than a `title=` tooltip: a title needs a
+hover, and a phone has none — which would mean the explanation is missing on exactly the
+device where an unfamiliar filter name is hardest to guess at.
 
 **`sort=populare` blends the derived score with what people marked** —
 `quality_score + 4·ln(1+votes)`, signed, rounded into bands (`VOTE_BOOST_SQL`). Bands
 rather than `LN()` because SQLite's math functions are a compile-time option a shared host
-may lack. It is deliberately **not** the default: votes come from anonymous device tokens,
-so this stays something a reader asks for. Two things to keep:
+may lack. **This is the default sort.** It was deliberately not, on the grounds that votes
+come from anonymous device tokens — the argument that changed it is that votes can only
+ever reorder, so making it the default costs at most a nudge in position, and the damping
+keeps that nudge small. `search.php` falls back to `FALLBACK_SORT` when app.db cannot be
+attached; that fallback matters more now that this is what a first-time visitor gets.
+Two things to keep:
 
 - **The damping is the anti-abuse measure, not a curve preference.** The `relevant` seam
   spans 92–121 with 76% of its 3,499 words inside a ten-point band, so a linear weight of
@@ -349,9 +382,17 @@ so this stays something a reader asks for. Two things to keep:
   `build_word_filter()`'s conditions ambiguous, and those conditions are shared with the
   un-joined query.
 
-**The five classes are one three-state control each: `hide` / `show` / `only`** (Romanian
-„fără / cu / doar"), on the params `regional`, `variants`, `spellings`, `diminutives`,
-`editorial`. Only the default differs — `hide` for all but diminutives, which is `show`.
+**The five classes are one three-state control each.** Four read `hide` / `show` / `only`
+(„fără / cu / doar") and all four default to `hide`. The fifth, `editorial`, reads
+`back` / `show` / `only` („în spate / normal / doar") and defaults to `back`, because it
+demotes rather than hides — see UI defaults below.
+
+**`seam` is a checkbox group, not a radio.** The two seams are a partition, so both ticked
+already *is* what „toate" used to be; the third radio was a name for a state the other two
+could express and had to be kept in step with them. It reads through `parse_multi()` like
+`verdict`/`tier`/`pos`. One consequence: its default is 1-of-2, not all-of-2, so
+`groupIsDefault()` in `app.js` needs `URL_GROUP_DEFAULTS` — otherwise every URL carries
+`?seam=relevant` and the chip bar claims a filter nobody set.
 
 Adding the fifth was three lines in `app.js` rather than nine, because `CLASS_PARAMS` is
 concatenated into both URL arrays *and* both tab guards. That is what the array is for;

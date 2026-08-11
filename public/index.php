@@ -129,6 +129,11 @@ global $QUICK_TAGS, $POS_OPTIONS;
         hx-target="#word-list"
         hx-include="#filter-form, #search">
 
+    <!-- OOB landing spot for the per-option counts. hx-swap-oob replaces an element that
+         must already exist, so this placeholder has to be here or the payload is dropped
+         silently on every request. Filled by applyFacetCounts() in app.js. -->
+    <span id="facet-data" hidden data-facets="{}"></span>
+
     <!-- Drag handle (drawer only) -->
     <div class="fs-handle-wrap"><div class="fs-handle"></div></div>
 
@@ -158,11 +163,12 @@ global $QUICK_TAGS, $POS_OPTIONS;
       <div class="fs-section fs-section-top">
         <select name="sort" class="fs-sort">
           <?php if (db_has_column('quality_score')): ?>
+          <!-- Implicit: scorul amestecat cu marcajele tuturor. Voturile doar reordonează,
+               niciodată nu scot un cuvânt din listă, iar amortizarea ține mișcarea mică —
+               fiecare dublare a numărului de voturi valorează încă vreo două puncte. Vezi
+               VOTE_BOOST_SQL în api/_lib.php. -->
+          <option value="populare" selected>↓ populare</option>
           <option value="quality">↓ cele mai potrivite</option>
-          <!-- Scorul, amestecat cu marcajele tuturor. Nu e sortarea implicită: identitatea
-               e un token anonim de device, deci votul rămâne ceva ce ceri, nu ceva ce
-               primești pe prima pagină. Vezi VOTE_BOOST_SQL în api/_lib.php. -->
-          <option value="populare">↓ populare</option>
           <?php endif; ?>
           <option value="rare">↓ rarest modern</option>
           <option value="declined">↓ most declined</option>
@@ -175,21 +181,30 @@ global $QUICK_TAGS, $POS_OPTIONS;
       </div>
 
       <?php if (db_has_column('seam')): ?>
-      <!-- Seam: which of the two lists you are browsing. Hidden on the rare tab (JS) —
-           those words are not split into seams. -->
+      <!-- Seam: which of the two lists you are browsing. A checkbox group rather than a
+           radio with a third „toate": the seams are a partition, so both ticked already
+           *is* „toate", and the extra option was a third name for a state the other two
+           could express. Same shape as verdict/nivel/categorie below. -->
       <div class="fs-section" id="seam-control">
-        <div class="fs-label">listă</div>
-        <div class="seg seg-sm">
-          <label class="seg-opt"><input type="radio" name="seam" value="relevant" checked> relevante</label>
-          <label class="seg-opt"><input type="radio" name="seam" value="curiosity"> curiozități</label>
-          <label class="seg-opt"><input type="radio" name="seam" value="all"> toate</label>
+        <?= fs_label('listă', 'Care dintre cele două liste vezi. „relevante” sunt cuvintele cu dovezi puternice că au fost folosite și s-au stins; „curiozități” e restul candidaților, unde dovada e mai slabă. Bifează-le pe amândouă ca să le vezi pe toate.') ?>
+        <div class="fs-pills">
+          <label class="fs-pill" title="Cuvinte cu dovezi puternice că au fost folosite și s-au stins: atestate istoric, aproape absente azi, în dicționare multe, încă într-unul tipărit din 2005 încoace.">
+            <span class="fs-check"></span>
+            <input type="checkbox" name="seam[]" value="relevant" checked>
+            relevante <span class="fs-count" data-facet="seam.relevant"></span>
+          </label>
+          <label class="fs-pill" title="Restul candidaților: încă îndeplinesc condițiile, dar dovada e mai slabă — adesea cuvinte care n-au circulat niciodată cu adevărat.">
+            <span class="fs-check"></span>
+            <input type="checkbox" name="seam[]" value="curiosity">
+            curiozități <span class="fs-count" data-facet="seam.curiosity"></span>
+          </label>
         </div>
       </div>
       <?php endif; ?>
 
       <!-- Verdict -->
       <div class="fs-section">
-        <div class="fs-label">verdict</div>
+        <?= fs_label('verdict', 'Ce spune comparația dintre corpusul istoric (Wikisource + romane vechi) și cel modern (CulturaX, 17 miliarde de cuvinte) despre fiecare cuvânt.') ?>
         <div class="fs-pills">
           <?php foreach (VERDICTS as $v => $meta): ?>
           <label class="fs-pill fs-pill-verdict fs-pill-<?= $meta['dot'] ?>" title="<?= e($meta['tip']) ?>">
@@ -203,7 +218,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
 
       <!-- Nivel / Tier -->
       <div class="fs-section">
-        <div class="fs-label">nivel</div>
+        <?= fs_label('nivel', 'De unde vine dovada: din corpus (numărătoare de apariții) sau din DEX (eticheta „învechit”, ori frecvență editorială mare fără nicio apariție modernă).') ?>
         <?php foreach (TIERS as $v => $meta): ?>
         <label class="fs-pill" title="<?= e($meta['tip']) ?>">
           <span class="fs-check"></span>
@@ -215,7 +230,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
 
       <!-- Categorie / POS -->
       <div class="fs-section">
-        <div class="fs-label">categorie</div>
+        <?= fs_label('categorie', 'Partea de vorbire, luată din modelul de flexiune al DEX-ului, nu din etichetele de sens — acoperire 99,5%.') ?>
         <div class="fs-pills fs-pills-pos">
           <?php foreach ($POS_OPTIONS as [$val, $lbl]): ?>
           <label class="fs-pill fs-pill-pos" title="<?= e($val) ?>">
@@ -229,7 +244,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
 
       <!-- Taxonomy selects -->
       <div class="fs-section">
-        <div class="fs-label">filtru</div>
+        <?= fs_label('filtru', 'Filtre după ce spune DEX-ul despre cuvânt: registrul, domeniul, etimologia, în câte dicționare apare, când a fost tipărit ultima oară, și cât se mai folosește azi.') ?>
         <select name="register" class="fs-select tax-select" data-default="" title="Filtru după registru DEX">
           <option value="">registru: orice</option>
           <?php foreach ($registers as $r): ?>
@@ -289,9 +304,9 @@ global $QUICK_TAGS, $POS_OPTIONS;
         <select name="modern" class="fs-select tax-select" data-default=""
                 title="Cât de mult mai apare cuvântul în româna de azi (corpus CulturaX)">
           <option value="">urme azi: oricâte</option>
-          <option value="2">încă în circulație</option>
-          <option value="1">urme slabe</option>
-          <option value="0">fără nicio urmă</option>
+          <option value="2" data-facet="modern.2" data-label="încă în circulație">încă în circulație</option>
+          <option value="1" data-facet="modern.1" data-label="urme slabe">urme slabe</option>
+          <option value="0" data-facet="modern.0" data-label="fără nicio urmă">fără nicio urmă</option>
         </select>
         <?php endif; ?>
         <!-- „marcate" rather than „adnotate": the values cover every kind of meta
@@ -312,41 +327,46 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <span class="fs-row-label">definiție</span>
           <div class="seg seg-sm">
             <label class="seg-opt"><input type="radio" name="has_def" value="" checked> orice</label>
-            <label class="seg-opt"><input type="radio" name="has_def" value="1"> da ✓</label>
-            <label class="seg-opt"><input type="radio" name="has_def" value="0"> nu ✗</label>
+            <label class="seg-opt"><input type="radio" name="has_def" value="1"> da <span class="fs-count" data-facet="has_def.1"></span></label>
+            <label class="seg-opt"><input type="radio" name="has_def" value="0"> nu <span class="fs-count" data-facet="has_def.0"></span></label>
           </div>
         </div>
       </div>
 
-      <!-- Clase speciale — one three-state control each, „fără / cu / doar".
+      <!-- Clase speciale — one three-state control each. Four read „fără / cu / doar";
+           `respinse` reads „în spate / normal / doar" because it is the one class that
+           does not subtract — a demoted word sinks to the end of the order instead of
+           leaving the list. See demote_order_sql() in api/_lib.php.
+
            These were six checkboxes, and the polarity had to differ per class because an
            unchecked box submits nothing: three read „arată X" and two „ascunde X", which
            looked like one set of controls and behaved like two. A radio always submits,
-           so all four read the same way now and only the default differs — diminutivele
-           are the one class shown by default. „doar" on several means their union; see
-           build_word_filter() in api/_lib.php. -->
+           so they all read the same way now and only the default differs. „doar" on
+           several means their union; see build_word_filter(). -->
       <div class="fs-section" id="class-control">
-        <div class="fs-label">clase</div>
+        <?= fs_label('clase', 'Grupuri de cuvinte pe care majoritatea cititorilor nu le vor amestecate în listă. Fiecare e un comutator vizibil, niciodată o excludere tăcută — „doar” ți le arată exact pe ele, ca să vezi unde am tras linia greșit.') ?>
         <?php
+        // [param, column, label, default, tip, [off-label, on-label]]
         $CLASS_ROWS = array_values(array_filter([
           ['regional', 'regional_only', 'regionalisme', 'hide',
-           'Cuvinte marcate doar regional/dialectal, fără să fie și învechite.'],
+           'Cuvinte marcate doar regional/dialectal, fără să fie și învechite. Un cuvânt folosit într-o vale nu e un cuvânt pe care româna l-a uitat.', ['fără', 'cu']],
           ['variants', 'variant_like', 'variante vechi', 'hide',
-           'Grafii vechi ale unor cuvinte încă folosite (politeță/politețe, uleu/ulei), detectate prin paradigma comună.'],
+           'Grafii vechi ale unor cuvinte încă folosite (politeță/politețe, uleu/ulei), detectate prin paradigma comună.', ['fără', 'cu']],
           ['spellings', 'archaic_spelling', 'grafii vechi', 'hide',
-           'Grafii ieșite din uz ale unor cuvinte foarte vii: situațiune → situație, sgomot → zgomot, advocat → avocat.'],
-          ['diminutives', 'diminutive_like', 'diminutive', 'show',
-           'Diminutive (noruleț, cuconiță, fecioraș) — cuvinte pe care DEX le definește ca „diminutiv al lui…”.'],
-          ['editorial', 'editor_demote', 'respinse', 'hide',
-           'Cuvinte citite și lăsate deoparte ⚠️ — rămân în bază, doar că nu apar implicit. „doar” ți le arată exact pe ele, ca să vezi unde am greșit.'],
+           'Grafii ieșite din uz ale unor cuvinte foarte vii: situațiune → situație, sgomot → zgomot, advocat → avocat.', ['fără', 'cu']],
+          ['diminutives', 'diminutive_like', 'diminutive', 'hide',
+           'Diminutive (noruleț, cuconiță, fecioraș) — cuvinte pe care DEX le definește ca „diminutiv al lui…”.', ['fără', 'cu']],
+          ['editorial', 'editor_demote', 'respinse', 'back',
+           'Cuvinte citite și lăsate deoparte ⚠️. Nu dispar — trec la coada listei. „normal” le pune la locul lor, „doar” ți le arată exact pe ele, ca să vezi unde am greșit.', ['în spate', 'normal']],
         ], function ($row) { return db_has_column($row[1]); }));
         ?>
-        <?php foreach ($CLASS_ROWS as [$name, $col, $label, $default, $tip]): ?>
+        <?php foreach ($CLASS_ROWS as [$name, $col, $label, $default, $tip, $words]): ?>
+        <?php [$off_val, $off_label] = $name === 'editorial' ? ['back', $words[0]] : ['hide', $words[0]]; ?>
         <div class="fs-row" title="<?= e($tip) ?>">
-          <span class="fs-row-label"><?= e($label) ?></span>
+          <span class="fs-row-label"><?= e($label) ?> <span class="fs-count" data-facet="<?= e($name) ?>.only"></span></span>
           <div class="seg seg-sm">
-            <label class="seg-opt"><input type="radio" name="<?= e($name) ?>" value="hide"<?= $default === 'hide' ? ' checked' : '' ?>> fără</label>
-            <label class="seg-opt"><input type="radio" name="<?= e($name) ?>" value="show"<?= $default === 'show' ? ' checked' : '' ?>> cu</label>
+            <label class="seg-opt"><input type="radio" name="<?= e($name) ?>" value="<?= e($off_val) ?>"<?= $default === $off_val ? ' checked' : '' ?>> <?= e($off_label) ?></label>
+            <label class="seg-opt"><input type="radio" name="<?= e($name) ?>" value="show"<?= $default === 'show' ? ' checked' : '' ?>> <?= e($words[1]) ?></label>
             <label class="seg-opt"><input type="radio" name="<?= e($name) ?>" value="only"> doar</label>
           </div>
         </div>
@@ -361,7 +381,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
            call already made for `hide_loanwords` and for `proper_noun_like` as a browsing
            filter. The `zipf_frequency` column stays; it is just not a control. -->
       <div class="fs-section">
-        <div class="fs-label">explore</div>
+        <?= fs_label('explore', 'Intervale numerice brute, pentru cine vrea să sape: frecvența editorială DEX e un scor de prezență în canonul literar (zapciu 0,96 > internet 0,88), nu o frecvență de folosire.') ?>
         <div class="fs-range-row" title="Frecvență editorială DEX 0–100">
           <span class="fs-range-label">dex</span>
           <input type="number" name="dexfreq_min" step="1" min="0" max="100" placeholder="min" class="fs-input">

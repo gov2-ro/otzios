@@ -4,6 +4,50 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — the filter sheet grows numbers, explainers, and one fewer way to hide
+
+Six changes to the sheet, two of which were questions.
+
+**`meh` now demotes instead of hiding, and I think that is right.** It removes an asymmetry
+that had been nagging: the curator's marks were the only human signal allowed to *subtract*
+from the default view, while the community's could only reorder. Now neither subtracts —
+`editor_demote` moved from a WHERE clause into a leading ORDER BY term
+(`demote_order_sql()`).
+
+But the control stays, and the measurement says why: under the default order the first
+demoted word lands at **position 2,556 of 2,682 — page 11**. Sinking is hiding, in every
+practical sense. The difference is that „normal" brings them straight back, where a WHERE
+clause with no control would leave nothing to undo. Pinned by `test_editorial.js` §2c,
+which fails the moment someone turns it back into a filter.
+
+**Per-option counts, and yes they recalculate.** `facet_counts()` runs one query *per
+group* rather than per option — conditional aggregation counts every option of a group in
+a single pass, so it is eight scans of an 18k-row table (12–40 ms), not forty. The subtle
+part is that each group must be counted with its own filter **actively neutralised**, not
+merely unset: removing a param reinstates its *default*, and most of these default to
+subtracting, so `unset('seam')` counted curiozități against a relevante-only base and
+reported 0. They travel to the sheet as one out-of-band attribute, which needs a
+placeholder `#facet-data` in the markup — `hx-swap-oob` replaces an element that already
+exists, and drops the payload silently otherwise.
+
+**`populare` is now the default sort.** I had argued against this on the grounds that
+identity is an anonymous device token. What changed my mind is that votes can only ever
+reorder — nothing in that path removes a word — so the cost of being wrong is a nudge in
+position, bounded by the damping. Worth knowing: `barabor`'s 20 votes are still all test
+fixtures, so the local front page looks stranger than production will.
+
+**`seam` became a checkbox group and lost „toate".** The seams are a partition, so both
+ticked already is „toate"; the third radio was a second name for a state the other two
+could express. One wrinkle it introduced: its default is 1-of-2 where every other checkbox
+group defaults to all-of-N, so `groupIsDefault()` / `URL_GROUP_DEFAULTS` had to exist —
+without them the URL carried `?seam=relevant` on every page and the chip bar claimed a
+filter nobody had set.
+
+**Diminutives now default to „fără"**, and every section gained a „?" that reveals a
+one-line explainer — a real button and paragraph rather than a `title=`, because a title
+needs a hover and a phone has none. That is the device where an unfamiliar filter name is
+hardest to guess at, so hover-only help is missing exactly where it is most needed.
+
 ## 2026-08-11 — clearing the open items: two removed, two closed won't-fix
 
 Triage of what today's work left behind, with the two questionable ones measured first

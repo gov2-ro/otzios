@@ -512,11 +512,64 @@ document.addEventListener('htmx:configRequest', function(e) {
 
 // ── HTMX lifecycle ─────────────────────────────────────────────────────────────
 
+
+// ── Filter explainers ───────────────────────────────────────────────────────────
+//
+// A „?" beside each section heading reveals a one-line explanation. Delegated so it
+// survives any re-render of the sheet, and `type=button` so it neither submits the form
+// nor fires the `change` that htmx searches on.
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest && e.target.closest('.fs-help');
+  if (!btn) return;
+  e.preventDefault();
+  var panel = document.getElementById(btn.getAttribute('aria-controls'));
+  if (!panel) return;
+  var open = btn.getAttribute('aria-expanded') === 'true';
+  btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+  panel.hidden = open;
+});
+
+// ── Facet counts ────────────────────────────────────────────────────────────────
+//
+// Every option in the sheet shows how many words it *would* return, given everything
+// else currently set. The numbers arrive on #facet-data as one out-of-band attribute
+// (see search.php / word_list.php) because the sheet lives outside the swapped region.
+//
+// Server-side these are true facet counts: each group is counted with its own filter
+// switched off, so „curiozități" answers "how many if I pick this instead" rather than
+// 0. See facet_counts() in api/_lib.php.
+function applyFacetCounts() {
+  var src = document.getElementById('facet-data');
+  if (!src) return;
+  var data;
+  try { data = JSON.parse(src.dataset.facets || '{}'); } catch (e) { return; }
+  var at = function(path) {
+    var parts = path.split('.'), v = data;
+    for (var i = 0; i < parts.length; i++) { if (v == null) return null; v = v[parts[i]]; }
+    return typeof v === 'number' ? v : null;
+  };
+  document.querySelectorAll('#filter-form [data-facet]').forEach(function(el) {
+    var n = at(el.dataset.facet);
+    if (el.tagName === 'OPTION') {
+      // A select option cannot hold a child element, so the count goes into its text —
+      // and the base label has to be kept on data-label or it is lost after one pass.
+      el.textContent = el.dataset.label + (n === null ? '' : ' (' + n.toLocaleString('ro-RO') + ')');
+    } else {
+      el.textContent = n === null ? '' : n.toLocaleString('ro-RO');
+      // A zero-count option is still clickable — it just says so.
+      el.classList.toggle('is-zero', n === 0);
+    }
+  });
+}
+
 document.body.addEventListener('htmx:afterSwap', function(e) {
   const target = e.detail.target;
   if (target.id === 'word-list') {
     selectedIdx = -1;
     hydrateRows(target);
+    // The facet payload rides along as an OOB swap on #facet-data, which htmx has already
+    // applied by the time this runs.
+    applyFacetCounts();
     // Highlight the word from a shared URL after the list renders
     if (openWord) {
       var all = rows();
@@ -962,6 +1015,21 @@ document.querySelectorAll('.tax-select').forEach(function(sel) {
 // reason this array exists rather than five literals.
 var CLASS_PARAMS = ['regional', 'variants', 'spellings', 'diminutives', 'editorial'];
 
+// Checkbox groups whose "no filter" state is not "everything ticked".
+// `verdict`/`tier`/`pos` all start fully checked, so all-checked reads as untouched. The
+// seams are a partition and start with only `relevant` on, so 1-of-2 IS the default —
+// without this the URL would carry ?seam=relevant on every page and the chip bar would
+// claim a filter the reader never set.
+var URL_GROUP_DEFAULTS = { seam: ['relevant'] };
+
+function groupIsDefault(form, name) {
+  var all  = Array.from(form.querySelectorAll('input[name="' + name + '[]"]'));
+  if (!all.length) return true;
+  var chkd = all.filter(function(cb) { return cb.checked; }).map(function(cb) { return cb.value; });
+  var def  = URL_GROUP_DEFAULTS[name] || all.map(function(cb) { return cb.value; });
+  return chkd.length === def.length && chkd.every(function(v) { return def.indexOf(v) !== -1; });
+}
+
 var AF_SPECS = [
   { name: 'q',              type: 'text',     label: function(v){ return '„' + v + '”'; } },
   { name: 'has_def',        type: 'radio',  def: '', label: function(v){ return v === '1' ? 'cu definiție' : 'fără definiție'; } },
@@ -991,12 +1059,16 @@ var AF_SPECS = [
   { name: 'regional',    type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'regionalisme'; } },
   { name: 'variants',    type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'variante vechi'; } },
   { name: 'spellings',   type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'grafii vechi'; } },
-  { name: 'diminutives', type: 'radio', def: 'show', label: function(v){ return (v === 'only' ? 'doar ' : 'fără ') + 'diminutive'; } },
-  { name: 'editorial',   type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ')  + 'respinse'; } },
-  // The chip used to print the raw seam value ("listă: curiosity") into an otherwise
-  // Romanian bar. Labels are the ones already on the seam control itself.
-  { name: 'seam',           type: 'radio',  def: 'relevant', label: function(v){
-      return v === 'all' ? 'toate listele' : 'listă: ' + (v === 'curiosity' ? 'curiozități' : 'relevante'); } },
+  { name: 'diminutives', type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ')  + 'diminutive'; } },
+  { name: 'editorial',   type: 'radio', def: 'back', label: function(v){ return v === 'only' ? 'doar respinse' : 'respinse la rând'; } },
+  // A checkbox group now, like verdict/tier/pos — both ticked is what „toate" used to be.
+  // Chips only when the selection is partial, which the 'group' type already handles.
+  // Two options, so the chip names them rather than counting them — „listă 1/2" does not
+  // say *which* one, and this is the filter a reader is most likely to have forgotten.
+  { name: 'seam',           type: 'group',  label: function(n, t, vals){
+      if (n === 0) return 'nicio listă';
+      if (n === t) return 'ambele liste';
+      return 'listă: ' + (vals[0] === 'curiosity' ? 'curiozități' : 'relevante'); } },
   { name: 'verdict',        type: 'group',    label: function(n, t){ return 'verdict ' + n + '/' + t; } },
   { name: 'tier',           type: 'group',    label: function(n, t){ return 'tier ' + n + '/' + t; } },
   { name: 'pos',            type: 'group',    label: function(n, t){ return 'POS ' + n + '/' + t; } },
@@ -1022,7 +1094,10 @@ function activeFilterChips() {
     } else if (spec.type === 'group') {
       var all = Array.from(form.querySelectorAll('input[name="' + spec.name + '[]"]'));
       var chk = all.filter(function(cb){ return cb.checked; });
-      if (all.length && chk.length < all.length) chips.push({ spec: spec, text: spec.label(chk.length, all.length) });
+      if (all.length && !groupIsDefault(form, spec.name)) {
+        var vals = chk.map(function(cb){ return cb.value; });
+        chips.push({ spec: spec, text: spec.label(chk.length, all.length, vals) });
+      }
     }
   });
   return chips;
@@ -1043,7 +1118,10 @@ function clearFilter(spec) {
     var c = form.querySelector('input[name=' + spec.name + ']');
     if (c) c.checked = false;
   } else if (spec.type === 'group') {
-    form.querySelectorAll('input[name="' + spec.name + '[]"]').forEach(function(cb){ cb.checked = true; });
+    var gdef = URL_GROUP_DEFAULTS[spec.name];
+    form.querySelectorAll('input[name="' + spec.name + '[]"]').forEach(function(cb){
+      cb.checked = gdef ? gdef.indexOf(cb.value) !== -1 : true;
+    });
   }
   form.dispatchEvent(new Event('change', { bubbles: true }));
 }
@@ -1090,16 +1168,15 @@ document.getElementById('filter-form') &&
 // Param names whose default value means "no filter" (omit from URL when at default)
 var URL_PARAM_DEFAULTS = {
   has_def:   '',
-  seam:      'relevant',
-  sort:      'quality',
+  sort:      'populare',
   marks:     'all',
   // Special classes — three states each, so unlike the old checkboxes these always
   // submit a value and need a default here to stay out of the URL when untouched.
   regional:    'hide',
   variants:    'hide',
   spellings:   'hide',
-  diminutives: 'show',
-  editorial:   'hide',
+  diminutives: 'hide',
+  editorial:   'back',
 };
 
 function applyUrlToForm() {
@@ -1113,7 +1190,7 @@ function applyUrlToForm() {
   if (q) { var qi = form.querySelector('input[name=q]'); if (qi) qi.value = q; }
 
   // Radio groups
-  ['has_def', 'seam'].concat(CLASS_PARAMS).forEach(function(name) {
+  ['has_def'].concat(CLASS_PARAMS).forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     form.querySelectorAll('input[name=' + name + ']').forEach(function(r) {
@@ -1135,7 +1212,7 @@ function applyUrlToForm() {
   });
 
   // Checkbox groups (verdict, tier, pos): comma-separated in URL; absent = all checked
-  ['verdict', 'tier', 'pos'].forEach(function(name) {
+  ['verdict', 'tier', 'pos', 'seam'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return; // not in URL → leave all checked
     var selected = val.split(',').filter(Boolean);
@@ -1204,17 +1281,17 @@ function syncUrlFromForm() {
   if (q && q.value.trim()) params.set('q', q.value.trim());
 
   // Radio groups
-  ['has_def', 'seam'].concat(CLASS_PARAMS).forEach(function(name) {
+  ['has_def'].concat(CLASS_PARAMS).forEach(function(name) {
     var el = form.querySelector('input[name=' + name + ']:checked');
     var val = el ? el.value : '';
     if (val && val !== (URL_PARAM_DEFAULTS[name] || '')) params.set(name, val);
   });
 
-  // Checkbox groups: only write to URL when some-but-not-all are checked
-  ['verdict', 'tier', 'pos'].forEach(function(name) {
+  // Checkbox groups: written only when the selection differs from the group's default.
+  ['verdict', 'tier', 'pos', 'seam'].forEach(function(name) {
     var all  = Array.from(form.querySelectorAll('input[name="' + name + '[]"]'));
     var chkd = all.filter(function(cb) { return cb.checked; });
-    if (chkd.length > 0 && chkd.length < all.length) {
+    if (chkd.length > 0 && !groupIsDefault(form, name)) {
       params.set(name, chkd.map(function(cb) { return cb.value; }).join(','));
     }
   });

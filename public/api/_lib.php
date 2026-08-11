@@ -78,7 +78,31 @@ $SORT_OPTIONS['populare'] =
     'COALESCE(quality_score, 0) + (' . VOTE_BOOST_SQL . ') DESC, '
     . 'quality_score DESC NULLS LAST, dex_frequency DESC';
 
-define('DEFAULT_SORT', 'quality');
+// The front page is the blend. Votes only ever reorder — nothing here can remove a word —
+// so making this the default costs at most a nudge in position, and the damping keeps that
+// nudge small (each doubling of the vote count is worth about two more points). Falls back
+// to 'quality' when app.db cannot be attached; see search.php.
+define('DEFAULT_SORT', 'populare');
+define('FALLBACK_SORT', 'quality');
+
+/**
+ * Leading ORDER BY term that sinks curator-demoted words to the end.
+ *
+ * `editor_demote` used to be a WHERE clause — the word was gone from the default view
+ * entirely. Demoting instead of hiding is the less destructive reading and removes an
+ * asymmetry: the curator's judgement was the only human signal allowed to *subtract*,
+ * while the community's could only reorder. Now both only reorder.
+ *
+ * The control stays a three-state (`în spate` / `normal` / `doar`) precisely because
+ * sinking is not self-explaining: with 2,685 words at 250 a page, a demoted word lands
+ * about eleven pages down, which is hidden in every practical sense. Without a control
+ * saying so, that would be worse than an honest hide — there would be nothing to undo.
+ */
+function demote_order_sql(array $p): string {
+    if (!db_has_column('editor_demote')) return '';
+    $mode = trim($p['editorial'] ?? 'back');
+    return $mode === 'back' ? 'COALESCE(editor_demote, 0) ASC, ' : '';
+}
 
 $QUICK_TAGS = [
     ['ascunde', 'a'],
@@ -172,6 +196,26 @@ const NAV_ITEMS = [
     'liste' => ['path' => '/liste.php',        'icon' => '📋', 'label' => 'liste'],
     'metod' => ['path' => '/metodologie.html', 'icon' => '🧐', 'label' => 'metodologie'],
 ];
+
+/**
+ * A filter-section heading with a „?" that reveals a one-line explainer.
+ *
+ * A real button and a real paragraph, not a `title=` tooltip: a title attribute needs a
+ * hover, and a phone has none — which on this site means the explanation is missing on
+ * exactly the device where an unfamiliar filter name is hardest to guess at. `aria-expanded`
+ * and `aria-controls` carry the state for assistive tech; app.js does the toggling.
+ */
+function fs_label(string $label, string $help = ''): string {
+    $out = '<div class="fs-label">' . e($label);
+    if ($help !== '') {
+        $id = 'fshelp-' . preg_replace('/[^a-z0-9]+/', '-', strtolower($label));
+        $out .= ' <button type="button" class="fs-help" aria-expanded="false"'
+              . ' aria-controls="' . e($id) . '" aria-label="Ce înseamnă ' . e($label) . '?">?</button>';
+        $out .= '</div><p class="fs-help-text" id="' . e($id) . '" hidden>' . e($help) . '</p>';
+        return $out;
+    }
+    return $out . '</div>';
+}
 
 function verdict_label(?string $v): string { return VERDICTS[$v ?? '']['label'] ?? 'neclasificat'; }
 function verdict_abbr(?string $v): string  { return VERDICTS[$v ?? '']['abbr']  ?? '?'; }
@@ -363,14 +407,24 @@ function build_word_filter(array $p): array {
     // Each is a one-click toggle in the filter sheet, never a silent exclusion: the
     // whole point of opening this to markers is to learn where these lines are wrong.
 
-    // Seam: 'relevant' is the ~2.8k band of words with the strongest evidence of having
-    // been used and faded; 'curiosity' is the rest. 'all' merges them.
+    // Seam: 'relevant' is the 3,499-word band with the strongest evidence of having been
+    // used and faded; 'curiosity' is the other 14,771.
     //
+    // A checkbox group, not a radio with a third „toate" option. The two seams are a
+    // partition, so "both ticked" already *is* „toate" — the extra radio was a third name
+    // for a state the other two could express, and it had to be kept in step with them.
+    // This also lines it up with `verdict`/`tier`/`pos`, which have always been checkbox
+    // groups read through parse_multi().
+    //
+    // Nothing ticked means no condition rather than no results, matching those three: an
+    // empty group reads as "don't filter on this", which is what an untouched group means
+    // and what a reader clearing the last box almost certainly wants.
     if (db_has_column('seam')) {
-        $seam = trim($p['seam'] ?? 'relevant');
-        if ($seam !== 'all' && in_array($seam, ['relevant', 'curiosity'], true)) {
+        $seam_values = array_values(array_intersect(
+            parse_multi($p['seam'] ?? 'relevant'), ['relevant', 'curiosity']));
+        if ($seam_values !== [] && count($seam_values) < 2) {
             $conditions[] = 'seam = ?';
-            $params[]     = $seam;
+            $params[]     = $seam_values[0];
         }
     }
 
@@ -412,14 +466,17 @@ function build_word_filter(array $p): array {
         ['regional',    'regional_only',    'hide', 'show_regional',    'show'],
         ['variants',    'variant_like',     'hide', 'show_variants',    'show'],
         ['spellings',   'archaic_spelling', 'hide', 'show_spellings',   'show'],
-        ['diminutives', 'diminutive_like',  'show', 'hide_diminutives', 'hide'],
-        ['editorial',   'editor_demote',    'hide', '',                 'hide'],
+        ['diminutives', 'diminutive_like',  'hide', 'hide_diminutives', 'hide'],
+        // `editorial` is the one class whose default does not subtract. Its states are
+        // `back` (sink to the end) / `show` (normal order) / `only`, and `back` is
+        // handled in the ORDER BY by demote_order_sql(), not here. See that function.
+        ['editorial',   'editor_demote',    'back', '',                 'back'],
     ];
     $only_cols = [];
     foreach ($class_modes as [$param, $col, $default, $legacy, $legacy_mode]) {
         if (!db_has_column($col)) { continue; }
         $mode = trim($p[$param] ?? '');
-        if (!in_array($mode, ['hide', 'show', 'only'], true)) {
+        if (!in_array($mode, ['hide', 'show', 'only', 'back'], true)) {
             // A '' legacy name means the class is newer than the checkbox era and has no
             // old links to honour — don't let it read $p[''].
             $mode = ($legacy !== '' && ($p[$legacy] ?? '') === '1') ? $legacy_mode : $default;
@@ -429,6 +486,7 @@ function build_word_filter(array $p): array {
         } elseif ($mode === 'only') {
             $only_cols[] = $col;
         }
+        // 'back' and 'show' add no condition — 'back' only changes the order.
     }
     if ($only_cols !== []) {
         $parts = array_map(function ($c) { return "COALESCE($c, 0) = 1"; }, $only_cols);
@@ -570,4 +628,77 @@ function build_word_filter(array $p): array {
     // reader may see.
 
     return ['conditions' => $conditions, 'params' => $params, 'word_tier' => $word_tier];
+}
+
+/**
+ * How many words each filter option would return, given everything else the reader has set.
+ *
+ * These are **facet counts**, not plain counts: a group's own choice is excluded from the
+ * base it counts against. Otherwise every option in a group but the chosen one reads 0 —
+ * „relevante" would say 2,682 and „curiozități" 0, which tells you nothing about what
+ * clicking it would do. Excluding the group's own condition makes each number the answer
+ * to "how many if I pick this instead".
+ *
+ * One query per group rather than one per option: conditional aggregation counts every
+ * option of a group in a single pass. Eight scans of an 18k-row table, not forty.
+ *
+ * Returns ['seam' => ['relevant' => n, …], 'verdict' => […], …]. Groups whose column is
+ * missing from this ui.db are simply absent, and the caller renders no number.
+ */
+function facet_counts(array $p): array {
+    // group => [param it owns, value that means "this group filters nothing", options]
+    //
+    // A *neutral value*, not unset(). Removing the param reinstates its default, and most
+    // of these default to subtracting — so `unset('seam')` counts curiozități against a
+    // relevante-only base and reports 0, and every class reports 0 for the words it hides.
+    // Each group has to be explicitly switched off, not merely left unspecified.
+    $groups = [
+        'seam'        => ['seam', 'relevant,curiosity',
+                          ['relevant' => "seam = 'relevant'", 'curiosity' => "seam = 'curiosity'"]],
+        'modern'      => ['modern', '',
+                          ['0' => 'modern_band = 0', '1' => 'modern_band = 1', '2' => 'modern_band = 2']],
+        'regional'    => ['regional',    'show', ['only' => 'COALESCE(regional_only,0) = 1']],
+        'variants'    => ['variants',    'show', ['only' => 'COALESCE(variant_like,0) = 1']],
+        'spellings'   => ['spellings',   'show', ['only' => 'COALESCE(archaic_spelling,0) = 1']],
+        'diminutives' => ['diminutives', 'show', ['only' => 'COALESCE(diminutive_like,0) = 1']],
+        'editorial'   => ['editorial',   'show', ['only' => 'COALESCE(editor_demote,0) = 1']],
+        'has_def'     => ['has_def',     '',
+                          ['1' => 'definition IS NOT NULL', '0' => 'definition IS NULL']],
+    ];
+
+    $out = [];
+    foreach ($groups as $name => [$param, $neutral, $options]) {
+        // Rebuild the filter with this group switched off, so its options are counted
+        // against everything *else* the reader has chosen.
+        $rest = $p;
+        $rest[$param] = $neutral;
+        ['conditions' => $conds, 'params' => $args] = build_word_filter($rest);
+        $where = $conds ? 'WHERE ' . implode(' AND ', $conds) : '';
+
+        $sel = [];
+        foreach ($options as $key => $predicate) {
+            // Column may not exist on an older ui.db; skip the whole group if so.
+            if (!facet_predicate_is_usable($predicate)) { continue 2; }
+            $sel[] = "SUM(CASE WHEN $predicate THEN 1 ELSE 0 END)";
+        }
+        if ($sel === []) { continue; }
+
+        $stmt = db()->prepare('SELECT ' . implode(', ', $sel) . " FROM words $where");
+        $stmt->execute($args);
+        $row = $stmt->fetch(PDO::FETCH_NUM) ?: [];
+        $out[$name] = array_combine(array_keys($options), array_map('intval', $row));
+    }
+    return $out;
+}
+
+/** True when every bare column named in a facet predicate exists in this ui.db. */
+function facet_predicate_is_usable(string $predicate): bool {
+    preg_match_all('/\b([a-z_]+)\b/', $predicate, $m);
+    foreach ($m[1] as $tok) {
+        if (in_array($tok, ['coalesce', 'is', 'not', 'null', 'when', 'then', 'else', 'end',
+                            'case', 'sum'], true)) continue;
+        if (in_array($tok, ['relevant', 'curiosity'], true)) continue;
+        if (!db_has_column($tok)) return false;
+    }
+    return true;
 }

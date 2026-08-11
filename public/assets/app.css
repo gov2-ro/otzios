@@ -780,6 +780,47 @@ body {
 }
 .word-row[data-selected] .chip-pick { color: rgba(250,247,241,.85); }
 
+/* „?" beside a filter heading, and the line it reveals. Sized to the heading rather than
+   to a touch target on purpose — it sits inside a 280px rail beside ~25 other controls,
+   and a 44px circle per section would be the loudest thing in it. The tap area is padded
+   out instead, which keeps the ink small and the target reachable. */
+.fs-help {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  line-height: 1;
+  color: var(--text-3);
+  background: none;
+  border: 1px solid var(--border-2);
+  border-radius: 50%;
+  width: 14px; height: 14px;
+  padding: 0;
+  margin-left: 4px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.fs-help:hover, .fs-help[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); }
+.fs-help-text {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text-2);
+  margin: 2px 0 8px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border-2);
+}
+
+/* Facet counts — how many words each filter option would return, given everything else
+   that is set. Deliberately quiet: a number beside every option is a lot of numbers, so
+   they sit in --text-3 at mono-small and never compete with the option's own label. */
+.fs-count {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  margin-left: 2px;
+}
+/* Zero is still clickable — it just says there is nothing there. */
+.fs-count.is-zero { opacity: .55; }
+
 /* Table-mode-only chips (hidden in cloud view) */
 .chip-meta   { display: none; }
 .chip-vbadge { display: none; }
