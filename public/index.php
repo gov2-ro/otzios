@@ -279,7 +279,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
         </select>
         <?php endif; ?>
         <!-- Both of these mean something only on the „rare" tab, so JS shows them only
-             there. `hide_loanwords` matches 6 of the 110 rare words and none at all of
+             there. `hide_loanwords` matches 8 of the 290 rare words and none at all of
              the 17.5k forgotten ones — in the main sheet it was a switch with nothing
              behind it. -->
         <span id="dex-rare-control" class="dex-rare-control" style="display:none">

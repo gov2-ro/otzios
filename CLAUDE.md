@@ -369,9 +369,9 @@ Two things to preserve when touching these:
 
    **Both sets of controls are tab-specific, and each needs gating in three places.**
    `#dex-rare-control` (`dex_max` + `hide_loanwords`) shows only on `rare_in_use`:
-   `en_zipf ≥ 4.0` matches 6 of those 110 words and **zero** of the 17.5k `forgotten` ones.
-   `#class-control` and `#seam-control` show only on `forgotten`: none of the 110 rare
-   words carries any of the four class flags, and they are all stored as seam `relevant`.
+   `en_zipf ≥ 4.0` matches 8 of those 290 words and **zero** of the 17.5k `forgotten` ones.
+   `#class-control` and `#seam-control` show only on `forgotten`: exactly one of the 290
+   rare words carries a class flag, and they are all stored as seam `relevant`.
    The three places, all in step via `CLASS_PARAMS` in `app.js`:
 
    - the section's `display`, in the `sync()` block that watches `word_tier`;

@@ -898,10 +898,10 @@ document.querySelectorAll('#filter-form label.pill input[type=radio]').forEach(f
 
 // Three groups of controls are meaningful on only one tab, so each is shown only there.
 // The DEX-rare ceiling and the loanword toggle apply to `rare_in_use`; the seam split and
-// the four special classes apply to `forgotten`. The 110 rare-in-use words come from a
+// the five special classes apply to `forgotten`. The 290 rare-in-use words come from a
 // different pipeline (validate_with_wordfreq.py): they are all stored as seam 'relevant',
-// and none of them carries a regional/variant/spelling/diminutive flag — measured, all
-// four counts are 0 — so both sets of controls would look live there and do nothing.
+// and exactly one of them (`foișor`, a diminutive) carries any class flag — so both sets
+// of controls would look live there and do essentially nothing.
 (function() {
   const rareOnly  = document.getElementById('dex-rare-control');
   const seamOnly  = document.getElementById('seam-control');

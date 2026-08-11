@@ -1223,3 +1223,56 @@ because they are content/data decisions, not styling.
   its computed colour, walks up for the first non-transparent ground, and prints the ratio
   per skin × theme. Would catch the whole class of "this skin looked fine while I was
   writing it alone" problems that the skins section of CLAUDE.md keeps naming.
+
+- [x] **`rare_in_use` was full of common words (`credit`, `ecran`, `universitate`, `ceapă`)**
+  — Fixed 2026-08-11. Three stacked causes, only two of them fixable:
+
+  1. **The tier was built on a file that predated its own bug fix.**
+     `forgotten_words_curated.csv` was dated **2026-05-16**; the taxonomy join fix
+     (`2227ff5`, "correct join path via TreeEntry + MeaningTree") landed **2026-05-19**.
+     `rare_words_wordfreq.csv` was regenerated on 9 June but *from* that stale input, so
+     it inherited the pre-fix `dex_register` — the column this backlog already called
+     noise. The instruction at the time ("re-run `validate_diachronic.py`") was followed
+     for the shortlist; `create_curated_list.py` never was, so the rare branch sat on it
+     for three months. Recomputing the gate with the fixed join: only **18 of 110** kept
+     an archaic tag. Fixed by re-running the phase properly.
+     Bonus: `dex_etymology` is populated for the first time (it was empty, which this
+     backlog notes elsewhere as blocking etymology filtering).
+
+  2. **DEX register tags are per-*meaning* and get collapsed onto the headword.** `atac`
+     carries eight at once — `articulat`, `fonetică; fonologie`, `limba franceză`,
+     `limba turcă`, `muzică`, `popular`, `regional`, `învechit`. Nothing is both French
+     and Turkish; that is every sense of every entry flattened. One archaic sense makes
+     the whole word `învechit`. Same bleed CLAUDE.md documents for `dex_pos`, which is
+     why `dex_pos` uses `Lexeme.modelType` instead — `dex_register` has no such escape.
+     **Not fixed, and not fixable without sense-level data.**
+
+     Measured and rejected: requiring the archaic marker to be the *only* register tag.
+     It cuts 593 → 318 and does not touch the problem — `tehnologie`, `tren`, `statut`,
+     `consiliu`, `bloc`, `ambulanță` all carry `învechit` as their sole tag. It costs
+     recall (`viteaz`, `Moldova; arhaizant; figurat; învechit`, is a good entry) and buys
+     no precision.
+
+  3. **`--upper-threshold 4.5` was not a rarity bound** — it admits 13–32 occurrences per
+     million. Now **3.5** (≈3 per million), which is the only lever that works, because
+     zipf is a usage measurement where the register tag is an editorial note about one
+     sense. Default changed in `validate_with_wordfreq.py` so a re-run reproduces it.
+
+  Tier: 110 → **290**. It grew because the old join produced false *negatives* as well as
+  false positives. The low end is what the tier is for — `răgea`, `sfetnic`, `zidire`,
+  `tină`, `braniște`, `baltag` — and the top still carries residual bleed (`dor`, `oaste`,
+  `poruncă`), which is cause 2 and is documented rather than papered over.
+
+- [ ] **`rare_in_use` is tiered on lemma zipf but displays surface zipf.**
+  `validate_with_wordfreq.py` lemmatizes before the lookup (`atac` → `ataca`), while
+  `build_ui_db.py` recomputes `zipf_frequency` on the surface form and overwrites it. So
+  **15 of the 290** show `zipf 0.0` in the UI while sitting in a tier defined as
+  `zipf ≥ 3.0`. Pre-existing (3 of the old 110) and small, but it means the number on the
+  row is not the number that put the row there. Either tier on the surface form, or store
+  the lemma zipf in its own column and show that.
+
+- [ ] **`create_curated_list.py` emits inflected forms as headwords.** `țipând` (gerund),
+  `citarea` (articulated infinitive), `patinoare` (plural), `ticăloasă`, `conductoare`,
+  `moștenesc` are all in `rare_in_use` as if they were lemmas. Pre-existing — the old tier
+  had `fotografia`, `japoneză`, `ardeleană`. `inflected_forms.db` already has the
+  form→lemma map (1.63M rows) that would catch these.

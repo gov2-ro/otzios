@@ -365,7 +365,7 @@ function build_word_filter(array $p): array {
     // Seam: 'relevant' is the ~2.8k band of words with the strongest evidence of having
     // been used and faded; 'curiosity' is the rest. 'all' merges them.
     //
-    // Only the `forgotten` tier is split into seams — the 112 `rare_in_use` words come
+    // Only the `forgotten` tier is split into seams — the 290 `rare_in_use` words come
     // from a different pipeline (validate_with_wordfreq.py) and are all stored as
     // 'relevant', so applying the filter there would make 'curiozități' silently empty.
     if (db_has_column('seam') && $word_tier !== 'rare_in_use') {
@@ -411,8 +411,9 @@ function build_word_filter(array $p): array {
     // are both. Legacy `show_*=1` / `hide_diminutives=1` links keep working.
     //
     // Skipped entirely on `rare_in_use`, the same way `seam` is and for the same reason:
-    // none of the 110 words there carries any of the four flags, so `hide`/`show` are
-    // no-ops and `only` matches nothing. Without this, switching tabs while a class was
+    // exactly one of the 290 words there carries any of the five flags (`foișor`,
+    // diminutive), so `hide`/`show` are no-ops and `only` matches a single row. Without
+    // this, switching tabs while a class was
     // set to „doar" emptied the rare list — and the control saying why is hidden on that
     // tab, so the page showed zero words and nothing to explain it.
     $class_modes = $word_tier === 'rare_in_use' ? [] : [
@@ -557,9 +558,10 @@ function build_word_filter(array $p): array {
 
     // Hide loanwords (words common in English — en_zipf ≥ 4.0).
     //
-    // A `rare_in_use` instrument, and only there: it matches 6 of those 110 words (till,
-    // court, credit, spray, rebel, cannabis, all carrying an `învechit` tag on a sense
-    // other than the modern one) and **zero** of the 17,577 in the `forgotten` tier. The
+    // A `rare_in_use` instrument, and only there: it matches 8 of those 290 words (left,
+    // regular, secret, guard, singer, gear, bold, patent — all carrying an `învechit` tag
+    // on a sense other than the modern one) and **zero** of the 17,577 in the `forgotten`
+    // tier. The
     // control lives inside #dex-rare-control in index.php for that reason — as a toggle
     // in the main sheet it was a switch with nothing behind it.
     if (db_has_column('en_zipf') && ($p['hide_loanwords'] ?? '') === '1') {

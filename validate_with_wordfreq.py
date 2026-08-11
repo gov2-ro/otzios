@@ -7,7 +7,7 @@ For each candidate, lemmatize with simplemma and look up the lemma's Zipf
 frequency in wordfreq. Words are classified into three tiers:
 
   forgotten   — zipf < threshold (default 3.0): virtually absent from modern usage
-  rare_in_use — threshold ≤ zipf < upper_threshold (default 4.5): still appears
+  rare_in_use — threshold ≤ zipf < upper_threshold (default 3.5): still appears
                 but very infrequently — a separate output file is written for these
   common      — zipf ≥ upper_threshold: everyday vocabulary, filtered out
 
@@ -90,10 +90,18 @@ def main() -> int:
         help='Lower Zipf threshold; rows with zipf < threshold are "forgotten" '
              '(default: %(default)s, wordfreq Romanian small-list floor)',
     )
+    # 3.5, not 4.5. The register gate cannot carry this tier on its own: DEX tags are
+    # per-*meaning* and the extraction collapses them onto the headword, so any word
+    # with one archaic sense inherits `învechit`. Measured 2026-08-11 — at 4.5 the tier
+    # opened on `tehnologie`, `tren`, `statut`, `consiliu`, `bloc`, `ambulanță`, every
+    # one of them with `învechit` as its *sole* register tag. Requiring the archaic
+    # marker to be the only tag does not help (318 words, same names at the top), so the
+    # zipf ceiling is the only lever that works: it is a usage measurement, where the
+    # register tag is an editorial note about one sense. 3.5 ≈ 3 occurrences per million.
     parser.add_argument(
         '--upper-threshold',
         type=float,
-        default=4.5,
+        default=3.5,
         help='Upper Zipf threshold; rows with zipf >= this are filtered as '
              'common. Between threshold and upper-threshold = "rare_in_use" '
              '(default: %(default)s)',

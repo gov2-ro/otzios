@@ -4,6 +4,54 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — the rare tier was running on a three-month-old bug
+
+Asked why `credit`, `ecran`, `universitate`, `ceapă`, `pian`, `cannabis` were showing up
+as "rare". Three stacked causes, and the first is the kind worth writing down.
+
+**`forgotten_words_curated.csv` was dated 2026-05-16. The taxonomy join fix landed
+2026-05-19.** `rare_words_wordfreq.csv` was regenerated on 9 June — *after* the fix, which
+is what made it look innocent — but it was generated *from* the stale curated CSV, so it
+inherited the pre-fix `dex_register` column that the backlog already called noise. The fix
+commit's own instruction ("re-run `validate_diachronic.py`") was followed for the
+shortlist; `create_curated_list.py` was not, and nothing downstream could tell. Recomputing
+the gate against the current join: only **18 of the 110** kept an archaic tag at all.
+
+The lesson is about *dating artifacts against the commits that fix their inputs*, not
+about the join. A regenerated file three weeks after a fix still carries the bug if its own
+input predates it.
+
+Re-running the phase also filled `dex_etymology`, empty until now and named in the backlog
+as what blocked etymology filtering.
+
+**Cause two is not fixable and is now documented as such.** DEX register tags are
+per-meaning, and the extraction flattens them onto the headword: `atac` carries
+`articulat`, `fonetică; fonologie`, `limba franceză`, `limba turcă`, `muzică`, `popular`,
+`regional` and `învechit` simultaneously. Nothing is both French and Turkish — that is
+every sense of every entry collapsed. One archaic sense makes the whole word `învechit`.
+This is the same bleed CLAUDE.md records for `dex_pos`, which escaped it by switching to
+`Lexeme.modelType`; `dex_register` has no equivalent.
+
+Measured and rejected on the way: requiring the archaic marker to be the *only* register
+tag. 593 → 318 words, and the top of the list is unchanged — `tehnologie`, `tren`,
+`statut`, `consiliu`, `bloc`, `ambulanță` all carry `învechit` as their sole tag. It costs
+recall and buys no precision, so it is not in.
+
+**Cause three: `--upper-threshold 4.5` was never a rarity bound**, admitting 13–32
+occurrences per million. Now 3.5 (≈3/million), as the script default so a re-run
+reproduces it. The ceiling is the only lever that works, because zipf is a usage
+measurement where the register tag is an editorial note about one sense.
+
+Tier 110 → **290**, larger because the broken join produced false negatives too. The low
+end is what the tier exists for (`răgea`, `sfetnic`, `zidire`, `tină`, `braniște`,
+`baltag`); the top still carries residual bleed (`dor`, `oaste`, `poruncă`), which is cause
+two and is now written down rather than papered over. `word_ids.tsv`: +141, 0 deletions.
+
+Two further findings filed rather than fixed: the tier is decided on *lemma* zipf but the
+UI displays *surface* zipf, so 15 of the 290 show `0.0` in a tier defined as `≥ 3.0`; and
+`create_curated_list.py` emits inflected forms as headwords (`țipând`, `citarea`,
+`patinoare`), which `inflected_forms.db` already has the map to catch.
+
 ## 2026-08-11 — editorial picks and community votes
 
 The year-old backlog item („Publish top faves list, hide/demote meh words for everyone
