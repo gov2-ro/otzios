@@ -440,6 +440,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - [ ] `-iță` rămâne neacoperit: e la fel de des feminin de agent (*păstoriță*,
     *vorniciță*) cât diminutiv (*clăiță*, *cuconiță*). Ar cere fie o listă manuală, fie
     genul bazei din `lexemes.db` — ~90 de cuvinte în joc.
+  - [ ] check definition! - _"Diminutiv al lui ..."_
 
 - [x] when showing words lists, filters should be disabled - or 'toate' — un playlist
   (`?w=`) ocolește complet `build_word_filter()` în `search.php`/`random.php`/`feed.php`;

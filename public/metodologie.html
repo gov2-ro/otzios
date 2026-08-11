@@ -602,7 +602,7 @@
       </div>
       <div class="stat-it">
         <div class="stat-lbl">Pe scurtlistă</div>
-        <div class="stat-num">16.203</div>
+        <div class="stat-num">17.577</div>
         <div class="stat-meta">5 niveluri de încredere</div>
       </div>
       <div class="stat-it">
@@ -750,14 +750,50 @@ forgotten_words_curated.csv  <span class="gold">140.308 candidați</span></div>
     <h3>Corpusurile</h3>
     <ul>
       <li>
-        <strong>Wikisource RO</strong> — 12.921 documente, 14.3M tokens. Baza de referință istorică:
+        <strong>Wikisource RO</strong> — 12.921 documente, 14.3M tokens. Prima bază istorică:
         texte literare, jurnalism vechi, documente din sec. XIX–XX. Procesat cu <code>process_wikisource.py</code>
         via HuggingFace <code>datasets</code>.
+      </li>
+      <li>
+        <strong>LUMRO</strong> — 175 de romane, 111 autori, 1845–1920, 5.1M tokens. Al doilea panel
+        istoric, lângă Wikisource: are anul publicării și autorul pentru fiecare text, ceea ce
+        Wikisource n-are. Procesat cu <code>process_lumro.py</code>.
+        <br>
+        <em>Unitatea de „document" aici e <strong>autorul</strong>, nu romanul.</em> Pragul „atestat
+        în cel puțin două locuri" e o afirmație despre <em>independență</em>, iar trei romane ale
+        aceluiași scriitor sunt vocabularul unui singur om, nu trei mărturii. Măsurat: din 1.425 de
+        cuvinte a căror atestare o dă LUMRO, 638 veneau de la un singur autor — <code>jupâneșică</code>
+        cu 47 de apariții, toate la V.A. Urechia.
       </li>
       <li>
         <strong>CulturaX RO</strong> — 40.3 milioane documente, 17.0 miliarde tokens. Web modern în
         română (2020–2023). Cel mai mare corpus public de text românesc disponibil. Procesat cu
         <code>process_culturax.py</code> via 64 de fișiere parquet citite direct cu <code>pyarrow</code>.
+      </li>
+    </ul>
+
+    <h3>Două corpusuri încărcate, dar nefolosite</h3>
+    <p>
+      Un corpus intră în calcul doar după ce e măsurat, iar două n-au trecut proba. Le ținem
+      încărcate și documentate fiindcă motivul respingerii e el însuși un rezultat.
+    </p>
+    <ul>
+      <li>
+        <strong>Subtitrări (13.2M tokens)</strong> — descrise ca știri Digi24, dar aproximativ o
+        șesime din corpus e televiziune de muzică populară, iar vocabularul arhaic din el vine din
+        <em>versuri cântate</em>. Clipurile cu marcatori de gen sunt 15,6% din tokens dar 27,5% din
+        aparițiile cuvintelor de pe listă, iar 444 din cele 2.446 de cuvinte atestate apar
+        <em>numai</em> acolo. „Atestat la televizor" ar fi însemnat „cântat într-un cântec vechi" —
+        adică exact pe dos.
+      </li>
+      <li>
+        <strong>CoRoLa (638M tokens)</strong> — corpusul de referință al Academiei, echilibrat pe 71
+        de subdomenii. Problema nu e calitatea, ci intervalul: acoperă <strong>1945–prezent</strong>,
+        deci prezența în el nu dovedește uz <em>actual</em>. Față de CulturaX,
+        <code>condițiune</code> apare de 112 ori mai des, <code>comisiune</code> de 49, iar acelea
+        sunt grafii dinainte de reforma din 1953. Conectat o dată la panelul modern, a scos din
+        vederea implicită <code>birjă</code>, <code>dorobanț</code>, <code>vechil</code> și
+        <code>cocoană</code> — adică tocmai ce caută proiectul.
       </li>
     </ul>
 
@@ -845,7 +881,7 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
     <h2><span class="num">05</span> Scurtlista și cele două liste</h2>
     <p>
       <code>make_shortlist.py</code> reduce cele 130k rânduri diacronice la
-      <strong>16.203 cuvinte</strong> și le împarte în două, fiindcă proiectul urmărește două
+      <strong>17.577 cuvinte</strong> și le împarte în două, fiindcă proiectul urmărește două
       lucruri diferite:
     </p>
     <table class="data-table">
@@ -855,12 +891,12 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
           <td>relevante</td>
           <td>dovadă solidă că un cuvânt a fost folosit și s-a stins: atestat istoric, aproape
               absent azi, prezent în multe dicționare și într-unul publicat după 2005</td>
-          <td class="right">2.815</td>
+          <td class="right">3.495</td>
         </tr>
         <tr class="tier-b">
           <td>curiozități</td>
           <td>restul candidaților — cuvinte rămase doar în dicționare vechi sau specializate</td>
-          <td class="right">13.388</td>
+          <td class="right">14.082</td>
         </tr>
       </tbody>
     </table>
@@ -942,7 +978,7 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
     <div class="callout">
       <p><strong>Pe scurtlistă, Zipf e aproape mereu 0.</strong> Româna are la
       <code>wordfreq</code> doar lista „mică", a cărei podea de încredere e Zipf 3 — iar
-      <strong>16.178 din cele 16.203 de cuvinte</strong> stau sub ea. Filtrul Zipf nu separă
+      <strong>17.537 din cele 17.687 de cuvinte</strong> stau sub ea. Filtrul Zipf nu separă
       deci cuvintele uitate între ele; el prinde exact cele câteva zeci de intrări care
       <em>nu</em> sunt rare și n-ar fi trebuit să ajungă pe listă — <em>ridicată</em> (4,62),
       <em>jumătăți</em> (3,70), <em>brânzeturi</em> (3,47), forme flexionare sau compuse
@@ -954,7 +990,7 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
       nu ca verdict.</p>
     </div>
 
-    <h3>Trei etichete, separate de scor</h3>
+    <h3>Patru etichete, separate de scor</h3>
     <p>
       Scorul spune <em>cât de bună e dovada</em>; etichetele spun <em>ce n-ai vrea să vezi</em> —
       și sunt ascunse implicit în interfață, cu un singur clic pentru a le readuce:
@@ -968,6 +1004,21 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
           <code>tinereță</code> stă la 298×, <code>veșcă</code> la 938×, iar un cuvânt rar
           și izolat la 1×.</li>
       <li><strong>nume propriu</strong> — DEX cunoaște grafia <em>doar</em> cu majusculă.</li>
+      <li><strong>grafie veche</strong> — o scriere ieșită din uz a unui cuvânt cât se poate de
+          viu: <code>situațiune</code> pentru <em>situație</em>, <code>sgomot</code> pentru
+          <em>zgomot</em>, <code>advocat</code> pentru <em>avocat</em>. Diferită de „variantă
+          veche", care se sprijină pe o paradigmă comună și de aceea nu vede perechile cu
+          radicali diferiți. Panoul de detaliu spune care e forma modernă, ca eticheta să
+          explice, nu doar să ascundă.
+          <br>
+          <em>Regulile sunt înadins înguste.</em> Doar <code>-țiune/-ziune/-siune → -ție/-zie/-sie</code>,
+          <code>sb/sd/sg → zb/zd/zg</code>, <code>des+consoană sonoră → dez</code> și
+          <code>adv → av</code>, fiecare cerând în plus ca forma modernă să fie de cel puțin 20 de
+          ori mai frecventă în corpusul modern. Regulile generale au fost măsurate și respinse:
+          <code>e → ă</code> se declanșează de 2.300 de ori ca să găsească 69 de perechi și ar
+          confunda <em>peți</em> cu <em>păți</em> — cuvinte diferite. O etichetă care ascunde are
+          erorile invizibile, așa că precizia bate acoperirea. 291 de cuvinte, dintre care 110 în
+          vederea implicită.</li>
     </ul>
     <p>
       Etichetele nu scad scorul. Penalizarea lor și în scor însemna că niciun astfel de cuvânt
@@ -1026,7 +1077,7 @@ Lexeme
 
     <h3>Definiții</h3>
     <p>
-      <code>DefinitionSimple</code> acoperă ~4.600 din cei 16.203 candidați de pe scurtlistă.
+      <code>DefinitionSimple</code> acoperă ~4.600 din cei 17.577 candidați de pe scurtlistă.
       Restul de ~18.500 sunt completați prin <code>scrape_definitions.py</code>, care extrage
       blocul de sinteză de la <code>dexonline.ro/definitie/{cuvant}</code> la 3s/request
       (respectând serverul comunitar, care este întreținut de voluntari).
@@ -1224,6 +1275,11 @@ Lexeme
         <div class="tl-date">2026-08-08</div>
         <div class="tl-what">Audit de calitate — numărători pe paradigme, praguri pe apariții, două liste. Scurtlista: 25.305 → 16.203 cuvinte.</div>
         <div class="tl-why">Trei erori care se compuneau: același prag de 0,1 ppm aplicat unor corpusuri diferite de 1.187× (deci „absent din româna modernă" însemna sub 1.697 de apariții — <em>zapciu</em>, cu 1.322, era clasificat „dispărut din uz"); numărători pe forme de dicționar, nu pe paradigme (<em>înmărmuri</em> 317 vs 6.376 pentru întreaga paradigmă); iar <em>declining</em> măsura registrul literar, nu declinul — 2.602 din 5.998 aveau peste 8.500 de apariții moderne (<em>vapor</em>, <em>fluviu</em>, <em>cioban</em>, <em>palid</em>). Adăugat <code>extract_inflected_forms.py</code> (2,27M forme → lemma) și anii dicționarelor din tabelul <code>Source</code>. <code>dex_pos</code> reconstruit din <code>Lexeme.modelType</code>: acoperire 2,9% → 99,5%. Lista implicită trecută pe scor compozit, cu <em>relevante</em> / <em>curiozități</em> separate.</div>
+      </li>
+      <li class="milestone">
+        <div class="tl-date">2026-08-11</div>
+        <div class="tl-what">Panel istoric dublu (LUMRO), documente proporționale, grafii vechi ascunse. Scurtlista: 16.203 → 17.577 cuvinte.</div>
+        <div class="tl-why">Patru schimbări, fiecare măsurată înainte de a fi acceptată. <strong>(1)</strong> În agregarea pe paradigme, documentele se credită proporțional, ca ocurențele; regula veche le dădea totul-sau-nimic la un prag de 50%, așa că o lemă care nu domina <em>nicio</em> formă aduna apariții și exact zero documente — <em>văz</em> stătea la 96 de apariții și 0 documente și ieșea „fără dovezi", în lista implicită. 170 de rânduri erau în starea asta; acum niciunul. <strong>(2)</strong> <code>process_lumro.py</code> adaugă 175 de romane datate (1845–1920, 111 autori) ca al doilea panel istoric: 381 de cuvinte trec pragul de atestare, 509 urcă în lista „relevante", niciunul nu coboară. Unitatea de document e <em>autorul</em>, nu romanul — din 1.425 de cuvinte atestate de LUMRO, 638 veneau de la un singur scriitor. <strong>(3)</strong> Două corpusuri au fost respinse după măsurare: subtitrările (o șesime televiziune de muzică populară, deci „atestat la TV" însemna „cântat într-un cântec vechi") și CoRoLa (acoperă 1945–prezent, deci scotea <em>birjă</em>, <em>dorobanț</em>, <em>vechil</em> din vederea implicită). <strong>(4)</strong> Eticheta <em>grafie veche</em>: 291 de cuvinte care sunt scrieri ieșite din uz ale unor cuvinte vii (<em>situațiune</em>, <em>sgomot</em>, <em>advocat</em>), cu regulile ținute înadins înguste.</div>
       </li>
     </ol>
   </section>
