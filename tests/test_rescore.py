@@ -214,8 +214,9 @@ def test_relevant_seam_is_a_reviewable_size(db):
 def test_relevant_seam_contains_hideable_words(db):
     """The seam is decided by score alone, and regional/variant words carry no score
     penalty — so the relevant seam must hold some of each. Otherwise the UI's
-    `show_regional` / `show_variants` toggles are dead controls with nothing to reveal,
-    which is exactly the bug this arrangement replaced.
+    `regional` / `variants` class controls have nothing to reveal on „cu" or „doar",
+    which is exactly the bug this arrangement replaced. (`proper_noun_like` went the
+    other way: it narrowed to 2 words, so it stopped being a default hide at all.)
     """
     regional, variant = db.execute(
         "SELECT SUM(regional_only = 1), SUM(variant_like = 1) "
@@ -229,7 +230,7 @@ def test_default_view_hides_them_anyway(db):
     total, visible = db.execute(
         "SELECT COUNT(*),"
         "       SUM(COALESCE(regional_only,0)=0 AND COALESCE(variant_like,0)=0"
-        "           AND COALESCE(proper_noun_like,0)=0)"
+        "           AND COALESCE(archaic_spelling,0)=0)"
         "  FROM words WHERE seam='relevant' AND word_tier='forgotten'").fetchone()
     assert 1000 <= visible <= 4000, visible
     assert visible < total, 'nothing is being hidden — the toggles would be pointless'
@@ -314,7 +315,7 @@ def test_noise_words_are_out_of_the_default_view(db, w):
     hidden = (row['seam'] == 'curiosity'
               or row['regional_only'] == 1
               or row['variant_like'] == 1
-              or row['proper_noun_like'] == 1)
+              or row['archaic_spelling'] == 1)
     assert hidden, f'{w} is visible in the default view'
 
 

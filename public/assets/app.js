@@ -896,19 +896,23 @@ document.querySelectorAll('#filter-form label.pill input[type=radio]').forEach(f
   });
 });
 
-// Two controls are meaningful on only one tab, so each is shown only there. The DEX-rare
-// ceiling applies to `rare_in_use`; the seam split applies to `forgotten` (the 112
-// rare-in-use words come from a different pipeline and are all stored as 'relevant', so
-// the seam buttons there would look live and do nothing).
+// Three groups of controls are meaningful on only one tab, so each is shown only there.
+// The DEX-rare ceiling and the loanword toggle apply to `rare_in_use`; the seam split and
+// the four special classes apply to `forgotten`. The 110 rare-in-use words come from a
+// different pipeline (validate_with_wordfreq.py): they are all stored as seam 'relevant',
+// and none of them carries a regional/variant/spelling/diminutive flag — measured, all
+// four counts are 0 — so both sets of controls would look live there and do nothing.
 (function() {
-  const rareOnly = document.getElementById('dex-rare-control');
-  const seamOnly = document.getElementById('seam-control');
-  if (!rareOnly && !seamOnly) return;
+  const rareOnly  = document.getElementById('dex-rare-control');
+  const seamOnly  = document.getElementById('seam-control');
+  const classOnly = document.getElementById('class-control');
+  if (!rareOnly && !seamOnly && !classOnly) return;
   function sync() {
     const sel  = document.querySelector('#filter-form input[name=word_tier]:checked');
     const rare = !!sel && sel.value === 'rare_in_use';
-    if (rareOnly) rareOnly.style.display = rare ? '' : 'none';
-    if (seamOnly) seamOnly.style.display = rare ? 'none' : '';
+    if (rareOnly)  rareOnly.style.display  = rare ? '' : 'none';
+    if (seamOnly)  seamOnly.style.display  = rare ? 'none' : '';
+    if (classOnly) classOnly.style.display = rare ? 'none' : '';
   }
   document.querySelectorAll('#filter-form input[name=word_tier]')
     .forEach(function(r) { r.addEventListener('change', sync); });
@@ -967,6 +971,10 @@ document.querySelectorAll('.tax-select').forEach(function(sel) {
 
 // ── Active-filter chips (at-a-glance, individually removable) ────────────────────
 
+// The four special classes, in one place — they are `forgotten`-tab-only controls and
+// three separate lists here would have to be kept in step by hand.
+var CLASS_PARAMS = ['regional', 'variants', 'spellings', 'diminutives'];
+
 var AF_SPECS = [
   { name: 'q',              type: 'text',     label: function(v){ return '„' + v + '”'; } },
   { name: 'has_def',        type: 'radio',  def: '', label: function(v){ return v === '1' ? 'cu definiție' : 'fără definiție'; } },
@@ -990,11 +998,13 @@ var AF_SPECS = [
   { name: 'dexfreq_min',    type: 'number',   label: function(v){ return 'dex ≥' + v; } },
   { name: 'dexfreq_max',    type: 'number',   label: function(v){ return 'dex ≤' + v; } },
   { name: 'hide_loanwords', type: 'checkbox', label: function(){ return 'fără împrumuturi'; } },
-  { name: 'hide_diminutives', type: 'checkbox', label: function(){ return 'fără diminutive'; } },
-  { name: 'show_proper',    type: 'checkbox', label: function(){ return 'cu nume proprii'; } },
-  { name: 'show_regional',  type: 'checkbox', label: function(){ return 'cu regionalisme'; } },
-  { name: 'show_variants',  type: 'checkbox', label: function(){ return 'cu variante vechi'; } },
-  { name: 'show_spellings', type: 'checkbox', label: function(){ return 'cu grafii vechi'; } },
+  // The four special classes. Three states each, so the chip has to name which one is
+  // live — „cu regionalisme" and „doar regionalisme" are different filters, and the
+  // second is the one that needs saying loudest.
+  { name: 'regional',    type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'regionalisme'; } },
+  { name: 'variants',    type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'variante vechi'; } },
+  { name: 'spellings',   type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'grafii vechi'; } },
+  { name: 'diminutives', type: 'radio', def: 'show', label: function(v){ return (v === 'only' ? 'doar ' : 'fără ') + 'diminutive'; } },
   // The chip used to print the raw seam value ("listă: curiosity") into an otherwise
   // Romanian bar. Labels are the ones already on the seam control itself.
   { name: 'seam',           type: 'radio',  def: 'relevant', label: function(v){
@@ -1010,7 +1020,11 @@ function activeFilterChips() {
   var wordTier = (form.querySelector('input[name=word_tier]:checked') || {}).value || 'forgotten';
   var chips = [];
   AF_SPECS.forEach(function(spec) {
-    if (spec.name === 'dex_max' && wordTier !== 'rare_in_use') return;
+    // Tab-specific controls: their inputs stay in the form while the section is
+    // hidden, so without this a leftover value would chip on a tab it cannot filter.
+    var rare = wordTier === 'rare_in_use';
+    if ((spec.name === 'dex_max' || spec.name === 'hide_loanwords') && !rare) return;
+    if (CLASS_PARAMS.indexOf(spec.name) !== -1 && rare) return;
     if (spec.type === 'text' || spec.type === 'number') {
       var el = form.querySelector('input[name=' + spec.name + ']');
       if (el && el.value.trim()) chips.push({ spec: spec, text: spec.label(el.value.trim()) });
@@ -1099,6 +1113,12 @@ var URL_PARAM_DEFAULTS = {
   sort:      'quality',
   marks:     'all',
   dex_max:   'all',
+  // Special classes — three states each, so unlike the old checkboxes these always
+  // submit a value and need a default here to stay out of the URL when untouched.
+  regional:    'hide',
+  variants:    'hide',
+  spellings:   'hide',
+  diminutives: 'show',
 };
 
 function applyUrlToForm() {
@@ -1112,11 +1132,24 @@ function applyUrlToForm() {
   if (q) { var qi = form.querySelector('input[name=q]'); if (qi) qi.value = q; }
 
   // Radio groups
-  ['word_tier', 'has_def', 'seam'].forEach(function(name) {
+  ['word_tier', 'has_def', 'seam'].concat(CLASS_PARAMS).forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     form.querySelectorAll('input[name=' + name + ']').forEach(function(r) {
       r.checked = (r.value === val);
+    });
+  });
+
+  // Links shared before the classes became three-state controls. The server maps these
+  // too (build_word_filter), but htmx searches from *form* state on load, so a legacy
+  // link would otherwise render as filtered by the URL and behave as if it weren't.
+  [['show_regional', 'regional', 'show'],
+   ['show_variants', 'variants', 'show'],
+   ['show_spellings', 'spellings', 'show'],
+   ['hide_diminutives', 'diminutives', 'hide']].forEach(function(m) {
+    if (params.get(m[0]) !== '1' || params.get(m[1]) !== null) return;
+    form.querySelectorAll('input[name=' + m[1] + ']').forEach(function(r) {
+      r.checked = (r.value === m[2]);
     });
   });
 
@@ -1146,9 +1179,9 @@ function applyUrlToForm() {
     if (el) el.value = val;
   });
 
-  // Explore: checkboxes. The show_* ones are inverted on purpose — an unchecked box
-  // is not submitted, so a default-on hide_* could never be switched off.
-  ['hide_loanwords', 'hide_diminutives', 'show_proper', 'show_regional', 'show_variants', 'show_spellings'].forEach(function(name) {
+  // Explore: checkboxes. Only ever subtract, so "unchecked submits nothing" is exactly
+  // the state they mean — the classes that need a default-on state are radios above.
+  ['hide_loanwords'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     var el = form.querySelector('input[name=' + name + ']');
@@ -1190,7 +1223,7 @@ function syncUrlFromForm() {
   if (q && q.value.trim()) params.set('q', q.value.trim());
 
   // Radio groups
-  ['word_tier', 'has_def', 'seam'].forEach(function(name) {
+  ['word_tier', 'has_def', 'seam'].concat(CLASS_PARAMS).forEach(function(name) {
     var el = form.querySelector('input[name=' + name + ']:checked');
     var val = el ? el.value : '';
     if (val && val !== (URL_PARAM_DEFAULTS[name] || '')) params.set(name, val);
@@ -1220,7 +1253,7 @@ function syncUrlFromForm() {
   });
 
   // Explore: binary checkboxes
-  ['hide_loanwords', 'hide_diminutives', 'show_proper', 'show_regional', 'show_variants', 'show_spellings'].forEach(function(name) {
+  ['hide_loanwords'].forEach(function(name) {
     var el = form.querySelector('input[name=' + name + ']');
     if (el && el.checked) params.set(name, '1');
   });

@@ -4,6 +4,83 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — the class filters become one three-state control each
+
+The Filtre sheet carried six checkboxes for the flag classes, and two of them did nothing.
+Measured against the current `ui.db` before touching anything:
+
+| toggle | default view | anywhere |
+|---|---|---|
+| `hide_loanwords` | 0 | 6 words, all `rare_in_use`; **zero** in the 17,577-word `forgotten` tier |
+| `show_proper` | 0 | 2 words in the whole DB (`sirius`, `weltanschauung`), both `curiosity` |
+| `hide_diminutives` | −124 | 138 relevant / 317 curiosity |
+| `show_regional` | +431 | live |
+| `show_variants` | +143 | live |
+| `show_spellings` | +110 | live |
+
+**Three states, not two.** `regional` / `variants` / `spellings` / `diminutives` are now one
+segmented row each — `fără / cu / doar` — replacing five checkboxes. The reason is not the
+extra „doar" mode so much as the polarity: an unchecked checkbox is not submitted, so a
+class hidden by default *had* to be spelled `show_x=1` and one shown by default `hide_x=1`,
+and the sheet ended up with three „arată X" rows and two „ascunde X" rows that looked like
+one set of controls and behaved like two. A radio always submits, so all four read
+identically and only the default moves (diminutives default to `cu`, the rest to `fără`).
+
+`only` on several classes means their **union**, and a class left on `hide` is still
+subtracted from it — measured: `regional=only` is 431, `regional=only&variants=show` is 440,
+the nine words that are both. The flags are near-disjoint (23 rows in the relevant seam
+carry two), which is what makes „doar" coherent as a mode at all.
+
+Legacy `show_*=1` / `hide_diminutives=1` links keep working, and the mapping is in **two**
+places on purpose: `build_word_filter()` for direct/API requests, and `applyUrlToForm()`
+because htmx searches from *form* state on load — a server-only mapping would leave an old
+shared link rendering as filtered while behaving as if it were not.
+
+**`hide_loanwords` moved into `#dex-rare-control`**, beside `dex_max`, so it appears only on
+the „rare" tab where it matches anything. Checking the result in a browser turned up that
+the new `clase` section has the mirror-image problem — none of the 110 rare words carries
+any of the four flags — so it is now hidden on that tab too, alongside `#seam-control`,
+which was already handled this way.
+
+Tab-gating a control takes **three** changes, and the third is the one that bites: the
+section's `display`, the chip in `activeFilterChips()` (the inputs stay in the form while
+the section is hidden), and the *server* ignoring the param on the wrong tab. Without the
+third, switching to „rare" with „doar regionalisme" set returned 0 words — and the control
+that would explain why was hidden on that tab. `seam` had that guard already; the classes
+now do too.
+
+**`proper_noun_like` stopped being a default hide.** It was one when the flag caught 447
+words; narrowing it to "DEX knows this spelling *only* as a capitalised headword" — the fix
+that stopped `gheb` being hidden by the surname `Gheb` — left 2 words. A default hide is
+only worth its toggle if the toggle reveals something, and this one revealed nothing while
+quietly subtracting two rows. The column still gates the word of the day and quiz
+distractors, which is a different question from what a browsing reader may see.
+
+Also: the two `ultima atestare` selects both read „ultima atestare: oricând" when unset and
+were indistinguishable in the rail — now „ultima atestare (după)" and „(înainte)".
+
+Verified end-to-end against `ui.db` through `build_word_filter()` and a live `search.php`:
+default 2,802 unchanged, `regional=only` 431, `variants=only` 143, `spellings=only` 110,
+`diminutives=only` 124, all three `show` 3,495 (the full relevant seam), an invalid mode
+falling back to the default, and the rare tab 110 → 104 with `hide_loanwords=1`. Rendering and interaction checked under
+Playwright rather than by eye: the four rows fit and right-align in the 288px docked rail
+(labels 58–77px, segs 107px, 253px of row) and in the 390px mobile drawer, in light/paper
+and dark/beton; clicking „doar" writes `?regional=only`, chips „doar regionalisme", survives
+a reload, and `?show_regional=1` lands on the „cu" radio with 3,233 words.
+`tests/test_rescore.py` updated where it described the default view
+as including `proper_noun_like` (55 pass); `tests/test_lists_api.js` switched to the new
+param name. Full suite 105 pass.
+
+Also in this pass, and unrelated to the filters: the readme's screenshot block. The main
+`public/screenshot-otzios.png` is refreshed to the current explorer, the old one is kept as
+`docs/screenshots/screenshot-otzios-v0.png` (commented out in the readme, not deleted — it
+is the only picture of what v0 looked like), and `joc` in both modes plus `statistici` are
+now shown, since three of the five pages had no image anywhere. The prototype link moved
+above the images so it is not stranded below them. The two readme paragraphs describing the
+hide-flags were corrected in the same edit: `proper_noun_like` is no longer one of them.
+
+---
+
 ## 2026-08-10 — corpus expansion: verified the two LLM reports, measured LUMRO, found a `hist_docs` defect
 
 Turned the two reference reports (`docs/reference/260810 Grok …`, `260810 Gemini …`) into a

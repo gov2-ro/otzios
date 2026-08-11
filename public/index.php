@@ -259,7 +259,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
              mereu fals. -->
         <select name="attested_after" class="fs-select tax-select" data-default=""
                 title="Cel mai recent dicționar în care apare cuvântul e din anul ales sau mai nou">
-          <option value="">ultima atestare: oricând</option>
+          <option value="">ultima atestare (după): oricând</option>
           <option value="1970">după 1970</option>
           <option value="1990">după 1990</option>
           <option value="2005">după 2005</option>
@@ -267,13 +267,17 @@ global $QUICK_TAGS, $POS_OPTIONS;
         </select>
         <select name="attested_before" class="fs-select tax-select" data-default=""
                 title="Cel mai recent dicționar în care apare cuvântul e mai vechi de anul ales">
-          <option value="">ultima atestare: oricând</option>
+          <option value="">ultima atestare (înainte): oricând</option>
           <option value="1970">înainte de 1970</option>
           <option value="1990">înainte de 1990</option>
           <option value="2005">înainte de 2005</option>
           <option value="2010">înainte de 2010</option>
         </select>
         <?php endif; ?>
+        <!-- Both of these mean something only on the „rare" tab, so JS shows them only
+             there. `hide_loanwords` matches 6 of the 110 rare words and none at all of
+             the 17.5k forgotten ones — in the main sheet it was a switch with nothing
+             behind it. -->
         <span id="dex-rare-control" class="dex-rare-control" style="display:none">
           <select name="dex_max" class="fs-select tax-select" data-default="all">
             <option value="all" selected>DEX: toate</option>
@@ -281,6 +285,13 @@ global $QUICK_TAGS, $POS_OPTIONS;
             <option value="0.50">DEX-rar ≤0.50</option>
             <option value="0.30">DEX-rar ≤0.30</option>
           </select>
+          <?php if (db_has_column('en_zipf')): ?>
+          <label class="fs-pill fs-pill-sm" title="Ascunde cuvintele comune în engleză (semnal de împrumut: en Zipf ≥ 4.0)">
+            <span class="fs-check"></span>
+            <input type="checkbox" name="hide_loanwords" value="1">
+            ascunde împrumuturi
+          </label>
+          <?php endif; ?>
         </span>
         <!-- „marcate" rather than „adnotate": the values cover every kind of meta
              a reader can leave on a word — fav, a quick tag, a custom tag, a note —
@@ -306,7 +317,40 @@ global $QUICK_TAGS, $POS_OPTIONS;
         </div>
       </div>
 
-      <!-- Explore: zipf, dexfreq, toggles -->
+      <!-- Clase speciale — one three-state control each, „fără / cu / doar".
+           These were six checkboxes, and the polarity had to differ per class because an
+           unchecked box submits nothing: three read „arată X" and two „ascunde X", which
+           looked like one set of controls and behaved like two. A radio always submits,
+           so all four read the same way now and only the default differs — diminutivele
+           are the one class shown by default. „doar" on several means their union; see
+           build_word_filter() in api/_lib.php. -->
+      <div class="fs-section" id="class-control">
+        <div class="fs-label">clase</div>
+        <?php
+        $CLASS_ROWS = array_values(array_filter([
+          ['regional', 'regional_only', 'regionalisme', 'hide',
+           'Cuvinte marcate doar regional/dialectal, fără să fie și învechite.'],
+          ['variants', 'variant_like', 'variante vechi', 'hide',
+           'Grafii vechi ale unor cuvinte încă folosite (politeță/politețe, uleu/ulei), detectate prin paradigma comună.'],
+          ['spellings', 'archaic_spelling', 'grafii vechi', 'hide',
+           'Grafii ieșite din uz ale unor cuvinte foarte vii: situațiune → situație, sgomot → zgomot, advocat → avocat.'],
+          ['diminutives', 'diminutive_like', 'diminutive', 'show',
+           'Diminutive (noruleț, cuconiță, fecioraș) — cuvinte pe care DEX le definește ca „diminutiv al lui…”.'],
+        ], function ($row) { return db_has_column($row[1]); }));
+        ?>
+        <?php foreach ($CLASS_ROWS as [$name, $col, $label, $default, $tip]): ?>
+        <div class="fs-row" title="<?= e($tip) ?>">
+          <span class="fs-row-label"><?= e($label) ?></span>
+          <div class="seg seg-sm">
+            <label class="seg-opt"><input type="radio" name="<?= e($name) ?>" value="hide"<?= $default === 'hide' ? ' checked' : '' ?>> fără</label>
+            <label class="seg-opt"><input type="radio" name="<?= e($name) ?>" value="show"<?= $default === 'show' ? ' checked' : '' ?>> cu</label>
+            <label class="seg-opt"><input type="radio" name="<?= e($name) ?>" value="only"> doar</label>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+
+      <!-- Explore: numeric ranges (zipf, DEX frequency) -->
       <div class="fs-section">
         <div class="fs-label">explore</div>
         <?php if (db_has_column('zipf_frequency')): ?>
@@ -323,48 +367,6 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <span class="fs-range-sep">–</span>
           <input type="number" name="dexfreq_max" step="1" min="0" max="100" placeholder="max" class="fs-input">
         </div>
-        <?php if (db_has_column('en_zipf')): ?>
-        <label class="fs-pill fs-pill-sm" title="Ascunde cuvintele comune în engleză (semnal de împrumut: en Zipf ≥ 4.0)">
-          <span class="fs-check"></span>
-          <input type="checkbox" name="hide_loanwords" value="1">
-          ascunde împrumuturi
-        </label>
-        <?php endif; ?>
-        <?php if (db_has_column('diminutive_like')): ?>
-        <label class="fs-pill fs-pill-sm" title="Ascunde diminutivele (noruleț, cuconiță, fecioraș) — cuvinte pe care DEX le definește ca „diminutiv al lui…”">
-          <span class="fs-check"></span>
-          <input type="checkbox" name="hide_diminutives" value="1">
-          ascunde diminutive
-        </label>
-        <?php endif; ?>
-        <?php if (db_has_column('proper_noun_like')): ?>
-        <label class="fs-pill fs-pill-sm" title="Headword-uri cu majusculă în DEX (nume, locuri, branduri). Ascunse implicit.">
-          <span class="fs-check"></span>
-          <input type="checkbox" name="show_proper" value="1">
-          arată nume proprii
-        </label>
-        <?php endif; ?>
-        <?php if (db_has_column('regional_only')): ?>
-        <label class="fs-pill fs-pill-sm" title="Cuvinte marcate doar regional/dialectal, fără să fie și învechite. Ascunse implicit.">
-          <span class="fs-check"></span>
-          <input type="checkbox" name="show_regional" value="1">
-          arată regionalisme
-        </label>
-        <?php endif; ?>
-        <?php if (db_has_column('variant_like')): ?>
-        <label class="fs-pill fs-pill-sm" title="Grafii vechi ale unor cuvinte încă folosite (politeță/politețe, uleu/ulei). Ascunse implicit.">
-          <span class="fs-check"></span>
-          <input type="checkbox" name="show_variants" value="1">
-          arată variante vechi
-        </label>
-        <?php endif; ?>
-        <?php if (db_has_column('archaic_spelling')): ?>
-        <label class="fs-pill fs-pill-sm" title="Grafii ieșite din uz ale unor cuvinte foarte vii: situațiune → situație, sgomot → zgomot, advocat → avocat. Ascunse implicit.">
-          <span class="fs-check"></span>
-          <input type="checkbox" name="show_spellings" value="1">
-          arată grafii vechi
-        </label>
-        <?php endif; ?>
       </div>
 
     </div><!-- .fs-body -->

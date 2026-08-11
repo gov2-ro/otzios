@@ -1622,6 +1622,10 @@ body {
   white-space: nowrap;
   flex-shrink: 0;
 }
+/* Four class rows stack in the „clase" section under labels of different lengths
+   („diminutive" vs „variante vechi"). Pushing the seg to the right edge gives the
+   column one alignment to read down instead of a ragged left edge per row. */
+.fs-row .seg { margin-left: auto; }
 
 /* Range rows */
 .fs-range-row {

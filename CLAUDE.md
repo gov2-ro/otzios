@@ -246,7 +246,11 @@ score and they do **not** decide the seam:
   unrelated paradigms and are caught instead by having no current dictionary.
 - `proper_noun_like` — DEX knows this spelling **only** as a capitalised headword. It must
   stay "only": flagging every collision hid ordinary words like `gheb` ("cocoașă") because
-  DEX also lists the name `Gheb`.
+  DEX also lists the name `Gheb`. **No longer a browsing filter** — narrowing it to "only"
+  left 2 words in the whole database (`sirius`, `weltanschauung`, both `curiosity`), so a
+  default hide plus a toggle was a control that revealed nothing while quietly subtracting
+  two rows. The column still gates the word of the day (`index.php`) and quiz distractors
+  (`api/quiz.php`), which is a different question from what a reader may browse.
 - `archaic_spelling` — an obsolete *spelling* of a word that is entirely alive under a
   modern one: `situațiune`/`situație`, `sgomot`/`zgomot`, `advocat`/`avocat`. Not the same
   as `variant_like`, which keys on a shared inflectional paradigm and therefore cannot see
@@ -271,15 +275,14 @@ score and they do **not** decide the seam:
 **The score says how good the evidence is; the flags say what you would rather not look
 at.** Penalising a flag in the score as well is double-counting, and it makes the flag
 unappealable: when regional words cost 25 points *and* were routed out of the seam, none
-could reach the relevant list, so the UI's "arată regionalisme" toggle had nothing to
-reveal. As it stands the relevant seam holds ~440 regional and ~152 variant words, hidden
-until asked for. The one score penalty that remains is for a *moderate* family ratio
+could reach the relevant list, so the UI's regionalisme control had nothing to reveal on
+„cu" or „doar". As it stands the relevant seam holds 431 regional and 152 variant words,
+hidden until asked for. The one score penalty that remains is for a *moderate* family ratio
 (4–25×), which is an evidence problem rather than a preference — the lemma's count is
 being propped up by its relatives.
 
 `diminutive_like` is a fourth flag but not one of these three: it is **off by default**, so
-it never subtracts from what you see until you ask. That is also why it is spelled
-`hide_diminutives` rather than `show_`— see below. `mark_diminutives()`
+it never subtracts from what you see until you ask. `mark_diminutives()`
 (`tools/build_ui_db.py`) sets it from the DEX definition saying "Diminutiv al lui X" (351
 words) plus nine unambiguous suffixes whose stripped stem is a real lexeme (58 more).
 `-iță` is deliberately excluded: as often a feminine agent (`păstoriță`, `vorniciță`) as a
@@ -287,17 +290,45 @@ diminutive. `tools/migrate_ui_db_diminutives.py` back-fills an existing `ui.db`.
 
 ### UI defaults
 
-`build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides all four
-flagged classes, and sorts by `quality_score DESC`. Every one is a visible one-click
-toggle — `seam`, `show_regional`, `show_variants`, `show_proper`, `show_spellings` — never a silent
-exclusion, because the point of opening this up is to learn where the lines are wrong.
+`build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides three of
+the four flagged classes, and sorts by `quality_score DESC`. Every one is a visible
+control — `seam`, plus the four class rows — never a silent exclusion, because the point of
+opening this up is to learn where the lines are wrong.
+
+**The four classes are one three-state control each: `hide` / `show` / `only`** (Romanian
+„fără / cu / doar"), on the params `regional`, `variants`, `spellings`, `diminutives`. Only
+the default differs — `hide` for the first three, `show` for diminutives.
 
 Two things to preserve when touching these:
 
-1. **A toggle that hides by default is `show_*`, never `hide_*`.** An unchecked checkbox is
-   not submitted, so a default-on `hide_*` could never be switched off. The reverse case is
-   fine and is what `hide_loanwords` and `hide_diminutives` are: they are off by default and
-   only ever subtract, so "unchecked submits nothing" is exactly the state they should mean.
+1. **Class filters are radios, not checkboxes, and that is what makes them uniform.** As
+   checkboxes the polarity *had* to differ per class: an unchecked box is not submitted, so
+   a class hidden by default needed `show_x=1` while one shown by default needed
+   `hide_x=1` — and the sheet ended up with three „arată X" rows and two „ascunde X" rows
+   that read as one set of controls and were not. A radio always submits, so the default
+   can move without the wording following it. Two consequences: each param needs an entry
+   in `URL_PARAM_DEFAULTS`, and the legacy `show_*=1` / `hide_diminutives=1` links must
+   keep mapping — in `build_word_filter()` **and** in `applyUrlToForm()`, since htmx
+   searches from form state on load and a server-only mapping leaves an old link rendering
+   as filtered while behaving as if it were not.
+   The rule still applies to what remains a checkbox: `hide_loanwords` is off by default
+   and only ever subtracts, so "unchecked submits nothing" is exactly the state it means.
+
+   **Both sets of controls are tab-specific, and each needs gating in three places.**
+   `#dex-rare-control` (`dex_max` + `hide_loanwords`) shows only on `rare_in_use`:
+   `en_zipf ≥ 4.0` matches 6 of those 110 words and **zero** of the 17.5k `forgotten` ones.
+   `#class-control` and `#seam-control` show only on `forgotten`: none of the 110 rare
+   words carries any of the four class flags, and they are all stored as seam `relevant`.
+   The three places, all in step via `CLASS_PARAMS` in `app.js`:
+
+   - the section's `display`, in the `sync()` block that watches `word_tier`;
+   - the chip, in `activeFilterChips()` — the inputs stay in the form while the section
+     is hidden, so a leftover value would otherwise chip on a tab it cannot filter;
+   - **`build_word_filter()` must ignore the param on the wrong tab.** This is the one
+     that bites: with the section hidden the form still submits it, so carrying
+     „doar regionalisme" onto the rare tab returned 0 words — and the control that would
+     explain why was hidden on that tab. `seam` already had this guard; the classes now
+     do too.
 2. **Every filter needs registering in `public/assets/app.js` too**, or it works but the
    URL never reflects it and the state is unshareable: add it to `AF_SPECS` (the chip) and
    to the read/write arrays in `applyUrlToForm` / the URL writer — **there are two arrays,

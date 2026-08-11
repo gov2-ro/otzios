@@ -82,7 +82,7 @@ const mark = (word, patch) => Object.assign(
     const mixed = await post(f, '/api/pack.php', { words: [words[0], hidden] });
     const withDefaults = await f(
       `${BASE}/api/search.php?w=${encodeURIComponent(mixed.body.w)}` +
-      '&seam=relevant&hide_diminutives=1&word_tier=forgotten').then((r) => r.text());
+      '&seam=relevant&diminutives=hide&word_tier=forgotten').then((r) => r.text());
     const got = [...withDefaults.matchAll(/data-word="([^"]+)"/g)].map((m) => m[1]);
     check(got.includes(hidden) && got.includes(words[0]),
           `filters are ignored inside a playlist (${hidden} survives seam=relevant)`);

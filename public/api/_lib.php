@@ -330,25 +330,59 @@ function build_word_filter(array $p): array {
         }
     }
 
-    // Regional-only words (tagged `regional`/`dialectal`/a region, without also being
-    // tagged old) are hidden by default — a word used in one valley is not a word
-    // Romanian forgot. Pass show_regional=1 to include them.
-    if (db_has_column('regional_only') && ($p['show_regional'] ?? '') !== '1') {
-        $conditions[] = '(regional_only IS NULL OR regional_only = 0)';
+    // ── Special classes: hidden, included, or the only thing shown ──────────────
+    //
+    // Four flags mark classes most readers do not want mixed into a default list:
+    //
+    //   regional     regional/dialectal without also being tagged old — a word used in
+    //                one valley is not a word Romanian forgot
+    //   variants     archaic spellings of words still in use (politeță/politețe),
+    //                detected via the paradigm-sharing ratio, not spelling similarity
+    //   spellings    obsolete spellings of words entirely alive under a modern form
+    //                (situațiune → situație, sgomot → zgomot);
+    //                distinct from `variants`, which keys on a shared paradigm and so
+    //                cannot see a pair whose stems differ
+    //   diminutives  noruleț, cuconiță — shown by default, unlike the other three
+    //
+    // Each is one three-state control (`hide` / `show` / `only`) rather than a checkbox.
+    // The checkbox form forced the polarity to differ per class: an unchecked box is not
+    // submitted, so a class hidden by default needed `show_x=1` while one shown by
+    // default needed `hide_x=1`, and the sheet ended up with „ascunde…" and „arată…"
+    // rows that looked like one set of controls and were not. A radio always submits, so
+    // all four now read the same way and only the default moves.
+    //
+    // `only` on several classes means their union — the flags are near-disjoint, 23 rows
+    // in the relevant seam carry two — and a class left on `hide` is still subtracted
+    // from that union, so „doar regionalisme" + „fără variante" drops the nine words that
+    // are both. Legacy `show_*=1` / `hide_diminutives=1` links keep working.
+    //
+    // Skipped entirely on `rare_in_use`, the same way `seam` is and for the same reason:
+    // none of the 110 words there carries any of the four flags, so `hide`/`show` are
+    // no-ops and `only` matches nothing. Without this, switching tabs while a class was
+    // set to „doar" emptied the rare list — and the control saying why is hidden on that
+    // tab, so the page showed zero words and nothing to explain it.
+    $class_modes = $word_tier === 'rare_in_use' ? [] : [
+        ['regional',    'regional_only',    'hide', 'show_regional',    'show'],
+        ['variants',    'variant_like',     'hide', 'show_variants',    'show'],
+        ['spellings',   'archaic_spelling', 'hide', 'show_spellings',   'show'],
+        ['diminutives', 'diminutive_like',  'show', 'hide_diminutives', 'hide'],
+    ];
+    $only_cols = [];
+    foreach ($class_modes as [$param, $col, $default, $legacy, $legacy_mode]) {
+        if (!db_has_column($col)) { continue; }
+        $mode = trim($p[$param] ?? '');
+        if (!in_array($mode, ['hide', 'show', 'only'], true)) {
+            $mode = (($p[$legacy] ?? '') === '1') ? $legacy_mode : $default;
+        }
+        if ($mode === 'hide') {
+            $conditions[] = "(COALESCE($col, 0) = 0)";
+        } elseif ($mode === 'only') {
+            $only_cols[] = $col;
+        }
     }
-
-    // Archaic spellings of words people still use (politeță/politețe, uleu/ulei) —
-    // detected via the paradigm-sharing ratio, not spelling similarity.
-    if (db_has_column('variant_like') && ($p['show_variants'] ?? '') !== '1') {
-        $conditions[] = '(variant_like IS NULL OR variant_like = 0)';
-    }
-
-    // Obsolete spellings of words that are entirely alive under a modern one
-    // (`situațiune` → `situație`, `sgomot` → `zgomot`). Distinct from `variant_like`,
-    // which keys on a shared inflectional paradigm and so cannot see a pair whose
-    // stems differ. `spelling_of` names the modern twin, so the UI can say which.
-    if (db_has_column('archaic_spelling') && ($p['show_spellings'] ?? '') !== '1') {
-        $conditions[] = '(archaic_spelling IS NULL OR archaic_spelling = 0)';
+    if ($only_cols !== []) {
+        $parts = array_map(function ($c) { return "COALESCE($c, 0) = 1"; }, $only_cols);
+        $conditions[] = '(' . implode(' OR ', $parts) . ')';
     }
 
     // Minimum historical attestation. Off by default so the no-corpus-signal words
@@ -464,29 +498,26 @@ function build_word_filter(array $p): array {
     if ($dexfreq_min !== null) { $conditions[] = 'dex_frequency >= ?'; $params[] = $dexfreq_min / 100.0; }
     if ($dexfreq_max !== null) { $conditions[] = 'dex_frequency <= ?'; $params[] = $dexfreq_max / 100.0; }
 
-    // Hide loanwords (words common in English — en_zipf ≥ 4.0)
+    // Hide loanwords (words common in English — en_zipf ≥ 4.0).
+    //
+    // A `rare_in_use` instrument, and only there: it matches 6 of those 110 words (till,
+    // court, credit, spray, rebel, cannabis, all carrying an `învechit` tag on a sense
+    // other than the modern one) and **zero** of the 17,577 in the `forgotten` tier. The
+    // control lives inside #dex-rare-control in index.php for that reason — as a toggle
+    // in the main sheet it was a switch with nothing behind it.
     if (db_has_column('en_zipf') && ($p['hide_loanwords'] ?? '') === '1') {
         $conditions[] = '(en_zipf IS NULL OR en_zipf < 4.0)';
     }
 
-    // Hide diminutives (`noruleț`, `cuconiță`, `fecioraș`). Off by default, and a
-    // `hide_` rather than a `show_` for that reason: the toggle only ever subtracts, so
-    // an unchecked box submitting nothing is exactly the state it should mean. The 403
-    // marked words are mostly DEX saying so in the definition — see mark_diminutives()
-    // in tools/build_ui_db.py for why the suffix half of the rule is so narrow.
-    if (db_has_column('diminutive_like') && ($p['hide_diminutives'] ?? '') === '1') {
-        $conditions[] = '(diminutive_like IS NULL OR diminutive_like = 0)';
-    }
-
-    // Proper nouns are hidden by default now; `show_proper=1` brings them back. Phrased
-    // as show- rather than hide- on purpose: an unchecked checkbox is not submitted at
-    // all, so a default-on `hide_proper` could never be switched off. A word that is only
-    // a surname or a place name is never the answer to "what did Romanian forget", and
-    // 447 of them were in the list. The legacy `hide_proper=1` still means hide, which is
-    // now simply the default.
-    if (db_has_column('proper_noun_like') && ($p['show_proper'] ?? '') !== '1') {
-        $conditions[] = '(proper_noun_like IS NULL OR proper_noun_like = 0)';
-    }
+    // `proper_noun_like` is deliberately *not* a default exclusion any more. It was one
+    // when the flag caught 447 words; narrowing it to "DEX knows this spelling only as a
+    // capitalised headword" (so that `gheb` stopped being hidden by the surname `Gheb`)
+    // left 2 in the whole database — `sirius` and `weltanschauung`, both in `curiosity`.
+    // A default hide is only worth its toggle if the toggle reveals something, and this
+    // one revealed nothing while quietly subtracting two words. The column still earns
+    // its keep as a quality gate on the word of the day (index.php) and on quiz
+    // distractors (api/quiz.php), which is a different question from what a browsing
+    // reader may see.
 
     return ['conditions' => $conditions, 'params' => $params, 'word_tier' => $word_tier];
 }
