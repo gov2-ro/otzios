@@ -78,9 +78,26 @@ function qtExplainerDismissed() {
   try { return localStorage.getItem(QT_EXPLAINER_KEY) === '1'; } catch (_) { return false; }
 }
 
+// Dismissal is held by a class on <html>, with CSS doing the hiding — not by an inline
+// style written after each render.
+//
+// The inline version looked correct and failed in one specific way: the detail panel is
+// re-rendered when you open the next word, and the fresh #qt-explainer arrives with no
+// inline style, so the banner came back on every word even though localStorage said
+// dismissed. (Verified: hydrateDetail did set display:none, and the computed style was
+// `flex` a moment later with the inline value gone — a different element.) A root class
+// cannot be lost that way, because it is not on the element being replaced.
+function applyQtExplainerState() {
+  if (typeof document === 'undefined' || !document.documentElement) return;
+  document.documentElement.classList.toggle('qt-dismissed', qtExplainerDismissed());
+}
+
 function dismissQtExplainer() {
   try { localStorage.setItem(QT_EXPLAINER_KEY, '1'); } catch (_) {}
+  applyQtExplainerState();
 }
+
+applyQtExplainerState();
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -120,8 +137,8 @@ function hydrateDetail(root) {
     });
   }
 
-  var explainer = panel.querySelector('#qt-explainer');
-  if (explainer) explainer.style.display = qtExplainerDismissed() ? 'none' : '';
+  // The explainer's visibility is CSS, keyed on `.qt-dismissed` on <html> — see
+  // applyQtExplainerState(). Nothing to do per render.
 }
 
 function closeDictTooltips() {
@@ -139,8 +156,6 @@ if (typeof document !== 'undefined' && document.body) {
     if (explainerClose) {
       e.preventDefault();
       dismissQtExplainer();
-      var box = explainerClose.closest('.qt-explainer');
-      if (box) box.style.display = 'none';
       return;
     }
 

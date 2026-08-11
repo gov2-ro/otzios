@@ -736,7 +736,15 @@ already carrying brand, search, count, play and filters, and a full five-entry n
 three toggles is what broke it; `index.php` had already put its counts and legend in the
 bottom bar, which is also thumb-reachable on a phone.
 
-**`statistici` and `metodologie` are rendered by *both* partials, and app.css shows exactly
+**`despre.php` is the nav's third entry, and it replaced `statistici` + `metodologie`
+rather than joining them.** Three labelled entries competing for a phone bar is the
+measurement this header/footer split was built on; a fourth broke it again. Both pages are
+linked from `despre` instead — and a reader who wants the method has nearly always read the
+overview first. They stay in `NAV_ITEMS` so `$page` still marks them `aria-current`; the
+two partials name the keys they draw rather than diffing the const, or a diff would put
+them silently back.
+
+**`despre` is rendered by *both* partials, and app.css shows exactly
 one — the header from 901px up, the footer below it.** They carry `top-nav-item--wide` /
 `nav-item--wide` and there is no width at which they appear twice or vanish. The two
 statements this reconciles are both true and neither was negotiable: a phone bar cannot

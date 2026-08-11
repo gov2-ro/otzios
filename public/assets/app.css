@@ -799,6 +799,20 @@ body {
   vertical-align: middle;
 }
 .fs-help:hover, .fs-help[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); }
+
+/* Every „?" sits hard right, in one column. A run of them at ragged positions down a
+   280px rail reads as noise; at a fixed right edge it reads as one set of affordances.
+   `width: 100%` is load-bearing — .fs-section is a flex column, so the heading would
+   otherwise shrink to its text and take the „?" with it. And these rules have to come
+   *after* .fs-help's own `margin-left`, which is the same specificity and would win on
+   source order. */
+.fs-label { display: flex; align-items: center; gap: 4px; width: 100%; }
+.fs-label .fs-help { margin-left: auto; }
+
+/* Sort has no .fs-label of its own, so it gets a row to right-align within. */
+.fs-sort-row { display: flex; align-items: center; gap: 6px; width: 100%; }
+.fs-sort-row .fs-sort { flex: 1 1 auto; min-width: 0; }
+.fs-sort-row .fs-help { flex: none; margin-left: 0; }
 .fs-help-text {
   font-size: 0.75rem;
   line-height: 1.5;
@@ -1358,6 +1372,7 @@ body {
 .qt-btn[data-qtkey="m"].active { background: var(--v-ext-bg); border-color: var(--v-ext-bd); color: var(--v-ext-tx); }
 .qt-btn[data-qtkey="m"].active .qt-key { background: var(--v-ext-bg); border-color: var(--v-ext-bd); color: var(--v-ext-tx); }
 
+.qt-dismissed .qt-explainer { display: none; }
 .qt-explainer {
   display: flex;
   align-items: flex-start;

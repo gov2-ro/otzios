@@ -67,7 +67,7 @@ $header_after      = $header_after      ?? '';
      * statistici and metodologie in the footer was hiding the two pages that
      * explain what the site is.
      */
-    foreach (['joc' => '', 'liste' => '', 'stats' => ' top-nav-item--wide', 'metod' => ' top-nav-item--wide'] as $key => $width_cls):
+    foreach (['joc' => '', 'liste' => '', 'despre' => ' top-nav-item--wide'] as $key => $width_cls):
       $item = NAV_ITEMS[$key]; ?>
       <a style="text-transform: uppercase;" class="top-nav-item<?= $width_cls ?><?= $key === $page ? ' is-current' : '' ?>"
          href="<?= BASE . $item['path'] ?>" title="<?= e($item['label']) ?>"

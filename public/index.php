@@ -161,6 +161,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
            What it was reaching for is the „urme azi" control further down, measured on
            17B tokens of CulturaX instead. See mark_modern_band() in build_ui_db.py. -->
       <div class="fs-section fs-section-top">
+        <div class="fs-sort-row">
         <select name="sort" class="fs-sort">
           <?php if (db_has_column('quality_score')): ?>
           <!-- Implicit: scorul amestecat cu marcajele tuturor. Voturile doar reordonează,
@@ -178,6 +179,10 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <?php endif; ?>
           <option value="alpha">↕ alphabetical</option>
         </select>
+        <button type="button" class="fs-help" aria-expanded="false" aria-controls="fshelp-sortare"
+                aria-label="Ce înseamnă ordinea?">?</button>
+        </div>
+        <p class="fs-help-text" id="fshelp-sortare" hidden>„populare” amestecă scorul din pipeline cu marcajele tuturor — voturile doar reordonează, niciodată nu scot un cuvânt din listă. „cele mai potrivite” e scorul singur. „ultima atestare” pune primul cuvântul pe care niciun dicționar nu l-a mai tipărit de multă vreme.</p>
       </div>
 
       <?php if (db_has_column('seam')): ?>

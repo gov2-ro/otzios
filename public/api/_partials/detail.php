@@ -164,7 +164,11 @@ $meta_parts = array_filter([
   </div>
 
   <div id="qt-explainer" class="qt-explainer">
-    <span>★ <strong>fav</strong> &amp; <strong>lol</strong> = cuvinte de păstrat.  / <strong>meh</strong> = prea cunoscut sau banal, dispare din listă (îl regăsești în <em>settings</em>).</span>
+    <?php /* „dispare din listă" was true until meh became a demote rather than a hide —
+             the word now sinks to the end of the order and „normal" in Filtre → clase
+             brings it straight back. Copy that describes a filter as removing something
+             it no longer removes is worse than no copy. */ ?>
+    <span>★ <strong>fav</strong> &amp; <strong>lol</strong> = cuvinte de păstrat. / <strong>meh</strong> = prea cunoscut sau banal — trece la coada listei (îl aduci înapoi din <em>Filtre → clase → respinse</em>).</span>
     <button type="button" id="qt-explainer-close" title="ascunde acest mesaj">✕</button>
   </div>
 

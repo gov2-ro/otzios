@@ -80,7 +80,10 @@ $footer_tools = $footer_tools ?? '';
     </div>
 
     <nav class="site-nav" aria-label="Navigare">
-      <?php foreach (array_diff_key(NAV_ITEMS, array_flip(['index', 'joc', 'liste'])) as $key => $item):
+      <?php // Explicit rather than a diff over NAV_ITEMS: that const is the registry of
+            // pages, and `stats`/`metod` are still in it (so they can be marked current)
+            // while no longer being nav entries. A diff would silently put them back.
+            foreach (['despre'] as $key): $item = NAV_ITEMS[$key];
         // The current page stays an <a>, marked `aria-current="page"`. Rendering it
         // as a <span> meant it no longer matched any skin's `#status-bar a` rule and
         // needed a colour of its own — which on beton's ink footer came out near-black

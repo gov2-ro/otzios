@@ -4,6 +4,45 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — a Despre page, and the tag explainer finally stays dismissed
+
+**The explainer bug was not where it looked.** `dismissQtExplainer()` wrote to
+localStorage correctly and `hydrateDetail()` read it correctly — verified both. What
+happened is that the detail panel is re-rendered when you open the next word, and the
+fresh `#qt-explainer` arrives with no inline style, so the banner came back on every word
+while localStorage still said dismissed. (The giveaway: hydrateDetail *did* set
+`display:none`, and a moment later the computed style was `flex` with the inline value
+gone — a different element.) Fixed by moving the state to a `.qt-dismissed` class on
+`<html>` with CSS doing the hiding: a root class cannot be lost when the element under it
+is replaced. The storage was never the problem; re-applying an inline style after every
+render was.
+
+**Caught while screenshotting: the explainer copy had gone stale by my own hand.** It said
+`meh` „dispare din listă", which stopped being true earlier the same day when meh became a
+demote. Copy that describes a filter as removing something it no longer removes is worse
+than no copy.
+
+**`despre.php`** replaces `statistici` + `metodologie` in the nav rather than joining them
+— three labelled entries competing for a phone bar is the measurement that split this nav
+between header and footer in the first place. Both are linked from the new page. They stay
+in `NAV_ITEMS` so `$page` still marks them current, and both partials now name the keys
+they draw instead of diffing the const, which would have put them back silently.
+
+The page carries its own og/twitter card and a canonical, via a new `otios_abs_url()` that
+reads `X-Forwarded-Proto`/`Host` first so it stays right behind a proxy. Its counts come
+from `ui.db` rather than being typed in, so it cannot drift from the data. Four cropped
+screenshots in `public/assets/despre/`, captured with Playwright.
+
+Also: the sort dropdown gained a „?" inline with the select, and all nine question marks
+now right-align in one column. That needed `width: 100%` on `.fs-label` — `.fs-section` is
+a flex column, so the heading was shrinking to its text and taking the „?" with it — and
+the auto-margin rule had to move *after* `.fs-help`'s own `margin-left`, same specificity,
+source order deciding.
+
+Loose end noticed and not fixed: the detail panel still prints `zipf ro 0.0 / zipf en 0.0`
+for essentially every word, which is the same dead wordfreq data the explore filter was
+removed for.
+
 ## 2026-08-11 — the filter sheet grows numbers, explainers, and one fewer way to hide
 
 Six changes to the sheet, two of which were questions.

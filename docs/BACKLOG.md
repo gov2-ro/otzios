@@ -1414,3 +1414,10 @@ because they are content/data decisions, not styling.
   zero benefit costs more. The rule that matters is written down instead: `en_zipf >= 4.0`
   matches 0 of the 18,270 words here, so it cannot come back as a filter without first
   finding a population it separates.
+
+- [ ] **The detail panel still shows `zipf ro` / `zipf en`.** Noticed 2026-08-11 while
+  screenshotting for the Despre page: the metrics row prints `zipf ro 0.0  zipf en 0.0` for
+  essentially every word, because wordfreq has no Romanian data for 17,533 of 17,577 of
+  them. It is the same dead signal the explore filter was removed for, still rendered as
+  though it meant something. Either drop the two figures from the row or show them only
+  when non-zero.
