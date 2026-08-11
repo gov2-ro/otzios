@@ -896,35 +896,13 @@ document.querySelectorAll('#filter-form label.pill input[type=radio]').forEach(f
   });
 });
 
-// Three groups of controls are meaningful on only one tab, so each is shown only there.
-// The DEX-rare ceiling and the loanword toggle apply to `rare_in_use`; the seam split and
-// the five special classes apply to `forgotten`. The 219 rare-in-use words come from a
-// different pipeline (validate_with_wordfreq.py): they are all stored as seam 'relevant',
-// and exactly one of them (`foișor`, a diminutive) carries any class flag — so both sets
-// of controls would look live there and do essentially nothing.
-//
-// Named rather than an IIFE-local so it can be re-run after applyUrlToForm(). It has to
-// be: applyUrlToForm() sets the radios *without* dispatching `change` — deliberately, so
-// it does not fire a second htmx search on load — and this runs during script evaluation,
-// when word_tier is still the markup default. So a deep link or reload of
-// `?word_tier=rare_in_use` left all three sections in the state for the *other* tab:
-// seam and classes visible where they do nothing, and the DEX ceiling + loanword toggle
-// hidden on the one tab where they work. Clicking the tab was fine, which is what kept
-// this hidden. Fixed by calling it again below, after the URL is applied.
-function syncTabControls() {
-  const rareOnly  = document.getElementById('dex-rare-control');
-  const seamOnly  = document.getElementById('seam-control');
-  const classOnly = document.getElementById('class-control');
-  if (!rareOnly && !seamOnly && !classOnly) return;
-  const sel  = document.querySelector('#filter-form input[name=word_tier]:checked');
-  const rare = !!sel && sel.value === 'rare_in_use';
-  if (rareOnly)  rareOnly.style.display  = rare ? '' : 'none';
-  if (seamOnly)  seamOnly.style.display  = rare ? 'none' : '';
-  if (classOnly) classOnly.style.display = rare ? 'none' : '';
-}
-document.querySelectorAll('#filter-form input[name=word_tier]')
-  .forEach(function(r) { r.addEventListener('change', syncTabControls); });
-syncTabControls();
+// There used to be a tab-gating block here — three sections shown or hidden depending on
+// `word_tier`, because the „rare" tab could not use the seam or the class controls and the
+// main tab could not use the DEX ceiling. It is gone with that tab, and it is worth
+// recording what it cost: the gate had to be kept in step in three places, it silently
+// mis-set every one of them on a deep link (applyUrlToForm() changes the radios without
+// dispatching `change`, and the gate ran at script-eval time), and every filter added
+// afterwards had to decide whether it was tab-specific. One list needs none of that.
 
 // Tax-select active highlight
 document.querySelectorAll('.tax-select').forEach(function(sel) {
@@ -991,9 +969,12 @@ var AF_SPECS = [
   { name: 'domain',         type: 'select', def: '', label: function(v){ return 'domeniu: ' + v; } },
   { name: 'etymology',      type: 'select', def: '', label: function(v){ return 'etim: ' + v.replace('limba ', ''); } },
   { name: 'dict_min',       type: 'select', def: '', label: function(v){ return 'dicts ≥' + v; } },
+  // Bands, not counts — the chip says what the control says, and neither carries a
+  // threshold that a new corpus would silently move. See mark_modern_band().
+  { name: 'modern',         type: 'select', def: '', label: function(v){
+      return v === '2' ? 'încă în circulație' : v === '1' ? 'urme slabe' : 'fără urme azi'; } },
   { name: 'attested_after',  type: 'select', def: '', label: function(v){ return 'atestat ≥' + v; } },
   { name: 'attested_before', type: 'select', def: '', label: function(v){ return 'atestat <' + v; } },
-  { name: 'dex_max',        type: 'select', def: 'all', label: function(v){ return 'DEX ' + (v === 'all' ? 'toate' : '≤' + v); } },
   // `marks` was in both URL arrays but not here, so it filtered the grid without
   // ever showing a chip — the same "registered in one direction only" gap the
   // CLAUDE.md filter rule is about, on the chip side rather than the URL side.
@@ -1006,7 +987,6 @@ var AF_SPECS = [
   { name: 'zipf_max',       type: 'number',   label: function(v){ return 'zipf ≤' + v; } },
   { name: 'dexfreq_min',    type: 'number',   label: function(v){ return 'dex ≥' + v; } },
   { name: 'dexfreq_max',    type: 'number',   label: function(v){ return 'dex ≤' + v; } },
-  { name: 'hide_loanwords', type: 'checkbox', label: function(){ return 'fără împrumuturi'; } },
   // The four special classes. Three states each, so the chip has to name which one is
   // live — „cu regionalisme" and „doar regionalisme" are different filters, and the
   // second is the one that needs saying loudest.
@@ -1027,19 +1007,8 @@ var AF_SPECS = [
 function activeFilterChips() {
   var form = document.getElementById('filter-form');
   if (!form) return [];
-  var wordTier = (form.querySelector('input[name=word_tier]:checked') || {}).value || 'forgotten';
   var chips = [];
   AF_SPECS.forEach(function(spec) {
-    // Tab-specific controls: their inputs stay in the form while the section is
-    // hidden, so without this a leftover value would chip on a tab it cannot filter.
-    var rare = wordTier === 'rare_in_use';
-    if ((spec.name === 'dex_max' || spec.name === 'hide_loanwords') && !rare) return;
-    if (CLASS_PARAMS.indexOf(spec.name) !== -1 && rare) return;
-    // `seam` was missing from this list even though build_word_filter() has always
-    // ignored it on the rare tab (all 219 words there are seam 'relevant'). A URL
-    // carrying seam=curiosity onto that tab therefore chipped „listă: curiozități"
-    // over an unfiltered list — the chip claiming a filter that was not applied.
-    if (spec.name === 'seam' && rare) return;
     if (spec.type === 'text' || spec.type === 'number') {
       var el = form.querySelector('input[name=' + spec.name + ']');
       if (el && el.value.trim()) chips.push({ spec: spec, text: spec.label(el.value.trim()) });
@@ -1122,12 +1091,10 @@ document.getElementById('filter-form') &&
 
 // Param names whose default value means "no filter" (omit from URL when at default)
 var URL_PARAM_DEFAULTS = {
-  word_tier: 'forgotten',
   has_def:   '',
   seam:      'relevant',
   sort:      'quality',
   marks:     'all',
-  dex_max:   'all',
   // Special classes — three states each, so unlike the old checkboxes these always
   // submit a value and need a default here to stay out of the URL when untouched.
   regional:    'hide',
@@ -1148,7 +1115,7 @@ function applyUrlToForm() {
   if (q) { var qi = form.querySelector('input[name=q]'); if (qi) qi.value = q; }
 
   // Radio groups
-  ['word_tier', 'has_def', 'seam'].concat(CLASS_PARAMS).forEach(function(name) {
+  ['has_def', 'seam'].concat(CLASS_PARAMS).forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     form.querySelectorAll('input[name=' + name + ']').forEach(function(r) {
@@ -1179,8 +1146,8 @@ function applyUrlToForm() {
     });
   });
 
-  // Selects: sort, register, domain, etymology, dex_max, dict_min, attested_after, attested_before, marks
-  ['sort', 'register', 'domain', 'etymology', 'dex_max', 'dict_min', 'attested_after', 'attested_before', 'marks'].forEach(function(name) {
+  // Selects: sort, register, domain, etymology, modern, dict_min, attested_after, attested_before, marks
+  ['sort', 'register', 'domain', 'etymology', 'modern', 'dict_min', 'attested_after', 'attested_before', 'marks'].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     var el = form.querySelector('select[name=' + name + ']');
@@ -1197,7 +1164,7 @@ function applyUrlToForm() {
 
   // Explore: checkboxes. Only ever subtract, so "unchecked submits nothing" is exactly
   // the state they mean — the classes that need a default-on state are radios above.
-  ['hide_loanwords'].forEach(function(name) {
+  [].forEach(function(name) {
     var val = params.get(name);
     if (val === null) return;
     var el = form.querySelector('input[name=' + name + ']');
@@ -1239,7 +1206,7 @@ function syncUrlFromForm() {
   if (q && q.value.trim()) params.set('q', q.value.trim());
 
   // Radio groups
-  ['word_tier', 'has_def', 'seam'].concat(CLASS_PARAMS).forEach(function(name) {
+  ['has_def', 'seam'].concat(CLASS_PARAMS).forEach(function(name) {
     var el = form.querySelector('input[name=' + name + ']:checked');
     var val = el ? el.value : '';
     if (val && val !== (URL_PARAM_DEFAULTS[name] || '')) params.set(name, val);
@@ -1254,8 +1221,10 @@ function syncUrlFromForm() {
     }
   });
 
-  // Selects (dex_max is handled separately below, appended at the very end)
-  ['sort', 'register', 'domain', 'etymology', 'dict_min', 'attested_after', 'attested_before', 'marks'].forEach(function(name) {
+  // Selects — this array is the write half; its twin is in applyUrlToForm(). A name
+  // missing from one direction filters the grid without ever reaching the URL, or the
+  // reverse, and neither shows up as an error.
+  ['sort', 'register', 'domain', 'etymology', 'modern', 'dict_min', 'attested_after', 'attested_before', 'marks'].forEach(function(name) {
     var el = form.querySelector('select[name=' + name + ']');
     if (!el) return;
     var val = el.value;
@@ -1268,24 +1237,12 @@ function syncUrlFromForm() {
     if (el && el.value.trim()) params.set(name, el.value.trim());
   });
 
-  // Explore: binary checkboxes
-  ['hide_loanwords'].forEach(function(name) {
-    var el = form.querySelector('input[name=' + name + ']');
-    if (el && el.checked) params.set(name, '1');
-  });
-
   // Preserve playlist — the compact form when there is one, else a legacy plaintext
   // playlist still open in this tab.
   var pkInput = document.getElementById('playlist-w');
   var pwInput = document.getElementById('playlist-words');
   if (pkInput && pkInput.value.trim())      params.set('w', pkInput.value.trim());
   else if (pwInput && pwInput.value.trim()) params.set('words', pwInput.value.trim());
-
-  // dex_max: only when changed from its default, always appended last
-  var dexMaxEl = form.querySelector('select[name=dex_max]');
-  if (dexMaxEl && dexMaxEl.value && dexMaxEl.value !== URL_PARAM_DEFAULTS.dex_max) {
-    params.set('dex_max', dexMaxEl.value);
-  }
 
   var qs = params.toString();
   history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
@@ -1304,10 +1261,6 @@ document.getElementById('filter-form') && document.getElementById('filter-form')
 
 // Apply URL params to form before HTMX fires its initial load request
 applyUrlToForm();
-// …then re-gate the tab-specific sections, because applyUrlToForm() may have just changed
-// word_tier and it does not dispatch `change`. Without this a deep link to the rare tab
-// shows the seam and class controls (which do nothing there) and hides the DEX ceiling.
-syncTabControls();
 
 // A query already in the URL means search is already in use — leave the box
 // open rather than collapsing an active search behind the magnifier.

@@ -268,11 +268,49 @@ def test_pos_prefers_the_inflection_model_over_meaning_tags(db):
     assert 'substantiv feminin' not in (row['dex_pos'] or '')
 
 
-def test_rare_tier_is_not_collapsed_by_a_default_ceiling(db):
-    """`dex_max` defaulted to 0.60 and left the rare tab showing one word out of 112."""
+def test_the_rare_tier_is_gone(db):
+    """The `rare_in_use` tab was decided by wordfreq's Romanian list, which scores 99.6%
+    of our candidates at exactly 0.00 — so its lowest real scores were ordinary words
+    (`haz`, `bețiv`) while `zapciu` and `vornic` were indistinguishable at zero. No
+    threshold could fix that, and all 219 rows were words this pipeline had already
+    measured against 17B tokens and correctly called still-used."""
     n = db.execute(
         "SELECT COUNT(*) FROM words WHERE word_tier='rare_in_use'").fetchone()[0]
-    assert n > 50, n
+    assert n == 0, n
+
+
+def test_modern_band_points_the_right_way(db):
+    """**More modern usage is better material here, not worse.**
+
+    This is the one property of `modern_band` that is easy to invert by accident, because
+    it reads backwards: the words with a couple of thousand modern occurrences are the
+    ones people recognise as forgotten, while the words at zero are dictionary ghosts
+    that never really circulated. Sorting on rarity alone puts the ghosts first — the
+    same mistake `$SORT_OPTIONS` records for `sort=rare`.
+    """
+    if word(db, 'zapciu') is None or 'modern_band' not in word(db, 'zapciu').keys():
+        pytest.skip('modern_band not in this ui.db')
+
+    for w in ('zapciu', 'birjă', 'vechil'):
+        row = word(db, w)
+        if row is None:
+            continue
+        assert row['modern_band'] == 2, f'{w} should be in the top band, got {row["modern_band"]}'
+
+    for w in ('celșag', 'barabor', 'racaleț'):
+        row = word(db, w)
+        if row is None:
+            continue
+        assert row['modern_band'] == 0, f'{w} should be band 0, got {row["modern_band"]}'
+
+
+def test_modern_band_covers_every_scored_word(db):
+    """A NULL band would silently drop the row from every one of the filter's options,
+    which looks like the word not being a candidate rather than a gap in the column."""
+    n = db.execute(
+        'SELECT COUNT(*) FROM words WHERE modern_occ IS NOT NULL AND modern_band IS NULL'
+    ).fetchone()[0]
+    assert n == 0, n
 
 
 def test_proper_noun_flag_does_not_catch_ordinary_words(db):

@@ -67,12 +67,21 @@ const annotate = (f, changes) => f(`${BASE}/api/sync.php`, {
       '„doar" is a subset of „cu" (or „cu" is page-capped)');
   }
 
-  console.log('\n2. Demotes are tab-scoped — the rare tab must not come back empty');
-  // The failure this guards: the class controls are hidden on `rare_in_use`, so a
-  // leftover „doar" carried across tabs returned 0 words with nothing on the page to
-  // explain why. build_word_filter() ignores the param on the wrong tab.
-  const rare = await search(u, 'word_tier=rare_in_use&editorial=only');
-  check(rare.length > 0, `rare tab ignores editorial=only (${rare.length} words)`);
+  console.log('\n2. Links from before the rare tab was removed still resolve');
+  // `word_tier` is forced to 'forgotten' now, so an old `?word_tier=rare_in_use` link
+  // lands on the list rather than returning nothing. The failure it replaces was worse:
+  // the class controls were hidden on that tab, so carrying „doar" across returned 0
+  // words with nothing on the page to explain why.
+  const legacy = await search(u, 'word_tier=rare_in_use&editorial=only');
+  const here   = await search(u, 'editorial=only');
+  check(legacy.length === here.length,
+    `?word_tier=rare_in_use is ignored, not empty (${legacy.length} words)`);
+
+  console.log('\n2b. The modern-usage filter partitions the list');
+  const [m0, m1, m2] = await Promise.all(
+    ['modern=0', 'modern=1', 'modern=2'].map((q) => search(u, q)));
+  check(m0.length > 0 && m2.length > 0, `bands are populated (${m0.length} / … / ${m2.length})`);
+  check(!m0.some((w) => m2.includes(w)), 'a word cannot be both „fără urme" and „în circulație"');
 
   console.log('\n3. A playlist is immune to the demote');
   // Take demoted words straight from „doar" and ask for them back as a playlist.

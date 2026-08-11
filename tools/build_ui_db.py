@@ -20,6 +20,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 from word_ids import apply_to_db as _apply_word_ids
 from editorial import apply_to_db as _apply_editorial
 
+# The modern-usage bands are the pipeline's own thresholds, not new numbers — imported
+# rather than copied so that rescaling stays in one place. See mark_modern_band().
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from validate_diachronic import (  # noqa: E402
+    MODERN_CORPORA as _MODERN_CORPORA,
+    get_corpus_tokens as _corpus_tokens,
+    scaled_modern_thresholds as _scaled_modern_thresholds,
+)
+
 SHORTLIST_PATH  = Path('data/processed/forgotten_words_shortlist.csv')
 RARE_PATH       = Path('data/processed/rare_words_wordfreq.csv')
 WEB_PATH        = Path('data/processed/diachronic_shortlist_web_validated.csv')
@@ -377,6 +386,52 @@ def mark_archaic_spellings(conn: sqlite3.Connection, freq_db: Path) -> None:
     print(f'  {len(marked):,} archaic spellings (twin ≥{TWIN_RATIO}× in the modern corpus)')
 
 
+def mark_modern_band(conn: sqlite3.Connection, freq_db: Path) -> None:
+    """Bucket `modern_occ` into 0–3, using the pipeline's own rescaled thresholds.
+
+    Counterintuitively, **more modern usage is better material here**. The words with a
+    few thousand modern occurrences are the ones people recognise as forgotten — `birjă`,
+    `zapciu`, `vechil`, `cocoană`, `dorobanț` — while the words at zero are dictionary
+    ghosts that were never really in circulation (`celșag`, `racaleț`, `barabor`). The
+    shortlist score already knows this; this column lets a reader sort on it directly.
+
+    The edges come from validate_diachronic's MODERN_RARE_OCC / MODERN_ALIVE_OCC, run
+    through scaled_modern_thresholds() against the current panel size. That indirection
+    is the point: an absolute count means nothing except relative to how much modern text
+    was read, so hardcoding 500/2000 in PHP would silently change meaning the moment a
+    corpus is added. Storing a band instead keeps every threshold on this side of the
+    build, where it can be rescaled.
+    """
+    modern_tokens = 0
+    if freq_db.exists():
+        fconn = sqlite3.connect(f'file:{freq_db}?mode=ro', uri=True)
+        try:
+            modern_tokens = sum(_corpus_tokens(fconn, c) for c in _MODERN_CORPORA)
+        finally:
+            fconn.close()
+
+    rare_occ, _alive_occ = _scaled_modern_thresholds(modern_tokens)
+    # Three bands, not four. `alive_occ` is also make_shortlist's own eligibility ceiling
+    # — a word at or above it is "simply in use" and never enters the shortlist — so a
+    # fourth band is unreachable here by construction (measured: max modern_occ is 1,998
+    # against an alive floor of 2,000). Offering it would be a control with nothing
+    # behind it. Revisit if that gate ever moves.
+    conn.execute(
+        """UPDATE words SET modern_band = CASE
+               WHEN modern_occ IS NULL THEN NULL
+               WHEN modern_occ <= 0    THEN 0
+               WHEN modern_occ < ?     THEN 1
+               ELSE 2
+           END""",
+        (rare_occ,),
+    )
+    counts = dict(conn.execute(
+        'SELECT modern_band, COUNT(*) FROM words WHERE modern_band IS NOT NULL '
+        'GROUP BY modern_band').fetchall())
+    labels = {0: 'absent', 1: f'1–{rare_occ - 1}', 2: f'{rare_occ}+'}
+    print('  ' + ' · '.join(f'{labels[b]}: {counts.get(b, 0):,}' for b in (0, 1, 2)))
+
+
 def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None:
     if not shortlist.exists():
         sys.exit(f'Missing: {shortlist}')
@@ -458,7 +513,14 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             -- Community marks never reach this table: they are aggregated live and may
             -- only reorder. See vote_counts_subquery() in public/api/_appdb.php.
             editor_pick      INTEGER,
-            editor_demote    INTEGER
+            editor_demote    INTEGER,
+            -- How much life the word still has in modern Romanian, bucketed by
+            -- mark_modern_band() below. 0 absent · 1 faint · 2 rare · 3 in circulation.
+            -- An integer rather than a raw count because the UI must not carry a
+            -- threshold: occurrence counts only mean something relative to how much
+            -- modern text was read, so the edges are rescaled at build time from the
+            -- pipeline's own MODERN_RARE_OCC / MODERN_ALIVE_OCC.
+            modern_band      INTEGER
         )
     """)
 
@@ -511,31 +573,19 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
                 ),
             )
 
-    if rare.exists():
-        print(f'Loading rare-in-use words from {rare}…')
-        with open(rare, newline='', encoding='utf-8') as f:
-            for row in csv.DictReader(f):
-                word_key = row.get('word_no_accent') or row.get('word', '')
-                if not word_key:
-                    continue
-                conn.execute(
-                    """INSERT OR IGNORE INTO words
-                       (word, dex_frequency, dex_pos, dex_register, dex_domain,
-                        dex_etymology, is_forgotten, word_tier)
-                       VALUES (?,?,?,?,?,?,?,?)""",
-                    (
-                        word_key,
-                        _float(row.get('frequency', '')),
-                        _normalize_sep(row.get('description')),
-                        _normalize_sep(row.get('dex_register')),
-                        _normalize_sep(row.get('dex_domain')),
-                        _normalize_sep(row.get('dex_etymology')),
-                        0,
-                        'rare_in_use',
-                    ),
-                )
-    else:
-        print(f'  (rare-in-use file not found, skipping: {rare})')
+    # The `rare_in_use` tier used to be loaded here from rare_words_wordfreq.csv. It is
+    # gone, and the reason is worth keeping: it was decided by wordfreq's Romanian
+    # frequency list, and that list has no resolution at the low end. Measured over 60,000
+    # candidates, 99.6% score exactly 0.00 — the library has never heard of them — so its
+    # lowest *real* scores are ordinary words like `haz` and `bețiv`, while `zapciu`,
+    # `vornic` and `logofăt` are all 0.00 and indistinguishable. A tier defined on that
+    # band could only ever hold common words, at any threshold.
+    #
+    # It also had zero overlap with the shortlist: all 219 rows were words this pipeline
+    # had already measured against 17B tokens of CulturaX and correctly called still-used.
+    # The idea it reached for — "old-flavoured but you would still meet it" — is now a
+    # filter on the one list instead, via `modern_band` below, measured on the corpus.
+    # See docs/BACKLOG.md, "the rare tab was measuring with a ruler that stops too high".
 
     if web.exists():
         print(f'Merging web validation from {web}…')
@@ -576,6 +626,8 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     # After the definitions merge, not before — half the signal is the definition text.
     mark_diminutives(conn, Path('data/processed/lexemes.db'))
     mark_archaic_spellings(conn, Path('data/processed/corpus_frequencies.db'))
+    print('Bucketing modern usage…')
+    mark_modern_band(conn, Path('data/processed/corpus_frequencies.db'))
 
     # Must run before the vocab table is built, or the POS dropdown lists the old
     # taxonomy-derived values that almost nothing matches.

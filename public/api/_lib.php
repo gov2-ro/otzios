@@ -350,11 +350,12 @@ function build_word_filter(array $p): array {
     static $VERDICT_TOTAL = 4;
     $POS_TOTAL = count($POS_OPTIONS);
 
-    $word_tier = trim($p['word_tier'] ?? 'forgotten');
-    if (!in_array($word_tier, ['forgotten', 'rare_in_use'], true)) {
-        $word_tier = 'forgotten';
-    }
-
+    // There is one list. `word_tier` used to switch between it and a second
+    // `rare_in_use` tab; that tab is gone (see mark_modern_band() in build_ui_db.py for
+    // why — it was decided by a frequency list with no resolution below "moderately
+    // common"). The column stays and is still filtered on, so a `?word_tier=rare_in_use`
+    // link from before simply lands on the list rather than returning nothing.
+    $word_tier  = 'forgotten';
     $conditions = ['word_tier = ?'];
     $params     = [$word_tier];
 
@@ -365,10 +366,7 @@ function build_word_filter(array $p): array {
     // Seam: 'relevant' is the ~2.8k band of words with the strongest evidence of having
     // been used and faded; 'curiosity' is the rest. 'all' merges them.
     //
-    // Only the `forgotten` tier is split into seams — the 219 `rare_in_use` words come
-    // from a different pipeline (validate_with_wordfreq.py) and are all stored as
-    // 'relevant', so applying the filter there would make 'curiozități' silently empty.
-    if (db_has_column('seam') && $word_tier !== 'rare_in_use') {
+    if (db_has_column('seam')) {
         $seam = trim($p['seam'] ?? 'relevant');
         if ($seam !== 'all' && in_array($seam, ['relevant', 'curiosity'], true)) {
             $conditions[] = 'seam = ?';
@@ -410,13 +408,7 @@ function build_word_filter(array $p): array {
     // from that union, so „doar regionalisme" + „fără variante" drops the nine words that
     // are both. Legacy `show_*=1` / `hide_diminutives=1` links keep working.
     //
-    // Skipped entirely on `rare_in_use`, the same way `seam` is and for the same reason:
-    // exactly one of the 219 words there carries any of the five flags (`foișor`,
-    // diminutive), so `hide`/`show` are no-ops and `only` matches a single row. Without
-    // this, switching tabs while a class was
-    // set to „doar" emptied the rare list — and the control saying why is hidden on that
-    // tab, so the page showed zero words and nothing to explain it.
-    $class_modes = $word_tier === 'rare_in_use' ? [] : [
+    $class_modes = [
         ['regional',    'regional_only',    'hide', 'show_regional',    'show'],
         ['variants',    'variant_like',     'hide', 'show_variants',    'show'],
         ['spellings',   'archaic_spelling', 'hide', 'show_spellings',   'show'],
@@ -525,18 +517,25 @@ function build_word_filter(array $p): array {
         $params[]     = $attested_after;
     }
 
-    // DEX frequency ceiling (only meaningful for the rare_in_use tab).
+    // How much life the word still has in modern Romanian — the replacement for the
+    // deleted „rare" tab, and the thing that tab was reaching for.
     //
-    // No ceiling by default. It used to default to 0.60, which left the rare tab showing
-    // exactly one word (`listat`) out of 112 — DEX frequency is a literary-prominence
-    // score, so a "rare" word sitting at 0.9 is normal rather than a contradiction.
-    if ($word_tier === 'rare_in_use') {
-        $dex_max = trim($p['dex_max'] ?? '');
-        $ceiling = ($dex_max === '' || $dex_max === 'all') ? null : (float)$dex_max;
-        if ($ceiling !== null && $ceiling > 0) {
-            $conditions[] = 'dex_frequency BETWEEN ? AND ?';
-            $params[]     = 0.01;
-            $params[]     = $ceiling;
+    // **More modern usage is better material here, not worse.** The words with a few
+    // hundred to a couple of thousand modern occurrences are the ones people recognise
+    // as forgotten — `birjă` 1,964, `zapciu` 1,747, `vechil` 1,843, `cocoană` 1,906 —
+    // while the words at zero are dictionary ghosts that were never really in
+    // circulation (`celșag`, `racaleț`, `barabor`). Sorting by rarity alone puts the
+    // ghosts first, which is the mistake $SORT_OPTIONS already records for `sort=rare`.
+    //
+    // Filters on the stored band, never on a raw count: an occurrence count only means
+    // something relative to how much modern text was read, so the edges are rescaled at
+    // build time by mark_modern_band(). A number here would silently change meaning the
+    // first time a corpus is added.
+    if (db_has_column('modern_band')) {
+        $modern = trim($p['modern'] ?? '');
+        if ($modern !== '' && in_array($modern, ['0', '1', '2'], true)) {
+            $conditions[] = 'modern_band = ?';
+            $params[]     = (int)$modern;
         }
     }
 
@@ -556,17 +555,11 @@ function build_word_filter(array $p): array {
     if ($dexfreq_min !== null) { $conditions[] = 'dex_frequency >= ?'; $params[] = $dexfreq_min / 100.0; }
     if ($dexfreq_max !== null) { $conditions[] = 'dex_frequency <= ?'; $params[] = $dexfreq_max / 100.0; }
 
-    // Hide loanwords (words common in English — en_zipf ≥ 4.0).
-    //
-    // A `rare_in_use` instrument, and only there: it matches 8 of those 219 words (left,
-    // regular, secret, guard, singer, gear, bold, patent — all carrying an `învechit` tag
-    // on a sense other than the modern one) and **zero** of the 17,577 in the `forgotten`
-    // tier. The
-    // control lives inside #dex-rare-control in index.php for that reason — as a toggle
-    // in the main sheet it was a switch with nothing behind it.
-    if (db_has_column('en_zipf') && ($p['hide_loanwords'] ?? '') === '1') {
-        $conditions[] = '(en_zipf IS NULL OR en_zipf < 4.0)';
-    }
+    // `hide_loanwords` (en_zipf ≥ 4.0) went with the rare tab. It matched 8 of those 219
+    // words and **zero** of the 17,577 here — measured twice, before and after that tab's
+    // last rebuild. On this list it is a switch with nothing behind it, which is the same
+    // reason `proper_noun_like` stopped being a browsing filter below. The `en_zipf`
+    // column stays; only the control is gone.
 
     // `proper_noun_like` is deliberately *not* a default exclusion any more. It was one
     // when the flag caught 447 words; narrowing it to "DEX knows this spelling only as a

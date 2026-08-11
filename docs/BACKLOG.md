@@ -1327,3 +1327,40 @@ because they are content/data decisions, not styling.
   catch them) whose spelling is also a 1st-person verb form, and wordfreq counts both. Not
   separable without sense-level frequency data. Plus the irreducible tag bleed
   (`abatere`, `balsam`, `berbec`, `bici` — one archaic sense among many).
+
+- [x] **The „rare" tab is gone; `urme azi` replaces it** — 2026-08-11.
+
+  It was measuring with a ruler that stops above the range it needed. Two rules decided
+  the tab: DEX marks a meaning old, *and* wordfreq scores the word 3.0–3.5. Rule 2 cannot
+  work. Measured across 60,000 candidates:
+
+  | wordfreq Romanian score | words | |
+  |---|---|---|
+  | exactly 0.00 | 59,785 | 99.6% — the library has never heard of them |
+  | anything at all | 215 | 0.4% |
+
+  So its lowest *real* scores are ordinary words (`haz` 3.31, `bețiv` 3.22, `ocoli` 3.37),
+  while `zapciu`, `vornic`, `logofăt` and `ispravnic` are all 0.00 — indistinguishable
+  from each other and from every other word it does not know. A tier defined on that band
+  could only hold common words, at any threshold. Three threshold changes on 2026-08-11
+  were all tuning the wrong instrument.
+
+  Two further facts settled it. The tab had **zero overlap** with the shortlist: all 219
+  rows were words this pipeline had already measured against 17B tokens of CulturaX and
+  correctly called still-used (`haz` has 62,021 modern occurrences). And the idea it was
+  reaching for already had a population in the main list.
+
+  **Replaced by `modern_band`** — a select (`urme azi`) over three buckets derived from the
+  corpus. Direction matters and reads backwards: band 2 is `zapciu`, `birjă`, `vechil`,
+  `dorobanț`, `jupâneasă`; band 0 is `celșag`, `racaleț`, `oglavă`, `barabor`. Edges come
+  from `scaled_modern_thresholds()` at build time, never from a number in PHP.
+
+  **Deleted with it:** the `word_tier` tier switch, `dex_max`, `hide_loanwords`,
+  `#dex-rare-control`, and the whole tab-gating apparatus — three sections kept in step by
+  hand across three places, which was wrong in all three on any deep link. Old
+  `?word_tier=rare_in_use` links now land on the list rather than returning nothing.
+  `validate_with_wordfreq.py` stays on disk as the standalone screen it is documented to
+  be; it feeds nothing.
+
+  Left open: `en_zipf` is now an unused column (its only consumer was `hide_loanwords`),
+  and `docs/wordfreq-recipe.md` still describes the tab as live.

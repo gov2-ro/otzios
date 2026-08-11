@@ -4,6 +4,50 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-11 — the „rare" tab is deleted, and `urme azi` takes its place
+
+Three fixes to that tab in one day and it still showed `bețiv`, `haz`, `ocoli`, `haiduc`.
+Asked to explain rather than patch again, and the explanation was the answer: **I had been
+tuning thresholds on an instrument that has no resolution in the range being measured.**
+
+wordfreq's Romanian list, over 60,000 of our candidates: **59,785 score exactly 0.00** —
+never heard of them — and 215 score anything at all. Its lowest real values are ordinary
+words. `casă` 5.25, `haz` 3.31, and `zapciu`/`vornic`/`logofăt`/`ispravnic` all 0.00,
+indistinguishable from each other and from every word it does not know. A tier defined on
+"3.0–3.5" could only ever fill with common words. No threshold fixes that, which is why
+three of them in a row did not.
+
+Two more facts made the decision easy. The tab had **zero overlap** with the shortlist:
+every one of its 219 rows was a word this pipeline had already measured against 17 billion
+tokens and correctly called still-used — `haz` has 62,021 modern occurrences. And the idea
+the tab was reaching for already had a population inside the main list.
+
+So the tab is gone and the idea is a filter: **`urme azi`**, three buckets over
+`modern_band`. The direction is the interesting part and it reads backwards — *more*
+modern usage means *better* material. Band 2 is `zapciu`, `birjă`, `vechil`, `dorobanț`,
+`cocoană`, `jupâneasă`, `ișlic`, `iscăli`; band 0 is `celșag`, `racaleț`, `oglavă`,
+`toroști`, `fistău`, `barabor` — dictionary ghosts that never circulated. The same trap
+`$SORT_OPTIONS` already records for `sort=rare`. Pinned by a test, because inverting it
+would look plausible.
+
+Bands rather than raw counts, and the edges come from `validate_diachronic`'s own
+`MODERN_RARE_OCC` / `MODERN_ALIVE_OCC` through `scaled_modern_thresholds()` at build time —
+a number in PHP would silently change meaning the first time a corpus is added. Three
+bands, not four: `alive_occ` is also the shortlist's eligibility ceiling, so a fourth is
+unreachable by construction (max `modern_occ` is 1,998 against a floor of 2,000) and would
+be a control with nothing behind it.
+
+**What went with the tab:** the tier switch, `dex_max`, `hide_loanwords`,
+`#dex-rare-control`, and the entire tab-gating apparatus — three sections kept in step by
+hand across three places, wrong in all three on any deep link. That machinery existed only
+because there was a second tab, and every filter added while it existed had to decide
+whether it was tab-specific. Old `?word_tier=rare_in_use` links land on the list now rather
+than returning nothing.
+
+The generalisable bit: **check that your measuring instrument has resolution in the range
+you care about, before tuning anything against it.** One histogram at the start would have
+replaced three rounds of threshold work.
+
 ## 2026-08-11 — the rare tier judged verbs by their infinitive
 
 Pushed back on: the tier was still full of common words after the morning's fix, and the

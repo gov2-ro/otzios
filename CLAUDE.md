@@ -17,9 +17,13 @@ Oțios identifies "forgotten" Romanian words: terms in DEX Online (the official 
   the result into two seams (see **Seams** below); `tools/build_ui_db.py` builds
   `public/data/ui.db` for the PHP app.
 
-`validate_with_wordfreq.py` still exists as a fast standalone screen (see
-`docs/wordfreq-recipe.md`) and feeds the small `rare_in_use` tab, but it is not on the
-main path. The legacy Wikipedia/OSCAR branch and `search_wild.py` are in `archive/`.
+`validate_with_wordfreq.py` still exists as a standalone screen (see
+`docs/wordfreq-recipe.md`) but **feeds nothing** — the `rare_in_use` tab it used to fill
+was removed on 2026-08-11. Its list has no resolution at the low end: measured over 60,000
+candidates, **99.6% score exactly 0.00** because wordfreq has never heard of them, so its
+lowest real scores are ordinary words (`haz` 3.31, `bețiv` 3.22) while `zapciu`, `vornic`
+and `logofăt` are all 0.00 and indistinguishable. A tier defined on that band could only
+ever hold common words, at any threshold. Do not wire it back into `ui.db`. The legacy Wikipedia/OSCAR branch and `search_wild.py` are in `archive/`.
 
 For the methodological critique (what "forgotten" should mean, corpus options): `docs/conceptual-roadmap.md` first, then `docs/corpus-options.md`.
 
@@ -364,24 +368,15 @@ Two things to preserve when touching these:
    keep mapping — in `build_word_filter()` **and** in `applyUrlToForm()`, since htmx
    searches from form state on load and a server-only mapping leaves an old link rendering
    as filtered while behaving as if it were not.
-   The rule still applies to what remains a checkbox: `hide_loanwords` is off by default
-   and only ever subtracts, so "unchecked submits nothing" is exactly the state it means.
-
-   **Both sets of controls are tab-specific, and each needs gating in three places.**
-   `#dex-rare-control` (`dex_max` + `hide_loanwords`) shows only on `rare_in_use`:
-   `en_zipf ≥ 4.0` matches 8 of those 219 words and **zero** of the 17.5k `forgotten` ones.
-   `#class-control` and `#seam-control` show only on `forgotten`: exactly one of the 219
-   rare words carries a class flag, and they are all stored as seam `relevant`.
-   The three places, all in step via `CLASS_PARAMS` in `app.js`:
-
-   - the section's `display`, in the `sync()` block that watches `word_tier`;
-   - the chip, in `activeFilterChips()` — the inputs stay in the form while the section
-     is hidden, so a leftover value would otherwise chip on a tab it cannot filter;
-   - **`build_word_filter()` must ignore the param on the wrong tab.** This is the one
-     that bites: with the section hidden the form still submits it, so carrying
-     „doar regionalisme" onto the rare tab returned 0 words — and the control that would
-     explain why was hidden on that tab. `seam` already had this guard; the classes now
-     do too.
+   **There are no tab-specific controls any more, and that is worth keeping.** There used
+   to be two tabs, so three sections had to be shown or hidden on `word_tier` and gated in
+   *three* places kept in step by hand. It was wrong in all three on any deep link —
+   `applyUrlToForm()` changes the radios without dispatching `change`, and the gate ran at
+   script-eval time, so `?word_tier=rare_in_use` rendered the other tab's controls. That
+   is a fourth place nobody had listed: the **initial** state, as distinct from the change
+   handler. Every filter added while that existed also had to decide whether it was
+   tab-specific. One list needs none of it — do not reintroduce a tab without re-reading
+   this paragraph.
 2. **Every filter needs registering in `public/assets/app.js` too**, or it works but the
    URL never reflects it and the state is unshareable: add it to `AF_SPECS` (the chip) and
    to the read/write arrays in `applyUrlToForm` / the URL writer — **there are two arrays,
@@ -395,6 +390,30 @@ Two things to preserve when touching these:
    page to explain the gap. `q` and `marks` still apply — the reader typed those. The UI
    half is `setPlaylistMode()` in `app.js`, which marks the form `data-playlist` and sets
    `inert` (not `disabled`, so the values survive the playlist) on every section but sort.
+
+### `modern_band` — how much life the word still has
+
+`0` absent · `1` faint · `2` still in circulation. The `urme azi` control, and the
+replacement for the deleted `rare_in_use` tab.
+
+**Read the direction carefully: more modern usage is *better* material here.** The words
+in band 2 are what the project is for — `zapciu`, `birjă`, `vechil`, `dorobanț`, `cocoană`,
+`jupâneasă`, `ișlic`. Band 0 is dictionary ghosts that never really circulated — `celșag`,
+`racaleț`, `oglavă`, `toroști`, `barabor`. This is the same trap `$SORT_OPTIONS` already
+records for `sort=rare` ("put the most obscure regionalisms first — jbârc, barabor,
+hâșăi — which is the opposite of what the list is for"). Pinned by
+`test_modern_band_points_the_right_way`.
+
+**A band, not a count, and the indirection is the point.** An occurrence count only means
+something relative to how much modern text was read, so `mark_modern_band()`
+(`tools/build_ui_db.py`) derives the edges from `validate_diachronic`'s own
+`MODERN_RARE_OCC` / `MODERN_ALIVE_OCC` through `scaled_modern_thresholds()`, at build time.
+A number in PHP would silently change meaning the first time a corpus is added — the drift
+the `scaled_modern_thresholds` gotcha below already describes.
+
+Three bands, not four: `alive_occ` is also `make_shortlist`'s eligibility ceiling, so
+nothing above it is in the table (max `modern_occ` is 1,998 against a floor of 2,000) and a
+fourth option would be a control with nothing behind it.
 
 ### `newest_dict_year` — last attestation
 

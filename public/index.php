@@ -150,12 +150,12 @@ global $QUICK_TAGS, $POS_OPTIONS;
     <!-- Scrollable body -->
     <div class="fs-body">
 
-      <!-- Sort + tier -->
+      <!-- Sort. The „uitate / rare" tier switch that used to sit here is gone: the rare
+           tab was decided by wordfreq's Romanian list, which scores 99.6% of our
+           candidates at exactly 0.00 and so could only ever fill with ordinary words.
+           What it was reaching for is the „urme azi" control further down, measured on
+           17B tokens of CulturaX instead. See mark_modern_band() in build_ui_db.py. -->
       <div class="fs-section fs-section-top">
-        <div class="seg seg-sm fs-tier">
-          <label class="seg-opt"><input type="radio" name="word_tier" value="forgotten" checked> uitate</label>
-          <label class="seg-opt"><input type="radio" name="word_tier" value="rare_in_use"> rare</label>
-        </div>
         <select name="sort" class="fs-sort">
           <?php if (db_has_column('quality_score')): ?>
           <option value="quality">↓ cele mai potrivite</option>
@@ -278,25 +278,22 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <option value="2010">înainte de 2010</option>
         </select>
         <?php endif; ?>
-        <!-- Both of these mean something only on the „rare" tab, so JS shows them only
-             there. `hide_loanwords` matches 8 of the 219 rare words and none at all of
-             the 17.5k forgotten ones — in the main sheet it was a switch with nothing
-             behind it. -->
-        <span id="dex-rare-control" class="dex-rare-control" style="display:none">
-          <select name="dex_max" class="fs-select tax-select" data-default="all">
-            <option value="all" selected>DEX: toate</option>
-            <option value="0.60">DEX-rar ≤0.60</option>
-            <option value="0.50">DEX-rar ≤0.50</option>
-            <option value="0.30">DEX-rar ≤0.30</option>
-          </select>
-          <?php if (db_has_column('en_zipf')): ?>
-          <label class="fs-pill fs-pill-sm" title="Ascunde cuvintele comune în engleză (semnal de împrumut: en Zipf ≥ 4.0)">
-            <span class="fs-check"></span>
-            <input type="checkbox" name="hide_loanwords" value="1">
-            ascunde împrumuturi
-          </label>
-          <?php endif; ?>
-        </span>
+        <?php if (db_has_column('modern_band')): ?>
+        <!-- Cât se mai folosește azi, măsurat pe CulturaX (17 miliarde de cuvinte).
+             Atenție la sens: *mai multă* folosire înseamnă material mai bun, nu mai slab.
+             Cuvintele cu câteva mii de apariții sunt exact cele pe care lumea le
+             recunoaște ca uitate — birjă, zapciu, vechil, cocoană — iar cele cu zero sunt
+             fantome de dicționar, care n-au circulat niciodată (celșag, racaleț, barabor).
+             Benzile, nu cifrele, sunt stocate: un prag are sens doar raportat la cât text
+             modern s-a citit, deci se rescalează la build. Vezi mark_modern_band(). -->
+        <select name="modern" class="fs-select tax-select" data-default=""
+                title="Cât de mult mai apare cuvântul în româna de azi (corpus CulturaX)">
+          <option value="">urme azi: oricâte</option>
+          <option value="2">încă în circulație</option>
+          <option value="1">urme slabe</option>
+          <option value="0">fără nicio urmă</option>
+        </select>
+        <?php endif; ?>
         <!-- „marcate" rather than „adnotate": the values cover every kind of meta
              a reader can leave on a word — fav, a quick tag, a custom tag, a note —
              and only the last of those is an annotation in the ordinary sense. The
