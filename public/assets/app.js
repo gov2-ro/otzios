@@ -179,22 +179,53 @@ function copyPlaylistUrl() {
   });
 }
 
-// While a playlist is open the server ignores the filter sheet entirely (see
-// api/search.php) — the list was curated by whoever shared it, and filtering it again
-// would drop words from under them. This is the visible half of that: the sheet is
-// dimmed and inert, and the chip bar stops claiming filters are doing something.
-// `sort` stays live, so a shared list can still be reordered.
+// The server ignores the filter sheet entirely in two states — a playlist is open, or a
+// query has been typed (word_scope() in api/_lib.php). This is the visible half of both:
+// the sheet is dimmed and inert, a note says which state is in force, and the chip bar
+// stops claiming filters are doing something. `sort` stays live in either, since ordering
+// cannot make a row disappear.
+//
+// Two attributes rather than one, because they are set by different code at different
+// times and either can be true alone. `applyScopeInert()` is what reads them together —
+// neither setter may turn `inert` off on its own, or typing into the box while a shared
+// list is open would hand the reader a live-looking sheet the server is not reading.
+function applyScopeInert() {
+  const form = document.getElementById('filter-form');
+  if (!form) return;
+  const on = form.hasAttribute('data-playlist') || form.hasAttribute('data-search');
+  // `inert` rather than `disabled`: the controls keep their values and keep being
+  // submitted, so leaving either mode restores the view you had before it. It also
+  // takes them out of the tab order, which opacity alone would not.
+  form.querySelectorAll('.fs-body > .fs-section:not(.fs-section-top), .fs-tier')
+      .forEach(function(el) { el.inert = on; });
+  renderActiveFilters();
+}
+
 function setPlaylistMode(on) {
   const form = document.getElementById('filter-form');
   if (!form) return;
   if (on) form.setAttribute('data-playlist', '1');
   else    form.removeAttribute('data-playlist');
-  // `inert` rather than `disabled`: the controls keep their values and keep being
-  // submitted, so exiting the playlist restores the view you had before it. It also
-  // takes them out of the tab order, which opacity alone would not.
-  form.querySelectorAll('.fs-body > .fs-section:not(.fs-section-top), .fs-tier')
-      .forEach(function(el) { el.inert = on; });
-  renderActiveFilters();
+  applyScopeInert();
+}
+
+// A typed query searches the whole table, not the slice the defaults left standing — the
+// reasoning is in word_scope(). That has to be said on the sheet: the controls are still
+// sitting there with their values, and a reader who does not know they were dropped reads
+// „niciun rezultat" as "this word is not in the project" rather than as a filter they
+// never set. Called on every keystroke (cheap — it only toggles attributes), on reset,
+// and once on load for a `?q=` deep link.
+function setSearchMode(on) {
+  const form = document.getElementById('filter-form');
+  if (!form) return;
+  if (on) form.setAttribute('data-search', '1');
+  else    form.removeAttribute('data-search');
+  applyScopeInert();
+}
+
+function syncSearchMode() {
+  const input = document.getElementById('search');
+  setSearchMode(!!input && input.value.trim() !== '');
 }
 
 function exitPlaylist() {
@@ -1094,10 +1125,13 @@ function clearFilter(spec) {
 function renderActiveFilters() {
   var bar = document.getElementById('active-filters');
   if (!bar) return;
-  // Playlist open → the server applied no filters, so neither does the chip bar. The
-  // playlist banner right above it is the state that actually holds.
+  // Playlist open, or a query typed → the server applied no filters, so neither does the
+  // chip bar. The playlist banner (or the sheet's search note) is the state that holds.
   var form = document.getElementById('filter-form');
-  if (form && form.hasAttribute('data-playlist')) { bar.innerHTML = ''; return; }
+  if (form && (form.hasAttribute('data-playlist') || form.hasAttribute('data-search'))) {
+    bar.innerHTML = '';
+    return;
+  }
   var chips = activeFilterChips();
   bar.innerHTML = '';
   chips.forEach(function(c) {
@@ -1294,10 +1328,17 @@ document.getElementById('filter-form') && document.getElementById('filter-form')
     var form = document.getElementById('filter-form');
     if (form) form.dispatchEvent(new Event('change', { bubbles: true }));
     syncUrlFromForm();
+    syncSearchMode();          // reset clears the query box, so it also ends search mode
     renderActiveFilters();
     closeSearchIfEmpty();
   }, 0);
 });
+
+// The sheet has to follow the box on every keystroke, not on `change` — the input fires
+// htmx on `input changed delay:200ms` and `change` only lands on blur, which would leave
+// the filters looking live for the whole time someone is typing and reading results.
+document.getElementById('search') &&
+  document.getElementById('search').addEventListener('input', syncSearchMode);
 
 // Apply URL params to form before HTMX fires its initial load request
 applyUrlToForm();
@@ -1307,6 +1348,7 @@ applyUrlToForm();
 if (document.getElementById('search') && document.getElementById('search').value.trim() !== '') {
   openSearch(false);
 }
+syncSearchMode();
 
 // Rehydrate open word from URL on page load — definition takes the spotlight.
 // A reload is not a share: refreshing drops the word instead of re-opening the

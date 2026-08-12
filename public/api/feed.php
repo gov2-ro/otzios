@@ -2,25 +2,13 @@
 declare(strict_types=1);
 require_once __DIR__ . '/_lib.php';
 
-// A batch of random words (with definitions) for the card / swipe feed, respecting
-// the current filters — or, when a playlist is open, drawn from the playlist alone
-// (see api/search.php for why a curated list is not filtered again).
-$playlist   = playlist_words($_GET);
+// A batch of random words (with definitions) for the card / swipe feed, drawn from the
+// same scope as the list itself: matches of a typed query, else an open playlist, else
+// the filter sheet. See word_scope() in _lib.php.
 $conditions = [];
 $params     = [];
-if ($playlist === null) {
-    ['conditions' => $conditions, 'params' => $params] = build_word_filter($_GET);
-} else {
-    playlist_condition($playlist, $conditions, $params);
-}
+word_scope($_GET, $conditions, $params);
 
-$q = trim($_GET['q'] ?? '');
-if ($q !== '') {
-    $q_norm       = normalize_diacritics($q);
-    $conditions[] = '(word LIKE ? OR word_normalized LIKE ?)';
-    $params[]     = '%' . $q . '%';
-    $params[]     = '%' . $q_norm . '%';
-}
 // Cards need content — only feed words that have a definition.
 $conditions[] = 'definition IS NOT NULL';
 

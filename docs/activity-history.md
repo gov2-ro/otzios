@@ -4,6 +4,53 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-12 — Search ignores the filters: a query is asked of the whole table
+
+**The bug, stated as a measurement.** The default view is 2,682 of 18,270 words —
+`relevant` seam, no regionalisms, no variants, no old spellings, no diminutives, none of
+which a first-time visitor chose. Every one of those filters was also applied to whatever
+they typed into the search box. So `celșag` returned „niciun rezultat" while sitting in the
+database with a definition, and a search across the `-țiune` band returned 29 of the 406
+words that match it. The answer „not here" about a word that *is* here is the worst thing
+this site can say, and nothing on the page pointed at the cause.
+
+**One helper, three endpoints.** `search.php`, `random.php` and `feed.php` each carried
+their own copy of the playlist-or-filters branch plus their own copy of the `q` LIKE
+clause; all three now call `word_scope()` (`_lib.php`), whose precedence is **`q`, then
+`w=`/`words=`, then `build_word_filter()`** and which returns the mode it chose. Only
+`search.php` reads the mode back — to drop its `marks` clause on a search, since „marcaje"
+is one more control in the same sheet and leaving it live would make the dimmed sheet a lie
+for exactly one row.
+
+`word_tier` goes with the rest rather than being kept as a harmless scope. It is a no-op
+today (every row is `forgotten`), but it is a filter, and keeping it would re-narrow the
+search silently the first time a second tier exists. Sort is untouched in both modes:
+ordering cannot make a match disappear, which is also why the curator demote still applies
+— it sinks rows, it does not remove them.
+
+**What this gives up, on purpose.** Searching *within* an open playlist. A `q` that means
+"everything" on one page and "these twenty" on another is a box whose answer you cannot
+trust, and the whole point of the change is that the answer be trustworthy.
+
+**The visible half.** `setSearchMode()` joins `setPlaylistMode()` in `app.js`, and both now
+funnel through `applyScopeInert()`, which reads `data-search` and `data-playlist`
+*together* — neither setter may clear `inert` on its own, or typing into the box with a
+shared list open leaves a live-looking sheet the server is not reading. The sheet grows a
+second note (`.fs-search-note`, sharing the playlist note's block; search wins where both
+hold, matching the server) and the chip bar empties, because a control that is not being
+applied must not keep claiming it is. It runs on `input`, not `change` — `change` lands on
+blur, which would leave the filters looking live for the whole time someone types and reads
+results. `resetează` stays visible here and hides only for a playlist: it clears the query
+box along with the rest of the form, so during a search it is the way out the note names,
+and the one control that ends a state cannot be the one that is hidden.
+
+New test: `tests/test_search_scope.js` — ten filter combinations returning the identical
+match count, `marks=bookmarked` on a user with no marks, playlist + query resolving to the
+query, and two guards against overreach (the sheet still subtracts with the box empty; a
+query nothing matches still returns 0).
+
+---
+
 ## 2026-08-12 — The quiz: `joc.php` → `ghici.php`, spoilers withheld, marks on every option
 
 The whole `jocuri` block from `## Soft-launch`, plus joc's mobile compaction. New test:

@@ -435,14 +435,38 @@ Two things to preserve when touching these:
    to the read/write arrays in `applyUrlToForm` / the URL writer — **there are two arrays,
    one per direction, and missing the writer is the silent half**. A default value goes in
    `URL_PARAM_DEFAULTS` so it is omitted from the URL when unchanged.
-3. **None of it applies to a playlist.** When `w=` (or legacy `words=`) is present,
-   `search.php`, `random.php` and `feed.php` skip `build_word_filter()` entirely and filter
-   on the word list alone — see `playlist_words()` / `playlist_condition()` in `_lib.php`.
-   A playlist is a list someone curated by hand, and the defaults above would quietly
+3. **None of it applies to a search or a playlist.** `search.php`, `random.php` and
+   `feed.php` all scope through one helper, `word_scope()` in `_lib.php`, whose precedence
+   is **`q`, then `w=`/`words=`, then the filter sheet** — and only the last of the three
+   ever calls `build_word_filter()`.
+
+   **A typed query searches the whole table.** Someone typing a word is asking whether the
+   project knows it, not asking to search inside the slice they happen to have open — and
+   the defaults leave 2,682 of 18,270 words standing, so a first-time visitor searching
+   `celșag` got „niciun rezultat" about a word that is in the database with a definition.
+   „Not here" about something that *is* here is the worst answer this site can give, and
+   no control on the page was set by that reader or named as the cause. Measured on the
+   `-țiune` band: 29 matches of 406 before, 406 after. This is why `marks` is dropped too
+   (it is one more row in the same sheet), and why `word_tier` is not re-added here — a
+   no-op today, but a filter, and it would silently re-narrow the search the day a second
+   tier lands. Sort stays live in both modes: ordering cannot make a match disappear.
+
+   **A playlist** is a list someone curated by hand, and the defaults would quietly
    subtract from it: a shared list of twenty words arriving as eleven, with nothing on the
-   page to explain the gap. `q` and `marks` still apply — the reader typed those. The UI
-   half is `setPlaylistMode()` in `app.js`, which marks the form `data-playlist` and sets
-   `inert` (not `disabled`, so the values survive the playlist) on every section but sort.
+   page to explain the gap. Searching *within* an open list is what the ordering above
+   gives up — deliberately, since a `q` that means "everything" on one page and "these
+   twenty" on another is a search box that cannot be trusted to answer the question.
+
+   The UI half is `setSearchMode()` / `setPlaylistMode()` in `app.js`, marking the form
+   `data-search` / `data-playlist`. Both funnel through `applyScopeInert()`, which reads
+   the two attributes together — neither may clear `inert` alone, or typing into the box
+   with a list open leaves a live-looking sheet the server is not reading. `inert`, not
+   `disabled`, so the values survive and leaving either mode hands back the same view.
+   The sheet shows one note (search wins where both hold) and the chip bar empties, because
+   a control that is not being applied must not keep claiming it is. `resetează` stays
+   visible during a search and only hides for a playlist — it clears the query box along
+   with everything else, so it *is* the way out the note names. Pinned by
+   `tests/test_search_scope.js`.
 
 ### `modern_band` — how much life the word still has
 

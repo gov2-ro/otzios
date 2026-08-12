@@ -2,28 +2,15 @@
 declare(strict_types=1);
 require_once __DIR__ . '/_lib.php';
 
-// Random word that respects the current server-side filters (verdict, tier, POS,
-// taxonomy, explore ranges, word_tier) plus the text query — powers "🎲 surprise".
+// Random word from whatever the reader is looking at — powers "🎲 surprise".
 //
-// With a playlist open, the playlist *is* the selection: the form serializes its hidden
-// `w` input along with everything else, so a surprise word has to come from the shared
-// list rather than from the filters the reader never set. Same rule as api/search.php.
-$playlist   = playlist_words($_GET);
+// The form serializes everything, including the query box and the hidden `w` input, so
+// this draws from the same scope api/search.php just listed: matches of a typed query,
+// else an open playlist, else the filter sheet. Drawing from the filters while the list
+// on screen came from a search would hand back a word that is not in it.
 $conditions = [];
 $params     = [];
-if ($playlist === null) {
-    ['conditions' => $conditions, 'params' => $params] = build_word_filter($_GET);
-} else {
-    playlist_condition($playlist, $conditions, $params);
-}
-
-$q = trim($_GET['q'] ?? '');
-if ($q !== '') {
-    $q_norm       = normalize_diacritics($q);
-    $conditions[] = '(word LIKE ? OR word_normalized LIKE ?)';
-    $params[]     = '%' . $q . '%';
-    $params[]     = '%' . $q_norm . '%';
-}
+word_scope($_GET, $conditions, $params);
 
 $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
 $stmt  = db()->prepare("SELECT word FROM words $where ORDER BY RANDOM() LIMIT 1");

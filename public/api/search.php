@@ -6,42 +6,20 @@ $sort      = trim($_GET['sort']      ?? '');
 $page      = max(1, (int)($_GET['page'] ?? 1));
 $offset    = ($page - 1) * PAGE_SIZE;
 $marks     = trim($_GET['marks']     ?? 'all');
-$q         = trim($_GET['q']         ?? '');
 $marked_words_raw = trim($_GET['marked_words'] ?? '');
 $marked_words = $marked_words_raw !== ''
     ? array_filter(array_map('trim', explode(',', $marked_words_raw)))
     : [];
 
-// Playlist (`w=` packed, or the legacy plaintext `words=`) — see playlist_words().
-$playlist = playlist_words($_GET);
-
-// Build the shared server-side filters — unless a playlist is open.
-//
-// A playlist is a list someone chose by hand: a shared list opened from lista.php, a
-// published bucket, a set of bookmarks. Running the default filters over it silently
-// subtracts from what the sender picked — the default view alone hides regionalisms,
-// old variants, proper nouns and the whole `curiosity` seam, so a shared list of twenty
-// words could arrive showing eleven, with nothing on the page to say why. Whoever
-// assembled the list has already done the filtering; `w=` means show exactly these.
-//
-// `q` and `marks` below still apply: those are things the *reader* just typed or picked,
-// not defaults they never chose. The UI dims the filter sheet while a playlist is open
-// (see setPlaylistMode() in app.js) so the two halves agree.
+// Which rows are in play: a text search (the whole table), a playlist (`w=` packed, or
+// the legacy plaintext `words=`), or the filter sheet. See word_scope() in _lib.php —
+// both of the first two exist to stop defaults the reader never set from subtracting
+// from what they *did* ask for, whether that is a typed query or a list someone shared
+// with them. The UI dims the filter sheet in either mode (setSearchMode() /
+// setPlaylistMode() in app.js) so the two halves agree.
 $conditions = [];
 $params     = [];
-if ($playlist === null) {
-    ['conditions' => $conditions, 'params' => $params] = build_word_filter($_GET);
-} else {
-    playlist_condition($playlist, $conditions, $params);
-}
-
-// search-only: text search
-if ($q !== '') {
-    $q_norm       = normalize_diacritics($q);
-    $conditions[] = '(word LIKE ? OR word_normalized LIKE ?)';
-    $params[]     = '%' . $q . '%';
-    $params[]     = '%' . $q_norm . '%';
-}
+$scope      = word_scope($_GET, $conditions, $params);
 
 // Marks filter.
 //
@@ -53,8 +31,12 @@ if ($q !== '') {
 // `marked_words` is still honoured as a fallback for a browser whose local store has
 // not synced yet (offline, or a first visit mid-migration), so the filter never
 // silently returns nothing.
-$is_mark_filter = in_array($marks, ['bookmarked', 'noted', 'marked', 'unmarked'], true)
-                  || str_starts_with($marks, 'tag:');
+//
+// A text search skips it along with the rest of the sheet: „marcaje" is one more control
+// in there, and leaving it live would make the dimmed sheet a lie for exactly one row.
+$is_mark_filter = $scope !== 'search'
+                  && (in_array($marks, ['bookmarked', 'noted', 'marked', 'unmarked'], true)
+                      || str_starts_with($marks, 'tag:'));
 
 if ($is_mark_filter) {
     $negate = $marks === 'unmarked';

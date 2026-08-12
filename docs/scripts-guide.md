@@ -913,6 +913,7 @@ php -S localhost:8000 -t public/
 php -S localhost:8777 -t public/ &
 node tests/test_store_sync.js     # annotation sync, offline queue, cross-device merge
 node tests/test_game_api.js       # quiz secrecy, replay rejection, streak counters
+node tests/test_search_scope.js   # a typed query ignores the filter sheet and any playlist
 ```
 
 **Architecture**:

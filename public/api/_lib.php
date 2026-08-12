@@ -411,6 +411,59 @@ function playlist_condition(array $words, array &$conditions, array &$params): v
     $params       = array_merge($params, array_values($words));
 }
 
+/**
+ * Scope one word query, appending its conditions to $conditions/$params and returning
+ * which of the three scopes it chose: `search`, `playlist` or `filter`.
+ *
+ * The precedence is **q, then playlist, then the filter sheet**, and the first of those
+ * is the one worth explaining.
+ *
+ * **A text query searches the whole table.** Someone typing a word is asking whether this
+ * project knows it — not asking to search inside whatever slice they happen to have open.
+ * The defaults alone leave 2,685 of 18,270 words visible: `relevant` seam, no
+ * regionalisms, no variants, no old spellings, no diminutives. So a first-time visitor
+ * searching `celșag` got „niciun rezultat" while the word sat in the database with a
+ * definition, and nothing on the page said which of five untouched controls was
+ * responsible. A search that answers "not here" about a word that *is* here is worse than
+ * no search. Every filter dropped in this branch is one the reader never set; the one
+ * thing they did set is the query.
+ *
+ * That covers the marks filter too, which is why the mode is returned rather than kept
+ * private: `search.php` reads it and skips its own `marks` clause. Sort is untouched —
+ * ordering cannot make a match disappear.
+ *
+ * `word_tier` goes with the rest. It is a no-op today (every row is `forgotten`) but it
+ * is a filter, and re-adding it here would quietly re-narrow the search the day a second
+ * tier lands.
+ *
+ * A playlist keeps its own branch below q for the same reason it has one at all: it is a
+ * list someone curated, and the defaults would subtract from what they chose. Searching
+ * *within* an open playlist is the one thing this ordering gives up — see the note in
+ * setSearchMode() (app.js) for why the sheet says so rather than the URL quietly meaning
+ * two things.
+ */
+function word_scope(array $p, array &$conditions, array &$params): string {
+    $q = trim((string) ($p['q'] ?? ''));
+    if ($q !== '') {
+        $q_norm       = normalize_diacritics($q);
+        $conditions[] = '(word LIKE ? OR word_normalized LIKE ?)';
+        $params[]     = '%' . $q . '%';
+        $params[]     = '%' . $q_norm . '%';
+        return 'search';
+    }
+
+    $playlist = playlist_words($p);
+    if ($playlist !== null) {
+        playlist_condition($playlist, $conditions, $params);
+        return 'playlist';
+    }
+
+    ['conditions' => $filter_conditions, 'params' => $filter_params] = build_word_filter($p);
+    $conditions = array_merge($conditions, $filter_conditions);
+    $params     = array_merge($params, $filter_params);
+    return 'filter';
+}
+
 function build_word_filter(array $p): array {
     global $POS_OPTIONS;
     static $TIER_TOTAL    = 5;

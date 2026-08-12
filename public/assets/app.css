@@ -1612,13 +1612,20 @@ body.page-doc {
   flex-wrap: wrap;
 }
 
-/* Playlist open: the server applies no filters at all to a curated list (see the note
-   in api/search.php), so the sheet says so and goes inert — everything except `sort`,
-   which still works on a shared list. The controls keep their values rather than being
-   reset or `disabled`: exiting the playlist has to hand back the same view you had.
-   `inert` is set from setPlaylistMode() in app.js; the opacity here only follows it. */
-.fs-playlist-note { display: none; }
-.filter-sheet[data-playlist] .fs-playlist-note {
+/* Playlist open, or a search typed: in both the server applies no filters at all (see
+   word_scope() in api/_lib.php), so the sheet says so and goes inert — everything except
+   `sort`, which still works on a shared list or a set of matches. The controls keep their
+   values rather than being reset or `disabled`: leaving either mode has to hand back the
+   same view you had. `inert` is set from setPlaylistMode()/setSearchMode() in app.js; the
+   opacity here only follows it.
+
+   The two notes share one block and `data-search` wins where both are set, matching the
+   server's precedence — two stacked banners contradicting each other about which one is
+   in force is worse than the state either describes. */
+.fs-playlist-note,
+.fs-search-note { display: none; }
+.filter-sheet[data-playlist] .fs-playlist-note,
+.filter-sheet[data-search] .fs-search-note {
   display: block;
   margin: 0;
   padding: 8px 16px;
@@ -1629,8 +1636,13 @@ body.page-doc {
   line-height: 1.5;
   color: var(--accent);
 }
+.filter-sheet[data-search] .fs-playlist-note { display: none; }
+/* „resetează" stays live during a search and is hidden only for a playlist. It clears the
+   query box along with the rest of the form, so in search mode it *is* the way out the
+   note names — the one control that ends the state cannot be the one that is hidden. */
 .filter-sheet[data-playlist] .fs-reset { visibility: hidden; }
-.filter-sheet[data-playlist] [inert] { opacity: 0.4; }
+.filter-sheet[data-playlist] [inert],
+.filter-sheet[data-search] [inert] { opacity: 0.4; }
 .fs-sort {
   flex: 1;
   min-width: 140px;

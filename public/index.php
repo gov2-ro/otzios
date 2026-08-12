@@ -154,6 +154,15 @@ global $QUICK_TAGS, $POS_OPTIONS;
       Ieși din listă ca să filtrezi.
     </p>
 
+    <!-- Same, for a text search (form gets data-search). A query searches all 18.270 de
+         cuvinte, not the ~2.700 the defaults leave standing — see word_scope() in
+         api/_lib.php. Only one of the two notes ever shows; search wins, matching the
+         server's precedence. -->
+    <p class="fs-search-note">
+      Cauți — filtrele nu se aplică, ca să găsești orice cuvânt din bază.
+      Golește căutarea ca să filtrezi.
+    </p>
+
     <!-- Scrollable body -->
     <div class="fs-body">
 
