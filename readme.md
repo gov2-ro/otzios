@@ -1,10 +1,54 @@
-# Oțios - Romanian Forgotten Words Finder
+# Voroave neglijate 
 
-<mark>[⚠️NOTE]</mark> Data still needs some finetunning and QA.
+Am încercat să găsesc o metodă de a descoperi cuvintele uitate / neglijate ale limbii române, relativ ieșite din uz, evitând însă termenii foarte vechi care și-au pierdut de tot relevanța.
 
-A computational linguistics tool to identify "forgotten" Romanian words - terms that exist in official dictionaries but have fallen out of modern usage.
+Cuvinte apărute în dicționare, dar care sunt întâlnite rar sau deloc în româna modernă.
+**Suveranism lexical**. _Use it or lose it._
 
-**Status**: 📚 Definitions + 🔍 Phase 3 + 🌐 Web UI (PHP) — shortlist generated, definitions complete, web validation next
+&rarr; [voroave.ro](https://voroave.ro/)
+
+![voroavă - definiție](public/assets/despre/voroava-def.png)
+
+Sau cum a zics odată un robot: _A computational linguistics tool to identify "forgotten" Romanian words - terms that exist in official dictionaries but have fallen out of modern usage._
+
+<p style="margin-top: 3rem;">
+  <span class="blink-text blink-2">🐵</span> &nbsp;
+  <span class="blink-text">☠️</span> &nbsp;
+  <span class="blink-text blink-3">🤗</span> &nbsp;
+  <span class="blink-text"><b>slove</b> <em>zăuitate</em></span> &emsp;
+  <span class="blink-text blink-2"><b>boace</b> <em>oțioase</em></span> &emsp;
+  <span class="blink-text blink-3"><b>suveranism</b> <em>lexical</em></span>  
+</p>
+ 
+ <style>
+ .blink-text
+{
+    animation:1.7s blinker linear infinite;
+    color: blue;
+    font-size: 1.25rem;  
+}
+
+.blink-text.blink-2 {
+    animation:2s blinker2 ease-in-out infinite; color: green;
+}
+.blink-text.blink-3 {
+    animation:1.5s blinker2 ease-in-out infinite; color: yellow; text-shadow: 1px 1px 1px rgba(0,0,0,.4);
+}
+@keyframes blinker
+{  
+    0% { opacity: .8; }
+    50% { opacity: 0.0; }
+    100% { opacity: .7; }
+ }
+@keyframes blinker2
+{  
+    10% { opacity: .6; }
+    50% { opacity: 0.0; }
+    90% { opacity: .8; }
+ }
+  </style>
+
+----
 
 ## What It Does
 
@@ -12,8 +56,6 @@ A computational linguistics tool to identify "forgotten" Romanian words - terms 
 - Compares official dictionaries (including archaisms) against usage frequency data
 - Identifies linguistic "dark matter" - words that exist in dictionaries but have fallen out of active use
 - Produces curated lists with rarity scores and linguistic metadata
-
-See exploratory UI prototype: [lab.gov2.ro/oțios](https://lab.gov2.ro/otios/)
 
 ![Oțios Interface](public/screenshot-otzios.png)
 
@@ -24,7 +66,7 @@ See exploratory UI prototype: [lab.gov2.ro/oțios](https://lab.gov2.ro/otios/)
 
 ---
 
-Vezi și: [initial specs](docs/oțios-init-specs.docx.md) / [live](https://docs.google.com/document/d/1FTMIONmSylQDaV4YxFprd8jyHxREXpcL/) (google doc) 
+Vezi și: [initial specs](docs/oțios-init-specs.docx.md) 
 
 ## Pipeline
 
@@ -102,14 +144,6 @@ The legacy Wikipedia/OSCAR branch (`process_corpus.py`, `validate_forgotten_word
 ## Quick Start
 
 ### Prerequisites
-
-```bash
-# Activate virtual environment (adjust path to your venv)
-source ~/devbox/envs/240826/bin/activate
-
-# Install all dependencies
-pip install -r requirements.txt
-```
 
 ### Phase 1: Extraction
 
@@ -709,4 +743,3 @@ See [Activity History](docs/activity-history.md) and [Backlog](docs/BACKLOG.md) 
 
 See [CLAUDE.md](CLAUDE.md) for development guidelines and project context.
 
- 
