@@ -102,7 +102,7 @@
      #word-list          the cloud / table container
      .word-row           one word (add .word-text, .chip-freq inside)
      .filter-sheet       the left rail / mobile drawer
-     #detail-panel       the right-hand definition panel
+     #detail-panel       the definition card, centred at the bottom over the list
      #status-bar         the footer strip
 
    If a colour needs to differ between light and dark, define it as a token in

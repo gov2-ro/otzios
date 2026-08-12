@@ -277,6 +277,92 @@ function verdict_abbr(?string $v): string  { return VERDICTS[$v ?? '']['abbr']  
  */
 function tier_label(?string $t): string { return TIERS[$t ?? '']['label'] ?? ''; }
 
+// ── Share metadata for a `?word=` link ────────────────────────────────────────
+//
+// A word link is the site's main shareable unit, and until 2026-08-12 it carried no
+// metadata at all: `?word=` was read only by app.js, after load, so every link ever
+// posted showed the generic „Voroave neglijate / Suveranism lexical" card and a crawler
+// saw none of the 18,270 words. The panel is still opened client-side — this only fills
+// the head, which is the half a crawler and a chat preview actually read.
+//
+// `null` for anything not in the table, so the page falls back to its own titles rather
+// than advertising a word the site cannot show. That also makes `?word=<garbage>` inert.
+
+const SHARE_DESC_MAX = 160;   // what Google and most chat previews render before cutting
+
+/**
+ * Trim a DEX definition down to one shareable sentence.
+ *
+ * Definitions arrive as pipe-separated senses, most with a literary citation attached
+ * („…SADOVEANU, O. I 452."). The first sense minus its citations is the part that reads
+ * as a definition; the citations are an author's name in caps followed by a volume
+ * reference, and in a 160-character preview they crowd the meaning out entirely.
+ */
+function share_excerpt(?string $definition, int $max = SHARE_DESC_MAX): string {
+    $seg = trim(explode('|', (string) $definition)[0]);
+    // Drop a trailing citation: a run of 2+ capitals, then anything to the end.
+    $seg = (string) preg_replace('/\s*\p{Lu}{2,}[^.]*$/u', '', $seg);
+    $seg = trim(preg_replace('/\s+/u', ' ', $seg));
+    if ($seg === '' || mb_strlen($seg) <= $max) return $seg;
+    $cut = mb_substr($seg, 0, $max - 1);
+    $sp  = mb_strrpos($cut, ' ');
+    return rtrim($sp !== false ? mb_substr($cut, 0, $sp) : $cut, " ,;:.") . '…';
+}
+
+/**
+ * Absolute origin + BASE, for `og:url` and `rel=canonical`, which must not be relative.
+ *
+ * Derived rather than hardcoded so a subfolder deploy and a local `php -S` both produce
+ * URLs that resolve — the same reason BASE itself is computed. `HTTP_HOST` is attacker-
+ * controlled, so it is whitelisted against a character class before being echoed: it
+ * lands in an absolute URL that crawlers and chat apps follow.
+ */
+function site_origin(): string {
+    $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+    if ($host === '' || !preg_match('/^[A-Za-z0-9.\-]+(:\d+)?$/', $host)) {
+        $host = 'voroave.ro';
+    }
+    $https = ($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? '') !== 'off';
+    return ($https ? 'https://' : 'http://') . $host . BASE;
+}
+
+/**
+ * Head metadata for `?word=X`, or null when there is no such word.
+ *
+ * Returns title / description / canonical, already plain text — the caller escapes.
+ */
+function share_meta(array $p): ?array {
+    $word = trim((string) ($p['word'] ?? ''));
+    if ($word === '' || mb_strlen($word) > 64) return null;
+
+    $st = db()->prepare(
+        'SELECT word, definition, dex_pos FROM words WHERE word = ? LIMIT 1');
+    $st->execute([$word]);
+    $row = $st->fetch();
+    if (!$row) return null;
+
+    // The part-of-speech prefix comes out of the excerpt's budget, not on top of it —
+    // added afterwards it pushed `văz` to 187 characters and the preview cut mid-word
+    // in whatever place the reader's client chose rather than at ours.
+    $pos    = trim(explode('|', (string) ($row['dex_pos'] ?? ''))[0]);
+    $prefix = $pos !== '' ? $pos . ' — ' : '';
+    $desc   = share_excerpt($row['definition'] ?? null,
+                            SHARE_DESC_MAX - mb_strlen($prefix));
+    if ($desc === '') {
+        // No definition is not a reason to serve a bare word: say what the site knows,
+        // which is that the word is in DEX and out of use.
+        $desc = 'Cuvânt din DEX ieșit din uzul de astăzi. Vezi ce spun dicționarele.';
+    } else {
+        $desc = $prefix . $desc;
+    }
+    return [
+        'title'     => $row['word'] . ' — definiție · Voroave',
+        'desc'      => $desc,
+        'canonical' => site_origin() . '/?word=' . urlenc($row['word']),
+        'word'      => $row['word'],
+    ];
+}
+
 function db(): PDO {
     static $pdo = null;
     if ($pdo === null) {

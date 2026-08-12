@@ -536,10 +536,16 @@
   box-shadow: none;
   background: var(--surface-2);
 }
+/* The panel was a right-hand column here, so a left border was its only edge. It is a
+   centred card at the bottom now (app.css, #detail-panel), floating over the list with
+   page showing through on both sides — a single edge leaves the other three open and it
+   reads as a torn strip. Ink on all four, which is what this skin says everywhere else.
+   The hard offset shadow is the brutalist stand-in for app.css's soft one: this skin
+   kills blur sitewide, and a card with no lift at all disappears into the list. */
 @media (min-width: 769px) {
-  [data-skin="brutal"] #app.has-panel #detail-panel {
-    border-left: var(--stroke-lg) solid var(--ink) !important;
-    box-shadow: none !important;
+  [data-skin="brutal"] #detail-panel {
+    border: var(--stroke-lg) solid var(--ink) !important;
+    box-shadow: 8px 8px 0 var(--ink) !important;
     background: var(--surface-2) !important;
   }
 }

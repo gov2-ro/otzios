@@ -910,6 +910,40 @@ Skin files load with an mtime query string, so edits show on plain reload. A sto
 whose file has since been deleted falls back to `DEFAULT_SKIN` (the valid list is baked
 into the pre-paint boot script).
 
+## The definition panel — a centred card, at every width
+
+`#detail-panel` was a 380px right-hand column on desktop and a bottom sheet on the phone.
+Since 2026-08-12 it is the sheet everywhere, capped and centred rather than full-bleed. The
+column put the definition at the far edge of a wide screen while the word you clicked
+stayed on the left; capping the width keeps the line length in the 45–75 characters prose
+wants, instead of the ~200 a 1800px pane gives.
+
+Four things to keep:
+
+1. **It is centred on the list, not on the window.** The filter rail is a docked 288px
+   column from 1024px up, so viewport-centring slides the card left by a rail's width and
+   tucks its first ~50px — the headword — underneath. Both the offset and the width
+   subtract `--rail-w`, which is `0px` by default and `288px` in the block that docks the
+   rail, so one expression covers both. **`--rail-w` must stay equal to the rail's
+   `flex-basis`**; they are two numbers that have to agree, which is why the rail's block
+   sets the token right next to its own width.
+2. **`scroll-padding-bottom` on `#word-list-container` is load-bearing, not polish.** The
+   card overlays the list, so without it the last rows sit under it permanently *and*
+   `scrollIntoView({block:'nearest'})` — what `j`/`k` use — counts them as already visible.
+   One property covers both, and the keyboard handler needs to know nothing about it.
+3. **`--panel-shadow` is a token declared in both theme blocks.** A shadow tuned for paper
+   is invisible over `#1A1613` and the card loses its edge. This is the "define it in both
+   blocks" rule from the skins section, on the one component that now floats.
+4. **Two skins had rules written for the column and both were wrong as a card** — `brutal`
+   gave it a `border-left` as its only edge (three sides open, reads as a torn strip),
+   `registru` killed the shadow outright (leaving only app.css's 1px border). Both fixed.
+   A skin restyling this panel should give it an edge *and* a lift in its own idiom; a
+   floating card with neither disappears into the list. The failure is invisible while you
+   are writing any one skin — screenshot all six.
+
+The phone keeps its own treatment below 768px: full bleed, both bars hidden
+(`body.detail-open`), 60vh. See the header/footer section for why the bars go.
+
 ## App shells vs documents — `body.page-doc`
 
 `app.css` styles `body` as the **explorer's** shell: `height: 100vh; overflow: hidden`, a
@@ -1289,6 +1323,34 @@ leave the height behind as dead space. The top nav keeps icons only *here alone*
 that put those labels back exists because a bare glyph row is unreadable, but this is the
 one bar that also carries a mode switch, a score and a leaderboard button, and at 390px the
 bar wanted ~460px.
+
+## Share metadata for `?word=` — `share_meta()` in `_lib.php`
+
+A word link is the site's main shareable unit. Until 2026-08-12 it carried **no** metadata:
+`?word=` was read only by `app.js`, after load, so every link ever posted previewed as the
+generic site card and a crawler saw none of the 18,270 words. `index.php` now fills
+`<title>`, `description`, `canonical`, the `og:*` set and `twitter:card` from the database;
+the panel is still opened client-side, this is only the head.
+
+- **`share_meta()` returns `null` for anything not in the table**, and the page falls back
+  to its own titles. That is what keeps `?word=<junk>` inert rather than reflecting an
+  attacker's parameter into `<title>` and `og:url` — the fallback is the security property,
+  not just a nicety.
+- **`site_origin()` derives the absolute origin** rather than hardcoding `voroave.ro`, so a
+  subfolder deploy and a local `php -S` both emit URLs that resolve — same reasoning as
+  `BASE`. `HTTP_HOST` is attacker-supplied and ends up in a URL crawlers follow, so it is
+  whitelisted against a character class before being echoed.
+- **The POS prefix comes out of the excerpt's budget, not on top of it.** Added afterwards
+  it pushed `văz` to 187 characters and the preview cut mid-word wherever the reader's
+  client chose. Checked across all 16,484 words with a definition: none over
+  `SHARE_DESC_MAX`.
+- **`share_excerpt()` strips the literary citation.** Definitions carry quotes
+  („…SADOVEANU, O. I 452."), and in 160 characters they crowd out the meaning.
+
+Playlists (`?w=`) deliberately still get the site default — a list has no one headword, and
+inventing a title for it is a separate decision.
+
+Pinned by `tests/test_share_meta.js`.
 
 ## Clean URLs — `public/.htaccess`
 

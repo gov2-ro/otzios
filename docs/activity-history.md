@@ -4,6 +4,87 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-12 — The definition panel becomes a card; `?word=` links get a head
+
+### The panel: right-hand column → centred card at the bottom
+
+It was a 380px right column on desktop and a full-bleed bottom sheet on the phone. The
+column put the definition at the far edge of a wide screen while the word you clicked
+stayed on the left — a head turn on a 27" display, and the eye loses the row it came
+from. The phone's shape was the better one at every width, so it is now the only one.
+
+Not full-bleed, though. A definition set across 1800px runs ~200 characters to the line
+against the 45–75 that prose wants, so the card is capped at `min(60rem, …)` and centred,
+with the page showing through on both sides. The gutter is what makes it read as a card
+over the list rather than as a second bottom-anchored pane. `--panel-shadow` is a new
+token, in both theme blocks: a shadow tuned for paper is invisible on `#1A1613`, and the
+card loses its edge.
+
+**It is centred on the list, not on the window** — and getting that wrong was visible
+immediately. The filter rail is a docked 288px column from 1024px up, so viewport-centring
+slid the card a rail's-width left and tucked its first ~50px, headword included,
+underneath. `--rail-w` (0, or 288px in the block that docks the rail) is subtracted from
+both the offset and the width, so one expression covers docked-rail and drawer widths.
+Measured at 820/1000/1440/1920: equal gutters, headword inside the card, at every one.
+
+Two things that came with it:
+
+- **`scroll-padding-bottom` on `#word-list-container`.** The card overlays the list, so
+  the last rows sat under it permanently *and* `scrollIntoView({block:'nearest'})` — what
+  `j`/`k` use — counted them as already visible. One CSS property fixes both, with
+  nothing for the keyboard handler to know about.
+- **Two skins had rules written for the column shape.** `brutal` gave the panel a
+  `border-left` as its only edge, which on a floating card leaves three sides open and
+  reads as a torn strip — now ink on all four plus its hard offset shadow, since this skin
+  kills blur sitewide and a card with no lift disappears into the list. `registru` killed
+  the shadow outright, which left only app.css's 1px border; it gets a flat hairline ring
+  instead. This is the component-rule rot the skins section of CLAUDE.md warns about, found
+  by screenshotting all six skins rather than by reading them.
+
+Verified in all six skins: head and foot pinned, `.fp-body` scrolling inside the card,
+each skin's own radius, and a shadow it can be seen with. Phone sheet untouched — full
+bleed, both bars hidden, clean crossover at 769px.
+
+### `?word=` links: a head a crawler can read
+
+`?word=` was read **only by app.js, after load**. `index.php` never looked at it. So every
+word link ever shared previewed as the generic „Voroave neglijate / Suveranism lexical"
+card, and a crawler saw none of the 18,270 words. That is the whole loss, and it needed no
+URL change to fix — which is why this came before the `/def/{word}` rewrite rather than
+after: it improves every link already in the wild, not just future ones.
+
+`share_meta()` in `_lib.php` fills `<title>`, `description`, `canonical`, `og:title/
+description/url/type/site_name` and `twitter:card`. `og:type` is `article` for a word and
+`website` for the explorer. `site_origin()` derives the absolute origin rather than
+hardcoding it, so a subfolder deploy and a local `php -S` both emit URLs that resolve —
+with `HTTP_HOST` whitelisted against a character class first, since it is attacker-supplied
+and lands in a URL that crawlers follow.
+
+Three things the description had to get right:
+
+- **The citation had to go.** Definitions carry literary quotes („…SADOVEANU, O. I 452."),
+  and in a 160-character preview they crowd the meaning out entirely.
+- **The part-of-speech prefix comes out of the excerpt's budget, not on top of it.** Added
+  afterwards it pushed `văz` to 187 characters, so the preview cut mid-word wherever the
+  reader's client chose instead of where we chose. Checked across all 16,484 words with a
+  definition: zero over 160.
+- **`null` for anything not in the table**, so the page falls back to its own titles
+  rather than advertising a word it cannot show — which is also what makes `?word=<junk>`
+  inert instead of reflecting the parameter into `<title>` and `og:url`.
+
+Pinned by `tests/test_share_meta.js`: a real word fills the head, diacritics survive the
+round trip, the description is a definition rather than a citation dump, and seven
+non-word inputs (unknown, empty, script tag, attribute break-out, over-long, a playlist,
+the bare explorer) all fall back.
+
+**Next on the sharer** is the clean URL — decided: a word slug, dexonline-style, not a
+`word_id`. It is safe as a rewrite for the reason `/joc → /ghici` was: no API endpoint
+answers under that prefix, which is the condition the `.htaccess` note gives for why a
+blanket rule is not safe. It must be additive — `?word=` links keep resolving, with
+`rel=canonical` naming which spelling counts, the way despre/metodologie already do.
+
+---
+
 ## 2026-08-12 — `dex_variant`: DEX's own variant relation, instead of guessing at spellings
 
 **The report.** `sofragerie` sat in the default view looking like a find. It is a variant

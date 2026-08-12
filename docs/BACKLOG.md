@@ -920,13 +920,30 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   spelling from a living word's definition with the real answer among the distractors.
   Pinned by §5 of `tests/test_game_api.js`.
 
-- [ ] info / definition box, even on desktop move it to the bottom - as on low res, but make it not full width, with some transparent margin to the sides, horizontally centered. so it's closer to the eyes. maybe even a tiny bit / soft shadow.
+- [x] info / definition box, even on desktop move it to the bottom - as on low res, but make it not full width, with some transparent margin to the sides, horizontally centered. so it's closer to the eyes. maybe even a tiny bit / soft shadow. —
+  **Done 260812.** `#detail-panel` is the bottom sheet at every width now, capped at
+  `min(60rem, …)` and centred, with `--panel-shadow` as a token in both theme blocks.
+  Centred on the *list*, not the window — the docked rail is 288px, so viewport-centring
+  tucked the headword underneath it; `--rail-w` is subtracted from both the offset and the
+  width. `scroll-padding-bottom` keeps the last rows and `j`/`k` clear of the overlay.
+  `brutal` and `registru` had rules written for the old right-hand column and both were
+  wrong as a card; fixed. See **The definition panel** in CLAUDE.md.
 
 - [ ] word sharer. 
-  - [ ] update .htaccess, turn `/?word={word}`  to `/def/{word}` 
+  - [ ] update .htaccess, turn `/?word={word}`  to `/def/{word}` — decided: **word slug,
+    dexonline-style, not `word_id`.** Safe as a rewrite for the reason `/joc → /ghici`
+    was — no API endpoint answers under that prefix. Must be **additive**: `?word=` links
+    keep resolving, with `rel=canonical` naming which spelling counts (despre/metodologie
+    already do this). Note ~40% of headwords carry diacritics and percent-encode
+    (`/def/%C8%9Beara`), so the pretty URL is only pretty for the rest.
   - [ ] close the filter drawer
-  - [ ] add dynamic meta, title, description, og info
+  - [x] add dynamic meta, title, description, og info — **Done 260812.** `share_meta()` in
+    `api/_lib.php`; see **Share metadata for `?word=`** in CLAUDE.md. Done before the URL
+    change on purpose: it needs no new URL, so it fixes every link already shared rather
+    than only future ones. Pinned by `tests/test_share_meta.js`.
   - [ ] later: could we show related words? or just top public favorite and loled words – though they shouldn't repeat too often, add  randomness factor?
+    Note: this is a *display* of community marks, not a filter, so it stays on the right
+    side of the rule that votes may only ever reorder — see `vote_counts_subquery()`.
 
 - [ ] can't find 'nebogat' anymore, in which list is it?
 

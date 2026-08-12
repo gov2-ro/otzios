@@ -36,11 +36,30 @@ global $QUICK_TAGS, $POS_OPTIONS;
        browser zoom, not a replacement for it. -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
-  <title>Voroave neglijate</title>
-  <meta property="og:title" content="Voroave neglijate">
-  <meta property="og:description" content="Suveranism lexical. Cuvinte aproximativ căzute în uitare.">
-  <meta property="og:image" content="https://voroave.ro/assets/despre/screenshot-voroave.png">
-  <meta property="og:type" content="website">
+  <?php
+  // A `?word=` link is the site's main shareable unit and used to carry no metadata:
+  // the param was read only by app.js, after load, so every link ever posted previewed
+  // as the generic site card and a crawler saw none of the 18,270 words. share_meta()
+  // returns null for anything not in the table, which is also what makes `?word=<junk>`
+  // fall back to the site's own titles rather than advertising a word we cannot show.
+  $sm    = share_meta($_GET);
+  $title = $sm ? $sm['title'] : 'Voroave neglijate';
+  $desc  = $sm ? $sm['desc']
+                : 'Suveranism lexical. Cuvinte aproximativ căzute în uitare.';
+  $canon = $sm ? $sm['canonical'] : site_origin() . '/';
+  ?>
+  <title><?= e($title) ?></title>
+  <meta name="description" content="<?= e($desc) ?>">
+  <link rel="canonical" href="<?= e($canon) ?>">
+  <meta property="og:title" content="<?= e($title) ?>">
+  <meta property="og:description" content="<?= e($desc) ?>">
+  <meta property="og:url" content="<?= e($canon) ?>">
+  <meta property="og:image" content="<?= e(site_origin()) ?>/assets/despre/screenshot-voroave.png">
+  <!-- `article` for a single word, `website` for the explorer — a word page is a
+       document about one thing, and previews treat the two differently. -->
+  <meta property="og:type" content="<?= $sm ? 'article' : 'website' ?>">
+  <meta property="og:site_name" content="Voroave neglijate">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="<?= BASE ?>/assets/fonts/app-fonts.css">
   <script src="<?= BASE ?>/assets/lib/htmx-2.0.4.min.js"></script>
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">

@@ -246,9 +246,15 @@
 [data-skin="registru"] .feed-card,
 [data-skin="registru"] #shortcuts-modal,
 [data-skin="registru"] #board-modal { box-shadow: none; }
-[data-skin="registru"] #detail-panel { box-shadow: none; }
-[data-skin="registru"] #app.has-panel #detail-panel { box-shadow: none !important; }
-[data-skin="registru"] #detail-panel.panel-open     { box-shadow: none !important; }
+/* The panel is a floating card now rather than a docked column, so killing the shadow
+   outright would leave it with only app.css's 1px border to separate it from the list
+   underneath. This skin does not do blur, so it gets a hairline ring instead — flat, but
+   still an edge. The `#app.has-panel` copy is gone with the right-hand column it was
+   written for. */
+[data-skin="registru"] #detail-panel,
+[data-skin="registru"] #detail-panel.panel-open {
+  box-shadow: 0 0 0 1px var(--border-2) !important;
+}
 
 /* --radius squares most of the site; these carry their own number. */
 [data-skin="registru"] #hover-box,
