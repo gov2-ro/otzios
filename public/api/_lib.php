@@ -100,8 +100,36 @@ define('FALLBACK_SORT', 'quality');
  */
 function demote_order_sql(array $p): string {
     if (!db_has_column('editor_demote')) return '';
-    $mode = trim($p['editorial'] ?? 'back');
-    return $mode === 'back' ? 'COALESCE(editor_demote, 0) ASC, ' : '';
+    return class_mode($p, 'editorial', 'back', []) === 'back'
+        ? 'COALESCE(editor_demote, 0) ASC, ' : '';
+}
+
+/**
+ * Resolve one class control's mode: `hide` / `show` / `only` (or `back` for `editorial`).
+ *
+ * `$aliases` maps a superseded param name to the mode it implies — `null` meaning the
+ * alias carries its own three-state value, which is how a param that used to be its own
+ * row keeps working after being folded into a bundle (`?spellings=only` → the whole
+ * `variants` control on `only`). The explicit param always wins; aliases are tried in
+ * declaration order, so the newest spelling beats the checkbox-era one.
+ *
+ * Kept out of build_word_filter() because demote_order_sql() has to reach the same
+ * answer for `editorial` — reading `$p['editorial']` directly there is how the two got
+ * out of step, and the ORDER BY silently disagreeing with the WHERE is invisible.
+ */
+function class_mode(array $p, string $param, string $default, array $aliases): string {
+    $valid = ['hide', 'show', 'only', 'back'];
+    $mode  = trim($p[$param] ?? '');
+    if (in_array($mode, $valid, true)) return $mode;
+    foreach ($aliases as $alias => $implied) {
+        $raw = trim($p[$alias] ?? '');
+        if ($implied === null) {
+            if (in_array($raw, $valid, true)) return $raw;
+        } elseif ($raw === '1') {
+            return $implied;
+        }
+    }
+    return $default;
 }
 
 $QUICK_TAGS = [
@@ -506,61 +534,85 @@ function build_word_filter(array $p): array {
 
     // ── Special classes: hidden, included, or the only thing shown ──────────────
     //
-    // Four flags mark classes most readers do not want mixed into a default list:
+    // Four controls over six flags. Each control is one three-state row in the sheet:
     //
     //   regional     regional/dialectal without also being tagged old — a word used in
     //                one valley is not a word Romanian forgot
-    //   variants     archaic spellings of words still in use (politeță/politețe),
-    //                detected via the paradigm-sharing ratio, not spelling similarity
-    //   spellings    obsolete spellings of words entirely alive under a modern form
-    //                (situațiune → situație, sgomot → zgomot);
-    //                distinct from `variants`, which keys on a shared paradigm and so
-    //                cannot see a pair whose stems differ
-    //   diminutives  noruleț, cuconiță — shown by default, unlike the other three
-    //   editorial    the curator read the word and marked it ⚠️ meh. Unlike the four
-    //                above this is a person's judgement rather than a measured
-    //                property, which is exactly why it is a control and not a term in
-    //                quality_score: a scored-in opinion cannot be appealed. It is also
-    //                the *only* human signal permitted to subtract — community marks
-    //                are aggregated live and may only reorder (see the `populare` sort),
-    //                because identity here is an anonymous device token and hiding a
-    //                word must not be cheaper than publishing a list.
+    //   variants     `variant_like` + `archaic_spelling` + `dex_variant` — see below,
+    //                this one governs three columns
+    //   deverbal     a noun defined as "Faptul de a X" whose verb X is already on the
+    //                list and visible — `zăhăială` beside `zăhăi`. The flag is about the
+    //                duplication, not the derivation: with the verb absent or itself
+    //                hidden, the noun is the only place that root appears at all
+    //   diminutives  noruleț, cuconiță
+    //   editorial    the curator read the word and marked it ⚠️ meh. Unlike the others
+    //                this is a person's judgement rather than a measured property, which
+    //                is exactly why it is a control and not a term in quality_score: a
+    //                scored-in opinion cannot be appealed. It is also the *only* human
+    //                signal permitted to subtract — community marks are aggregated live
+    //                and may only reorder (see the `populare` sort), because identity
+    //                here is an anonymous device token and hiding a word must not be
+    //                cheaper than publishing a list.
     //
-    // Each is one three-state control (`hide` / `show` / `only`) rather than a checkbox.
-    // The checkbox form forced the polarity to differ per class: an unchecked box is not
-    // submitted, so a class hidden by default needed `show_x=1` while one shown by
-    // default needed `hide_x=1`, and the sheet ended up with „ascunde…" and „arată…"
-    // rows that looked like one set of controls and were not. A radio always submits, so
-    // all four now read the same way and only the default moves.
+    // **`variants` is one control over three columns on purpose.** They are three
+    // different measurements of one thing a reader cares about — "this is another
+    // spelling of a word that is still alive":
     //
-    // `only` on several classes means their union — the flags are near-disjoint, 23 rows
-    // in the relevant seam carry two — and a class left on `hide` is still subtracted
-    // from that union, so „doar regionalisme" + „fără variante" drops the nine words that
-    // are both. Legacy `show_*=1` / `hide_diminutives=1` links keep working.
+    //     variant_like      the paradigm-sharing ratio (politeță/politețe)
+    //     archaic_spelling  a spelling rule plus a much-commoner live twin
+    //                       (situațiune → situație, sgomot → zgomot)
+    //     dex_variant       DEX's own entry structure — EntryLexeme.main (sofragerie →
+    //                       sufragerie, octomvre → octombrie), no spelling rule involved
+    //
+    // As three rows the sheet read „variante vechi / grafii vechi / variante DEX", three
+    // near-synonyms in Romanian that no reader can be expected to tell apart, in a 280px
+    // column that also has to hold four other rows. The distinction is real but it is a
+    // fact about *how we found the word*, which belongs in the detail panel — and is
+    // there, naming the twin in each case. The columns stay separate in `ui.db`; only the
+    // control is bundled. `deverbal` is deliberately *not* in the bundle: it says the
+    // word is a duplicate of a *different* word on the list, not a spelling of the same
+    // one, and it is the one of the four a reader might plausibly want on its own.
+    //
+    // Each control is a three-state radio rather than a checkbox. The checkbox form
+    // forced the polarity to differ per class: an unchecked box is not submitted, so a
+    // class hidden by default needed `show_x=1` while one shown by default needed
+    // `hide_x=1`, and the sheet ended up with „ascunde…" and „arată…" rows that looked
+    // like one set of controls and were not. A radio always submits, so they all read the
+    // same way and only the default moves.
+    //
+    // `only` on several classes means their union — a class left on `hide` is still
+    // subtracted from that union, so „doar regionalisme" + „fără variante" drops the rows
+    // that are both.
+    //
+    // Every superseded spelling still resolves, mapped onto the control that now covers
+    // it: `spellings=` and `dexvar=` (their own rows until the bundle), and the
+    // checkbox-era `show_regional=1` / `show_variants=1` / `show_spellings=1` /
+    // `hide_diminutives=1`. **`applyUrlToForm()` in app.js must map the same set**, or an
+    // old link renders as unfiltered while behaving as filtered — htmx searches from form
+    // state on load, so a server-only mapping is half a mapping.
     //
     $class_modes = [
-        ['regional',    'regional_only',    'hide', 'show_regional',    'show'],
-        ['variants',    'variant_like',     'hide', 'show_variants',    'show'],
-        ['spellings',   'archaic_spelling', 'hide', 'show_spellings',   'show'],
-        ['diminutives', 'diminutive_like',  'hide', 'hide_diminutives', 'hide'],
+        // [param, [columns…], default, [alias param => mode or null for a 3-state alias]]
+        ['regional',    ['regional_only'],   'hide', ['show_regional' => 'show']],
+        ['variants',    ['variant_like', 'archaic_spelling', 'dex_variant'], 'hide',
+                        ['spellings' => null, 'dexvar' => null,
+                         'show_variants' => 'show', 'show_spellings' => 'show']],
+        ['deverbal',    ['deverbal_like'],   'hide', []],
+        ['diminutives', ['diminutive_like'], 'hide', ['hide_diminutives' => 'hide']],
         // `editorial` is the one class whose default does not subtract. Its states are
         // `back` (sink to the end) / `show` (normal order) / `only`, and `back` is
         // handled in the ORDER BY by demote_order_sql(), not here. See that function.
-        ['editorial',   'editor_demote',    'back', '',                 'back'],
+        ['editorial',   ['editor_demote'],   'back', []],
     ];
     $only_cols = [];
-    foreach ($class_modes as [$param, $col, $default, $legacy, $legacy_mode]) {
-        if (!db_has_column($col)) { continue; }
-        $mode = trim($p[$param] ?? '');
-        if (!in_array($mode, ['hide', 'show', 'only', 'back'], true)) {
-            // A '' legacy name means the class is newer than the checkbox era and has no
-            // old links to honour — don't let it read $p[''].
-            $mode = ($legacy !== '' && ($p[$legacy] ?? '') === '1') ? $legacy_mode : $default;
-        }
+    foreach ($class_modes as [$param, $cols, $default, $aliases]) {
+        $cols = array_values(array_filter($cols, 'db_has_column'));
+        if ($cols === []) { continue; }
+        $mode = class_mode($p, $param, $default, $aliases);
         if ($mode === 'hide') {
-            $conditions[] = "(COALESCE($col, 0) = 0)";
+            foreach ($cols as $col) { $conditions[] = "(COALESCE($col, 0) = 0)"; }
         } elseif ($mode === 'only') {
-            $only_cols[] = $col;
+            $only_cols = array_merge($only_cols, $cols);
         }
         // 'back' and 'show' add no condition — 'back' only changes the order.
     }

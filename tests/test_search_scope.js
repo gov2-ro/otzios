@@ -68,7 +68,8 @@ const Q = 'iune';
   const variants = {
     'seam (both ticked)':   `q=${Q}&seam%5B%5D=relevant&seam%5B%5D=curiosity`,
     'seam (curiosity)':     `q=${Q}&seam%5B%5D=curiosity`,
-    'spellings=only':       `q=${Q}&spellings=only`,
+    'variants=only':        `q=${Q}&variants=only`,
+    'deverbal=only':        `q=${Q}&deverbal=only`,
     'regional=only':        `q=${Q}&regional=only`,
     'diminutives=hide':     `q=${Q}&diminutives=hide`,
     'verdict=extinct':      `q=${Q}&verdict%5B%5D=extinct`,
@@ -101,7 +102,10 @@ const Q = 'iune';
 
   console.log('\n3. It is scoped to `q` — the filters still work with the box empty');
   const dflt  = total(await get(u, ''));
-  const wide  = total(await get(u, 'seam%5B%5D=relevant&seam%5B%5D=curiosity&regional=show&variants=show&spellings=show&diminutives=show'));
+  // Every class switched to `show`, so `wide` means the whole table. A class missing
+  // from this list quietly turns it into "the whole table minus that class", and the
+  // `found <= wide` check below then compares a query against a filtered base.
+  const wide  = total(await get(u, 'seam%5B%5D=relevant&seam%5B%5D=curiosity&regional=show&variants=show&deverbal=show&diminutives=show'));
   check(dflt > 0 && wide > dflt,
     `defaults show ${dflt} of ${wide} — the sheet still subtracts when nothing is typed`);
   check(found <= wide, `„${Q}" (${found}) is searched against the whole table (${wide})`);

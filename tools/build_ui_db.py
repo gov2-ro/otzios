@@ -28,6 +28,10 @@ from validate_diachronic import (  # noqa: E402
     get_corpus_tokens as _corpus_tokens,
     scaled_modern_thresholds as _scaled_modern_thresholds,
 )
+# The canonical Romanian normalization (lower → cedilla-to-comma → NFC). Lexeme forms
+# come out of the dump with their original case, so `Octomvre` has to fold onto
+# `octomvre` before it can be matched against a shortlist word. See mark_dex_variants().
+from dump_parser import normalize  # noqa: E402
 
 SHORTLIST_PATH  = Path('data/processed/forgotten_words_shortlist.csv')
 RARE_PATH       = Path('data/processed/rare_words_wordfreq.csv')
@@ -386,6 +390,273 @@ def mark_archaic_spellings(conn: sqlite3.Connection, freq_db: Path) -> None:
     print(f'  {len(marked):,} archaic spellings (twin ≥{TWIN_RATIO}× in the modern corpus)')
 
 
+# ── DEX's own variant relation ───────────────────────────────────────────────────
+#
+# `mark_archaic_spellings()` above guesses at the same thing from the spelling, and the
+# table of measured precisions there is the argument for this function: the rules that
+# would catch `sofragerie → sufragerie` or `coprins → cuprins` are the ones that had to
+# be rejected, because `o → u` fires 1,984 times to find 124 twins. The right answers
+# were never the problem; telling them from the noise was.
+#
+# DEX already knows. `EntryLexeme` groups the lexemes of one dictionary entry and marks
+# which of them is the headword: `main = 1` is the form the entry is filed under, `main
+# = 0` are the variants of it that dexonline lists alongside. 53,618 rows say `main = 0`,
+# and 4,773 of them are shortlist words. No spelling heuristic is involved, so the
+# relation reaches pairs that share no visible rule at all — `octomvre/octombrie`,
+# `hiclean/viclean`, `ghinărar/general`.
+#
+# Two restrictions, both of which cost recall on purpose:
+#
+# 1. **The word must never be a headword itself.** 1,998 shortlist words are `main = 0`
+#    in one entry and `main = 1` in another, usually because they carry a sense of their
+#    own that DEX files separately — `momiță` is a variant of `maimuță` in one entry and
+#    the word for a sweetbread in another, `partită` of `partidă` and also the musical
+#    form, `băcălie` of `băcănie` and also the grocer's wife. Admitting them adds 1,039
+#    words at an inspected error rate around 5%, and the errors are invisible: a hidden
+#    word is simply not there. So they stay visible. `archaic_spelling` picks up the
+#    unambiguous half of that group anyway (`condițiune`, `advocat`) via the regex rules.
+#
+# 2. **The headword must clear TWIN_RATIO in the modern corpus**, exactly as the spelling
+#    rules must. Without it this hides the pairs where *both* forms are forgotten, which
+#    are the project's own material rather than noise: `antereu/anteriu`,
+#    `amploiat/amploaiat`, `zalhana/zahana`, `lighioaie/lighioană`, `pătlăgea/pătlăgică`
+#    — 53 in the default view.
+#
+# It is a separate flag from `archaic_spelling` rather than folded into it, and the two
+# are kept **disjoint**: a word the regex rules already claimed is not marked here. Each
+# control then reveals its own whole set, instead of „grafii vechi: cu" uncovering 127
+# words that another row is still hiding.
+_VARIANT_ENTRY_SQL = """
+    SELECT el.entryId, lx.formNoAccent, el.main
+      FROM EntryLexeme el
+      JOIN Lexeme lx ON lx.id = el.lexemeId
+     WHERE lx.formNoAccent IS NOT NULL AND lx.formNoAccent != ''
+"""
+
+
+def _edit_distance(a: str, b: str) -> int:
+    """Levenshtein distance. Only ever called on two short words."""
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def load_dex_variants(lexemes_db: Path) -> tuple[dict[str, set[str]], set[str]]:
+    """Read EntryLexeme → ({variant form: headwords it varies from}, {every headword}).
+
+    Both halves are needed: the first says what a word is a variant *of*, the second is
+    restriction 1 above — a form that heads an entry of its own is left alone.
+    """
+    heads_of: dict[str, set[str]] = {}
+    all_heads: set[str] = set()
+    if not lexemes_db.exists():
+        return heads_of, all_heads
+
+    lconn = sqlite3.connect(f'file:{lexemes_db}?mode=ro', uri=True)
+    try:
+        entries: dict[int, list[tuple[str, int]]] = {}
+        for entry_id, form, main in lconn.execute(_VARIANT_ENTRY_SQL):
+            entries.setdefault(entry_id, []).append((normalize(form), int(main)))
+    except sqlite3.OperationalError:
+        # An older lexemes.db built before extract_taxonomy.py loaded EntryLexeme.
+        lconn.close()
+        return heads_of, all_heads
+    lconn.close()
+
+    for members in entries.values():
+        heads = {f for f, main in members if main == 1}
+        all_heads |= heads
+        for form, main in members:
+            if main == 1:
+                continue
+            others = heads - {form}
+            if others:
+                heads_of.setdefault(form, set()).update(others)
+    return heads_of, all_heads
+
+
+def load_paradigm_modern(inflected_db: Path, modern: dict[str, int]) -> dict[str, int]:
+    """lemma → modern occurrences summed over its whole inflectional paradigm.
+
+    Used for the *headword* side of the ratio only. **A surface count is not usable
+    there, and a verb is where it shows:** `lăcrima` has exactly zero occurrences in
+    CulturaX as the bare infinitive — the paradigm carries them all — so gating on
+    surface counts threw the real headword out and left `lăcrăma` labelled a variant of
+    `reclama`, the only co-headword in its entry with a countable citation form.
+
+    The sum is naive — a form claimed by several lemmas is credited to each in full,
+    where `validate_diachronic.aggregate_by_family` would split it by headword
+    prominence. That is tolerable *on this side*, because a head only has to clear a
+    floor and over-crediting it can at most confirm what its own citation form already
+    said. It is not tolerable on the variant's side, which is why the variant is measured
+    by its surface count instead: see mark_dex_variants().
+    """
+    if not inflected_db.exists():
+        return {}
+    iconn = sqlite3.connect(f'file:{inflected_db}?mode=ro', uri=True)
+    totals: dict[str, int] = {}
+    for lemma, form in iconn.execute(
+            'SELECT lx.lemma, i.form FROM inflected i JOIN lexeme lx '
+            '  ON lx.lexeme_id = i.lexeme_id'):
+        n = modern.get(form)
+        if n:
+            key = normalize(lemma)
+            totals[key] = totals.get(key, 0) + n
+    iconn.close()
+    return totals
+
+
+def mark_dex_variants(
+    conn: sqlite3.Connection, lexemes_db: Path, freq_db: Path, inflected_db: Path
+) -> None:
+    """Populate words.dex_variant / words.dex_variant_of. Idempotent.
+
+    Must run *after* mark_archaic_spellings(), which gets first claim on the overlap so
+    the two flags stay disjoint.
+    """
+    print('Marking DEX variant forms…')
+    conn.execute('UPDATE words SET dex_variant = 0, dex_variant_of = NULL')
+
+    heads_of, all_heads = load_dex_variants(lexemes_db)
+    if not heads_of:
+        print(f'  (no EntryLexeme rows found, skipped: {lexemes_db})')
+        return
+    if not freq_db.exists():
+        print(f'  (corpus_frequencies.db not found, skipped: {freq_db})')
+        return
+
+    fconn = sqlite3.connect(f'file:{freq_db}?mode=ro', uri=True)
+    modern = {w: o for w, o in fconn.execute(
+        "SELECT word, occurrence_count FROM corpus_word_frequency "
+        " WHERE corpus_name = 'culturax_ro'")}
+    fconn.close()
+
+    # Presence of the file, not truthiness of the map it yields: an empty map is a
+    # legitimate outcome (no paradigm form appears in the corpus) and head_count() falls
+    # back to surface counts for it, whereas a missing file means the build is
+    # misconfigured and every head would be judged on its citation form alone.
+    if not inflected_db.exists():
+        print(f'  (inflected_forms.db not found, skipped: {inflected_db})')
+        return
+    family = load_paradigm_modern(inflected_db, modern)
+
+    def head_count(w: str) -> int:
+        # max, not the paradigm figure alone: a head absent from the paradigm map still
+        # has its own surface count, and reading it as 0 would fail every gate.
+        return max(family.get(w, 0), modern.get(w, 0))
+
+    # **The two sides of the ratio are measured differently, and that asymmetry is the
+    # question rather than a bias in it.** What is being judged about the variant is a
+    # *spelling*, which is one surface form by definition — `tinereță` is written 381
+    # times against `tinerețe`'s 227,064, and that is the whole finding. Summing its
+    # paradigm instead credits it with its own headword's usage, because the two share
+    # nearly every inflected form: `tinereță` comes out at 227,445 and reads as alive.
+    # The head, by contrast, is a lemma, and a lemma's usage genuinely lives across its
+    # paradigm — `lăcrima` is 0 as an infinitive and 16,393 as a verb.
+    marked = []
+    for word, archaic in conn.execute(
+            'SELECT word, COALESCE(archaic_spelling, 0) FROM words').fetchall():
+        if archaic or word in all_heads:
+            continue
+        heads = heads_of.get(word)
+        if not heads:
+            continue
+        # Which head this is a variant *of* is settled first, and by spelling alone.
+        # Letting the gate shortlist the candidates instead put `lăcrăma` under
+        # `reclama` — its entry's other headword, and the only one whose citation form
+        # the corpus could count. Nearest spelling, then the count as the tie-break.
+        head = min(heads, key=lambda h: (_edit_distance(word, h), -head_count(h), h))
+        if head_count(head) >= TWIN_RATIO * max(modern.get(word, 0), 1):
+            marked.append((head, word))
+
+    conn.executemany(
+        'UPDATE words SET dex_variant = 1, dex_variant_of = ? WHERE word = ?', marked)
+    print(f'  {len(marked):,} DEX variant forms '
+          f'(headword ≥{TWIN_RATIO}× in the modern corpus over its whole paradigm, '
+          f'and not a headword itself)')
+
+
+# ── Deverbal nouns whose verb is already on the list ─────────────────────────────
+#
+# `zăhăială` is defined, in full, as "Faptul de a (se) zăhăi" — and `zăhăi` is three
+# rows away in the same list. The noun is not a second find; it is the same find twice,
+# and the second copy carries no information the first did not.
+#
+# **The flag is about the duplication, not about the derivation**, which is why the base
+# verb has to be *on the list and visible* for the noun to be hidden. Marking every
+# deverbal noun instead reads as a rule about word formation and quietly deletes 563
+# words whose verb is nowhere in the shortlist — `pospăială` without `pospăi` is the only
+# place a reader would ever meet that root.
+#
+# The visibility half is the part that is easy to get wrong. Measured on the 2026-08-12
+# build, the naive "verb is in the table" rule fires on 166 words, and for **10 of the 25
+# it removes from the default view the verb is not in the default view either** —
+# `împământeni` is `regional_only`, `pospăi` is in the curiosity seam. There the noun is
+# the only member of the pair anyone can see, so hiding it is not deduplication, it is
+# deletion. Requiring the verb to be at least as visible as the noun costs 17 words and
+# removes that whole class of error.
+#
+# No morphological check on top of the definition. Seven of the pairs share fewer than
+# four leading characters (`usebire`/`osebi`, `oțerire`/`oțărî`, `raznă`/`răzleți`), and
+# all seven are genuine — DEX asserting the derivation is better evidence than string
+# similarity is, so a prefix requirement would only cost real hits.
+_DEVERBAL_DEF_RE = re.compile(
+    r'^\s*(?:Faptul|Ac[țt]iunea)\s+de\s+a\s+(?:\(\s*se\s*\)\s+|se\s+)?'
+    r'([^\W\d_]+)', re.IGNORECASE | re.UNICODE)
+
+# The class flags a base verb must be free of before its noun may be hidden behind it.
+_HIDE_FLAGS = ('regional_only', 'variant_like', 'archaic_spelling', 'dex_variant',
+               'diminutive_like')
+
+
+def mark_deverbal_nouns(conn: sqlite3.Connection) -> None:
+    """Populate words.deverbal_like / words.deverbal_of. Idempotent.
+
+    **Must run after every other mark_* step**: it reads their flags to decide whether
+    the base verb is visible, so running it earlier silently marks nouns whose verb turns
+    out to be hidden a moment later.
+    """
+    print('Marking deverbal nouns…')
+    conn.execute('UPDATE words SET deverbal_like = 0, deverbal_of = NULL')
+
+    # Only the flag columns this database actually has — a migration may be applying
+    # these one at a time, and a missing column should degrade the visibility check
+    # rather than abort the step.
+    have = {r[1] for r in conn.execute('PRAGMA table_info(words)')}
+    flags = [c for c in _HIDE_FLAGS if c in have]
+    cols = ''.join(f', {c}' for c in flags)
+    rows = {r[0]: r for r in conn.execute(
+        f'SELECT word, definition, seam{cols} FROM words').fetchall()}
+
+    def unflagged(r) -> bool:
+        return not any(r[i] for i in range(3, 3 + len(flags)))
+
+    marked = []
+    for word, row in rows.items():
+        definition = row[1]
+        if not definition:
+            continue
+        m = _DEVERBAL_DEF_RE.match(definition.split('|')[0].strip())
+        if not m:
+            continue
+        verb = normalize(m.group(1))
+        base = rows.get(verb)
+        if base is None or verb == word:
+            continue
+        # At least as visible as the noun: no hide-flag of its own, and in the same seam
+        # or the more visible one. Otherwise this hides the pair rather than the copy.
+        if unflagged(base) and (base[2] == row[2] or base[2] == 'relevant'):
+            marked.append((verb, word))
+
+    conn.executemany(
+        'UPDATE words SET deverbal_like = 1, deverbal_of = ? WHERE word = ?', marked)
+    print(f'  {len(marked):,} deverbal nouns whose verb is on the list and visible')
+
+
 def mark_modern_band(conn: sqlite3.Connection, freq_db: Path) -> None:
     """Bucket `modern_occ` into 0–3, using the pipeline's own rescaled thresholds.
 
@@ -498,6 +769,18 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             -- holds the modern twin so the UI can name it rather than just hiding a row.
             archaic_spelling INTEGER,
             spelling_of      TEXT,
+            -- Set by mark_dex_variants(): DEX itself files this form as a variant of a
+            -- headword that is still thoroughly alive (`sofragerie` → `sufragerie`),
+            -- read off EntryLexeme.main rather than guessed from the spelling.
+            -- Deliberately disjoint from archaic_spelling — the regex rules get first
+            -- claim on the overlap, so each control reveals its own whole set.
+            dex_variant      INTEGER,
+            dex_variant_of   TEXT,
+            -- Set by mark_deverbal_nouns(), which runs last because it reads every flag
+            -- above: the word is a noun defined as "Faptul de a X" whose verb X is on
+            -- the list *and visible*. `deverbal_of` holds the verb.
+            deverbal_like    INTEGER,
+            deverbal_of      TEXT,
             -- Scraped from dexonline.ro by scrape_synonyms.py. Not in the dump: the
             -- Litera dictionaries (Sinonime, Sinonime82, Antonime) are redacted to 23
             -- characters there, so `dict_count` knows a word is in them but not what
@@ -626,6 +909,14 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
     # After the definitions merge, not before — half the signal is the definition text.
     mark_diminutives(conn, Path('data/processed/lexemes.db'))
     mark_archaic_spellings(conn, Path('data/processed/corpus_frequencies.db'))
+    # After mark_archaic_spellings, never before: the two flags are disjoint and the
+    # regex rules get first claim on the 127 words both would take.
+    mark_dex_variants(conn, Path('data/processed/lexemes.db'),
+                      Path('data/processed/corpus_frequencies.db'),
+                      Path('data/processed/inflected_forms.db'))
+    # Last of the mark_* steps, and it has to stay last: it reads the flags the three
+    # above set, to check the base verb is visible before hiding the noun behind it.
+    mark_deverbal_nouns(conn)
     print('Bucketing modern usage…')
     mark_modern_band(conn, Path('data/processed/corpus_frequencies.db'))
 

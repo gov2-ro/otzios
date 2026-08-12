@@ -87,7 +87,23 @@ const answer = (f, body) => f(`${BASE}/api/game.php`, {
   check(expBest > 0, `best_streak rose above zero (${expBest}) — it was pinned at 0 before the affinity fix`);
   if (!sawIncrement) console.log('  note: no consecutive correct guesses this run; increment beyond 1 not exercised');
 
-  console.log('\n5. CSRF and method guards');
+  console.log('\n5. A question is never built out of a cross-reference');
+  // „Diminutiv al lui sfânt" is not a definition, it is a pointer — and reveals_word()
+  // does not catch it: it needs a 4-character shared prefix and Romanian vowel
+  // alternation breaks that at character 2 (`sfințișor` / `sfânt` share „sf"). Same
+  // family as the „vezi X" segments pick_sense() already refused.
+  const POINTER = /^\s*(?:vezi\s|diminutiv|augmentativ)/i;
+  let pointers = 0;
+  const targets = [];
+  for (let i = 0; i < 40; i++) {
+    const q = await ask(f, i % 2 ? 'quiz' : 'sense');
+    for (const o of q.options) if (POINTER.test(o.text)) pointers++;
+    if (q.word) targets.push(q.word);
+  }
+  check(pointers === 0, `no option over 40 questions is a bare cross-reference (${pointers})`);
+  check(targets.length > 0, `sense mode produced ${targets.length} targets`);
+
+  console.log('\n6. CSRF and method guards');
   const xo = await f(`${BASE}/api/game.php`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://evil.example' },
     body: JSON.stringify({ qid: 'x', choice_id: 0 }),

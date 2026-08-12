@@ -4,6 +4,159 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-12 — `dex_variant`: DEX's own variant relation, instead of guessing at spellings
+
+**The report.** `sofragerie` sat in the default view looking like a find. It is a variant
+spelling of `sufragerie`, a word nobody has forgotten. Same for the words whose whole
+definition is „vezi X".
+
+**Why `archaic_spelling` could never catch it.** That flag infers the pair from the
+spelling, and the measured-precision table at `_SPELLING_RULES` is the reason it must stay
+narrow: the rule that would catch this one is `o → u`, which fires 1,984 times to find 124
+twins. `sofragerie → sufragerie` is *among* those 124. The right answers were never the
+problem — discriminating them was.
+
+**DEX already knows.** `EntryLexeme` groups the lexemes of one dictionary entry and `main`
+marks which form the entry is filed under; `main = 0` is a variant of that headword.
+53,618 such rows, 4,773 of them shortlist words, already extracted into `lexemes.db`. No
+spelling rule is involved, so it reaches pairs no rule could state: `octomvre/octombrie`,
+`hiclean/viclean`, `ghinărar/general`, `bocluc/bucluc`.
+
+New flag `dex_variant` + `dex_variant_of`, its own „variante DEX" row in the „clase" rail
+(hidden by default, `hide`/`show`/`only` like the rest), and a line in the detail panel.
+**1,893 words flagged; the default view goes 2,682 → 2,482.** All 200 removed from the
+default view were read: no false positives, down to the 20× line
+(`visternic`/`vistiernic`, `rotogol`/`rotocol`, `mezelic`/`mizilic`).
+
+**Two restrictions, both paid for in recall.**
+
+1. *A form that heads an entry of its own is skipped* — 1,998 shortlist words are a
+   variant in one entry and a headword in another, usually carrying a separate sense
+   (`momiță` = maimuță / sweetbread, `partită` = partidă / the musical form, `băcălie` =
+   băcănie / the grocer's wife). Admitting them adds ~1,000 words at an inspected ~5%
+   error rate. A hide-flag's false positives are invisible, so they stay visible.
+2. *The headword must clear `TWIN_RATIO` (20×) in the modern corpus*, as the spelling
+   rules must. Without it the flag hides the pairs where both forms are dead — which is
+   the material this project exists to find: `antereu`/`anteriu`, `amploiat`/`amploaiat`,
+   `zalhana`/`zahana`, `lighioaie`/`lighioană`, `pătlăgea`/`pătlăgică`, 53 in the default
+   view.
+
+**The two sides of that ratio are measured differently, and getting there took three
+tries.** Surface counts both sides put `lăcrăma` under `reclama`, because `lăcrima` has
+zero occurrences as a bare infinitive and was the one candidate the corpus could not see.
+Paradigm counts both sides then let `tinereță` through at 227,445 — a variant shares
+nearly every inflected form with its own headword, so summing credits it with the head's
+usage. What works, and reads as the actual question: the **variant** by its surface count
+(a spelling is one surface form — `tinereță` 381 vs `tinerețe` 227,064), the **headword**
+over its whole paradigm (a lemma's usage lives there — `lăcrima` 0 as an infinitive,
+16,393 as a verb). Naive summing on the head side is fine; it only has to clear a floor.
+
+**Kept disjoint from `archaic_spelling` rather than merged.** The regex rules run first and
+keep their claim on the 127 words both would take. Merging would lose the 42 the relation
+never links (`casațiune`, `sbor`, `deslegare` — pre-1953 orthography dexonline hasn't tied
+together); leaving them overlapping would mean „grafii vechi: cu" uncovers 127 words the
+next row is still hiding.
+
+**The „vezi X" half of the report is the same finding seen through a keyhole.** 168 of the
+175 pointer-definitions are already linked by the relation. And the text signal
+*understates* the problem: `scrape_definitions.py` reads dexonline's sinteză, which merges
+a variant into its headword, so `sofragerie` arrives carrying `sufragerie`'s full DLRLC
+entry — Sadoveanu quote and the twin's spelling in every example. 833 rows display a
+definition containing the headword and not the word. That is why the detail panel says
+„Variantă a lui *sufragerie*, după DEX" out loud: the definition will not give it away.
+
+Pinned by `tests/test_dex_variants.py` (27 assertions).
+
+---
+
+## 2026-08-12 — `deverbal_like`, and two cross-references the quiz was serving as questions
+
+**Two reports, one theme: a row that carries no information the list did not already
+have.**
+
+### `zăhăială` beside `zăhăi`
+
+`zăhăială` is defined, in full, as „Faptul de a (se) zăhăi". `zăhăi` is a few rows away in
+the same list. New flag `deverbal_like` + `deverbal_of`, its own „nume de acțiune" row in
+„clase" (hidden by default), and a detail-panel line that **links** to the verb — unlike
+the two variant flags, the counterpart is right here.
+
+**149 words, 15 of them in the default view** (2,482 → 2,467).
+
+Two things the rule refuses to do, both measured:
+
+- **It is not a rule about word formation.** 563 of the 729 deverbal definitions have no
+  verb on the list at all. Flagging those deletes the only place a reader ever meets the
+  root — `pospăială` without `pospăi`.
+- **The verb has to be *visible*, not merely present.** On the naive rule, 10 of the 25
+  words removed from the default view had a verb that was not in the default view either:
+  `împământeni` is `regional_only`, `pospăi`/`moleși`/`versifica` are in the curiosity
+  seam. There the noun is the only member of the pair anyone can see, so hiding it is
+  deletion rather than deduplication. Requiring the verb to carry no hide-flag and to sit
+  in the same seam or `relevant` costs 17 words and removes the whole class of error.
+
+Consequence for the pipeline: **`mark_deverbal_nouns()` runs last**, after every other
+`mark_*` step, because it reads their flags. Earlier and it marks nouns whose verb turns
+out to be hidden a moment later, silently.
+
+No morphological check on top of the definition. Seven pairs share fewer than four leading
+characters (`usebire`/`osebi`, `oțerire`/`oțărî`, `raznă`/`răzleți`) and all seven are
+real — DEX asserting the derivation beats string similarity.
+
+### `sfințișor` — „Diminutiv al lui sfânt" as a quiz question
+
+`pick_sense()` already refuses „vezi X" segments and already has `reveals_word()` to catch
+a definition that gives the answer away. It missed this one: `reveals_word` needs a
+4-character shared prefix, and Romanian vowel alternation breaks that at character 2 —
+`sfințișor` and `sfânt` share „sf". So the pointer shape is now rejected on its own, in
+`is_pointer_sense()`, exactly as „vezi X" is. 385 first segments in the pool were one of
+these; 305 of those words have another usable sense and stay.
+
+Same pass, a second and worse leak in the same pool: **`dex_variant` and
+`archaic_spelling` words are now excluded from the quiz outright** (867 rows). Their
+definition is their *headword's* — the sinteză merge again — so `sofragerie` was a
+question asking the player to produce a dead spelling from a living word's definition,
+with the real answer sitting among the distractors. Same call `proper_noun_like` already
+gets: what may be browsed and what makes a fair question are different questions.
+`db_has_column`-guarded, since quiz.php is raw SQL against a `ui.db` that may predate
+either column.
+
+`sfințișor` now yields no usable sense at all and cannot be served in any mode. Pinned by
+`tests/test_deverbal.py` (25 assertions) and a new §5 in `tests/test_game_api.js`.
+
+### Then: seven rows back down to five
+
+Adding `variante DEX` and `nume de acțiune` took „clase" to seven rows, and three of them
+read `variante vechi` / `grafii vechi` / `variante DEX` — near-synonyms in Romanian, in a
+280px column that also holds four other rows. Each named *how the word was found*
+(paradigm ratio / spelling rule / DEX's entry structure), which is a fact about our method
+rather than about the word. Bundled into one **„variante"** control over all three
+columns.
+
+The columns stay separate in `ui.db`: they are built by different rules with different
+failure modes, they are kept mutually disjoint at build time, and the detail panel names
+the twin differently for each („Grafie veche pentru *situație*" vs „Variantă a lui
+*sufragerie*, după DEX"). Merging the columns would throw that away; keeping three rows
+asked the reader to learn the pipeline. `deverbal` stays outside the bundle — it says the
+word duplicates a *different* word on the list, not that it is another spelling of the
+same one.
+
+`$class_modes` now maps a param to a *list* of columns, and mode resolution moved into
+`class_mode()` so `demote_order_sql()` reaches the same answer for `editorial` — reading
+`$p['editorial']` in two places is how an ORDER BY silently disagrees with a WHERE.
+
+**Every superseded spelling still resolves onto the bundle**, in both halves: `spellings=`
+and `dexvar=` carry their own three-state value, `show_variants=1` / `show_spellings=1`
+are checkbox-era flags. `applyUrlToForm()` carries the same alias list, because htmx
+searches from form state on load and a server-only mapping leaves an old link rendering as
+unfiltered while behaving as filtered.
+
+Default view unchanged at 2,467. New `tests/test_class_filters.js` pins the bundle's
+three states, all six superseded spellings, `only` as a union across classes, and
+`editorial` reordering rather than subtracting.
+
+---
+
 ## 2026-08-12 — Search ignores the filters: a query is asked of the whole table
 
 **The bug, stated as a measurement.** The default view is 2,682 of 18,270 words —

@@ -80,6 +80,27 @@ $meta_parts = array_filter([
   <p class="fp-spelling">Grafie veche pentru <strong><?= e($w['spelling_of']) ?></strong>.</p>
   <?php endif; ?>
 
+  <!-- Same job, DEX's own relation instead of a spelling rule (mark_dex_variants()).
+       Worth saying out loud here even more than for `archaic_spelling`, because the
+       definition will not give it away: scrape_definitions.py reads dexonline's sinteză,
+       which merges a variant into its headword, so `sofragerie` arrives carrying
+       `sufragerie`'s full entry — Sadoveanu quote, twin's spelling and all. Without this
+       line the panel reads as an ordinary find whose examples inexplicably spell the
+       headword differently. The two flags are disjoint by construction, so this never
+       doubles up with the line above. -->
+  <?php if (!empty($w['dex_variant']) && !empty($w['dex_variant_of'])): ?>
+  <p class="fp-spelling">Variantă a lui <strong><?= e($w['dex_variant_of']) ?></strong>, după DEX.</p>
+  <?php endif; ?>
+
+  <!-- Deverbal noun whose verb is on the list too (mark_deverbal_nouns()). Named for
+       the same reason as the two above, and with one addition: the verb is *here*, so
+       the line is a link rather than a dead end. -->
+  <?php if (!empty($w['deverbal_like']) && !empty($w['deverbal_of'])): ?>
+  <p class="fp-spelling">Numele acțiunii de a
+    <a href="?word=<?= urlencode($w['deverbal_of']) ?>"><strong><?= e($w['deverbal_of']) ?></strong></a>,
+    care e și el în listă.</p>
+  <?php endif; ?>
+
   <!-- Synonyms / antonyms (scrape_synonyms.py; absent until a word has been scraped) -->
   <?php
     $syns = array_slice($synonyms, 0, 12);

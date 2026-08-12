@@ -246,8 +246,16 @@ top of the list fills with words that were never really in circulation.
 
 ### Score vs. flags — keep these apart
 
-Four flags mark words most people will not want to see. They are **not** part of the
-score and they do **not** decide the seam:
+Six flags mark words most people will not want to see. They are **not** part of the
+score and they do **not** decide the seam.
+
+**Three of the six are one control in the UI.** `variant_like`, `archaic_spelling` and
+`dex_variant` are three ways of measuring "this is another spelling of a word that is
+still alive", and they share the „variante" row in the filter sheet — see **UI defaults**
+below. They stay three columns here on purpose: they are built by different rules with
+different failure modes, they are kept mutually disjoint at build time, and the detail
+panel names the twin differently for each. Merging the *columns* would throw away the
+distinction the panel needs; keeping three *rows* asked the reader to learn our method.
 
 - `regional_only` — a DEX regional/dialectal tag *without* also being tagged old.
   `regional|învechit` is a word that died; plain `regional` is a local term.
@@ -285,6 +293,88 @@ score and they do **not** decide the seam:
   that population is 5,421 words and 61.6% of the default view, and it is full of genuine
   finds (`acaret`, `afion`, `agie`, `alișveriș`, `amploiat`). See
   `docs/corpus-expansion-plan.md`.
+
+  The right way to widen it is the next flag, which stops guessing from the spelling.
+- `dex_variant` — **the same class of word, read out of DEX's own entry structure instead
+  of inferred.** `EntryLexeme` groups the lexemes of one dictionary entry and `main`
+  says which of them the entry is filed under; `main = 0` is a form dexonline lists as a
+  variant of that headword. 53,618 rows say so, 4,773 of them shortlist words.
+  `dex_variant_of` holds the headword and the detail panel names it („Variantă a lui
+  *sufragerie*, după DEX"). Catches 1,893 words, 200 of them in the default view.
+  `tools/migrate_ui_db_dex_variants.py` back-fills an existing `ui.db`; the build reads
+  `lexemes.db` **and** `inflected_forms.db`, which no other `mark_*` step does.
+
+  This exists because the rejected rules in the table above were rejected for having no
+  *discriminating* power, not for being wrong: `o → u` fires 1,984 times to find 124
+  twins, and `sofragerie → sufragerie` is one of the 124. The relation has no such
+  problem, and it reaches pairs no spelling rule could state at all — `octomvre`,
+  `hiclean`, `ghinărar`.
+
+  Three things to keep:
+
+  1. **A form that heads an entry of its own is left alone**, even when another entry
+     files it as a variant. 1,998 shortlist words are in that position, usually because
+     they carry a sense DEX records separately — `momiță` is a variant of `maimuță` and
+     also a sweetbread, `partită` of `partidă` and also the musical form, `băcălie` of
+     `băcănie` and also the grocer's wife. Admitting them adds ~1,000 words at an
+     inspected error rate near 5%, against zero questionable rows in the 200 this admits.
+  2. **The headword must clear the same `TWIN_RATIO` as the spelling rules.** Without it
+     the flag hides the pairs where *both* forms are dead, which is the project's own
+     material rather than noise: `antereu`/`anteriu`, `amploiat`/`amploaiat`,
+     `zalhana`/`zahana`, `lighioaie`/`lighioană` — 53 in the default view.
+  3. **The two sides of that ratio are measured differently and it is not an oversight.**
+     The variant is judged by its **surface** count, because what is being judged is a
+     *spelling* and a spelling is one surface form: `tinereță` is written 381 times
+     against `tinerețe`'s 227,064. Roll its paradigm up instead and it reads as alive at
+     227,445, because a variant shares nearly every inflected form with the word it
+     varies from. The headword is judged over its **whole paradigm**, because a lemma's
+     usage genuinely lives there: `lăcrima` is 0 as a bare infinitive and 16,393 as a
+     verb, and gating on its citation form left `lăcrăma` labelled a variant of
+     `reclama` — the only other headword in its entry the corpus could count.
+
+  It is a **separate flag from `archaic_spelling`, and the two are disjoint**:
+  `mark_dex_variants()` runs second and skips anything the regex rules already claimed.
+  Folding them into one flag would lose the 42 words the relation never links (`casațiune`,
+  `sbor`, `deslegare` — pre-1953 orthography dexonline has not tied together); leaving them
+  overlapping would mean „grafii vechi: cu" uncovers 127 words another row is still hiding.
+
+  **Say it in the detail panel even though `archaic_spelling` could get away without.**
+  `scrape_definitions.py` reads dexonline's *sinteză*, which merges a variant into its
+  headword, so `sofragerie` arrives carrying `sufragerie`'s full DLRLC entry — Sadoveanu
+  quote, twin's spelling in every example. 833 rows display a definition containing the
+  headword and not the word. Without the line the panel reads as an ordinary find whose
+  examples inexplicably spell it differently.
+
+  This also subsumes the „vezi X" definitions as a signal: 168 of the 175 words whose
+  definition is only a pointer are already linked here. Do not add a second rule on the
+  definition text for the other 7 — the text is what the sinteză merge destroys, which is
+  why it finds a tenth of what the relation does.
+- `deverbal_like` — a noun defined as "Faptul de a X" / "Acțiunea de a X" **whose verb X
+  is on the list and visible**. `zăhăială` is defined, in full, as "Faptul de a (se)
+  zăhăi", and `zăhăi` is a few rows away: the noun is the same find twice.
+  `deverbal_of` holds the verb, and the detail panel links to it. 149 words, 15 of them
+  in the default view. `tools/migrate_ui_db_deverbal.py` back-fills an existing `ui.db`.
+
+  **The flag is about the duplication, not about the derivation**, and the two halves of
+  that sentence are both load-bearing:
+
+  - *Not the derivation*: 563 of the 729 deverbal definitions have no verb on the list at
+    all. Marking those reads as a rule about word formation and deletes the only place a
+    reader would ever meet the root — `pospăială` without `pospăi`.
+  - *And visible*: on the naive "verb is in the table" rule, **10 of the 25 words it
+    removes from the default view have a verb that is not in the default view either** —
+    `împământeni` is `regional_only`, `pospăi` is in the curiosity seam. There the noun is
+    the only member of the pair anyone can see. Requiring the verb to carry no hide-flag
+    and to be in the same seam or `relevant` costs 17 words and removes the whole class.
+
+  **`mark_deverbal_nouns()` must therefore run last**, after every other `mark_*` step —
+  it reads their flags. Running it earlier marks nouns whose verb turns out to be hidden a
+  moment later, and nothing downstream would notice.
+
+  No morphological check on top of the definition, deliberately: seven pairs share fewer
+  than four leading characters (`usebire`/`osebi`, `oțerire`/`oțărî`, `raznă`/`răzleți`)
+  and all seven are genuine. DEX asserting the derivation is better evidence than string
+  similarity is.
 
 **The score says how good the evidence is; the flags say what you would rather not look
 at.** Penalising a flag in the score as well is double-counting, and it makes the flag
@@ -328,11 +418,17 @@ diminutive. `tools/migrate_ui_db_diminutives.py` back-fills an existing `ui.db`.
 
 ### UI defaults
 
-`build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides four of
-the five flagged classes, **demotes rather than hides the fifth**, and sorts by
-`populare`. Every one is a visible control — `seam`, plus the five class rows — never a
-silent exclusion, because the point of opening this up is to learn where the lines are
-wrong.
+`build_word_filter()` (`public/api/_lib.php`) defaults to `seam=relevant`, hides five of
+the six flag classes, **demotes rather than hides the sixth**, and sorts by `populare`.
+Every one is a visible control — `seam`, plus the five class rows — never a silent
+exclusion, because the point of opening this up is to learn where the lines are wrong.
+
+**Six flag columns, five rows: `variants` is one control over three of them.** See the
+note at `$class_modes`; the short version is that `variant_like`, `archaic_spelling` and
+`dex_variant` are three ways of measuring one thing a reader cares about, and as three
+rows they read „variante vechi / grafii vechi / variante DEX" — near-synonyms in Romanian
+that nobody can be expected to tell apart. Which one found a given word is a fact about
+our method, and it lives in the detail panel, which names the living twin either way.
 
 **`editorial` is the one class that does not subtract.** Its states are `back` (default) /
 `show` / `only`, and `back` is applied in the ORDER BY by `demote_order_sql()`, not as a
@@ -393,10 +489,37 @@ Two things to keep:
   `build_word_filter()`'s conditions ambiguous, and those conditions are shared with the
   un-joined query.
 
-**The five classes are one three-state control each.** Four read `hide` / `show` / `only`
-(„fără / cu / doar") and all four default to `hide`. The fifth, `editorial`, reads
+**The five class rows are one three-state control each.** Four read `hide` / `show` /
+`only` („fără / cu / doar") and all four default to `hide`. The fifth, `editorial`, reads
 `back` / `show` / `only` („în spate / normal / doar") and defaults to `back`, because it
 demotes rather than hides — see UI defaults below.
+
+The rail reads `regionalisme` · `variante` · `nume de acțiune` · `diminutive` ·
+`respinse`. It briefly read seven rows, with `variante vechi` / `grafii vechi` /
+`variante DEX` as three of them, and **that is the shape to not go back to**: three
+near-synonyms in Romanian, in a 280px column that also has to hold four other rows, each
+one naming *how the word was found* rather than what it is. `deverbal` is deliberately
+outside the bundle — it says the word duplicates a *different* word on the list, not that
+it is another spelling of the same one.
+
+Two things a new class has to answer before it gets a row: **can it fold into `variants`**
+(is it "another spelling of a living word"?), and **is there a reader who wants it on its
+own**? Five rows is comfortable, seven was not, and the fix is bundling rather than a
+smaller font.
+
+**A bundled control needs the same `only` semantics as a single one.** `hide` emits one
+`= 0` condition per column; `only` pushes all its columns into `$only_cols`, which is
+already OR-ed across classes — so „doar variante" is the union of the three, which is
+what the label promises.
+
+**Every superseded param spelling has to keep resolving, in both halves.**
+`class_mode()` (`_lib.php`) takes an `$aliases` map: `null` for an alias carrying its own
+three-state value (`?spellings=only`, from when it was its own row), a mode string for a
+checkbox-era `=1` flag. `applyUrlToForm()` in `app.js` carries the same list and must be
+edited with it — htmx searches from *form* state on load, so a server-only mapping leaves
+an old link rendering as unfiltered while behaving as filtered. `demote_order_sql()` also
+goes through `class_mode()` rather than reading `$p['editorial']` itself: an ORDER BY that
+silently disagrees with the WHERE is invisible.
 
 **`seam` is a checkbox group, not a radio.** The two seams are a partition, so both ticked
 already *is* what „toate" used to be; the third radio was a name for a state the other two
@@ -405,9 +528,11 @@ could express and had to be kept in step with them. It reads through `parse_mult
 `groupIsDefault()` in `app.js` needs `URL_GROUP_DEFAULTS` — otherwise every URL carries
 `?seam=relevant` and the chip bar claims a filter nobody set.
 
-Adding the fifth was three lines in `app.js` rather than nine, because `CLASS_PARAMS` is
+Adding a class is three lines in `app.js` rather than nine, because `CLASS_PARAMS` is
 concatenated into both URL arrays *and* both tab guards. That is what the array is for;
-keep new classes going through it rather than adding literals.
+keep new classes going through it rather than adding literals. **It holds one entry per
+control, not per column** — `variants` appears once and covers three flags, because what
+this array describes is the set of radios in the form.
 
 Two things to preserve when touching these:
 

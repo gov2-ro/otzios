@@ -909,6 +909,25 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   pasul următor moare pe `JSON.parse(undefined)`. De văzut dacă e starea `app.db` de dev sau
   chiar `api/sync.php`. Celelalte trei suite JS trec.
 
+- [x] quizz/ghici.php sensuri still shows diminutive. sfințișor - diminutiv al lui sfânt —
+  **Fixed 260812.** `is_pointer_sense()` in `api/quiz.php` now rejects „Diminutiv/Augmentativ
+  al lui X" the way it already rejected „vezi X". `reveals_word()` was supposed to catch it
+  and could not: it needs a 4-character shared prefix and Romanian vowel alternation breaks
+  that at character 2 (`sfințișor`/`sfânt` share „sf"). 385 first segments in the pool were
+  one of these; 305 of those words have another usable sense and stay. Same pass: `dex_variant`
+  and `archaic_spelling` words are excluded from the quiz outright (867 rows) — their
+  definition is their headword's, so `sofragerie` was asking the player to produce a dead
+  spelling from a living word's definition with the real answer among the distractors.
+  Pinned by §5 of `tests/test_game_api.js`.
+
+- [ ] info / definition box, even on desktop move it to the bottom - as on low res, but make it not full width, with some transparent margin to the sides, horizontally centered. so it's closer to the eyes. maybe even a tiny bit / soft shadow.
+
+- [ ] word sharer. 
+  - [ ] update .htaccess, turn `/?word={word}`  to `/def/{word}` 
+  - [ ] close the filter drawer
+  - [ ] add dynamic meta, title, description, og info
+  - [ ] later: could we show related words? or just top public favorite and loled words – though they shouldn't repeat too often, add  randomness factor?
+
 
 ---
 

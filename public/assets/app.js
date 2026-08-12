@@ -1009,7 +1009,10 @@ document.querySelectorAll('.tax-select').forEach(function(sel) {
 // three separate lists here would have to be kept in step by hand. Adding one here
 // registers it in both URL directions and both tab guards at once, which is the whole
 // reason this array exists rather than five literals.
-var CLASS_PARAMS = ['regional', 'variants', 'spellings', 'diminutives', 'editorial'];
+// `variants` is one control over three columns (variant_like / archaic_spelling /
+// dex_variant) — see $class_modes in api/_lib.php for why they are bundled. It is one
+// entry here because it is one radio in the form; the bundling happens server-side.
+var CLASS_PARAMS = ['regional', 'variants', 'deverbal', 'diminutives', 'editorial'];
 
 // Checkbox groups whose "no filter" state is not "everything ticked".
 // `verdict`/`tier`/`pos` all start fully checked, so all-checked reads as untouched. The
@@ -1049,12 +1052,14 @@ var AF_SPECS = [
       return v.indexOf('tag:') === 0 ? 'tag: ' + v.slice(4) : v; } },
   { name: 'dexfreq_min',    type: 'number',   label: function(v){ return 'dex ≥' + v; } },
   { name: 'dexfreq_max',    type: 'number',   label: function(v){ return 'dex ≤' + v; } },
-  // The four special classes. Three states each, so the chip has to name which one is
+  // The special classes. Three states each, so the chip has to name which one is
   // live — „cu regionalisme" and „doar regionalisme" are different filters, and the
-  // second is the one that needs saying loudest.
+  // second is the one that needs saying loudest. The chip label must match the rail's
+  // row label exactly: they are the same control seen twice, and „cu grafii vechi" on a
+  // chip beside a row reading „variante" reads as two filters.
   { name: 'regional',    type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'regionalisme'; } },
-  { name: 'variants',    type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'variante vechi'; } },
-  { name: 'spellings',   type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'grafii vechi'; } },
+  { name: 'variants',    type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'variante'; } },
+  { name: 'deverbal',    type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ') + 'nume de acțiune'; } },
   { name: 'diminutives', type: 'radio', def: 'hide', label: function(v){ return (v === 'only' ? 'doar ' : 'cu ')  + 'diminutive'; } },
   { name: 'editorial',   type: 'radio', def: 'back', label: function(v){ return v === 'only' ? 'doar respinse' : 'respinse la rând'; } },
   // A checkbox group now, like verdict/tier/pos — both ticked is what „toate" used to be.
@@ -1173,7 +1178,7 @@ var URL_PARAM_DEFAULTS = {
   // submit a value and need a default here to stay out of the URL when untouched.
   regional:    'hide',
   variants:    'hide',
-  spellings:   'hide',
+  deverbal:    'hide',
   diminutives: 'hide',
   editorial:   'back',
 };
@@ -1197,16 +1202,29 @@ function applyUrlToForm() {
     });
   });
 
-  // Links shared before the classes became three-state controls. The server maps these
-  // too (build_word_filter), but htmx searches from *form* state on load, so a legacy
-  // link would otherwise render as filtered by the URL and behave as if it weren't.
+  // Superseded param spellings. The server maps these too (class_mode() in _lib.php),
+  // but htmx searches from *form* state on load, so a server-only mapping leaves an old
+  // link rendering as unfiltered while behaving as filtered. **This list must stay in
+  // step with the `$aliases` in $class_modes** — the two halves of one mapping.
+  //
+  // Two shapes. `null` means the alias carries its own three-state value: `spellings`
+  // and `dexvar` were their own rows until they were folded into `variants`, so
+  // `?spellings=only` has to land on that radio. A string is a checkbox-era `=1` flag
+  // and names the mode it implies.
   [['show_regional', 'regional', 'show'],
+   ['spellings', 'variants', null],
+   ['dexvar', 'variants', null],
    ['show_variants', 'variants', 'show'],
-   ['show_spellings', 'spellings', 'show'],
+   ['show_spellings', 'variants', 'show'],
    ['hide_diminutives', 'diminutives', 'hide']].forEach(function(m) {
-    if (params.get(m[0]) !== '1' || params.get(m[1]) !== null) return;
+    // An explicit value for the target always wins, and an earlier alias that already
+    // set it wins over a later one — same precedence as class_mode().
+    if (params.get(m[1]) !== null || form.dataset['alias_' + m[1]]) return;
+    var val = m[2] === null ? params.get(m[0]) : (params.get(m[0]) === '1' ? m[2] : null);
+    if (val === null || ['hide', 'show', 'only', 'back'].indexOf(val) === -1) return;
+    form.dataset['alias_' + m[1]] = '1';
     form.querySelectorAll('input[name=' + m[1] + ']').forEach(function(r) {
-      r.checked = (r.value === m[2]);
+      r.checked = (r.value === val);
     });
   });
 

@@ -62,6 +62,22 @@ function truncate_def(string $d): string {
     return rtrim($sp !== false ? mb_substr($cut, 0, $sp) : $cut, " ,;:") . '…';
 }
 
+/**
+ * A segment that only points at another word: „vezi X", „Diminutiv al lui X",
+ * „Augmentativ al lui X". Not a definition, so not a question.
+ *
+ * `reveals_word()` below is supposed to catch the giveaway, and for these it does not:
+ * it needs a 4-character shared prefix, and Romanian vowel alternation breaks that at
+ * character 2 — `sfințișor` / `sfânt` share „sf". So the pointer shape has to be
+ * rejected on its own, exactly as „vezi X" already is. 385 first segments in the pool
+ * are one of these; 305 of those words have another usable sense and stay.
+ */
+function is_pointer_sense(string $seg): bool {
+    $s = mb_strtolower($seg);
+    return str_starts_with($s, 'vezi ')
+        || preg_match('/^(?:diminutiv|augmentativ)\w*\s+(?:al|a|ale|lui|de\s+la)\b/u', $s) === 1;
+}
+
 // Picks one usable sense at random out of every pipe segment (not just the first) so
 // the same word can surface a different, still-valid definition on a later question.
 // A segment qualifies as a standalone sense when it's long enough, isn't a bare
@@ -73,7 +89,7 @@ function pick_sense(string $word, ?string $raw): ?string {
     foreach (explode('|', (string) $raw) as $seg) {
         $seg = trim($seg);
         if (mb_strlen($seg) < 12) continue;
-        if (str_starts_with(mb_strtolower($seg), 'vezi ')) continue;
+        if (is_pointer_sense($seg)) continue;
         if (str_ends_with($seg, ':')) continue;
         if (preg_match('/^[A-Z][A-Z]/', $seg)) continue;    // unparsed dump header, e.g. "FLAIM U C sm."
         if (preg_match('/\p{Lu}{3,}/u', $seg)) continue;     // citation / author marker
@@ -113,9 +129,27 @@ if (attach_app_db()) {
 // a cheap SQL-level pre-filter on segment 1 only — pick_sense() re-checks every
 // segment in PHP, so this just keeps the RANDOM() pool from being mostly junk.
 $SEG = "trim(substr(definition, 1, coalesce(nullif(instr(definition,'|'), 0) - 1, length(definition))))";
-$QUALITY = "(proper_noun_like IS NULL OR proper_noun_like = 0) AND dict_count >= 3
+//
+// `dex_variant` / `archaic_spelling` are excluded outright, not merely pre-filtered.
+// Their definition is their *headword's*: dexonline's sinteză merges a variant into the
+// word it varies from, so `sofragerie` carries `sufragerie`'s entry verbatim. As a
+// question that asks the player to produce a dead spelling from a living word's
+// definition, with the right answer sitting among the distractors. 867 rows.
+// This is the same call `proper_noun_like` already gets — what may be browsed and what
+// makes a fair question are different questions.
+// db_has_column, because this is raw SQL against a ui.db that may predate either column
+// — a hard reference would 500 the whole game rather than degrade the pool.
+$VARIANT_EXCL = '';
+foreach (['dex_variant', 'archaic_spelling'] as $c) {
+    if (db_has_column($c)) { $VARIANT_EXCL .= " AND COALESCE($c, 0) = 0"; }
+}
+$QUALITY = "(proper_noun_like IS NULL OR proper_noun_like = 0)
+            $VARIANT_EXCL
+            AND dict_count >= 3
             AND length($SEG) >= 12
             AND lower($SEG) NOT LIKE 'vezi %'
+            AND lower($SEG) NOT LIKE 'diminutiv%'
+            AND lower($SEG) NOT LIKE 'augmentativ%'
             AND $SEG NOT LIKE '%:'
             AND $SEG NOT GLOB '[A-Z][A-Z]*'";
 

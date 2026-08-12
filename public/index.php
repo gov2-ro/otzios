@@ -358,25 +358,37 @@ global $QUICK_TAGS, $POS_OPTIONS;
            unchecked box submits nothing: three read „arată X" and two „ascunde X", which
            looked like one set of controls and behaved like two. A radio always submits,
            so they all read the same way now and only the default differs. „doar" on
-           several means their union; see build_word_filter(). -->
+           several means their union; see build_word_filter().
+
+           **„variante" is one row over three columns** (`variant_like`,
+           `archaic_spelling`, `dex_variant`). As three rows it read „variante vechi /
+           grafii vechi / variante DEX" — three near-synonyms in Romanian, in a 280px
+           column that also holds four other rows. Which of the three found a given word
+           is a fact about our method, not about the word, and the detail panel already
+           names the living twin in each case. Do not split them back apart without
+           re-reading the note at $class_modes in api/_lib.php. -->
       <div class="fs-section" id="class-control">
         <?= fs_label('clase', 'Grupuri de cuvinte pe care majoritatea cititorilor nu le vor amestecate în listă. Fiecare e un comutator vizibil, niciodată o excludere tăcută — „doar” ți le arată exact pe ele, ca să vezi unde am tras linia greșit.') ?>
         <?php
-        // [param, column, label, default, tip, [off-label, on-label]]
+        // [param, [columns…], label, default, tip, [off-label, on-label]]
+        // A row is drawn when *any* of its columns exists, and the ones that do not are
+        // simply not filtered on — same rule build_word_filter() applies.
         $CLASS_ROWS = array_values(array_filter([
-          ['regional', 'regional_only', 'regionalisme', 'hide',
+          ['regional', ['regional_only'], 'regionalisme', 'hide',
            'Cuvinte marcate doar regional/dialectal, fără să fie și învechite. Un cuvânt folosit într-o vale nu e un cuvânt pe care româna l-a uitat.', ['fără', 'cu']],
-          ['variants', 'variant_like', 'variante vechi', 'hide',
-           'Grafii vechi ale unor cuvinte încă folosite (politeță/politețe, uleu/ulei), detectate prin paradigma comună.', ['fără', 'cu']],
-          ['spellings', 'archaic_spelling', 'grafii vechi', 'hide',
-           'Grafii ieșite din uz ale unor cuvinte foarte vii: situațiune → situație, sgomot → zgomot, advocat → avocat.', ['fără', 'cu']],
-          ['diminutives', 'diminutive_like', 'diminutive', 'hide',
+          ['variants', ['variant_like', 'archaic_spelling', 'dex_variant'], 'variante', 'hide',
+           'Alte scrieri ale unor cuvinte încă foarte vii: sofragerie → sufragerie, octomvre → octombrie, situațiune → situație, politeță → politețe. Le găsim în trei feluri — paradigmă comună, regulă de grafie, sau chiar structura DEX — dar pentru cititor sunt același lucru, așa că sunt un singur comutator. Când deschizi cuvântul, panoul îți spune al cui e varianta.', ['fără', 'cu']],
+          ['deverbal', ['deverbal_like'], 'nume de acțiune', 'hide',
+           'Substantive definite ca „Faptul de a…”, al căror verb e deja în listă și vizibil: zăhăială lângă zăhăi, opintire lângă opinti. Când verbul lipsește din listă, substantivul rămâne — e singurul loc unde apare rădăcina.', ['fără', 'cu']],
+          ['diminutives', ['diminutive_like'], 'diminutive', 'hide',
            'Diminutive (noruleț, cuconiță, fecioraș) — cuvinte pe care DEX le definește ca „diminutiv al lui…”.', ['fără', 'cu']],
-          ['editorial', 'editor_demote', 'respinse', 'back',
+          ['editorial', ['editor_demote'], 'respinse', 'back',
            'Cuvinte citite și lăsate deoparte ⚠️. Nu dispar — trec la coada listei. „normal” le pune la locul lor, „doar” ți le arată exact pe ele, ca să vezi unde am greșit.', ['în spate', 'normal']],
-        ], function ($row) { return db_has_column($row[1]); }));
+        ], function ($row) {
+            return array_filter($row[1], 'db_has_column') !== [];
+        }));
         ?>
-        <?php foreach ($CLASS_ROWS as [$name, $col, $label, $default, $tip, $words]): ?>
+        <?php foreach ($CLASS_ROWS as [$name, $cols, $label, $default, $tip, $words]): ?>
         <?php [$off_val, $off_label] = $name === 'editorial' ? ['back', $words[0]] : ['hide', $words[0]]; ?>
         <div class="fs-row" title="<?= e($tip) ?>">
           <span class="fs-row-label"><?= e($label) ?></span>
