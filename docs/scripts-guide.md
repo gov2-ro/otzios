@@ -887,7 +887,7 @@ The PHP web interface lives under `public/` and is equivalent to the Flask UI (`
    creates `<web root>/../private/` containing `app.db` (all user data) and `secret.key`.
    Override the location with `public/api/config.local.php`:
    ```php
-   <?php define('OTIOS_PRIVATE_DIR', '/home/you/otios-private');
+   <?php define('OTIOS_PRIVATE_DIR', '/home/you/voroave-private');
    ```
 
 **Two databases, and why**:

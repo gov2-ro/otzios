@@ -1055,7 +1055,7 @@ php api/_backup.php --list       # show what's there, write nothing
 Nightly, from the deployed app folder:
 
 ```cron
-17 3 * * * cd ~/lab.gov2.ro/oțios && php api/_backup.php >> ~/otios-private/backup.log 2>&1
+17 3 * * * cd ~/voroave.ro && php api/_backup.php >> ~/voroave-private/backup.log 2>&1
 ```
 
 It lives in `public/api/` because **only the contents of `public/` are deployed** — a
@@ -1179,32 +1179,46 @@ The app runs at any URL depth. `BASE` (`api/_lib.php:8-13`) is derived by subtra
 `DOCUMENT_ROOT` from the real path of the app folder, and everything — assets, links,
 htmx endpoints, `OTIOS_BASE` for JS — is prefixed with it.
 
-Copy the **contents of `public/`** into the target folder:
+Copy the **contents of `public/`** into the target folder. The production layout is a
+**root** deploy on `voroave.ro`; the subfolder case is what the rest of this section is
+about, because it is the one where `BASE` does any work.
 
 ```
-~/lab.gov2.ro/            ← document root
+~/voroave.ro/             ← document root — contents of public/
+├── index.php  api/  assets/  data/ui.db
+└── api/config.local.php
+~/voroave-private/        ← OUTSIDE the web root
+└── app.db  secret.key  backups/
+```
+
+```
+~/lab.gov2.ro/            ← subfolder variant: document root
 └── oțios/                ← contents of public/   →  lab.gov2.ro/oțios/
-    ├── index.php  api/  assets/  data/ui.db
-    └── api/config.local.php
-~/otios-private/          ← OUTSIDE the web root
-└── app.db
 ```
 
 Five things that bite:
 
 1. **Never deploy the repo itself**, only `public/`. With the repo mounted, `private/app.db`,
    `.git/config` and the docs are all straight downloads — measured.
-2. **`app.db` defaults to inside the web root** on this layout. `OTIOS_PRIVATE_DIR` is one
-   level up from the app folder, which here is the document root. Copy
+2. **Where `app.db` lands by default depends on which layout you are in, and only one of
+   them is dangerous.** `OTIOS_PRIVATE_DIR` defaults to one level up from the app folder.
+   On the **root** deploy that is `~/private/` — outside the web root, so safe, just untidy.
+   On a **subfolder** deploy one level up *is the document root*, so the default puts
+   `app.db` at a public URL. Either way, set it explicitly: copy
    `api/config.local.example.php` → `api/config.local.php` (gitignored; `_appdb.php:18`
    loads it if present) and set:
    ```php
-   define('OTIOS_PRIVATE_DIR', '/home/you/otios-private');
+   define('OTIOS_PRIVATE_DIR', '/home/you/voroave-private');
    ```
+   **Moving an existing install moves three things, not one:** `app.db`, `secret.key` and
+   `backups/`. `secret.key` is the one people drop — it seals quiz `qid` tokens and admin
+   sessions, and `private_dir()` silently generates a fresh one when it is missing, which
+   errors out any player mid-round and logs you out of `admin.php`. No data is lost, but
+   carrying it makes the move invisible.
 3. **Never overwrite the server's `config.local.php` with yours.** It is per-install, and
    local dev has one too — different private dir, different admin token. Always exclude it:
    ```bash
-   rsync -av --exclude 'api/config.local.php' public/ you@host:~/lab.gov2.ro/oțios/
+   rsync -av --exclude 'api/config.local.php' public/ you@host:~/voroave.ro/
    ```
    The file being gitignored protects the repo, not a careless `rsync`.
 4. **No `Alias`, no symlinks.** `__DIR__` resolves symlinks and `DOCUMENT_ROOT` does not, so

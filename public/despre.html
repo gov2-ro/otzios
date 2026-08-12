@@ -189,6 +189,39 @@
       border-color: var(--accent);
       color: var(--accent);
     }
+    /*
+Source - https://stackoverflow.com/a/23951515
+Posted by Elangovan, modified by community. See post 'Timeline' for change history
+Retrieved 2026-08-12, License - CC BY-SA 4.0
+*/
+
+.blink-text
+{
+    animation:1.7s blinker linear infinite;
+    color: blue;
+    font-size: 1.25rem;  
+}
+
+.blink-text.blink-2 {
+    animation:2s blinker2 ease-in-out infinite; color: green;
+}
+.blink-text.blink-3 {
+    animation:1.5s blinker2 ease-in-out infinite; color: yellow; text-shadow: 1px 1px 1px rgba(0,0,0,.4);
+}
+
+
+@keyframes blinker
+{  
+    0% { opacity: .8; }
+    50% { opacity: 0.0; }
+    100% { opacity: .7; }
+ }
+@keyframes blinker2
+{  
+    10% { opacity: .6; }
+    50% { opacity: 0.0; }
+    90% { opacity: .8; }
+ }
   </style>
 </head>
 
@@ -231,19 +264,16 @@
       <!-- <h1><b>Suveranism lexical</b><br/>Cuvinte aproximativ căzute în uitare </h1> -->
       
   <p class="despre-lede">
-        Am încercat să găsesc o metodă de a descoperi cuvintele uitate / neglijate ale limbii române, mai degrabă ieșite din uz, evitând însă termenii foarte vechi care și-au pierdut de tot relevanța.</p> <p>Cuvinte apărute în dicționare, dar care sunt întâlnite rar sau deloc în româna modernă. <strong>Suveranism lexical</strong>. Use it or lose it.
+        Am încercat să găsesc o metodă de a descoperi cuvintele uitate / neglijate ale limbii române, relativ ieșite din uz, evitând însă termenii foarte vechi care și-au pierdut de tot relevanța.</p> <p>Cuvinte apărute în dicționare, dar care sunt întâlnite rar sau deloc în româna modernă. <br/><strong>Suveranism lexical</strong>. Use it or lose it.
 
       </p>
+      <h2>Utilizare</h2>
       <p>
         Poți marca cuvintele din info box sau din tastatură (<code>F</code>, <code>L</code>, <code>M</code>):<br/>
         <strong> ★ <b>F</b>av</strong> — <em>merită păstrat</em>; 
         <strong>😂 <b>L</b>ol</strong> — <em>amuzant</em>; 
         <strong>⚠️ <b>M</b>eh</strong> — <em>nu e ce căutăm – irelevant sau prea comun</em>. 
-
       </p>
-      
-      
-
       <p>
      <mark>Termenii marcați pot fi partajați în colecții publice, <strong>ceea ce vă și rog</strong></mark>, întru rafinarea listei publice: <kbd>★FAV</kbd> sau <kbd>LOL</kbd> sunt prioritizate, <kbd>MEH</kbd>, dimpotrivă.
       </p>
@@ -258,8 +288,8 @@
 _____________
 <br>        vezi și: &nbsp; <a href="stats">📊 stats</a> &nbsp; &middot; &nbsp; <a href="metodologie">metodologie</a> (LLM blabber) 
         
-        <br>poșta redacției:      <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" aria-label="GitHub" style="color: var(--text2); line-height: 1; display: inline-block; position: relative; bottom: -3px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path></svg></a>
-              <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">/gov2-ro/otzios</a> 
+        <br>poșta redacției:      <a href="https://github.com/gov2-ro/voroave" target="_blank" rel="noopener" aria-label="GitHub" style="color: var(--text2); line-height: 1; display: inline-block; position: relative; bottom: -3px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path></svg></a>
+              <a href="https://github.com/gov2-ro/voroave" target="_blank" rel="noopener">/gov2-ro/voroave</a> 
       </p>
 <hr>
 
@@ -301,7 +331,17 @@ _____________
         <tr><td><kbd>Esc</kbd></td><td>Închide</td></tr>
         
       </table>
+<p style="margin-top: 3rem;">
+  <span class="blink-text blink-2">🐵</span> &nbsp;
+  <span class="blink-text">☠️</span> &nbsp;
+  <span class="blink-text blink-3">🤗</span> &nbsp;
+  <span class="blink-text"><b>slove</b> <em>zăuitate</em></span> &emsp;
+  <span class="blink-text blink-2"><b>boace</b> <em>oțioase</em></span> &emsp;
+  <span class="blink-text blink-3"><b>suveranism</b> <em>lexical</em></span>
+  
+</p>
     </div><!-- /.doc-body -->
+
   </div>
 
 </body>

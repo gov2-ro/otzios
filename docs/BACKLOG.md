@@ -1050,7 +1050,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   Still open: `liste.php` remains `noindex` — lifting it is now a product decision, not a blocker.
 - [x] **Backups for `private/app.db`** — Done 2026-08-07. `php api/_backup.php` takes a `VACUUM INTO` snapshot into `<private>/backups/`, integrity-checks it, and prunes to the newest `--keep N` (default 14). CLI-only (`PHP_SAPI !== 'cli'` → 404 before any include), and it lives in `public/api/` because only the contents of `public/` reach the server. Cron line in CLAUDE.md.
 
-  - [ ] **Still open: get a copy off the machine.** A snapshot beside the original survives a bad migration or a mistaken delete, not a lost disk. Either confirm the host's own backup covers `~/otios-private/`, or add an rsync/rclone step after the cron line.
+  - [ ] **Still open: get a copy off the machine.** A snapshot beside the original survives a bad migration or a mistaken delete, not a lost disk. Either confirm the host's own backup covers `~/voroave-private/`, or add an rsync/rclone step after the cron line.
 - [ ] **Verify WAL on the production host** — `app_db()` falls back to `journal_mode=TRUNCATE` when WAL is unavailable, which some NFS-backed shared hosts require. Check which mode is actually active after deploy: `PRAGMA journal_mode`.
 - [ ] **`feed_decisions` is written by nobody yet** — the table exists for the swipe game's keep/skip record, but `app.js` `feedKeep()`/`feedSkip()` still only set a bookmark. Wire it up to get a second signal (explicit rejection) distinct from "never seen".
 

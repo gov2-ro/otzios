@@ -379,7 +379,7 @@ php api/_backup.php --list       # show what's there, write nothing
 Nightly, from the deployed app folder:
 
 ```cron
-17 3 * * * cd ~/lab.gov2.ro/oțios && php api/_backup.php >> ~/otios-private/backup.log 2>&1
+17 3 * * * cd ~/voroave.ro && php api/_backup.php >> ~/voroave-private/backup.log 2>&1
 ```
 
 It uses `VACUUM INTO` rather than a file copy (in WAL mode the committed data is split

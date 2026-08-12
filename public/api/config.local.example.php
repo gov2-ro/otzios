@@ -22,7 +22,7 @@ declare(strict_types=1);
 // Set this explicitly on any subfolder install. See "Deploying to a subfolder" in
 // CLAUDE.md.
 
-// define('OTIOS_PRIVATE_DIR', '/home/you/otios-private');
+// define('OTIOS_PRIVATE_DIR', '/home/you/voroave-private');
 
 
 // ── Moderation ────────────────────────────────────────────────────────────────

@@ -18,7 +18,7 @@ declare(strict_types=1);
 //   php api/_backup.php --list          # show what's there, write nothing
 //
 // Nightly cron, from the deployed app folder:
-//   17 3 * * * cd ~/lab.gov2.ro/oțios && php api/_backup.php >> ~/otios-private/backup.log 2>&1
+//   17 3 * * * cd ~/voroave.ro && php api/_backup.php >> ~/voroave-private/backup.log 2>&1
 
 if (PHP_SAPI !== 'cli') {
     http_response_code(404);

@@ -11,7 +11,7 @@ declare(strict_types=1);
 //   <web root>/../private/   → app.db, secret.key
 //
 // Override the location by creating public/api/config.local.php (gitignored) with
-//   <?php define('OTIOS_PRIVATE_DIR', '/home/you/otios-private');
+//   <?php define('OTIOS_PRIVATE_DIR', '/home/you/voroave-private');
 
 require_once __DIR__ . '/_lib.php';
 
