@@ -928,6 +928,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - [ ] add dynamic meta, title, description, og info
   - [ ] later: could we show related words? or just top public favorite and loled words – though they shouldn't repeat too often, add  randomness factor?
 
+- [ ] can't find 'nebogat' anymore, in which list is it?
 
 ---
 

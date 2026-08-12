@@ -22,8 +22,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script>(function(){try{var d=document.documentElement;var t=localStorage.getItem("otios.theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");d.setAttribute("data-theme",t);var ok=["paper","brutal","govuk","registru","tezaur","velin"],s=localStorage.getItem("otios.skin");d.setAttribute("data-skin",ok.indexOf(s)>=0?s:"govuk");var z=localStorage.getItem("otios.textscale")||"100";d.style.fontSize=z+"%";}catch(e){}})();</script>  <title>Despre — Voroave</title>
-  <meta name="description" content="Cum sunt găsite cuvintele uitate ale limbii române: două corpusuri, dicționarul DEX, și marcajele cititorilor. 18.270 de cuvinte.">
+  <script>(function () { try { var d = document.documentElement; var t = localStorage.getItem("otios.theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); d.setAttribute("data-theme", t); var ok = ["paper", "brutal", "govuk", "registru", "tezaur", "velin"], s = localStorage.getItem("otios.skin"); d.setAttribute("data-skin", ok.indexOf(s) >= 0 ? s : "govuk"); var z = localStorage.getItem("otios.textscale") || "100"; d.style.fontSize = z + "%"; } catch (e) { } })();</script>
+  <title>Despre — Voroave</title>
+  <meta name="description"
+    content="Cum sunt găsite cuvintele uitate ale limbii române: două corpusuri, dicționarul DEX, și marcajele cititorilor. 18.270 de cuvinte.">
   <link rel="canonical" href="despre">
 
   <meta property="og:type" content="article">
@@ -46,9 +48,9 @@
   <link rel="stylesheet" href="assets/skins/govuk.css">
   <link rel="stylesheet" href="assets/skins/registru.css">
   <link rel="stylesheet" href="assets/skins/tezaur.css">
-  <link rel="stylesheet" href="assets/skins/velin.css">  
-  
-    <!-- favicon -->
+  <link rel="stylesheet" href="assets/skins/velin.css">
+
+  <!-- favicon -->
   <link rel="icon" type="image/png" href="/assets/favicon/favicon-96x96.png" sizes="96x96" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon/favicon.svg" />
   <link rel="shortcut icon" href="/assets/favicon/favicon.ico" />
@@ -56,7 +58,7 @@
   <meta name="apple-mobile-web-app-title" content="Voroave neglijate" />
   <link rel="manifest" href="/assets/favicon/site.webmanifest" />
 
-  
+
   <style>
     .despre-wrap {
       max-width: 90em;
@@ -142,7 +144,7 @@
       height: auto;
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      
+
     }
 
     .despre-shot figcaption {
@@ -200,159 +202,253 @@
       border-color: var(--accent);
       color: var(--accent);
     }
+
     /*
 Source - https://stackoverflow.com/a/23951515
 Posted by Elangovan, modified by community. See post 'Timeline' for change history
 Retrieved 2026-08-12, License - CC BY-SA 4.0
 */
+ 
 
-.blink-text
-{
-    animation:1.7s blinker linear infinite;
-    color: blue;
-    font-size: 1.25rem;  
-}
+    .blink-text {
+      animation: 1.7s blinker linear infinite;
+      color: blue;
+      font-size: 1.25rem;
+    }
 
-.blink-text.blink-2 {
-    animation:2s blinker2 ease-in-out infinite; color: green;
-}
-.blink-text.blink-3 {
-    animation:1.5s blinker2 ease-in-out infinite; color: yellow; text-shadow: 1px 1px 1px rgba(0,0,0,.4);
-}
+    .blink-text.blink-2 {
+      animation: 2s blinker2 ease-in-out infinite;
+      color: green;
+    }
+
+    .blink-text.blink-3 {
+      animation: 1.5s blinker2 ease-in-out infinite;
+      color: yellow;
+      text-shadow: 1px 1px 1px rgba(0, 0, 0, .4);
+    }
 
 
-@keyframes blinker
-{  
-    0% { opacity: .8; }
-    50% { opacity: 0.0; }
-    100% { opacity: .7; }
- }
-@keyframes blinker2
-{  
-    10% { opacity: .6; }
-    50% { opacity: 0.0; }
-    90% { opacity: .8; }
- }
+    @keyframes blinker {
+      0% {
+        opacity: .8;
+      }
+
+      50% {
+        opacity: 0.0;
+      }
+
+      100% {
+        opacity: .7;
+      }
+    }
+
+    @keyframes blinker2 {
+      10% {
+        opacity: .6;
+      }
+
+      50% {
+        opacity: 0.0;
+      }
+
+      90% {
+        opacity: .8;
+      }
+    }
   </style>
 </head>
 
 <body class="page-doc">
   <header class="brand-bar">
-  <a class="brand-id" href="." title="Voroave neglijate">
-    <span class="brand-name">voroave <sup style="font-weight: normal;"><small>neglijate</small></sup></span>
-    <span class="brand-sep"></span>
-    <span class="brand-tag"></span>
-  </a>
+    <a class="brand-id" href="." title="Voroave neglijate">
+      <span class="brand-name">voroave <sup style="font-weight: normal;"><small>neglijate</small></sup></span>
+      <span class="brand-sep"></span>
+      <span class="brand-tag"></span>
+    </a>
 
-  <nav class="top-nav" aria-label="Navigare principală">
-          <a style="text-transform: uppercase;" class="top-nav-item"
-         href="ghici" title="quiz"
-         >
+    <nav class="top-nav" aria-label="Navigare principală">
+      <a style="text-transform: uppercase;" class="top-nav-item" href="ghici" title="quiz">
         <span class="nav-icon" aria-hidden="true">🎮</span><span class="nav-label">quiz</span>
       </a>
-          <a style="text-transform: uppercase;" class="top-nav-item"
-         href="liste" title="colecții"
-         >
+      <a style="text-transform: uppercase;" class="top-nav-item" href="liste" title="colecții">
         <span class="nav-icon" aria-hidden="true">📋</span><span class="nav-label">colecții</span>
       </a>
-          <a style="text-transform: uppercase;" class="top-nav-item top-nav-item--wide is-current"
-         href="despre" title="despre"
-         aria-current="page">
+      <a style="text-transform: uppercase;" class="top-nav-item top-nav-item--wide is-current" href="despre"
+        title="despre" aria-current="page">
         <span class="nav-icon" aria-hidden="true">ℹ️</span><span class="nav-label">despre</span>
       </a>
-      </nav>
+    </nav>
 
-   
-  <div class="brand-right">
-    
-        </div>
-</header>
 
-  <div class="despre-wrap doc-layout"> 
+    <div class="brand-right">
+
+    </div>
+  </header>
+
+  <div class="despre-wrap doc-layout">
 
     <div class="doc-body">
-     
+
       <!-- <h1><b>Suveranism lexical</b><br/>Cuvinte aproximativ căzute în uitare </h1> -->
-<figure class="despre-shot is-portrait">        <a href="/?word=voroavă" target="_blank" rel="noopener" title="voroavă - definiție"><img src="assets/despre/voroava-def.png" alt="Panoul de detalii al unui cuvânt, cu definiția și butoanele de marcare" loading="lazy"></a>      </figure>      
-  <p class="despre-lede">
-        Am încercat să găsesc o metodă de a descoperi cuvintele uitate / neglijate ale limbii române, relativ ieșite din uz, evitând însă termenii foarte vechi care și-au pierdut de tot relevanța.</p> <p>Cuvinte apărute în dicționare, dar care sunt întâlnite rar sau deloc în româna modernă. <br/><strong>Suveranism lexical</strong>. Use it or lose it.
+      <figure class="despre-shot is-portrait"> <a href="/?word=voroavă" target="_blank" rel="noopener"
+          title="voroavă - definiție"><img src="assets/despre/voroava-def.png"
+            alt="Panoul de detalii al unui cuvânt, cu definiția și butoanele de marcare" loading="lazy"></a> </figure>
+      
+            <h3 style="font-weight: normal; font-size: 1em; margin-bottom: .5ex;">Hello fellow language nerds and/or procrastinators.</h3>
+        <p class="despre-lede">
+        Am încercat să găsesc o metodă de a descoperi cuvintele uitate / neglijate ale limbii române, relativ ieșite din
+        uz, evitând însă termenii foarte vechi care și-au pierdut de tot relevanța.</p>
+      <p>Cuvinte apărute în dicționare, dar care sunt întâlnite rar sau deloc în româna modernă.
+        <br /><strong>Suveranism lexical</strong>. Use it or lose it.
 
       </p>
 
-      
+
       <h2>Utilizare</h2>
       <p>
-        Poți marca cuvintele din info box sau din tastatură (<code>F</code>, <code>L</code>, <code>M</code>):<br/>
-        <strong> ★ <b>F</b>av</strong> — <em>merită păstrat</em>; 
-        <strong>😂 <b>L</b>ol</strong> — <em>amuzant</em>; 
-        <strong>⚠️ <b>M</b>eh</strong> — <em>nu e ce căutăm – irelevant sau prea comun</em>. 
+        Poți marca cuvintele din info box sau din tastatură (<code>F</code>, <code>L</code>, <code>M</code>):<br />
+        <strong> ★ <b>F</b>av</strong> — <em>merită păstrat</em>;
+        <strong>😂 <b>L</b>ol</strong> — <em>amuzant</em>;
+        <strong>⚠️ <b>M</b>eh</strong> — <em>nu e ce căutăm – irelevant sau prea comun</em>.
       </p>
       <p>
-     <mark>Termenii marcați pot fi partajați în colecții publice, <strong>ceea ce vă și rog</strong></mark>, întru rafinarea listei publice: <kbd>★FAV</kbd> sau <kbd>LOL</kbd> sunt prioritizate, <kbd>MEH</kbd>, dimpotrivă.
+        <mark>Termenii marcați pot fi partajați în colecții publice, <strong>ceea ce vă și rog</strong></mark>, întru
+        rafinarea listei publice: <kbd>★FAV</kbd> sau <kbd>LOL</kbd> sunt prioritizate, <kbd>MEH</kbd>, dimpotrivă.
       </p>
 
+      <p>Există 2 liste de cuvinte, <em>relevante</em> și <em>curiozități</em>. <br>‼️Atenție, implicit doar lista 'relevante' e activă, 'curiozități' poate fi activată din lista de filtre.</p>
+      <dl>
+        <dt>Relevante</dt>
+        <dd>dovadă solidă că un cuvânt a fost folosit și s-a stins: atestat istoric, aproape absent azi, prezent în
+          multe dicționare și într-unul publicat după 2005 <small>(3.495 cuvinte)</small></dd>
+        <dt>Curiozități</dt>
+        <dd>restul candidaților — cuvinte rămase doar în dicționare vechi sau specializate <small>(14.082 cuvinte)</small></dd>
+      </dl>
+      <style>
+        dt {font-weight: bold;}
+        dd {margin-bottom: .75ex;}
+      </style>
 
+      <p style="margin: 1rem 0 2.5rem 0;">
 
+        ––––––––––––––––––––––
+        <br> vezi și: &nbsp; <a href="stats">📊 stats</a> &nbsp; &middot; &nbsp; <a href="metodologie">metodologie</a>
+        (LLM blabber)
 
-   <p style="margin: 1rem 0 2.5rem 0;">
-
-––––––––––––––––––––––
-<br>        vezi și: &nbsp; <a href="stats">📊 stats</a> &nbsp; &middot; &nbsp; <a href="metodologie">metodologie</a> (LLM blabber) 
-        
-        <br>poșta redacției:      <a href="https://github.com/gov2-ro/voroave" target="_blank" rel="noopener" aria-label="GitHub" style="color: var(--text2); line-height: 1; display: inline-block; position: relative; bottom: -3px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path></svg></a>
-              <a href="https://github.com/gov2-ro/voroave" target="_blank" rel="noopener">/gov2-ro/voroave</a> 
+        <br>poșta redacției: <a href="https://github.com/gov2-ro/voroave" target="_blank" rel="noopener"
+          aria-label="GitHub"
+          style="color: var(--text2); line-height: 1; display: inline-block; position: relative; bottom: -3px;"><svg
+            width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z">
+            </path>
+          </svg></a>
+        <a href="https://github.com/gov2-ro/voroave" target="_blank" rel="noopener">/gov2-ro/voroave</a>
       </p>
-<figure class="despre-shot is-portrait">        <a href="assets/despre/detail.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="assets/despre/detail-alpha.png" alt="Panoul de detalii al unui cuvânt, cu definiția și butoanele de marcare" loading="lazy"></a>      </figure>
+      <figure class="despre-shot is-portrait"> <a href="assets/despre/detail.png" target="_blank" rel="noopener"
+          title="Vezi la mărime completă"><img src="assets/despre/detail-alpha.png"
+            alt="Panoul de detalii al unui cuvânt, cu definiția și butoanele de marcare" loading="lazy"></a> </figure>
       <hr style="margin: 2.5rem 0;">
 
 
-<table class="shortcuts-table" style="width: auto;">
-          
+      <table class="shortcuts-table" style="width: auto;">
+
         <!-- Legend first: the cloud encodes two things with no label on them —
              the superscript number and (in the beton skin, which drops the
              verdict dot) the colour of the word itself. -->
-        <tr><td colspan="2" class="shortcuts-group">Legendă</td></tr>
+        <tr>
+          <td colspan="2" class="shortcuts-group">Legendă</td>
+        </tr>
         <!-- Not "cu cât e mai mic, cu atât e mai rar", which is what this said and is
              the exact confusion the methodology page exists to clear up: the number is
              lexicographic prominence, so zapciu (dispărut) sits at 96 and internet at 88. -->
-        <tr><td><span class="legend-freq">42</span></td>
-            <td>Frecvență DEX, <strong>0–100</strong> — cât de central e cuvântul în dicționar,
-                nu cât de des e folosit
-                (<a href="metodologie#frecvente">explicație</a>)</td></tr>
-        <tr><td><span class="legend-sw" style="background:var(--v-ext-word,var(--v-ext))"></span></td>
-            <td><em>dispărut din uz</em> — niciun semnal modern</td></tr>
-        <tr><td><span class="legend-sw" style="background:var(--v-dec-word,var(--v-dec))"></span></td>
-            <td><em>în declin</em> — încă folosit, dar tot mai rar</td></tr>
-        <tr><td><span class="legend-sw" style="background:var(--v-hist-word,var(--v-hist))"></span></td>
-            <td><em>doar istoric</em> — apare doar în surse istorice</td></tr>
-        <tr><td><span class="legend-sw" style="background:var(--v-abs-word,var(--v-abs))"></span></td>
-            <td><em>absent</em> — niciun semnal în corpus, posibil cel mai uitat</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Acțiuni</td></tr>
-        <tr><td><kbd>f</kbd></td><td><em>fav</em> — păstrează</td></tr>
+        <tr>
+          <td><span class="legend-freq">42</span></td>
+          <td>Frecvență DEX, <strong>0–100</strong> — cât de central e cuvântul în dicționar,
+            nu cât de des e folosit
+            (<a href="metodologie#frecvente">explicație</a>)</td>
+        </tr>
+        <tr>
+          <td><span class="legend-sw" style="background:var(--v-ext-word,var(--v-ext))"></span></td>
+          <td><em>dispărut din uz</em> — niciun semnal modern</td>
+        </tr>
+        <tr>
+          <td><span class="legend-sw" style="background:var(--v-dec-word,var(--v-dec))"></span></td>
+          <td><em>în declin</em> — încă folosit, dar tot mai rar</td>
+        </tr>
+        <tr>
+          <td><span class="legend-sw" style="background:var(--v-hist-word,var(--v-hist))"></span></td>
+          <td><em>doar istoric</em> — apare doar în surse istorice</td>
+        </tr>
+        <tr>
+          <td><span class="legend-sw" style="background:var(--v-abs-word,var(--v-abs))"></span></td>
+          <td><em>absent</em> — niciun semnal în corpus, posibil cel mai uitat</td>
+        </tr>
+        <tr>
+          <td colspan="2" class="shortcuts-group">Acțiuni</td>
+        </tr>
+        <tr>
+          <td><kbd>f</kbd></td>
+          <td><em>fav</em> — păstrează</td>
+        </tr>
         <!-- <tr><td><kbd>a</kbd></td><td><em>ascunde</em> — neinteresant, prea cunoscut</td></tr> -->
-        <tr><td><kbd>l</kbd></td><td><em>lol</em> — amuzant</td></tr>
-        <tr><td><kbd>m</kbd></td><td><em>meh</em> — ca <em>ascunde</em>, zis altfel</td></tr>
-        <tr><td><kbd>o</kbd></td><td>Deschide dexonline.ro</td></tr>
-        <tr><td><kbd>?</kbd></td><td>Arată / ascunde shortcut-uri</td></tr>
-            <tr><td colspan="2" class="shortcuts-group">Navigare</td></tr>
-        <tr><td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>→</kbd></td><td>Navigare grilă (↓ ↑ ← →) — <kbd>l</kbd> e liber pentru <em>lol</em></td></tr>
-        <tr><td><kbd>g</kbd><kbd>g</kbd></td><td>Salt la început</td></tr>
-        <tr><td><kbd>G</kbd></td><td>Salt la final</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Căutare</td></tr>
-        <tr><td><kbd>/</kbd></td><td>Focus căutare</td></tr>
-        <tr><td><kbd>r</kbd></td><td>Cuvânt aleator</td></tr>
-        <tr><td><kbd>Esc</kbd></td><td>Închide</td></tr>
-        
+        <tr>
+          <td><kbd>l</kbd></td>
+          <td><em>lol</em> — amuzant</td>
+        </tr>
+        <tr>
+          <td><kbd>m</kbd></td>
+          <td><em>meh</em> — ca <em>ascunde</em>, zis altfel</td>
+        </tr>
+        <tr>
+          <td><kbd>o</kbd></td>
+          <td>Deschide dexonline.ro</td>
+        </tr>
+        <tr>
+          <td><kbd>?</kbd></td>
+          <td>Arată / ascunde shortcut-uri</td>
+        </tr>
+        <tr>
+          <td colspan="2" class="shortcuts-group">Navigare</td>
+        </tr>
+        <tr>
+          <td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>→</kbd></td>
+          <td>Navigare grilă (↓ ↑ ← →) — <kbd>l</kbd> e liber pentru <em>lol</em></td>
+        </tr>
+        <tr>
+          <td><kbd>g</kbd><kbd>g</kbd></td>
+          <td>Salt la început</td>
+        </tr>
+        <tr>
+          <td><kbd>G</kbd></td>
+          <td>Salt la final</td>
+        </tr>
+        <tr>
+          <td colspan="2" class="shortcuts-group">Căutare</td>
+        </tr>
+        <tr>
+          <td><kbd>/</kbd></td>
+          <td>Focus căutare</td>
+        </tr>
+        <tr>
+          <td><kbd>r</kbd></td>
+          <td>Cuvânt aleator</td>
+        </tr>
+        <tr>
+          <td><kbd>Esc</kbd></td>
+          <td>Închide</td>
+        </tr>
+
       </table>
-<p style="margin-top: 3rem;">
-  <span class="blink-text blink-2">🐵</span> &nbsp;
-  <span class="blink-text">☠️</span> &nbsp;
-  <span class="blink-text blink-3">🤗</span> &nbsp;
-  <span class="blink-text"><b>slove</b> <em>zăuitate</em></span> &emsp;
-  <span class="blink-text blink-2"><b>boace</b> <em>oțioase</em></span> &emsp;
-  <span class="blink-text blink-3"><b>suveranism</b> <em>lexical</em></span>
-  
-</p>
+      <p style="margin-top: 3rem;">
+        <span class="blink-text blink-2">🐵</span> &nbsp;
+        <span class="blink-text">☠️</span> &nbsp;
+        <span class="blink-text blink-3">🤗</span> &nbsp;
+        <span class="blink-text"><b>slove</b> <em>zăuitate</em></span> &emsp;
+        <span class="blink-text blink-2"><b>boace</b> <em>oțioase</em></span> &emsp;
+        <span class="blink-text blink-3"><b>suveranism</b> <em>lexical</em></span>
+
+      </p>
     </div><!-- /.doc-body -->
 
   </div>
