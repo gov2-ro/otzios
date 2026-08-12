@@ -18,6 +18,13 @@ $root = dirname(__DIR__) . '/public';
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $file = $root . urldecode($path);
 
+// /joc → /ghici, mirroring the one 301 in .htaccess. Without it the rename reads as
+// working locally right up until an old link is followed in production.
+if (preg_match('#^/joc(\.php)?/?$#', $path)) {
+    header('Location: /ghici', true, 301);
+    return true;
+}
+
 // A real file or directory serves itself, exactly as the .htaccess conditions require.
 if ($path !== '/' && (is_file($file) || is_dir($file))) {
     return false;

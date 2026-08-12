@@ -7,6 +7,16 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # ── /joc → /ghici (the game page was renamed 2026-08-12) ──
+    #
+    # This is the one 301 in the file, and it is safe for the reason the note below
+    # says the general case is not: /joc was only ever a GET page in the top nav. No
+    # API endpoint answers there, so there is no POST for a browser to turn into a
+    # GET. `joc.php` is matched too, for anyone who bookmarked the pre-clean-URL
+    # spelling. Placed before the extensionless rules so it wins outright — those
+    # would otherwise never see it anyway, since /joc.php no longer exists.
+    RewriteRule ^joc(\.php)?/?$ ghici [R=301,L]
+
     # ── Extensionless URLs: /despre → /despre.php, /metodologie → /metodologie.html ──
     #
     # Fires only when the requested path is not already a real file or directory *and* the

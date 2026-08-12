@@ -770,7 +770,7 @@ scrolled at all**.
 
 `liste.php`, `lista.php` and `despre.html` therefore set `class="page-doc"` on `<body>`,
 which restores `height: auto; min-height: 100vh; overflow: visible`. `index.php`,
-`joc.php` and `stats.php` are real shells and keep the default (`stats.php` says so with
+`ghici.php` and `stats.php` are real shells and keep the default (`stats.php` says so with
 its own inline style).
 
 **This hid for months because it only broke on desktop.** The `max-width: 768px` block
@@ -812,7 +812,7 @@ Three things to know before touching it:
 
 ## Page shell — header and footer partials
 
-All five pages (`index`, `stats`, `joc`, `lista`, `liste`) draw the same two partials.
+All five pages (`index`, `stats`, `ghici`, `lista`, `liste`) draw the same two partials.
 Before them, each page rolled its own bar and `stats.php` had no brand at all.
 
 ```php
@@ -845,7 +845,7 @@ one — the header from 901px up, the footer below it.** They carry `top-nav-ite
 statements this reconciles are both true and neither was negotiable: a phone bar cannot
 take four labelled nav entries (measured — that is what produced this split in the first
 place), and burying the two pages that *explain the project* in a footer under the display
-toggles hid them from the desktop reader who would actually follow them. `joc` and `liste`
+toggles hid them from the desktop reader who would actually follow them. `ghici` and `liste`
 stay in the header at every width; they are the two places people jump to mid-browse.
 
 That is about the `despre` *entry*, drawn on the pages that use the partials. **The despre
@@ -867,10 +867,10 @@ not `liste.php`, so nothing in either nav should render as current and stop bein
 
 `header.php` takes five optional slots, all raw HTML strings, so a caller can build one with
 `ob_start()` and keep writing ordinary markup: `$header_nav_extra` (appended inside the top
-nav, after joc/liste — the explorer's `?` shortcuts/legend link, index-only), `$header_center`
+nav, after ghici/liste — the explorer's `?` shortcuts/legend link, index-only), `$header_center`
 (the explorer's collapsible search — a magnifier `.search-toggle-btn` that reveals `#search`
 inside `.search-wrap`, see `openSearch()`/`closeSearchIfEmpty()` in `app.js`), `$header_tools`
-(spinner + result count; joc's modes and score), `$header_after` (the filter button, which has
+(spinner + result count), `$header_after` (the filter button, which has
 to stay last). `footer.php` takes `$footer_left` (the explorer's counts), `$footer_extra` (the
 colour legend) and `$footer_tools` (the explorer's cloud/table view toggle — index-only,
 everything else in the footer is universal) plus `$page`. The explorer's feed button
@@ -883,7 +883,7 @@ Five things to preserve:
    file cannot be guarded against a second include, and it sits with `VERDICTS`/`TIERS`
    as the other list of user-facing strings drawn on every page. `header.php` loops the
    four keys it draws with their width class; `footer.php` loops
-   `array_diff_key(NAV_ITEMS, array_flip(['index','joc','liste']))` and tags each one
+   an explicit `['despre']` list and tags it
    `nav-item--wide`. Both read path/icon/label from `NAV_ITEMS` rather than restating them.
 2. **The current page stays an `<a>`** with `aria-current="page"` and an accent underline.
    As a `<span>` it stopped matching every skin's `#status-bar a` rule and needed its own
@@ -891,7 +891,7 @@ Five things to preserve:
    near-black on black. Never give this bar a colour of its own.
 3. **Every nav entry in either bar keeps an icon and a label.** Below 900px labels are
    hidden and the icons carry the bar alone, so an entry without one would vanish — which
-   is also why the top nav is down to `joc` + `liste` there rather than shrinking four
+   is also why the top nav is down to `ghici` + `liste` there rather than shrinking four
    entries to fit. Above 901px all four keep icon *and* label; a bare glyph row beside the
    wordmark is the one thing that bar has space to avoid.
 4. **On a phone, an open definition hides both bars.** `app.js` puts `detail-open` on
@@ -1067,6 +1067,79 @@ than `copy()`, because in WAL mode the committed data is split across `app.db` a
 
 This does not replace an off-machine backup. A snapshot beside the original survives a bad
 migration or a mistaken delete, not a lost disk.
+
+## The quiz — `ghici.php` („Quiz" in the nav, `/ghici`)
+
+Was `joc.php` until 2026-08-12. **Three names, all different on purpose**: the nav label
+is `quiz`, the URL is `/ghici`, and the `NAV_ITEMS` key — what `$page` and `aria-current`
+match on — is `ghici`. `/joc` and `/joc.php` 301 to it; that is the one redirect in
+`.htaccess`, safe only because no API endpoint ever answered there (see the note beside it
+for why a blanket redirect rule is not).
+
+**`?game=` is the public spelling; `mode` is the internal one.** `game=sensuri|grila|carduri`
+maps to `mode=sense|quiz|flash` in one table at the top of the page script. Everything
+below — `api/quiz.php`, `api/game.php`, `api/leaderboard.php`, `localStorage['otios.quiz']`
+and the server's per-mode stats — keeps talking in `sense`/`quiz`/`flash`. Renaming those
+would re-key stored state, which is the same class of change as renaming the device cookie.
+`?mode=` still resolves: it was the only spelling for months, and `?mode=flash` is how the
+unlisted card mode is reached. `setMode()` writes the URL with `replaceState`, not
+`pushState` — the two modes are views of one activity, and the question itself is never in
+the URL, so history entries would restore nothing.
+
+### What counts as a spoiler in `sensuri`
+
+The detail pane is **the explorer's own widget**, so it arrives carrying the answer twice:
+`.definition-text` is literally one of the four choices, and `.fp-pos-line` is the one
+people miss — „s.f." beside the headword eliminates every option phrased as a verb, which
+on a four-option round is most of the work. Both, plus the card's own `.joc-pos`, get
+`.joc-spoiler` until the round is decided, then `revealSpoilers()` takes it off.
+
+**`roundDecided` is a separate flag from `answered`, and it is load-bearing.** `answered`
+goes true when a choice is clicked; `roundDecided` when the verdict is on screen.
+`showWordDetail()` is a fetch, so a fast answer can land while the pane is still in
+flight — without the flag the pane resolves *after* the reveal and re-hides the definition
+the verdict just uncovered, leaving „✅ corect!" above an empty panel. Pinned by
+`tests/test_ghici.js` §3.
+
+### Marks beside a grilă option — why they are not detail.php's
+
+In `grilă` every option *is* a word, so all four are markable before answering — the
+fastest triage on the site, four words a question. They deliberately do **not** reuse
+`detail.php`'s `#bookmark-btn` / `#tags-row` markup: those are addressed by *id* in
+store.js's delegated handler, so four copies on one screen would be four elements sharing
+one id with one of them answering for the rest. `.joc-mark[data-joc-word][data-joc-tag]`
+instead, handled on `#joc-card` and calling the same `getWord`/`updateWord` store.
+
+**They are siblings of the option button, never children.** `.joc-choice` is a `<button>`,
+and a `<button>` inside a `<button>` is invalid markup that parsers recover from by
+dropping the inner one — so the failure looks like "the marks vanished", not like an error.
+`.joc-choice-row` is the wrapper that keeps them apart. Pinned by `test_ghici.js` §5.
+
+The applied state is styled `.joc-marks .joc-mark.active`, two classes deep, for the reason
+the skins section gives at `.fp-btns .qt-btn.active`: a skin's `[data-skin="x"] .joc-mark`
+would otherwise repaint the pressed state along with the resting one.
+
+### Auto-advance is correct-answers-only, and anything cancels it
+
+A won round has nothing left to read on the card, so it advances itself after 1s. A lost one
+never does — the two definitions now side by side are the entire value of the round.
+
+**The cancel is what makes 1s safe rather than rushed.** Any `pointerdown`/`keydown`/
+`wheel`/`touchstart`, captured on `document`, stops the timer; so does pressing a mark, and
+so does `load()` itself, so a manual „următoarea" cannot leave a timer running into the next
+question and skip it. The countdown is drawn as a draining bar on the button rather than a
+separate widget — the thing that is counting is the thing you press to stop waiting.
+
+### On a phone, this page hides the footer and drops its nav labels
+
+Both are `body.page-ghici`-scoped and both are exceptions to rules that hold everywhere
+else, so they are worth stating. The footer goes because it is ~76–96px carrying nav and
+display toggles you do not act on mid-round; **`--statusbar-h` must go to 0 with it**, since
+`body`'s padding and the detail sheet's `bottom` both read that token and would otherwise
+leave the height behind as dead space. The top nav keeps icons only *here alone* — the pass
+that put those labels back exists because a bare glyph row is unreadable, but this is the
+one bar that also carries a mode switch, a score and a leaderboard button, and at 390px the
+bar wanted ~460px.
 
 ## Clean URLs — `public/.htaccess`
 

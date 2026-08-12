@@ -191,7 +191,11 @@ const TIERS = [
  */
 const NAV_ITEMS = [
     'index'  => ['path' => '/',                 'icon' => '◈',  'label' => 'cuvinte'],
-    'joc'    => ['path' => '/joc',          'icon' => '🎮', 'label' => 'joc'],
+    // Key, path and label all differ on purpose. The label is the user-facing name
+    // („quiz"), the path is the Romanian slug the site is hosted under („/ghici"), and
+    // the key is what `$page` and `aria-current` match on. `/joc` still resolves —
+    // .htaccess 301s it here, since it was a shared link for months.
+    'ghici'  => ['path' => '/ghici',        'icon' => '🎮', 'label' => 'quiz'],
     'liste'  => ['path' => '/liste',        'icon' => '📋', 'label' => 'colecții'],
     'despre' => ['path' => '/despre',       'icon' => 'ℹ️', 'label' => 'despre'],
     // Still real pages and still marked `aria-current` when you are on them — they are

@@ -4,6 +4,75 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-12 — The quiz: `joc.php` → `ghici.php`, spoilers withheld, marks on every option
+
+The whole `jocuri` block from `## Soft-launch`, plus joc's mobile compaction. New test:
+`tests/test_ghici.js`.
+
+**Three names, all different on purpose.** Nav label `quiz`, URL `/ghici`, `NAV_ITEMS` key
+`ghici`. `/joc` and `/joc.php` 301 to it — in `.htaccess` *and* in `tools/dev-router.php`,
+without which the rename reads as working locally right up until an old link is followed in
+production. It is the one redirect in that file and safe for exactly the reason the note
+beside it says the general case is not: no API endpoint ever answered at `/joc`, so there is
+no POST for a browser to turn into a GET.
+
+**`?game=` is the public spelling; `mode` stays internal.** `sensuri|grila|carduri` maps to
+`sense|quiz|flash` in one table; `api/quiz.php`, `api/game.php`, `leaderboard.php`,
+`localStorage['otios.quiz']` and the server's per-mode stats all keep the old words, because
+renaming them re-keys stored state — the same argument that kept the device cookie `otios_dev`
+this morning. `?mode=` still resolves. `replaceState`, not `pushState`.
+
+**The part of speech was the spoiler nobody had listed.** The definition was already withheld
+in `sensuri`; „s.f." beside the headword eliminates every option phrased as a verb, which on a
+four-option round is most of the work. `.joc-spoiler` on the card's `.joc-pos`, the pane's
+`.fp-pos-line` and its `.definition-text`, lifted by `revealSpoilers()` when the verdict lands.
+
+**A race found while writing it, not in the note.** `showWordDetail()` is a fetch, so a fast
+answer can land while the pane is in flight — the pane then resolved *after* the reveal and
+re-hid the definition the verdict had just uncovered, leaving „✅ corect!" above an empty
+panel. Hence `roundDecided`, separate from `answered`: one means the verdict is on screen, the
+other that a choice was clicked.
+
+**Marks beside every grilă option, and deliberately not detail.php's markup.** `#bookmark-btn`
+and `#tags-row` are addressed by *id* in store.js's delegated handler, so four copies on one
+screen would be four elements sharing one id with one answering for the rest.
+`.joc-mark[data-joc-word][data-joc-tag]` instead, on the same `getWord`/`updateWord` store.
+They are siblings of the option button, never children — `.joc-choice` is a `<button>`, and a
+button inside a button is invalid markup parsers recover from by dropping the inner one, so
+the failure would look like "the marks vanished" rather than like an error.
+
+**Auto-advance on correct answers only**, and any pointer/key/wheel/touch event cancels it —
+that cancel is what makes 1s safe rather than rushed, since the pane is live even on a win.
+`load()` cancels too, so a manual „următoarea" cannot leave a timer running into the next
+question and skip it. The countdown is a draining bar on the button itself: the thing that
+counts is the thing you press to stop waiting.
+
+**„avoid meh words from games" was already done** — `api/quiz.php` excludes `tag:meh` and
+`tag:ascunde` from targets and distractors alike. Verified on real data rather than taken from
+the comment: user 1 has 192 such marks and their pool goes 16,484 → 16,307.
+
+**Centring the game controls was a slot change, not a CSS one.** They moved from
+`$header_tools`, which lands inside `.brand-right` and is pinned right by `margin-left: auto`,
+to `$header_center`, a flex child that can take the leftover width. `.landing-tagline` is
+hidden on this page — it is the other `flex: 1` child, and two of them each centre in their
+own half.
+
+**On a phone this page hides the footer and drops its nav labels**, both `body.page-ghici`
+-scoped. `--statusbar-h` has to go to 0 with the footer or its height stays behind as dead
+space (`body`'s padding and the sheet's `bottom` both read it). The nav labels going is a
+deliberate exception to this morning's pass that put them back: measured at 390px the bar
+wanted ~460px, and this is the one bar also carrying a mode switch, a score and a leaderboard
+button.
+
+**`tests/test_ghici.js`** is the first test here to need something off-disk (`jsdom`) — the
+page's behaviour is DOM behaviour and none of it is reachable by asserting on raw HTML. It
+skips cleanly when jsdom is absent. Two things it cost to get right: jsdom ships no `fetch`,
+so without a polyfill the page loads and simply never renders a card; and the correct-answer
+branch cannot be reached on demand (which option is right is sealed in the `qid`), so it plays
+rounds until it wins one and asserts both branches as they come up.
+
+---
+
 ## 2026-08-12 — Soft-launch pass: nav labels on mobile, single-option toggles, self-hosted assets, Voroave
 
 Eight of the open `## Soft-launch` items in `docs/BACKLOG.md`, all shell-level. The jocuri

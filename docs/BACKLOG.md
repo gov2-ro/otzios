@@ -515,17 +515,97 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     bară e un control `--sm` de 20px, deci paddingul vertical adăuga o treime din înălțimea
     barei degeaba. Paddingul orizontal rămâne: ăla e marginea paginii, nu decor.
 
-  - [ ] joc: make it more compact, eliminate unnecessary padding, hide footer, try to make header fit in one row. avoid/minimize the necessity of scrolling. 
-  
-- [ ] jocuri
-    - [ ] rename nav menu idem from 'Joc' to 'Quiz' -> joc.php -> ghici.php
-    - [ ] add url param for each game. ghici?game=sensuri|grila
-    - [ ] hide word definition for 'sensuri' also div.joc-pos and span.fp-pos-line - they are spoilers.
-    - [ ] horizontally center joc tools, quiz type selector, points, clasament - top right can be ignored on large desktops.
-    - [ ] sensuri: move tags (fav, lol, meh) above definition for easy accessibility. make them larger.
-    - [ ] grilă: add quick actions tagging buttons next to each word (just the icons ⭐️,🤣,⛔️)
-    - [ ] avoid 'meh' words from games
-    - [ ] advance in 1s after correct answer?
+  - [x] joc: make it more compact, eliminate unnecessary padding, hide footer, try to make
+    header fit in one row. avoid/minimize the necessity of scrolling. — tot ce urmează e
+    sub `body.page-ghici` și sub 768px, deci nu atinge nicio altă pagină.
+    - **Footerul dispare, iar `--statusbar-h` trebuie să meargă la 0 cu el.** Sunt 76–96px
+      cu navigare și comutatoare de afișare, niciunul folosit în timpul unei runde. Dar
+      `body { padding-bottom }` și `bottom`-ul panoului citesc tokenul: ascunsă doar bara,
+      înălțimea ei rămâne ca spațiu mort la piciorul paginii.
+    - **Bara într-un rând.** Măsurat la 390px cerea ~460px: marcă 85 + navigare 134 +
+      unelte 225. Diferența de 70px vine din marcă (1.375→1.0625rem), din `brand-tag`, din
+      „clasament" de lângă trofeu și — **numai aici** — din etichetele navigării de sus.
+      Asta e excepția de la punctul de mai sus care tocmai le-a pus înapoi: un rând de
+      glife goale e ilizibil, dar asta e singura bară care duce în plus un comutator de
+      mod, un scor și un buton de clasament. Pe orice altă pagină etichetele rămân.
+    - Cardul: `.joc-main` 14→8px, `.joc-card` 20/16→14/12px, `.joc-choices` gap 8→6px.
+
+- [x] jocuri
+    - [x] rename nav menu idem from 'Joc' to 'Quiz' -> joc.php -> ghici.php — **trei nume
+      diferite, intenționat:** eticheta din meniu e `quiz`, URL-ul e `/ghici`, iar cheia din
+      `NAV_ITEMS` — pe care o potrivesc `$page` și `aria-current` — e `ghici`.
+      `/joc` și `/joc.php` fac 301 către el, în `.htaccess` **și** în `tools/dev-router.php`
+      (fără a doua, redenumirea pare că merge local exact până când cineva urmează un link
+      vechi în producție). E singurul redirect din fișier și e sigur tocmai din motivul
+      pentru care nota de lângă el spune că regula generală nu e: pe `/joc` n-a răspuns
+      niciodată vreun endpoint, deci nu există POST pe care browserul să-l facă GET.
+    - [x] add url param for each game. ghici?game=sensuri|grila — plus `carduri` pentru
+      modul nelistat. **`?game=` e ortografia publică, `mode` rămâne cea internă:**
+      `api/quiz.php`, `api/game.php`, `leaderboard.php`, `localStorage['otios.quiz']` și
+      statisticile per-mod de pe server continuă să vorbească `sense`/`quiz`/`flash`.
+      Redenumite, s-ar re-cheia stare stocată — aceeași categorie de schimbare ca
+      redenumirea cookie-ului de device. `?mode=` merge în continuare; a fost singura
+      ortografie luni de zile. `replaceState`, nu `pushState`: cele două moduri sunt vederi
+      ale aceleiași activități, iar întrebarea nu e niciodată în URL, deci intrările de
+      istoric n-ar restaura nimic.
+    - [x] hide word definition for 'sensuri' also div.joc-pos and span.fp-pos-line - they
+      are spoilers. — `.joc-spoiler` pe toate trei până se decide runda, apoi
+      `revealSpoilers()`. Nota avea dreptate că partea de vorbire e problema reală: „s.f."
+      sub headword elimină orice variantă formulată ca verb, adică cea mai mare parte a unei
+      runde cu patru opțiuni.
+      - **Găsit la scriere, nu în notă: o cursă.** `showWordDetail()` e un fetch, deci un
+        răspuns rapid poate ateriza cât panoul e încă în zbor — panoul se rezolva *după*
+        dezvăluire și re-ascundea definiția exact dezvelită, lăsând „✅ corect!" deasupra
+        unui panou gol. De aici `roundDecided`, separat de `answered`: primul înseamnă „s-a
+        dat verdictul", al doilea „s-a apăsat o variantă". Fixat în `test_ghici.js` §3.
+    - [x] horizontally center joc tools, quiz type selector, points, clasament - top right
+      can be ignored on large desktops. — mutate din `$header_tools` în `$header_center`, și
+      **asta e ce le centrează**: `$header_tools` aterizează în `.brand-right`, care e
+      împins la dreapta de `margin-left: auto`, pe când slotul central e un copil flex care
+      poate lua lățimea rămasă. `.landing-tagline` e ascuns pe pagina asta — e celălalt copil
+      `flex: 1`, iar doi s-ar centra fiecare în jumătatea lui. Colțul din dreapta sus rămâne
+      gol pe desktop lat, cum spunea nota că e acceptabil.
+    - [x] sensuri: move tags (fav, lol, meh) above definition for easy accessibility. make
+      them larger. — `liftMarks()` mută nodul `.fp-btns` al serverului imediat sub
+      `.fp-head`, în loc să-l re-randeze: așa handlerele delegate din `store.js` și
+      `hydrateDetail()` merg mai departe neatinse. În ordinea serverului stăteau sub
+      definiție, chipuri, sinonime și rândul de dicționare — adică sub un fold, exact pe
+      ecranul unde le vrei cel mai des. Mărimea a venit deja din itemul de mai jos (30px
+      desktop / 40px telefon); se aplică și aici, e același widget.
+    - [x] grilă: add quick actions tagging buttons next to each word (just the icons
+      ⭐️,🤣,⛔️) — în `grilă` fiecare variantă *e* un cuvânt, deci toate patru sunt
+      marcabile înainte de răspuns: patru cuvinte pe întrebare, cel mai rapid triaj din sit.
+      - **Nu refolosesc markupul din `detail.php`, și ăsta e tot rostul.** `#bookmark-btn` și
+        `#tags-row` sunt adresate prin *id* în handlerul delegat din `store.js`, deci patru
+        copii pe un ecran ar fi patru elemente cu același id și unul răspunzând pentru
+        restul. `.joc-mark[data-joc-word][data-joc-tag]`, tratate pe `#joc-card`, cu același
+        `getWord`/`updateWord`.
+      - **Sunt frați cu butonul-variantă, nu copii.** `.joc-choice` e un `<button>`, iar un
+        `<button>` în `<button>` e markup invalid din care parserele își revin aruncând
+        butonul interior — deci eșecul arată ca „au dispărut marcajele", nu ca o eroare.
+        Fixat în `test_ghici.js` §5.
+    - [x] avoid 'meh' words from games — **era deja livrat**, în `api/quiz.php`: atât
+      `tag:meh` cât și `tag:ascunde` sunt scoase din `$BASE`, deci și din ținte și din
+      distractori. Verificat pe datele reale: user 1 are 192 marcaje meh/ascunde, iar bazinul
+      lui scade 16.484 → 16.307 (177 excluse; diferența până la 192 sunt cuvinte care oricum
+      nu-s în tierul `forgotten` sau n-au definiție).
+    - [x] advance in 1s after correct answer? — **da, dar numai la răspuns corect.** O rundă
+      câștigată n-are ce să-ți mai arate pe card; una pierdută e exact invers, cele două
+      definiții alăturate sunt tot rostul ei.
+      - **Anularea e ce face 1s sigur, nu grăbit.** Orice `pointerdown`/`keydown`/`wheel`/
+        `touchstart`, prins în captură pe `document`, oprește cronometrul; la fel apăsarea
+        unui marcaj; la fel `load()` însuși, ca un „următoarea" manual să nu lase un
+        cronometru pornit în întrebarea următoare și s-o sară. Numărătoarea e o bară care se
+        golește pe buton, nu un widget separat: lucrul care numără e lucrul pe care-l apeși
+        ca să nu mai aștepți.
+    - **Test nou: `tests/test_ghici.js`** — singurul test din repo care cere ceva de pe disc
+      (`jsdom`), fiindcă tot comportamentul paginii e comportament de DOM și nu se poate
+      verifica pe HTML brut ca la testele de API. Sare curat dacă jsdom lipsește, deci
+      `node tests/*.js` merge oriunde. Două lucruri pe care le-a costat corectitudinea:
+      jsdom n-are `fetch`, deci fără polyfill pagina se încarcă și pur și simplu nu randează
+      niciodată un card; și ramura „răspuns corect" nu se poate atinge la comandă (care
+      variantă e bună e secretul serverului, sigilat în `qid`), deci testul joacă runde până
+      câștigă una, cu ambele ramuri verificate pe măsură ce apar.
 
 - [x] make tagging buttons a bit larger, both on desktop, but even more on mobile, easy thumb
   targets. — `.qt-btn` 22→30px pe desktop (font 0.625→0.75rem), **40px pe telefon**, la fel
