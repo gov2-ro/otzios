@@ -116,6 +116,14 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
     /* Reuse the explorer's small-button look rather than inventing a second one. */
     .list-actions a.playlist-btn { text-decoration: none; display: inline-block; }
   </style>
+    <!-- favicon -->
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon/favicon.svg" />
+  <link rel="shortcut icon" href="/assets/favicon/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="Voroave neglijate" />
+  <link rel="manifest" href="/assets/favicon/site.webmanifest" />
+
 </head>
 <body class="page-doc">
   <?php $page = 'liste'; $brand_tag = 'colecții'; require __DIR__ . '/api/_partials/header.php'; ?>
