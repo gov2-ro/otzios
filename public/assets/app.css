@@ -2443,6 +2443,24 @@ kbd {
 @media (max-width: 768px) {
   :root { --bar-h: 52px; }
 
+  /* The footer is `position: fixed` from here down, so this token is a *reservation*:
+     body padding, the detail sheet's `bottom` and the toast's all read it, and anything
+     it over-states is blank page above the bar rather than list.
+
+     1.75rem (28px), not the 44px base. The base is the desktop value, where the bar is
+     in normal flow and nothing has to be reserved for it. Down here the bar is one line
+     of 20px controls — measured 21px tall at every width from 481 to 768 — so 44px left
+     24px of dead space and the old 481–710px tier left 56px. Both were honest when
+     written: the bar wrapped to two and three lines at these widths before the nav moved
+     into it and the labels shrank. The reservation outlived what it was reserving for.
+
+     **rem, not px, and that is the fix for the A−/A+ stepper.** The stepper sets a
+     percentage font-size on <html>, so the bar's contents grow with it while a pixel
+     reservation stays put — measured, 48px reserved against a 51px bar at 125%, i.e. the
+     last row of the list sitting under it. In rem the reservation grows with the thing
+     it is reserving for, at every scale, for free. */
+  :root { --statusbar-h: 1.75rem; }
+
   body { overflow: visible; height: auto; min-height: 100vh; padding-bottom: var(--statusbar-h); }
 
   .brand-bar {
@@ -2618,19 +2636,12 @@ kbd {
   }
 }
 
-/* ══════════════════════════════════════════
-   NARROWING FOOTER (≤ 710px)
-
-   The footer picked up feed/view-mode (index) and scale/skin/theme (every
-   page) when they moved out of the brand bar. Past this width `.status-right`
-   can no longer fit tools + prefs + nav on one line and wraps to two — measured
-   69px tall at 500–700px against the 44px --statusbar-h assumes, which the
-   fixed bar clips silently rather than growing into. Bump it to fit; the
-   ≤480px tier below raises it again once a third line joins.
-══════════════════════════════════════════ */
-@media (max-width: 710px) {
-  :root { --statusbar-h: 76px; }
-}
+/* The ≤710px tier that set `--statusbar-h: 76px` is gone (2026-08-12).
+   It was written when `.status-right` wrapped to two lines at 500–700px — a real
+   measurement at the time. It does not wrap there any more, so the bar is 21px tall
+   across that whole band while the token reserved 76px: 56px of blank page between the
+   last word and the footer, on every phone-sized window. The ≤768px block above now
+   carries one honest 28px for the whole one-line range. */
 
 /* ══════════════════════════════════════════
    NARROW PHONES (≤ 480px)
@@ -2641,16 +2652,25 @@ kbd {
    instead, and grow --statusbar-h so the body padding, detail sheet and toast
    move down with it.
 
-   Below ~445px `.status-right` itself wraps again — measured 86px tall (three
-   lines: counts, tools+prefs, nav) against 445–480px's 61px (two lines) — so
-   this tier is sized for the three-line case rather than adding a fourth
-   breakpoint for a width band few real devices sit in.
+   **48px, and `min-height` rather than `height`.** The old 96px was sized for a
+   three-line `.status-right` (counts / tools+prefs / nav) measured at 86px. That third
+   line is gone with the nav rework: measured 320–479px the content is two lines, 37px,
+   47px with padding — so the bar reserved 49px of dead space at every phone width.
+
+   **The bar no longer takes a height from `--statusbar-h`, and must not.** It used to
+   be `height: var(--statusbar-h)`, which clipped anything that outgrew it — invisibly,
+   since the bar is fixed, so a control simply went missing. It now sizes to its content
+   and prefs.js measures it back into the token. Giving it a height in those terms again
+   would close that loop and make the observer oscillate.
+
+   The value here is the pre-JS fallback only: 3rem covers the two-line case at 100%,
+   which is what a first frame and a scriptless page get. See prefs.js for why a constant
+   cannot be right for all of skins × widths × text scales.
 ══════════════════════════════════════════ */
 @media (max-width: 480px) {
-  :root { --statusbar-h: 96px; }
+  :root { --statusbar-h: 3rem; }
 
   #status-bar {
-    height: var(--statusbar-h);
     flex-wrap: wrap;
     align-content: center;
     justify-content: center;

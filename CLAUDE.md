@@ -910,6 +910,42 @@ Skin files load with an mtime query string, so edits show on plain reload. A sto
 whose file has since been deleted falls back to `DEFAULT_SKIN` (the valid list is baked
 into the pre-paint boot script).
 
+## `--statusbar-h` is measured, not declared
+
+On mobile the footer is `position: fixed`, so that token is a **reservation**: `body`'s
+bottom padding, the detail sheet's `bottom` and the toast's all read it. Too small and the
+last row of the list sits under the bar; too large and there is a band of blank page above
+it.
+
+**It cannot be right as a constant**, and the reason is the point: the bar's height is a
+function of viewport width **and** text scale **and** skin, and it changes by *reflow*
+rather than by scale — one line at 540px/100%, two at 540px/125%. Measured over 6 skins ×
+5 widths × 3 text scales, no set of CSS values covers all 90; the best static attempt
+still under-reserved 16.
+
+So `prefs.js` reads the rendered height off `#status-bar` and writes the token back
+(`ResizeObserver`, ~10 lines, at the bottom of the file). Every skin, width, text scale
+and anything added to the bar later is handled without a breakpoint. Measured
+over-reservation across the matrix is now ≤1px, against 49px and 56px before.
+
+Three things to keep:
+
+1. **Nothing that sizes the bar may read the token.** `#status-bar` had
+   `height: var(--statusbar-h)`; measuring it back would close a feedback loop and the
+   observer would oscillate. The bar sizes to its content — that is why the hard height
+   is gone, and it fixed a second bug on the way: a fixed bar that outgrew its `height`
+   clipped a control silently.
+2. **The CSS values stay, as the pre-JS fallback.** They are what the first frame and a
+   scriptless page (`despre.html`) get, so they should stay roughly right rather than rot.
+   `1.75rem` below 768px, `3rem` below 480px — `rem` so they track the A−/A+ stepper.
+3. **No per-skin override.** `brutal`'s bar is genuinely taller (heavier type, 7px of its
+   own padding), and a static `--statusbar-h` for it was written and then removed: a
+   per-skin constant cannot track the reflow either. Measuring covers it.
+
+The history is worth knowing because it repeats: `44px`, then `76px` at ≤710, then `96px`
+at ≤480 — each an honest measurement when written, each outliving the wrap it was written
+for, and the ≤480 one still hard-clipping. Pinned by `tests/test_footer_metrics.js`.
+
 ## The definition panel — a centred card, at every width
 
 `#detail-panel` was a 380px right-hand column on desktop and a bottom sheet on the phone.

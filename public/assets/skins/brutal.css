@@ -770,6 +770,15 @@
   padding: 7px 16px;
 }
 
+/* This skin's bar is taller than app.css's fallback `--statusbar-h` — heavier type plus
+   7px of its own vertical padding against 5px — and on mobile that token is what body
+   padding, the detail sheet and the toast reserve for a `position: fixed` footer.
+   No override needed: prefs.js measures the rendered bar and writes the token, so this
+   skin's extra chrome is paid for automatically. The values in app.css are only the
+   first-frame fallback. Do not add a static override back here — a per-skin constant
+   cannot track the reflow either (measured: this bar is one line at 540px/100% and two
+   at 540px/125%). */
+
 /* Legend on the ink footer. The swatches already pick up the -word ramp from
    their inline var(); what has to change is everything drawn in a --text-*
    colour, which is invisible against ink. The dotted mark follows the word

@@ -1699,3 +1699,15 @@ because they are content/data decisions, not styling.
   them. It is the same dead signal the explore filter was removed for, still rendered as
   though it meant something. Either drop the two figures from the row or show them only
   when non-zero.
+
+- [x] footer vertical padding on mobile (re-opened 260812) — the earlier
+  „make footer more compact" fix never reached the phone. `--statusbar-h` reserved 96px
+  for a 47px bar at ≤480px and 76px for a 21px bar at 481–710px: 49–56px of blank page
+  above the footer on every phone-sized window, invisible as a bug because the list just
+  looks like it ends early. Right-sizing the constants was not enough — the bar's height
+  moves by *reflow* (one line at 540px/100%, two at 540px/125%), so 16 of 90 skin × width
+  × text-scale combinations still under-reserved. `prefs.js` now measures the rendered bar
+  with a `ResizeObserver` and writes the token back; over-reservation is ≤1px across the
+  matrix. The hard `height` on `#status-bar` is gone with it, which also stopped it
+  clipping controls silently. See **`--statusbar-h` is measured, not declared** in
+  CLAUDE.md; pinned by `tests/test_footer_metrics.js`.

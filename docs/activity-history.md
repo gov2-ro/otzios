@@ -4,6 +4,60 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-12 — The footer reserves what it measures
+
+**The report** was "have you tackled vertical padding for the footer on mobile" — and the
+backlog says that was done (`#status-bar` from `5px 16px` to `0 16px`). It was, but the fix
+never reached the phone, and measuring turned up worse than padding.
+
+`--statusbar-h` is a *reservation*: the footer is `position: fixed` below 768px, so body
+padding, the detail sheet's `bottom` and the toast's all read that token. Measured:
+
+```
+width      declared   bar    needed   dead space
+≤480       96px       96     47       49px      ← hard `height`, over by half
+481–710    76px       21     20       56px      ← reservation for a wrap that stopped
+711–768    44px       21     20       24px
+```
+
+**49–56px of blank page above the footer on every phone-sized window**, and none of it
+visible as a bug — it just looks like the list ends early. All three tiers were honest
+measurements when written; the bar wrapped to two and three lines at those widths before
+the nav moved into it and the labels shrank. The reservations outlived what they reserved.
+
+**The first fix was wrong and the stress matrix caught it.** Right-sizing the constants
+(48px / 28px, `min-height` instead of the clipping `height`) fixed the common case and
+under-reserved 16 of 90 combinations across 6 skins × 5 widths × 3 text scales — because
+the bar's height moves by *reflow*, not by scale: one line at 540px/100%, two at
+540px/125%. `rem` instead of `px` fixed the scale axis and not the reflow. A per-skin
+override for `brutal` fixed that skin and not the rest.
+
+So the token is now **measured**: `prefs.js` reads the rendered height off `#status-bar`
+via `ResizeObserver` and writes it back, ~10 lines. Every skin, width, text scale and
+anything added to the bar later, with no breakpoint. Over-reservation across the whole
+matrix is ≤1px.
+
+Three things that fell out of it:
+
+- **The bar may no longer take a height from the token it feeds.** `height:
+  var(--statusbar-h)` would close the loop and oscillate. Removing it also fixed a second
+  bug: a fixed bar that outgrew that hard height clipped a control silently, which is the
+  invisible failure the 96px had been defending against in the first place.
+- **The CSS values stay as the pre-JS fallback** — first frame, and `despre.html`, which
+  has no `prefs.js`. In `rem`, so at least the scale axis is right there.
+- **`ghici` needs no special case.** It hides the footer on a phone, so the measurement is
+  genuinely 0 — the same answer its own `body.page-ghici { --statusbar-h: 0 }` asserts.
+
+Pinned by `tests/test_footer_metrics.js`: the 90-combination matrix, no horizontal
+overflow, the token settling across 30 frames after a reflowing resize, `ghici` at 0 and
+desktop at 0. One reused page rather than a context per case — 2 minutes to 7 seconds.
+
+Side effect worth noting: the desktop detail card reads the same token, so with 44px no
+longer over-stated for a 27px in-flow footer, it now sits the 12px above it that its own
+rule asks for instead of 29px.
+
+---
+
 ## 2026-08-12 — The definition panel becomes a card; `?word=` links get a head
 
 ### The panel: right-hand column → centred card at the bottom

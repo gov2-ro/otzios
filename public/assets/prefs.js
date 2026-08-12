@@ -98,3 +98,55 @@ function syncPrefButtons() {
 }
 syncPrefButtons();
 document.addEventListener('DOMContentLoaded', syncPrefButtons);
+
+/* ── `--statusbar-h` is measured, not declared ────────────────────────────────
+ *
+ * On mobile the footer is `position: fixed`, so that token is a *reservation*: the
+ * body's bottom padding, the detail sheet's `bottom` and the toast's all read it, and
+ * whatever it gets wrong is either dead space above the bar or a row of the list
+ * underneath it.
+ *
+ * It cannot be got right as a constant, and the reason is worth stating: the bar's
+ * height is a function of viewport width AND text scale AND skin, and it changes by
+ * *reflow* rather than by scale — at 540px the bar is one line at 100% and two at 125%.
+ * Measured over 6 skins × 5 widths × 3 text scales, no single set of CSS values covers
+ * all 90; the best static attempt still under-reserved 16 of them. Declaring it was
+ * always going to be a list of breakpoints chasing a layout, which is exactly the
+ * history the app.css comments record: 44px, then 76px at ≤710, then 96px at ≤480, each
+ * honest when written and each outliving the wrap it was written for.
+ *
+ * So: read the height off the element and write it back. Every skin, every width, every
+ * text scale, and anything added to the bar later, for free.
+ *
+ * Three things to keep:
+ *
+ * 1. **Nothing that sizes the bar may read this token**, or measuring it feeds back into
+ *    it and the observer oscillates. The bar sizes to its own content; `#status-bar` has
+ *    no `height`/`min-height` in `--statusbar-h` terms anywhere.
+ * 2. **The CSS values stay as a pre-JS fallback.** They are what the first frame uses,
+ *    and what a page without this script gets (`despre.html`), so they should stay
+ *    roughly right rather than being left to rot at 0.
+ * 3. **`ghici.php` still wins.** It hides the footer on a phone, so the measurement is
+ *    genuinely 0 there — the same answer its own `body.page-ghici { --statusbar-h: 0 }`
+ *    gives, arrived at by measuring rather than by asserting.
+ */
+(function () {
+  var bar = document.getElementById('status-bar');
+  if (!bar) return;
+  var root = document.documentElement;
+  var last = -1;
+  function sync() {
+    // Ceil: a fractional reservation rounds down to a hairline of the list showing
+    // under the bar, which reads as a rendering bug rather than as a gap.
+    var h = Math.ceil(bar.getBoundingClientRect().height);
+    if (h === last) return;
+    last = h;
+    root.style.setProperty('--statusbar-h', h + 'px');
+  }
+  sync();
+  if (window.ResizeObserver) {
+    new ResizeObserver(sync).observe(bar);
+  } else {
+    addEventListener('resize', sync);
+  }
+})();
