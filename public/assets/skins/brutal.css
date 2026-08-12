@@ -294,8 +294,9 @@
   color: var(--on-ink);
 }
 
-[data-skin="brutal"] .vt-btn + .vt-btn,
-[data-skin="brutal"] .tg-btn + .tg-btn,
+/* No `.vt-btn`/`.tg-btn` here: those two groups show one button at a time now
+   (app.css hides the live option), and `+` still matches a display:none
+   sibling — the survivor drew a left border against nothing. */
 [data-skin="brutal"] .scale-btn + .scale-btn,
 [data-skin="brutal"] .seg-opt + .seg-opt { border-left: var(--stroke) solid var(--ink); }
 
@@ -814,7 +815,6 @@
 [data-skin="brutal"] #status-bar .scale-stepper { border-color: var(--on-ink); background: transparent; }
 [data-skin="brutal"] #status-bar .tg-btn,
 [data-skin="brutal"] #status-bar .scale-btn { color: var(--on-ink); }
-[data-skin="brutal"] #status-bar .tg-btn + .tg-btn,
 [data-skin="brutal"] #status-bar .scale-btn + .scale-btn { border-left-color: var(--on-ink); }
 [data-skin="brutal"] #status-bar .tg-btn:hover,
 [data-skin="brutal"] #status-bar .scale-btn:hover:not(:disabled) { background: var(--hl); color: var(--on-hl); }

@@ -37,8 +37,8 @@ const APP_DB_VERSION = 4;
 // words; it loses only "actualizează", which is what retiring the source means.
 const LIST_BUCKETS = [
     'fav' => ['marks' => 'bookmarked', 'emoji' => '★',  'label' => 'favorite'],
-    'lol' => ['marks' => 'tag:lol',    'emoji' => '😂', 'label' => 'lol'],
-    'meh' => ['marks' => 'tag:meh',    'emoji' => '😐', 'label' => 'meh'],
+    'lol' => ['marks' => 'tag:lol',    'emoji' => '🤣', 'label' => 'lol'],
+    'meh' => ['marks' => 'tag:meh',    'emoji' => '⛔️', 'label' => 'meh'],
 ];
 
 // Input caps. Enforced server-side so the API can't be used as free storage.

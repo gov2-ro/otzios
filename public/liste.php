@@ -82,15 +82,13 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
-  <title>Colecții — Oțios</title>
+  <title>Colecții — Voroave</title>
   <meta name="description" content="Colecțiile tale de cuvinte uitate și cele publicate de alții.">
   <!-- The public directory has no report/takedown path yet (see docs/BACKLOG.md,
        "Moderation for public lists"), so it stays out of search results until it does.
        In-app discovery is unaffected. -->
   <meta name="robots" content="noindex">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="<?= BASE ?>/assets/fonts/app-fonts.css">
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
   <?= otios_skin_links() ?>
   <style>

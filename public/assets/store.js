@@ -65,7 +65,7 @@ function updateWord(word, patch) {
 // carry the '.word-detail-panel' class instead, and handlers look up the nearest one
 // from the click/keydown target.
 
-var QUICK_TAG_EMOJIS = { ascunde: '🙈', lol: '😂', meh: '⚠️' };
+var QUICK_TAG_EMOJIS = { ascunde: '⚠️', lol: '🤣', meh: '⛔️' };
 var QUICK_TAG_KEYS   = Object.keys(QUICK_TAG_EMOJIS);
 var QT_EXPLAINER_KEY = 'otios.qtExplainerDismissed';
 

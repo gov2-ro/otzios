@@ -15,14 +15,12 @@ global $POS_OPTIONS;
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
-  <title>Oțios — Statistici</title>
-  <meta property="og:title" content="Oțios — statistici">
+  <title>Statistici — Voroave</title>
+  <meta property="og:title" content="Statistici — Voroave">
   <meta property="og:description" content="Statistical breakdown of forgotten Romanian words: etymology, parts of speech, registers, domains, and more.">
   <meta property="og:type" content="website">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="<?= BASE ?>/assets/fonts/app-fonts.css">
+  <script src="<?= BASE ?>/assets/lib/htmx-2.0.4.min.js"></script>
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
   <?= otios_skin_links() ?>
 </head>

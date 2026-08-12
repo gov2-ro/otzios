@@ -36,15 +36,13 @@ global $QUICK_TAGS, $POS_OPTIONS;
        browser zoom, not a replacement for it. -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
-  <title>Oțios — Cuvinte Uitate</title>
-  <meta property="og:title" content="Oțios — cuvinte uitate">
-  <meta property="og:description" content="Exploratory tool to identify forgotten Romanian words from official dictionaries that have fallen out of modern usage.">
+  <title>Voroave neglijate</title>
+  <meta property="og:title" content="Voroave neglijate">
+  <meta property="og:description" content="Suveranism lexical. Cuvinte aproximativ căzute în uitare.">
   <meta property="og:image" content="<?= BASE ?>/screenshot-otzios.png">
   <meta property="og:type" content="website">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="<?= BASE ?>/assets/fonts/app-fonts.css">
+  <script src="<?= BASE ?>/assets/lib/htmx-2.0.4.min.js"></script>
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
   <?= otios_skin_links() ?>
 </head>
@@ -106,7 +104,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
         <rect y="4.5" width="11" height="2" rx="1" fill="currentColor"/>
         <rect y="9" width="7" height="2" rx="1" fill="currentColor"/>
       </svg>
-      filtre <span class="filter-count-badge" id="filter-count-badge" style="display:none"></span>
+      <span class="filter-btn-label">filtre</span> <span class="filter-count-badge" id="filter-count-badge" style="display:none"></span>
     </button>
   <?php $header_after = ob_get_clean();
 
@@ -548,7 +546,14 @@ global $QUICK_TAGS, $POS_OPTIONS;
             <td><em>doar istoric</em> — apare doar în surse istorice</td></tr>
         <tr><td><span class="legend-sw" style="background:var(--v-abs-word,var(--v-abs))"></span></td>
             <td><em>absent</em> — niciun semnal în corpus, posibil cel mai uitat</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Navigare</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Acțiuni</td></tr>
+        <tr><td><kbd>f</kbd></td><td><em>fav</em> — păstrează</td></tr>
+        <!-- <tr><td><kbd>a</kbd></td><td><em>ascunde</em> — neinteresant, prea cunoscut</td></tr> -->
+        <tr><td><kbd>l</kbd></td><td><em>lol</em> — amuzant</td></tr>
+        <tr><td><kbd>m</kbd></td><td><em>meh</em> — ca <em>ascunde</em>, zis altfel</td></tr>
+        <tr><td><kbd>o</kbd></td><td>Deschide dexonline.ro</td></tr>
+        <tr><td><kbd>?</kbd></td><td>Arată / ascunde shortcut-uri</td></tr>
+            <tr><td colspan="2" class="shortcuts-group">Navigare</td></tr>
         <tr><td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>→</kbd></td><td>Navigare grilă (↓ ↑ ← →) — <kbd>l</kbd> e liber pentru <em>lol</em></td></tr>
         <tr><td><kbd>g</kbd><kbd>g</kbd></td><td>Salt la început</td></tr>
         <tr><td><kbd>G</kbd></td><td>Salt la final</td></tr>
@@ -556,13 +561,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
         <tr><td><kbd>/</kbd></td><td>Focus căutare</td></tr>
         <tr><td><kbd>r</kbd></td><td>Cuvânt aleator</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Închide</td></tr>
-        <tr><td colspan="2" class="shortcuts-group">Acțiuni</td></tr>
-        <tr><td><kbd>f</kbd></td><td><em>fav</em> — păstrează</td></tr>
-        <tr><td><kbd>a</kbd></td><td><em>ascunde</em> — neinteresant, prea cunoscut</td></tr>
-        <tr><td><kbd>l</kbd></td><td><em>lol</em> — amuzant</td></tr>
-        <tr><td><kbd>m</kbd></td><td><em>meh</em> — ca <em>ascunde</em>, zis altfel</td></tr>
-        <tr><td><kbd>o</kbd></td><td>Deschide dexonline.ro</td></tr>
-        <tr><td><kbd>?</kbd></td><td>Arată / ascunde shortcut-uri</td></tr>
+        
       </table>
     </div>
   </div>

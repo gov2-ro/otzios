@@ -4,6 +4,73 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-12 — Soft-launch pass: nav labels on mobile, single-option toggles, self-hosted assets, Voroave
+
+Eight of the open `## Soft-launch` items in `docs/BACKLOG.md`, all shell-level. The jocuri
+block and joc's mobile compaction are untouched.
+
+**The mobile nav labels were a scoping bug, not a decision.** `.nav-label` is the same class
+in both bars, and `@media (max-width: 900px) { .nav-label { display: none } }` was written
+for the footer's `.site-nav` — it silently stripped the labels off `.top-nav` too, leaving
+the header a row of bare emoji on a phone, which is exactly what the comment above
+`.top-nav-item` says that bar exists to avoid. Now `.site-nav .nav-label`. The room came
+from the two controls flanking it, as the note asked: „legendă" is visually-hidden for good
+and `.shortcuts-link kbd` is exempted from the blanket `kbd { display: none }` (so the link
+is its own `?` cap, 18px instead of 52), and „filtre" is a `.filter-btn-label` span hidden
+below 768px. Both keep their accessible name in `title` / `aria-label`.
+
+**Both two-state toggles now draw only the option you can switch *to*.** Theme keys off
+`:root[data-theme]` — set by the pre-paint boot script — rather than the `tg-active` class
+`prefs.js` adds on load, which would have flashed both caps; view can use the class because
+`#btn-cloud` ships with `vt-active` in index.php's markup. **The `+` separator had to be
+deleted rather than reset**: it still matches a `display:none` sibling, so the survivor drew
+a left border against nothing, and no reset could win — brutal restates the rule at (0,3,0)
+and again at (1,3,0) under `#status-bar`, both loading after app.css. With one visible
+button per group it is dead code, so it left `brutal.css` too. `.scale-btn` keeps its.
+
+**Marks are 30px on desktop, 40px on a phone** (were 22/28). They are the site's primary
+verb and were the smallest interactive thing on the page. On mobile the height comes out of
+the key caps, which are hidden there anyway.
+
+**Fonts and htmx are in the repo — no third-party request on any page load.**
+`assets/lib/htmx-2.0.4.min.js` (`lib`, not `vendor`: a global gitignore eats `vendor/`) and
+`assets/fonts/{app,doc}-fonts.css` plus 20 woff2, 796 KB. htmx is verified rather than just
+downloaded — the sha384 of the unpkg file matches the `integrity=` already in the pages, so
+it is bit-for-bit what the CDN served. Only the `latin` and `latin-ext` cuts are kept (ă â î
+ș ț live in latin-ext); variable axes survive intact. Two stylesheets because metodologie
+wants Inter Tight / JetBrains Mono and the app pages do not — one shared file would put 130
+KB of Inter Tight on the explorer for nothing. `tools/fetch_fonts.sh` regenerates them.
+Simple Analytics stays external on purpose: self-hosting a tracker measures nothing, so
+that is a product decision about whether it stays at all.
+
+**`DEFAULT_SKIN` is `govuk`.** Two places, and the second is easy to miss: `despre.html` is
+static since earlier today and carries a hand-copied boot script with the skin list and the
+default inside it. Left alone it would have been the one page in the site opening in beton.
+
+**Renamed to Voroave — surface only.** Titles, `og:`/`twitter:` and visible marks across
+stats, joc, liste, lista, admin, despre, metodologie. The internal identifiers stay `otios`
+deliberately: the `otios_dev` cookie *is* the account, so renaming it hands every visitor a
+new one and orphans their marks; `otios.theme` / `otios.skin` / `otios.textscale` would
+reset preferences; `OTIOS_BASE` / `OTIOS_PRIVATE_DIR` / `OTIOS_ADMIN_TOKEN` are per-install
+server config. Left for the author: metodologie's paragraph explaining the *Oțios* name was
+about the name, so it could not be left untouched — rewritten to the minimum true version
+(Voroave now, Oțios before, the story of the word kept whole), timeline entries left as
+historical record.
+
+**The new `.landing-tagline` is centred with `flex: 1` + `text-align: center`**, not
+absolute positioning — it centres in the gap the two clusters leave and cannot end up
+underneath them when the bar tightens; it ellipses rather than pushing the controls, and
+hides below 901px. It needed re-grounding in `govuk` and `registru`, which force
+`.brand-bar` black in both themes while `--text-3` is a *page*-ground token. That is the
+list CLAUDE.md already keeps for anything living in that bar, and it matters more now that
+govuk is the default.
+
+Pre-existing and untouched: `tests/test_store_sync.js` fails at „sync watermark stored" and
+then throws on `JSON.parse(undefined)`. Verified against the committed `store.js` — it fails
+identically there, so it is not from this pass.
+
+---
+
 ## 2026-08-12 — Colecții, marked tags that show as marked, static despre, no facet counts
 
 **Renamed to „Colecții" in the UI only.** Page title, `<h1>`, section headings, the

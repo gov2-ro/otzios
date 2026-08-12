@@ -8,13 +8,11 @@ require_once __DIR__ . '/api/_lib.php';
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
-  <title>Oțios — Joc</title>
-  <meta property="og:title" content="Oțios — joc">
+  <title>Joc — Voroave</title>
+  <meta property="og:title" content="Joc — Voroave">
   <meta property="og:description" content="Învață cuvinte românești uitate: ghicește sensul sau cuvântul, în teste grilă.">
   <meta property="og:type" content="website">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="<?= BASE ?>/assets/fonts/app-fonts.css">
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
   <?= otios_skin_links() ?>
   <style>

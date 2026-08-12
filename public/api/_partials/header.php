@@ -38,15 +38,15 @@
  */
 
 $page              = $page              ?? '';
-$brand_tag         = $brand_tag         ?? 'voroave neglijate';
+$brand_tag         = $brand_tag         ?? 'neglijate';
 $header_nav_extra  = $header_nav_extra  ?? '';
 $header_center     = $header_center     ?? '';
 $header_tools      = $header_tools      ?? '';
 $header_after      = $header_after      ?? '';
 ?>
 <header class="brand-bar">
-  <a class="brand-id" href="<?= BASE ?>/" title="Oțios — cuvinte negljate">
-    <span class="brand-name">oțios</span>
+  <a class="brand-id" href="<?= BASE ?>/" title="Voroave — cuvinte neglijate">
+    <span class="brand-name">voroave</span>
     <span class="brand-sep"></span>
     <span class="brand-tag"><?= e($brand_tag) ?></span>
   </a>
@@ -77,9 +77,9 @@ $header_after      = $header_after      ?? '';
     <?php endforeach; ?>
   </nav>
 
-  <?= $header_center ?> 
+  <?= $header_center ?>  <span class="landing-tagline">Cuvinte aproximativ căzute în uitare. <strong>Suveranism lexical</strong>.</span>
   <div class="brand-right">
-  <?= $header_nav_extra ?>  
+  <?= $header_nav_extra ?>   
   <?= $header_tools ?>
     <?= $header_after ?>
   </div>

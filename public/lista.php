@@ -65,14 +65,12 @@ $desc  = $row && $row['description'] !== ''
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
-  <title><?= e($title) ?> — Oțios</title>
+  <title><?= e($title) ?> — Voroave</title>
   <meta name="description" content="<?= e($desc) ?>">
-  <meta property="og:title" content="<?= e($title) ?> — Oțios">
+  <meta property="og:title" content="<?= e($title) ?> — Voroave">
   <meta property="og:description" content="<?= e($desc) ?>">
   <meta property="og:type" content="article">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="<?= BASE ?>/assets/fonts/app-fonts.css">
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
   <?= otios_skin_links() ?>
   <style>
@@ -177,7 +175,7 @@ $desc  = $row && $row['description'] !== ''
     var shareBtn = document.getElementById('share-btn');
     var reportBtn = document.getElementById('report-btn');
 
-    var title = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?> + ' — Oțios';
+    var title = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?> + ' — Voroave';
     var slug  = <?= json_encode($slug, JSON_UNESCAPED_UNICODE) ?>;
 
     function toast(msg) {

@@ -176,6 +176,10 @@
   letter-spacing: 0.14em;
 }
 [data-skin="registru"] .brand-sep     { background: var(--rg-on-bar-2); }
+/* app.css paints the strapline `--text-3`, which is a *page*-ground token and
+   so reads as near-black against this bar. Re-grounded like the rest of it. */
+[data-skin="registru"] .landing-tagline        { color: var(--rg-on-bar-2); }
+[data-skin="registru"] .landing-tagline strong { color: var(--rg-on-bar); }
 [data-skin="registru"] .result-count,
 [data-skin="registru"] .brand-spinner { color: var(--rg-on-bar-2); }
 

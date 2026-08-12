@@ -147,6 +147,10 @@
 }
 [data-skin="govuk"] .brand-tag     { color: var(--gv-on-bar-2); letter-spacing: 0.06em; }
 [data-skin="govuk"] .brand-sep     { background: var(--gv-on-bar-2); }
+/* The strapline is app.css's `--text-3`, a *page*-ground token — near-black on
+   this masthead. Same re-grounding as everything else that lives up here. */
+[data-skin="govuk"] .landing-tagline        { color: var(--gv-on-bar-2); }
+[data-skin="govuk"] .landing-tagline strong { color: var(--gv-on-bar); }
 [data-skin="govuk"] .result-count,
 [data-skin="govuk"] .brand-spinner { color: var(--gv-on-bar-2); }
 

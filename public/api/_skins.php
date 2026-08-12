@@ -32,7 +32,7 @@ declare(strict_types=1);
 
 define('SKINS_DIR',   __DIR__ . '/../assets/skins');
 define('SKINS_URL',   '/assets/skins');
-define('DEFAULT_SKIN', 'brutal');
+define('DEFAULT_SKIN', 'govuk');
 define('BASE_SKIN',    'paper');
 
 /**

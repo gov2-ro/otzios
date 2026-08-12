@@ -136,7 +136,7 @@ $resolved = (int) $pdo->query("SELECT COUNT(*) FROM reports WHERE status != 'ope
        keeps /admin.php out of any third party's logs. -->
   <meta name="referrer" content="same-origin">
   <?= otios_skin_boot() ?>
-  <title>Moderare — Oțios</title>
+  <title>Moderare — Voroave</title>
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
   <?= otios_skin_links() ?>
   <style>

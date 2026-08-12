@@ -10,47 +10,36 @@
   /despre resolves here with no rewrite change — .htaccess and tools/dev-router.php both
   try `$uri.php` and then `$uri.html`, in that order.
 
-  Four things are hand-maintained here that the partials used to keep in step. All four
-  are cheap; none is automatic:
-
-  1. **The skin list in the boot script below is baked in.** _skins.php discovers skins by
-     scanning the directory, so a *new* skin appears everywhere else on the next request
-     and needs adding here by hand — otherwise a reader who picks it gets `brutal` on this
-     page alone. Same for DEFAULT_SKIN ("brutal") and for the five <link>s.
-  2. **The nav is a copy of api/_partials/header.php's output**, with `despre` marked
-     `aria-current`. NAV_ITEMS is still the source of truth for every other page.
-  3. **Paths are relative on purpose** — `assets/…`, `joc`, `.` for home. That is what
+  - **Paths are relative on purpose** — `assets/…`, `joc`, `.` for home. That is what
      replaces BASE, and it keeps the page working at any URL depth, including the /oțios/
      subfolder deploy. Do not "tidy" them into absolute paths.
-  4. **og:image is relative and og:url is absent.** otios_abs_url() derived the host from
+  - **og:image is relative and og:url is absent.** otios_abs_url() derived the host from
      the request; a static file has none to bake in, and a wrong absolute URL is worse
      than a missing one.
 -->
-<html lang="ro" data-skin="brutal">
+<html lang="ro" data-skin="govuk">
 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script>(function(){try{var d=document.documentElement;var t=localStorage.getItem("otios.theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");d.setAttribute("data-theme",t);var ok=["paper","brutal","govuk","registru","tezaur","velin"],s=localStorage.getItem("otios.skin");d.setAttribute("data-skin",ok.indexOf(s)>=0?s:"brutal");var z=localStorage.getItem("otios.textscale")||"100";d.style.fontSize=z+"%";}catch(e){}})();</script>  <title>Despre — Oțios</title>
+  <script>(function(){try{var d=document.documentElement;var t=localStorage.getItem("otios.theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");d.setAttribute("data-theme",t);var ok=["paper","brutal","govuk","registru","tezaur","velin"],s=localStorage.getItem("otios.skin");d.setAttribute("data-skin",ok.indexOf(s)>=0?s:"govuk");var z=localStorage.getItem("otios.textscale")||"100";d.style.fontSize=z+"%";}catch(e){}})();</script>  <title>Despre — Voroave</title>
   <meta name="description" content="Cum sunt găsite cuvintele uitate ale limbii române: două corpusuri, dicționarul DEX, și marcajele cititorilor. 18.270 de cuvinte.">
   <link rel="canonical" href="despre">
 
   <meta property="og:type" content="article">
-  <meta property="og:site_name" content="Oțios">
+  <meta property="og:site_name" content="Voroave neglijate">
   <meta property="og:locale" content="ro_RO">
-  <meta property="og:title" content="Despre — Oțios">
-  <meta property="og:description" content="Cum sunt găsite cuvintele uitate ale limbii române: două corpusuri, dicționarul DEX, și marcajele cititorilor. 18.270 de cuvinte.">
+  <meta property="og:title" content="Despre voroave">
+  <meta property="og:description" content="Suveranism lexical. Cuvinte aproximativ căzute în uitare.">
   <meta property="og:image" content="screenshot-otzios.png">
-  <meta property="og:image:alt" content="Lista de cuvinte uitate din Oțios">
+  <meta property="og:image:alt" content="Voroave">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Despre — Oțios">
-  <meta name="twitter:description" content="Cum sunt găsite cuvintele uitate ale limbii române: două corpusuri, dicționarul DEX, și marcajele cititorilor. 18.270 de cuvinte.">
+  <meta name="twitter:title" content="Despre — Voroave">
+  <meta name="twitter:description" content="Suveranism lexical. Cuvinte aproximativ căzute în uitare.">
   <meta name="twitter:image" content="screenshot-otzios.png">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Public+Sans:ital,wght@0,400..800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/fonts/app-fonts.css">
   <link rel="stylesheet" href="assets/app.css">
   <link rel="stylesheet" href="assets/doc.css">
   <link rel="stylesheet" href="assets/skins/brutal.css">
@@ -142,7 +131,7 @@
       height: auto;
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      background: var(--surface);
+      
     }
 
     .despre-shot figcaption {
@@ -205,10 +194,10 @@
 
 <body class="page-doc">
   <header class="brand-bar">
-  <a class="brand-id" href="." title="Oțios — cuvinte negljate">
-    <span class="brand-name">oțios</span>
+  <a class="brand-id" href="." title="Voroave neglijate">
+    <span class="brand-name">voroave <sup style="font-weight: normal;"><small>neglijate</small></sup></span>
     <span class="brand-sep"></span>
-    <span class="brand-tag">despre</span>
+    <span class="brand-tag"></span>
   </a>
 
   <nav class="top-nav" aria-label="Navigare principală">
@@ -235,42 +224,83 @@
         </div>
 </header>
 
-  <div class="despre-wrap doc-layout">
-
-  
+  <div class="despre-wrap doc-layout"> 
 
     <div class="doc-body">
-      <!-- <h1>Despre Oțios</h1> -->
-       <figure class="despre-shot is-portrait">
-        <a href="assets/despre/detail.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="assets/despre/detail.png" alt="Panoul de detalii al unui cuvânt, cu definiția și butoanele de marcare" loading="lazy"></a>
-        <!-- <figcaption>Panoul de detalii: definiția, dicționarele în care apare, și butoanele de marcare.</figcaption> -->
-      </figure>  <p class="despre-lede">
-        Am încercat să găsesc o metodă de a descoperi cuvintele uitate / neglijate ale limbii române, mai degrabă ieșite din uz, evitând însă termenii foarte vechi care și-au pierdut de tot relevanța.</p> <p>Cuvinte apărute în dicționare, dar care sunt întâlnite rar sau deloc în româna modernă.
+     
+      <!-- <h1><b>Suveranism lexical</b><br/>Cuvinte aproximativ căzute în uitare </h1> -->
+      
+  <p class="despre-lede">
+        Am încercat să găsesc o metodă de a descoperi cuvintele uitate / neglijate ale limbii române, mai degrabă ieșite din uz, evitând însă termenii foarte vechi care și-au pierdut de tot relevanța.</p> <p>Cuvinte apărute în dicționare, dar care sunt întâlnite rar sau deloc în româna modernă. <strong>Suveranism lexical</strong>. Use it or lose it.
 
       </p>
+      <p>
+        Poți marca cuvintele din info box sau din tastatură (<code>F</code>, <code>L</code>, <code>M</code>):<br/>
+        <strong> ★ <b>F</b>av</strong> — <em>merită păstrat</em>; 
+        <strong>😂 <b>L</b>ol</strong> — <em>amuzant</em>; 
+        <strong>⚠️ <b>M</b>eh</strong> — <em>nu e ce căutăm – irelevant sau prea comun</em>. 
+
+      </p>
+      
+      
 
       <p>
      <mark>Termenii marcați pot fi partajați în colecții publice, <strong>ceea ce vă și rog</strong></mark>, întru rafinarea listei publice: <kbd>★FAV</kbd> sau <kbd>LOL</kbd> sunt prioritizate, <kbd>MEH</kbd>, dimpotrivă.
       </p>
 
-      <p>
-        Poți marca orice cuvânt din panoul de detalii sau direct de la tastatură:
-      </p>
-      <ul>
-        <li><span class="despre-key">f</span> <strong>★ fav</strong> — merită păstrat;</li>
-        <li><span class="despre-key">l</span> <strong>😂 lol</strong> — amuzant;</li>
-        <li><span class="despre-key">m</span> <strong>⚠️ meh</strong> — nu e ce căutăm – irelevant sau prea comun.</li>
-      </ul>
   
+<figure class="despre-shot is-portrait">
+        <a href="assets/despre/detail.png" target="_blank" rel="noopener" title="Vezi la mărime completă"><img src="assets/despre/detail-alpha.png" alt="Panoul de detalii al unui cuvânt, cu definiția și butoanele de marcare" loading="lazy"></a>
+        <!-- <figcaption>Panoul de detalii: definiția, dicționarele în care apare, și butoanele de marcare.</figcaption> -->
+      </figure>
 
-<hr/>
    <p style="margin: 1rem 0 2.5rem 0;">
-        vezi și: &nbsp; <a href="stats">📊 stats</a> &nbsp; &middot; &nbsp; <a href="metodologie">metodologie</a> (LLM lingo) &nbsp; &middot; &nbsp;
+_____________
+<br>        vezi și: &nbsp; <a href="stats">📊 stats</a> &nbsp; &middot; &nbsp; <a href="metodologie">metodologie</a> (LLM blabber) 
         
-              <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" aria-label="GitHub" style="color: var(--text2); line-height: 1; display: inline-block; position: relative; bottom: -3px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path></svg></a>
-              <!-- <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">/gov2-ro/otzios</a>  -->
+        <br>poșta redacției:      <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener" aria-label="GitHub" style="color: var(--text2); line-height: 1; display: inline-block; position: relative; bottom: -3px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path></svg></a>
+              <a href="https://github.com/gov2-ro/otzios" target="_blank" rel="noopener">/gov2-ro/otzios</a> 
       </p>
+<hr>
 
+<table class="shortcuts-table" style="width: auto;">
+          
+        <!-- Legend first: the cloud encodes two things with no label on them —
+             the superscript number and (in the beton skin, which drops the
+             verdict dot) the colour of the word itself. -->
+        <tr><td colspan="2" class="shortcuts-group">Legendă</td></tr>
+        <!-- Not "cu cât e mai mic, cu atât e mai rar", which is what this said and is
+             the exact confusion the methodology page exists to clear up: the number is
+             lexicographic prominence, so zapciu (dispărut) sits at 96 and internet at 88. -->
+        <tr><td><span class="legend-freq">42</span></td>
+            <td>Frecvență DEX, <strong>0–100</strong> — cât de central e cuvântul în dicționar,
+                nu cât de des e folosit
+                (<a href="metodologie#frecvente">explicație</a>)</td></tr>
+        <tr><td><span class="legend-sw" style="background:var(--v-ext-word,var(--v-ext))"></span></td>
+            <td><em>dispărut din uz</em> — niciun semnal modern</td></tr>
+        <tr><td><span class="legend-sw" style="background:var(--v-dec-word,var(--v-dec))"></span></td>
+            <td><em>în declin</em> — încă folosit, dar tot mai rar</td></tr>
+        <tr><td><span class="legend-sw" style="background:var(--v-hist-word,var(--v-hist))"></span></td>
+            <td><em>doar istoric</em> — apare doar în surse istorice</td></tr>
+        <tr><td><span class="legend-sw" style="background:var(--v-abs-word,var(--v-abs))"></span></td>
+            <td><em>absent</em> — niciun semnal în corpus, posibil cel mai uitat</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Acțiuni</td></tr>
+        <tr><td><kbd>f</kbd></td><td><em>fav</em> — păstrează</td></tr>
+        <!-- <tr><td><kbd>a</kbd></td><td><em>ascunde</em> — neinteresant, prea cunoscut</td></tr> -->
+        <tr><td><kbd>l</kbd></td><td><em>lol</em> — amuzant</td></tr>
+        <tr><td><kbd>m</kbd></td><td><em>meh</em> — ca <em>ascunde</em>, zis altfel</td></tr>
+        <tr><td><kbd>o</kbd></td><td>Deschide dexonline.ro</td></tr>
+        <tr><td><kbd>?</kbd></td><td>Arată / ascunde shortcut-uri</td></tr>
+            <tr><td colspan="2" class="shortcuts-group">Navigare</td></tr>
+        <tr><td><kbd>j</kbd><kbd>k</kbd><kbd>h</kbd><kbd>→</kbd></td><td>Navigare grilă (↓ ↑ ← →) — <kbd>l</kbd> e liber pentru <em>lol</em></td></tr>
+        <tr><td><kbd>g</kbd><kbd>g</kbd></td><td>Salt la început</td></tr>
+        <tr><td><kbd>G</kbd></td><td>Salt la final</td></tr>
+        <tr><td colspan="2" class="shortcuts-group">Căutare</td></tr>
+        <tr><td><kbd>/</kbd></td><td>Focus căutare</td></tr>
+        <tr><td><kbd>r</kbd></td><td>Cuvânt aleator</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Închide</td></tr>
+        
+      </table>
     </div><!-- /.doc-body -->
   </div>
 

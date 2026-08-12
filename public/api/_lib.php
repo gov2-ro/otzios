@@ -111,9 +111,9 @@ $QUICK_TAGS = [
 ];
 
 $QUICK_TAG_EMOJIS = [
-    'ascunde' => '🙈',
-    'lol'     => '😂',
-    'meh'     => '⚠️',
+    'ascunde' => '⚠️',
+    'lol'     => '🤣',
+    'meh'     => '⛔️',
 ];
 
 $POS_OPTIONS = [

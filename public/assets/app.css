@@ -150,6 +150,28 @@ body.page-doc {
   color: var(--text-3);
 }
 
+/* The strapline in `header.php`, between the nav and the right cluster.
+   `flex: 1` rather than absolute centring: it centres in the gap the two
+   clusters leave, which is what reads as centred and — unlike `position:
+   absolute` — cannot end up underneath them when the bar gets tight. It is the
+   first thing to give, so it ellipses instead of pushing the controls.
+
+   Hidden below 901px, the same crossover the nav labels use: the phone bar's
+   room goes to travel, and this line is on `despre` in full anyway. */
+.landing-tagline {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.landing-tagline strong { font-weight: 600; color: var(--text-2); }
+@media (max-width: 900px) { .landing-tagline { display: none; } }
+
 /* ── Top nav (header.php) — joc + liste at every width, statistici +
    metodologie from 901px up, and index.php's `?` shortcuts link.
    Icon + label always, with no breakpoint dropping the label: a bare glyph row
@@ -300,9 +322,12 @@ body.page-doc {
   transition: background .1s, color .1s;
   line-height: 1;
 }
-.vt-btn + .vt-btn { border-left: 1px solid var(--border); }
 .vt-btn:hover { color: var(--text-2); background: var(--bg); }
-.vt-btn.vt-active { background: var(--text); color: var(--bg); }
+/* Only the mode you can switch *to* is drawn — see the theme-toggle block below
+   for the reasoning and for why there is no `.vt-btn + .vt-btn` separator any
+   more. The fill stays declared because skins restate it; it simply never has a
+   visible element to paint now. */
+.vt-btn.vt-active { background: var(--text); color: var(--bg); display: none; }
 
 /* ── Filter toggle button (always visible) ── */
 /* Play modes in the brand bar (🎲 / 📇) */
@@ -388,9 +413,33 @@ body.page-doc {
   transition: background .1s, color .1s;
   line-height: 1;
 }
-.tg-btn + .tg-btn, .scale-btn + .scale-btn { border-left: 1px solid var(--border); }
+/* The stepper still has two live buttons and keeps its separator; the theme
+   toggle no longer does — see below. */
+.scale-btn + .scale-btn { border-left: 1px solid var(--border); }
 .tg-btn:hover, .scale-btn:hover { color: var(--text-2); background: var(--bg); }
 .tg-btn.tg-active { background: var(--text); color: var(--bg); }
+
+/* ── Both toggles show only the option you can switch *to* ───────────────────
+   A two-button group where one is permanently lit spends two glyphs of bar
+   width to say one bit. Hiding the live one turns each into a single button
+   whose face *is* the destination — ☾ means "go dark", ≡ means "show the
+   table" — and gives the footer back ~26px on each.
+
+   The theme half keys off `:root[data-theme]`, which the pre-paint boot script
+   in `_skins.php` always sets, rather than off the `tg-active` class prefs.js
+   adds on load: as a JS-driven rule both caps would flash before it ran. The
+   view half can use the class, because `#btn-cloud` ships with `vt-active` in
+   index.php's markup and so the default is already right in the HTML.
+
+   **The `+` separator had to go rather than be reset.** `.tg-btn + .tg-btn`
+   still matches a `display:none` first sibling, so the survivor drew a left
+   border with nothing to its left — and the reset could not win: brutal
+   restates the rule at (0,3,0) and again at (1,3,0) under `#status-bar`, both
+   loading after app.css. With one visible button per group the separator is
+   dead code, so it is deleted here *and* in brutal.css. `.scale-btn`'s stays;
+   that group still has two. */
+:root[data-theme="light"] .tg-btn[data-theme-btn="light"],
+:root[data-theme="dark"]  .tg-btn[data-theme-btn="dark"] { display: none; }
 .scale-btn:disabled { opacity: .35; cursor: default; }
 .scale-btn:disabled:hover { background: transparent; color: var(--text-3); }
 
@@ -1318,8 +1367,8 @@ body.page-doc {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 24px;
-  padding: 0 10px 0 5px;
+  height: 30px;
+  padding: 0 12px 0 7px;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
@@ -1336,21 +1385,26 @@ body.page-doc {
 .fp-btns #bookmark-btn.active { border-color: var(--v-dec); color: var(--v-dec-tx); background: var(--v-dec-bg); font-weight: 700; }
 .fav-star { color: var(--star); }
 
-/* Quick tags */
-#tags-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-.quick-tags { display: inline-flex; gap: 4px; margin-right: 4px; }
+/* Quick tags.
+   These are the site's primary verb — you triage by marking, and publishing a
+   collection is one button after that (see the Lists section of CLAUDE.md). At
+   22px they were the smallest interactive thing on the page while being the
+   most-pressed; 30px here and 40px on a phone (below) makes them a thumb
+   target rather than a fingernail one. */
+#tags-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.quick-tags { display: inline-flex; gap: 6px; margin-right: 4px; }
 .qt-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 22px;
-  padding: 0 7px 0 5px;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px 0 8px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 3px;
   color: var(--text-2);
   font-family: var(--mono);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   cursor: pointer;
   font-weight: 600;
 }
@@ -1962,9 +2016,12 @@ body.page-doc {
 }
 .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ── Status bar ── */
+/* ── Status bar ──
+   Vertical padding is 0: the tallest thing in here is a 20px `--sm` control, so
+   the row is 20px of content and the padding was a third of the bar's height
+   again for nothing. Horizontal padding stays — it is the page gutter. */
 #status-bar {
-  padding: 5px 16px;
+  padding: 0 16px;
   background: var(--surface);
   border-top: 1px solid var(--border);
   font-size: 0.6875rem;
@@ -2024,7 +2081,7 @@ body.page-doc {
 @media (max-width: 1279px) {
   .status-legend { display: none; }
 }
-.status-right { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.status-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 #status-bar a { color: var(--text-3); text-decoration: none; font-size: 0.6875rem; }
 #status-bar a:hover { color: var(--text); }
 
@@ -2032,9 +2089,21 @@ body.page-doc {
    on every page, so the footer (already the one shared bar) is where they live now. */
 .status-prefs { display: inline-flex; align-items: center; gap: 8px; }
 
-/* The `?` link's word-fallback: shown only where `kbd` is hidden (≤768px). */
-.shortcuts-alt { display: none; }
-@media (max-width: 768px) { .shortcuts-alt { display: inline; } }
+/* The `?` link's word-fallback. Never shown any more: it used to appear below
+   768px, where the blanket `kbd { display: none }` left the link a zero-width
+   tap target — but „legendă" is ~52px of the same phone bar the top nav needs
+   for its labels, and the `?` glyph says the same thing in 18px. The ≤768px
+   block exempts `.shortcuts-link kbd` from the hide instead, so the key cap
+   itself survives as the target. Kept in the markup (and in `title`) rather
+   than deleted, so the link still has a text accessible name. */
+.shortcuts-alt {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 /* ── Site nav (footer.php) ──
    The one navigation bar. Icon + label down to 900px, icon alone below that:
@@ -2059,10 +2128,17 @@ body.page-doc {
 /* Below 900px the label is gone, so the underline has to ride the icon instead. */
 @media (min-width: 901px) { .nav-item.is-current .nav-icon { border-bottom: 0; } }
 
+/* Scoped to `.site-nav` on purpose. `.nav-label` is the same class in *both*
+   bars, so an unscoped rule here also stripped the labels off `.top-nav-item`
+   — the header ended up a row of bare emoji on a phone, which is exactly what
+   the "icon + label always" comment above says the top bar exists to avoid.
+   The room for those labels comes from the two controls flanking them: the `?`
+   link drops the word „legendă" for its own glyph, and the filter button drops
+   „filtre" for its icon. See `.shortcuts-alt` and `.filter-btn-label`. */
 @media (max-width: 900px) {
   .site-nav { gap: 14px; }
-  .nav-label { display: none; }
-  .nav-icon { font-size: 0.9375rem; }
+  .site-nav .nav-label { display: none; }
+  .site-nav .nav-icon { font-size: 0.9375rem; }
   /* GitHub has no icon of its own — the ↗ would read as a bare arrow. */
   .site-nav a[target="_blank"] { display: none; }
 }
@@ -2334,10 +2410,20 @@ kbd {
     min-width: 0;
   }
   .play-btn { padding: 0 7px; }
+  /* The icon alone; `aria-label="Filtre"` on the button already carries the
+     name, and the three bars are the one glyph in this bar nobody misreads.
+     ~40px back for the top nav's labels. */
   .filter-toggle-btn { padding: 0 8px; }
+  .filter-btn-label { display: none; }
   .result-count { display: none; }
   .brand-tag { display: none; }
   .view-toggle { display: none; }
+
+  /* Labels are back in the top nav at this width (see `.site-nav .nav-label`),
+     so the bar pays for them here: tighter gaps and a step down in type. */
+  .top-nav { gap: 10px; }
+  .top-nav-item { font-size: 0.6875rem; gap: 3px; }
+  .top-nav-item .nav-icon { font-size: 0.75rem; }
 
   /* Mobile word list. The desktop 10.5rem column needs 344px of content box for
      two tracks, which a 375px phone does not have once the padding is off — it
@@ -2409,11 +2495,16 @@ kbd {
   }
   .fp-close-x { display: none; }
   .fp-close-back { display: inline; }
-  .fp-btns { flex-wrap: wrap; }
+  /* 40px: the marks are what you came to the sheet to press, and on a phone
+     they are pressed with a thumb while the other hand holds the device. The
+     key caps go — there is no keyboard to hint at — which is what buys the
+     height back inside the same row. */
+  .fp-btns { flex-wrap: wrap; gap: 6px; }
   .qt-key { display: none; }
-  .qt-btn { font-size: 0.6875rem; height: 28px; flex: 1 1 0; }
-  #bookmark-btn { height: 28px; }
-  #tag-input { height: 28px; width: 100%; }
+  .qt-btn { font-size: 0.8125rem; height: 40px; flex: 1 1 0; padding: 0 8px; justify-content: center; }
+  .quick-tags { gap: 6px; flex: 1 1 auto; }
+  #bookmark-btn { height: 40px; font-size: 0.75rem; }
+  #tag-input { height: 32px; width: 100%; }
 
   /* Status bar */
   #status-bar {
@@ -2427,7 +2518,10 @@ kbd {
   }
   .status-right { gap: 8px; }
   .status-right a { font-size: 0.6875rem; }
+  /* Keyboard hints mean nothing on a phone — except the `?` cap, which is the
+     shortcuts/legend link's whole visible body here (see `.shortcuts-alt`). */
   kbd { display: none; }
+  .shortcuts-link kbd { display: inline-block; }
 
   /* Filter sheet: full-width on mobile */
   .filter-sheet {

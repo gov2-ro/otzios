@@ -495,6 +495,113 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     are `display:none` la încărcare și se deschide doar la click, la `/`, sau dacă URL-ul
     vine cu `q`. Captura din backlog e dintr-un build anterior sau cu o căutare activă.
 
+  - [x] show top nav labels also on mobile - you can instead replace legendă with question
+    mark, and remove 'filtre' label - keep the icon — **era un bug de scop, nu o decizie**:
+    `.nav-label` e aceeași clasă în ambele bare, iar regula `@media (max-width: 900px) {
+    .nav-label { display: none } }` era scrisă pentru `.site-nav` din footer și lua tăcut
+    etichetele și din `.top-nav`. Headerul rămânea un rând de emoji goale pe telefon — exact
+    ce spune comentariul de deasupra lui `.top-nav-item` că bara de sus există ca să evite.
+    Acum e `.site-nav .nav-label`.
+    - Loc făcut din cei doi vecini, cum cerea nota: `.shortcuts-alt` („legendă", ~52px) devine
+      vizual-ascuns permanent și în schimb `.shortcuts-link kbd` e exceptat de la
+      `kbd { display: none }`, deci linkul rămâne capsula `?` de 18px; iar `filtre` e acum
+      `<span class="filter-btn-label">`, ascuns sub 768px. Ambele controale își păstrează
+      numele accesibil (`title` / `aria-label="Filtre"`), deci nu dispare nimic pentru un
+      cititor de ecran — doar pixelii.
+    - Bara plătește restul: `.top-nav` gap 14→10px și `.top-nav-item` 0.75→0.6875rem sub 768px.
+
+  - [x] make footer more compact, remove vertical padding — `#status-bar` trece de la
+    `5px 16px` la `0 16px` și `.status-right` de la gap 14 la 10px. Cel mai înalt lucru din
+    bară e un control `--sm` de 20px, deci paddingul vertical adăuga o treime din înălțimea
+    barei degeaba. Paddingul orizontal rămâne: ăla e marginea paginii, nu decor.
+
+  - [ ] joc: make it more compact, eliminate unnecessary padding, hide footer, try to make header fit in one row. avoid/minimize the necessity of scrolling. 
+  
+- [ ] jocuri
+    - [ ] rename nav menu idem from 'Joc' to 'Quiz' -> joc.php -> ghici.php
+    - [ ] add url param for each game. ghici?game=sensuri|grila
+    - [ ] hide word definition for 'sensuri' also div.joc-pos and span.fp-pos-line - they are spoilers.
+    - [ ] horizontally center joc tools, quiz type selector, points, clasament - top right can be ignored on large desktops.
+    - [ ] sensuri: move tags (fav, lol, meh) above definition for easy accessibility. make them larger.
+    - [ ] grilă: add quick actions tagging buttons next to each word (just the icons ⭐️,🤣,⛔️)
+    - [ ] avoid 'meh' words from games
+    - [ ] advance in 1s after correct answer?
+
+- [x] make tagging buttons a bit larger, both on desktop, but even more on mobile, easy thumb
+  targets. — `.qt-btn` 22→30px pe desktop (font 0.625→0.75rem), **40px pe telefon**, la fel
+  `#bookmark-btn` (24→30/40px). Erau cel mai mic lucru interactiv din pagină fiind totodată
+  cel mai apăsat: marcarea *e* verbul sitului, iar publicarea unei colecții e un buton după
+  ea. Pe telefon înălțimea vine din capsulele de tastă, care oricum se ascund acolo — nu e
+  nicio tastatură la care să facă aluzie.
+
+- [x] make default / initial theme for new visitors: gov.uk — `DEFAULT_SKIN` în
+  `api/_skins.php`, `brutal` → `govuk`. Un vizitator cu un skin deja ales în localStorage nu
+  simte nimic; se schimbă doar ce primește cineva care ajunge prima oară.
+  - Al doilea loc, ușor de ratat: `despre.html` e static din 260812 și are **o copie de mână**
+    a scriptului de boot pre-paint, cu lista de skinuri și defaultul înăuntru. Nesincronizat,
+    pagina „despre" ar fi fost singura din sit care se deschide în beton.
+
+- [x] naming: `voroave` – site will be hosted on `voroave.ro` – let's make the necessary
+  amendments. — titluri, `og:`/`twitter:` și mărcile vizibile: `stats`, `joc`, `liste`,
+  `lista`, `admin`, `despre`, `metodologie`, plus `title=` de pe marca din `header.php`
+  (unde scria și „negljate"). Wordmark-ul și `<title>`-ul de pe index erau deja mutate.
+  - **Identificatorii interne rămân `otios` și asta e intenționat.** Cookie-ul
+    `otios_dev` (`_auth.php:12`) *este* contul — identitatea e un token anonim de device, deci
+    redenumit ar da fiecărui vizitator un cont nou și i-ar orfaniza marcajele. La fel cheile
+    `otios.theme` / `otios.skin` / `otios.textscale` (preferințele s-ar reseta) și
+    `OTIOS_BASE` / `OTIOS_PRIVATE_DIR` / `OTIOS_ADMIN_TOKEN`, care sunt configurație de
+    instalare pe server. Redenumirea e strat de suprafață; stratul de stare nu se atinge.
+  - **Rămâne o decizie editorială:** `metodologie.html` explica de ce proiectul se numește
+    *Oțios* — un paragraf care era despre nume, deci nu putea fi lăsat neatins. Am scris
+    varianta minim adevărată (Voroave acum, Oțios înainte, cu povestea lui *oțios* păstrată
+    întreagă) și pe cea din timeline am lăsat-o cum era, fiind consemnare istorică. Merită
+    recitit de autor.
+
+- [x] center `header.brand-bar span.landing-tagline`. hide on mobile — `flex: 1` +
+  `text-align: center`, nu poziționare absolută: centrează în golul lăsat de cele două
+  grupuri, ceea ce *citește* ca centrat și — spre deosebire de `absolute` — nu poate ajunge
+  sub ele când bara se strânge. E primul lucru care cedează, deci face ellipsis în loc să
+  împingă controalele. Ascuns sub 901px, aceeași trecere ca etichetele de navigare.
+  - Capcană prinsă la scriere, nu la verificare: `--text-3` e un token de fundal de *pagină*,
+    iar `govuk` și `registru` forțează `.brand-bar` neagră în ambele teme — deci textul ar fi
+    ieșit aproape-negru pe negru. Re-ancorat în ambele skinuri (`--gv-on-bar-2` /
+    `--rg-on-bar-2`), exact lista pe care CLAUDE.md o ține pentru orice locuiește în bara aia.
+    Contează mai mult acum: `govuk` e skinul implicit de mai sus.
+
+- [x] theme toggler (.status-prefs .theme-toggle) - only show the available option, hide the
+  currently active theme (so always only one icon). Same goes for #view-toggle — un grup de
+  două butoane din care unul e permanent aprins cheltuie două glife ca să spună un bit.
+  Ascuns cel activ, fiecare devine un buton a cărui față *e* destinația (☾ = „treci pe
+  întuneric", ≡ = „arată tabelul"), și footerul câștigă ~26px de fiecare.
+  - **Tema se leagă de `:root[data-theme]`, nu de clasa `tg-active`.** Atributul e pus de
+    scriptul pre-paint din `_skins.php`; clasa o pune `prefs.js` la load, deci ca regulă
+    condusă de JS ambele capsule ar fi clipit înainte să ruleze. Vederea poate folosi clasa,
+    fiindcă `#btn-cloud` vine cu `vt-active` chiar din markupul lui `index.php`.
+  - **Separatorul `+` a trebuit șters, nu resetat.** `.tg-btn + .tg-btn` se potrivește în
+    continuare cu un frate `display:none`, deci supraviețuitorul desena o bordură la stânga
+    fără nimic lângă ea — iar resetul nu putea câștiga: `brutal` restatează regula la (0,3,0)
+    și încă o dată la (1,3,0) sub `#status-bar`, ambele încărcate după `app.css`. Cu un
+    singur buton vizibil per grup separatorul e cod mort, deci a plecat și din `brutal.css`.
+    `.scale-btn` și-l păstrează — grupul ăla chiar are două butoane.
+
+- [x] download add to repo external resources, google fonts and htmx. anything else? —
+  `assets/lib/htmx-2.0.4.min.js` + `assets/fonts/{app,doc}-fonts.css` și 20 de fișiere woff2
+  (796 KB). Zero cereri către terți la încărcarea oricărei pagini.
+  - **htmx e verificat, nu doar descărcat:** sha384 al fișierului luat de pe unpkg e
+    identic cu `integrity=` care era deja în pagini, deci e bit-cu-bit ce servea CDN-ul.
+    Atributele `integrity`/`crossorigin` au plecat odată cu originea străină.
+  - **Doar tăieturile `latin` și `latin-ext`.** Acolo stau ă â î ș ț; chirilicul, greaca și
+    vietnameza erau greutate moartă pe un sit românesc. Axele variabile s-au păstrat
+    (`font-weight: 200 900` la Source Serif 4), deci nu s-a pierdut nicio grosime.
+  - **Două foi, nu una:** paginile de aplicație cer Source Serif 4 / Public Sans / IBM Plex
+    Mono, `metodologie.html` cere Inter Tight / JetBrains Mono. O foaie comună ar fi pus 130
+    KB de Inter Tight pe explorer degeaba. `despre.html` folosește setul de aplicație.
+  - **Rămâne extern, deliberat:** `scripts.simpleanalyticscdn.com` (index + metodologie). E
+    un tracker prin definiție — auto-găzduit nu mai măsoară nimic. Dacă independența de terți
+    e scopul, decizia e să plece de tot, nu să se mute; e o alegere de produs, nu de build.
+  - Scriptul care le-a adus: `tools/fetch_fonts.sh` (UA de browser, altfel API-ul css2 dă ttf
+    în loc de woff2). De rerulat doar când se schimbă un font.
+
 - [x] select[name="marks"] instead of anotate / neanotate - have marcate / nemarcate —
   etichetele sunt acum `nemarcate` / `marcate` („annotate" era și scris greșit). *Valorile*
   rămân `unmarked`/`marked`: sunt stare de URL, citită de `markedWordsForFilter()`.
@@ -529,7 +636,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     descrie exact același comportament. Era un copil nebifat sub un părinte bifat care spunea
     același lucru (verificat 260810).
 
-- [ ] create 'Despre' page - put in header instead of 'Statistici' & 'Metodologie' which will be linked from 'Despre'. 
+- [x] create 'Despre' page - put in header instead of 'Statistici' & 'Metodologie' which will be linked from 'Despre'. 
 
 - [x] Publish top faves list, hide/demote meh words for everyone else. Use the manual annotations for ordering the list.
 
@@ -601,16 +708,16 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   ~4.5h la podeaua de 1.2s, cu lock pe host) rămâne condiția ca filtrul să însemne ceva pe
   `curiosity`.
 
-- [ ] reread backlog, tick what's already done against activity log, prioritize tasks. Publish PRs? 
+- [ ] ascunde cuvinte care au în definiție 'vezi ...' + alt cuvânt care suna f similar?
 
-- [ ] another data quality run? – use more input sources?
+- [x] another data quality run? – use more input sources?
 
   Prea vag ca să fie un task: e un proiect. Reclamațiile concrete există deja, scrise, în
   secțiunea **260519 Data Audit** de mai jos (definiții lipsă la formele feminine, grafii
   variante care poluează explorarea, `fost` / `văr` / `nepot`). De spart în verificări cu
   nume, plecând de acolo — nu e un blocant de soft-launch în forma asta.
 
-- [ ] use other corpuses? [romanian-nlp-datasets](https://github.com/AndyTheFactory/romanian-nlp-datasets), [LUMRO](https://github.com/upb-nlp/LUMRO), [RELATE](https://relate.racai.ro/) - Romanian Portal of Language Technologies, [Romanian text corpora](https://www.sketchengine.eu/corpora-and-languages/romanian-text-corpora/), [A Culturally-Rich Romanian NLP Dataset from "Who Wants to Be a Millionaire?" Videos](https://arxiv.org/html/2506.05991), [Statistics of a Large-Scale Romanian Corpus for Language Modelling](https://rjp.nipne.ro/2025_70_7-8/RomJPhys.70.111.pdf), [Resources and Tools for Computational Linguistics](https://nlp.unibuc.ro/resources.html), [Natural Language Processing Tools for Romanian – Going Beyond a Low-Resource Language](https://ixdea.org/wp-content/uploads/IxDEA_art/60/60_SP_1.pdf) etc?
+- [x] use other corpuses? [romanian-nlp-datasets](https://github.com/AndyTheFactory/romanian-nlp-datasets), [LUMRO](https://github.com/upb-nlp/LUMRO), [RELATE](https://relate.racai.ro/) - Romanian Portal of Language Technologies, [Romanian text corpora](https://www.sketchengine.eu/corpora-and-languages/romanian-text-corpora/), [A Culturally-Rich Romanian NLP Dataset from "Who Wants to Be a Millionaire?" Videos](https://arxiv.org/html/2506.05991), [Statistics of a Large-Scale Romanian Corpus for Language Modelling](https://rjp.nipne.ro/2025_70_7-8/RomJPhys.70.111.pdf), [Resources and Tools for Computational Linguistics](https://nlp.unibuc.ro/resources.html), [Natural Language Processing Tools for Romanian – Going Beyond a Low-Resource Language](https://ixdea.org/wp-content/uploads/IxDEA_art/60/60_SP_1.pdf) etc?
   
   - [ ] see: [260810 Grok - extend corpuses analysis](/docs/reference/260810%20Grok%20-%20extend%20corpuses%20analysis.md), [Gemini - Romanian NLP Corpora and Tools](docs/reference/260810%20Gemini%20-%20Romanian%20NLP%20Corpora%20and%20Tools.md)
 
@@ -714,7 +821,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   erau exact pe pragul de zgomot și scalarea proporțională taie în ambele sensuri. E
   comportamentul corect, nu un defect nou.
 
-- [ ] explain how to use the site, how it works, how tagging / lists work.
+- [x] explain how to use the site, how it works, how tagging / lists work.
 
 - [ ] **`tests/test_store_sync.js` pică la „sync watermark stored"** (observat 260810, nu
   introdus atunci — reprodus și cu `store.js` din HEAD, deci e anterior). Verificarea e
@@ -725,7 +832,9 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 ---
 
-- [ ] check consistency, when a word is tagged by myself the tag is activated in the info box
+- [ ] Colecții viewer atât comoact cât și cu detalii / meta, să vedem ce nu ne place 
+
+- [x] check consistency, when a word is tagged by myself the tag is activated in the info box
 
 - [ ] build an even more straightforward quick tagging UI? annotation optimized ui.
 
@@ -734,6 +843,8 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] rescriu metodologie după înțelegerea mea – then create a llm/human version tool, that shows the selected version in context - same page section
 
 - [ ] add contact, gform sau tally.so 
+
+- [ ] can I git pull/sync just the `/public/` subfolder? 
 
 - [ ] why don't se use the same set of filters pentru stats?
 
