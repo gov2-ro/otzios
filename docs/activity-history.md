@@ -4,6 +4,38 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-13 — The pin input was named `word`, and no definition opened
+
+Reported as "select a word and the definition box doesn't open any more", introduced by the
+share-lands-on-its-word change earlier the same day.
+
+**`hx-include` is inherited in htmx.** `#word-list` carries
+`hx-include="#filter-form, #search"`, so every `.word-row` inside it sends the whole filter
+form along with its own request — and a row's request is
+`api/word.php?word=<its word>`. The pin had been added as a hidden input *named `word`*
+inside that form, so each row's URL arrived as `…word=potcă&…&word=`. PHP keeps the last
+occurrence: `api/word.php` saw an empty word, answered **400**, htmx swapped nothing, and
+every word on the site stopped opening — from a diff that never mentions `word.php`.
+
+Renamed to `pin` (`pin_order_sql()` reads `$p['pin']`; the element id `share-word` and every
+JS reference to it are unchanged, so `closePanel()` and the reload branch still clear it).
+Nothing else moved: the relax map, the ORDER BY, the URL and `word_scope()` are all as they
+were.
+
+Reproduced and re-verified in Chromium via Playwright — click a row, click a second row,
+open a `?word=` share, close it and click again, and click with non-default filters: panel
+opens in all five, no page errors, no non-200 `word.php`. `tests/test_share_view.js` gains
+§9, which asserts the input's name *and* replays what `hx-include` does to a row's URL, so
+the collision cannot come back under another param name.
+
+Two stale things found on the way, both from the previous round and both fixed:
+`tests/test_colectii.js`'s `chip()` still read `.agg-marks` from *before* the headword,
+which the compaction commit had moved after it — failing silently rather than emptily,
+since it returned the previous row's real numbers. (`tests/test_store_sync.js` also fails on
+this build, identically before and after this change; left alone.)
+
+---
+
 ## 2026-08-13 — A shared word arrives with its row
 
 The question was whether `?word=` ignores the filter sheet, and half the answer was already

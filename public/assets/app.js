@@ -1286,7 +1286,9 @@ function applyUrlToForm() {
   //
   // Being in the list is only half of it: with the seam relaxed a `curiosity` word still
   // ranks thousands of rows down, so it is also pinned to the top for this one request.
-  // That half is the hidden #share-word input and pin_order_sql() on the server.
+  // That half is the hidden #share-word input — which posts as `pin`, never as `word`:
+  // the rows inherit this form through hx-include and carry their own `word` in the URL,
+  // and a second empty one appended to it is what PHP would keep. See pin_order_sql().
   var wordParam = params.get('word');
   if (wordParam) {
     openWord = wordParam;

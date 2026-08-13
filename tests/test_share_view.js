@@ -98,7 +98,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
                          [variant,   `seam=relevant,curiosity&variants=show`],
                          [regional,  `regional=show`],
                          [inView,    ``]]) {
-    const first = await firstWord(`word=${enc(w)}&${qs}`);
+    const first = await firstWord(`pin=${enc(w)}&${qs}`);
     check(first === w, `„${w}" is row 1 of ${totalIn(await search(qs))}`);
   }
 
@@ -106,7 +106,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   // It moves a row the filters already admit; it never admits one. Otherwise the list
   // would quietly contain a word its own controls say it should not — the mirror image
   // of the bug this file is about, and just as unexplainable from the page.
-  const pinnedNarrow = await search(`word=${enc(curiosity)}`);
+  const pinnedNarrow = await search(`pin=${enc(curiosity)}`);
   check(!wordsIn(pinnedNarrow).includes(curiosity),
     `„${curiosity}" pinned but not relaxed → still absent`);
   check(totalIn(pinnedNarrow) === dfltTotal,
@@ -116,12 +116,12 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   // The pin is part of one global order that every page request repeats (the hidden
   // #share-word input rides inside the form, so `next_url` carries it). Were it applied
   // per page, the word would head page 2 and page 3 as well.
-  const qs = `word=${enc(curiosity)}&seam=relevant,curiosity`;
+  const qs = `pin=${enc(curiosity)}&seam=relevant,curiosity`;
   for (const page of [1, 2, 3]) {
     const n = wordsIn(await search(`${qs}&page=${page}`)).filter((x) => x === curiosity).length;
     check(n === (page === 1 ? 1 : 0), `page ${page}: appears ${n}×`);
   }
-  check((await search(qs)).includes(`word=${enc(curiosity)}`),
+  check((await search(qs)).includes(`pin=${enc(curiosity)}`),
     'the load-more URL carries the pin into the next page');
 
   console.log('\n8. The pin outranks the curator demotion');
@@ -130,11 +130,36 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   // is prefixed ahead of demote_order_sql().
   const demoted = await firstWord('editorial=only');
   if (demoted) {
-    check(await firstWord(`word=${enc(demoted)}`) === demoted,
+    check(await firstWord(`pin=${enc(demoted)}`) === demoted,
       `„${demoted}" is demoted and still lands first when shared`);
   } else {
     console.log('  SKIP  no curator-demoted word in this build');
   }
+
+  console.log('\n9. The pin input is named `pin`, and clicking a word still opens it');
+  // The regression this section exists for: the pin rode in a hidden input named `word`,
+  // inside #filter-form. `hx-include` is inherited in htmx, so `#word-list`'s
+  // `hx-include="#filter-form, #search"` applies to every `.word-row` in it — and a row's
+  // own request is `api/word.php?word=<its word>`. The form appended a second, empty
+  // `word=`; PHP keeps the last occurrence, so the panel endpoint saw `''` and answered
+  // 400. Every word on the site stopped opening, with nothing in the diff naming
+  // `word.php`. Both halves are checked: the input's name, and the request it corrupted.
+  const home = await text(`${BASE}/`);
+  const pinInput = home.match(/<input[^>]*id="share-word"[^>]*>/)?.[0] || '';
+  check(/name="pin"/.test(pinInput), 'the hidden pin input posts as `pin`');
+  check(!/name="word"/.test(pinInput), 'and never as `word`, which the rows already use');
+
+  // The row's own URL, taken from the markup the list actually renders, with every
+  // hidden input of #filter-form appended empty behind it — which is what hx-include
+  // does to it in the browser. Any of them named `word` overwrites the row's own.
+  const rowUrl  = (await search('')).match(/hx-get="([^"]*word\.php[^"]*)"/)[1].replace(/&amp;/g, '&');
+  const hiddens = [...home.matchAll(/<input type="hidden"[^>]*name="([^"]*)"/g)].map((m) => m[1]);
+  check(!hiddens.includes('word'),
+    `no hidden input shadows the row's own param (${hiddens.join(', ')})`);
+  const asRowSends = await fetch(
+    `${BASE}${rowUrl}&${hiddens.map((n) => n + '=').join('&')}`);
+  check(asRowSends.status === 200,
+    `a row's request survives the form riding along with it (${asRowSends.status})`);
 
   console.log(failures === 0 ? '\nAll passed.\n' : `\n${failures} FAILED\n`);
   process.exit(failures === 0 ? 0 : 1);

@@ -1570,11 +1570,22 @@ Five things to keep:
    state back, that is what most shared links carry.
 4. **`editorial` is left alone**, because `back` demotes rather than hides — the word is in
    the list already, and the pin is what makes it reachable.
-5. **The pin rides in a hidden `word` input inside `#filter-form`**, so htmx sends it with
+5. **The pin rides in a hidden input inside `#filter-form`**, so htmx sends it with
    the first search and `next_url` carries it into every load-more. That is what makes it
    one global order — applied per page instead, the word would head page 2 and page 3 as
    well. `closePanel()` and the reload branch both clear it, since that is the moment the
    URL stops naming the word.
+
+   **It posts as `pin`, never as `word`, and that is the whole of a real outage.**
+   `hx-include` is one of htmx's *inherited* attributes, so `#word-list`'s
+   `hx-include="#filter-form, #search"` applies to every `.word-row` inside it — a row's
+   own request is `api/word.php?word=<its word>`, and the form appended a second, empty
+   `word=` behind it. PHP keeps the last occurrence, so the panel endpoint saw `''`,
+   answered 400, and **no word on the site opened its definition any more** — from a diff
+   that never mentions `word.php`. Anything new put in this form has to be checked against
+   the params the *rows* send, not only against `build_word_filter()`'s. Pinned by
+   `tests/test_share_view.js` §9, which asserts both the input's name and that a row's URL
+   survives the form riding along with it.
 
 `word_scope()` is not involved: it never reads `word`, so a share is not a third scope
 alongside `q` and `w=`. It is the ordinary filtered list with two of its own controls moved

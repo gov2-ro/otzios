@@ -55,16 +55,23 @@ const words = (html) => [...html.matchAll(/class="lista-word" href="[^"]*\?word=
 const page = (f, qs = '') => f(`${BASE}/colectii.php${qs}`).then(async (r) => ({
   status: r.status, html: await r.text(),
 }));
-// The chip that precedes a headword: `<span class="agg-n">N</span> · ★a 🤣b`. Taken from
-// the *last* .agg-marks before the link, not the first — every row has one.
+// The chip that follows a headword: `★a · 🤣b · ⛔️c`, inline between the word and its
+// POS/register tags. Taken from the *first* .agg-marks after the link — every row has
+// at most one, and the next row's link is what bounds it.
+//
+// It sat *before* the headword as a block until the 2026-08-13 compaction, and reading
+// it from the wrong side is silent rather than empty: `lastIndexOf` before the anchor
+// happily returned the previous row's chip, so the numbers were real and belonged to
+// another word.
 const chip = (html, word) => {
   const at = html.indexOf(`?word=${encodeURIComponent(word)}"`);
   if (at < 0) return null;
-  const from = html.lastIndexOf('<span class="agg-marks"', at);
+  const from = html.indexOf('<span class="agg-marks"', at);
   if (from < 0) return null;
-  let s = html.slice(from, at);
-  s = s.slice(0, s.lastIndexOf('<'));           // drop the half-open <a …href=" we cut into
-  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const next = html.indexOf('class="lista-item"', at);
+  if (next >= 0 && from > next) return null;    // this row has no chip; don't read the next one's
+  const end = html.indexOf('</span>', from);
+  return html.slice(from, end).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
 // The chip as numbers: { lead, fav, lol }. The test asserts *deltas* on these rather than

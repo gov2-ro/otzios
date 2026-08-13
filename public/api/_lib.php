@@ -465,15 +465,21 @@ function share_relax_params(string $word): array {
  * Pinning in the ORDER BY rather than the WHERE is what keeps this honest: the row is in
  * the set on its own merits, this only decides where it sits. It also cannot duplicate
  * across pages — the term is part of one global order that every page request repeats
- * (the hidden `word` input is inside #filter-form, so htmx sends it with the initial
+ * (the hidden `pin` input is inside #filter-form, so htmx sends it with the initial
  * search and `next_url` carries it into every load-more), so the pinned row is rank 1 and
  * appears on page 1 only. A word that is not in the result set makes the term a no-op.
+ *
+ * **The param is `pin`, not `word`, and that is not cosmetic.** `hx-include` is inherited
+ * in htmx, so every `.word-row` inside `#word-list` sends this whole form along with its
+ * own `api/word.php?word=<row>` — a hidden input named `word` appended an empty second
+ * copy, PHP kept the last, and clicking any word 400'd instead of opening its definition.
+ * Pinned by tests/test_share_view.js §8.
  *
  * Binds one param, which the caller must merge *after* the WHERE params and *before*
  * LIMIT/OFFSET — placeholders are positional.
  */
 function pin_order_sql(array $p, array &$params): string {
-    $word = trim((string) ($p['word'] ?? ''));
+    $word = trim((string) ($p['pin'] ?? ''));
     if ($word === '' || mb_strlen($word) > 64) return '';
     $params[] = $word;
     return '(words.word = ?) DESC, ';

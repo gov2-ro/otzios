@@ -464,8 +464,16 @@ global $QUICK_TAGS, $POS_OPTIONS;
          the form so htmx sends it with the first search *and* with every load-more (the
          `next_url` is built from $_GET), which is what keeps the pin part of one global
          order instead of putting the word at the top of every page. It is not a filter:
-         word_scope() never reads it, and pin_order_sql() only touches the ORDER BY. -->
-    <input type="hidden" id="share-word" name="word" value="">
+         word_scope() never reads it, and pin_order_sql() only touches the ORDER BY.
+
+         **The param is `pin`, and it must never be `word`.** `hx-include` is one of
+         htmx's inherited attributes, so `#word-list`'s `hx-include="#filter-form, #search"`
+         applies to every `.word-row` inside it — and a row's own request is
+         `api/word.php?word=<the row's word>`. Named `word`, this input appended a second,
+         empty `word=` to that URL; PHP keeps the last one, so `api/word.php` saw `''`,
+         answered 400, and clicking a word opened nothing at all. The collision is silent
+         in both directions — nothing here knows the rows borrow this form. -->
+    <input type="hidden" id="share-word" name="pin" value="">
   </form>
 
   <div class="word-area">
