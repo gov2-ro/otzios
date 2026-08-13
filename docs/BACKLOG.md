@@ -968,6 +968,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 ## Post launch
 
+- [ ] REBUS pentru masochiști
 - [ ] traffic analytics
 - [ ] SEO webmasters registrations
 - [ ] write scientific paper(s). 1. method, 2. conclusions – co-publish with academic?
