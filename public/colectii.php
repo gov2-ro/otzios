@@ -125,7 +125,12 @@ $desc = $tab === 'respinse'
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
   <?= otios_skin_links() ?>
   <style>
-    .lista-wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 64px; }
+    /* Full width on purpose — the other lista-wrap pages (lista.php, liste.php) keep the
+       760px reading column, but this page's rows are short enough that a wide screen just
+       wastes space either side. See .colectii-grid below for what fills it back in. Capped
+       at 1600px rather than truly unbounded — past that a 4-column row keeps stretching
+       and the gap between columns starts reading as empty space rather than a gutter. */
+    .lista-wrap { max-width: 1600px; margin: 0 auto; padding: 28px clamp(16px, 4vw, 48px) 64px; }
     .liste-h1 { font-family: var(--serif); font-size: 1.75rem; font-weight: 600; color: var(--text); margin: 0 0 4px; }
     .liste-lede { color: var(--text-2); font-size: 0.9375rem; margin: 0 0 6px; }
     .agg-crosslink { font-size: 0.875rem; margin: 0 0 22px; }
@@ -134,6 +139,21 @@ $desc = $tab === 'respinse'
     .agg-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
     .agg-bar a.playlist-btn { text-decoration: none; display: inline-block; }
     .agg-note { font-family: var(--mono); font-size: 0.6875rem; color: var(--text-4); margin: 0 0 14px; }
+
+    /* Up to 4 columns as the viewport grows. Row heights are not matched across columns
+       (rows vary with definition length), so this stays a plain grid rather than trying to
+       fake masonry — .lista-item's border-bottom is dropped here instead of pinning every
+       row to the same height just to keep a line meeting its neighbours. */
+    .colectii-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      column-gap: 40px;
+    }
+    .colectii-grid .lista-item { border-bottom: none; padding: 8px 0; }
+    .colectii-grid .lista-def { line-height: 1.4; }
+    @media (min-width: 680px)  { .colectii-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1080px) { .colectii-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 1480px) { .colectii-grid { grid-template-columns: repeat(4, 1fr); } }
   </style>
     <!-- favicon -->
   <link rel="icon" type="image/png" href="/assets/favicon/favicon-96x96.png" sizes="96x96" />
@@ -194,6 +214,7 @@ $desc = $tab === 'respinse'
         · numărul este câți oameni au marcat cuvântul, nu de câte ori
       </p>
 
+      <div class="colectii-grid">
       <?php foreach ($rows as $w):
         $pos  = explode('|', $w['dex_pos'] ?? '')[0];
         $reg  = explode('|', $w['dex_register'] ?? '')[0];
@@ -201,35 +222,32 @@ $desc = $tab === 'respinse'
         $def  = $w['definition'] !== null
             ? mb_strimwidth(explode('|', $w['definition'])[0], 0, 260, '…')
             : null;
+
+        // Components only, no ranking total — the person who marked ★ and the person who
+        // marked 🤣 are each named, rather than folded into the n_up count that decided the
+        // sort. Grouped up-vs-down rather than a flat list: a word one visitor ★'d and
+        // another ⛔️'d is on both tabs honestly (fav-beats-meh is per *person*, not per
+        // word), so the tab's own kind of mark leads and the other kind follows after „·".
+        $up = array_filter([
+            (int) $w['n_fav'] > 0 ? '★' . (int) $w['n_fav'] : null,
+            (int) $w['n_lol'] > 0 ? '🤣' . (int) $w['n_lol'] : null,
+        ]);
+        $down  = (int) $w['n_down'] > 0 ? ['⛔️' . (int) $w['n_down']] : [];
+        $order = $tab === 'respinse' ? [$down, $up] : [$up, $down];
+        $marks = implode(' · ', array_filter(array_map(
+            fn($g) => implode(' ', $g), $order
+        )));
       ?>
         <div class="lista-item">
-          <?php
-          // The lead number is the ranking: how many *people*. n_fav/n_lol follow it as a
-          // breakdown and may sum higher — someone who both ★'d and 🤣'd a word counts
-          // once in the ranking and appears in both. Hence the two levels of separator:
-          // one „·" after the lead, plain spaces inside the breakdown.
-          //
-          // **The breakdown is drawn on the „respinse" tab too, and that is the point.**
-          // The fav-beats-meh precedence is per *person*, not per word — a word one
-          // visitor ★'d and another ⛔️'d is on both tabs, honestly. Leading with „⛔️4"
-          // and saying nothing else would report a word 19 people liked as rejected.
-          $break = [];
-          if ((int) $w['n_fav'] > 0) $break[] = '★' . (int) $w['n_fav'];
-          if ((int) $w['n_lol'] > 0) $break[] = '🤣' . (int) $w['n_lol'];
-          if ($tab === 'respinse' && (int) $w['n_up'] === 0) $break = [];
-          ?>
-          <span class="agg-marks" title="Câți oameni au marcat cuvântul">
-            <?php if ($tab === 'respinse'): ?>⛔️ <?php endif
-            ?><span class="agg-n"><?= (int) $w[$col] ?></span><?php
-            if ($break): ?> · <?= implode(' ', $break) ?><?php endif; ?>
-          </span>
           <a class="lista-word" href="<?= BASE ?>/?word=<?= urlenc($w['word']) ?>"><?= e($w['word']) ?></a>
+          <?php if ($marks !== ''): ?><span class="agg-marks" title="Câți oameni au marcat cuvântul"><?= $marks ?></span><?php endif; ?>
           <?php if ($meta): ?><span class="lista-tags"><?= e($meta) ?></span><?php endif; ?>
           <p class="lista-def<?= $def === null ? ' lista-nodef' : '' ?>">
             <?= $def === null ? 'fără definiție' : e($def) ?>
           </p>
         </div>
       <?php endforeach; ?>
+      </div>
     <?php endif; ?>
   </div>
 

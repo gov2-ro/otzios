@@ -2827,15 +2827,14 @@ kbd {
 .lista-nodef { color: var(--text-4); font-style: italic; }
 .lista-empty { color: var(--text-3); padding: 30px 0; }
 
-/* The mark counts above a headword on colectii.php. Mono and tabular so the columns
-   line up down the page — the counts are the ranking, so they have to be scannable
-   as a column rather than read one row at a time. */
+/* The per-mark breakdown (★ 🤣 ⛔️) inline on the word row of colectii.php, between the
+   headword and its POS/register tags. Mono and tabular so the counts stay scannable
+   as the word's own length varies. */
 .agg-marks {
   font-family: var(--mono); font-size: 0.6875rem; color: var(--text-3);
   font-variant-numeric: tabular-nums; letter-spacing: .02em;
-  display: block; margin-bottom: 2px;
+  margin-left: 8px;
 }
-.agg-marks .agg-n { color: var(--text-2); font-weight: 600; }
 
 /* ── Leaderboard (joc.php) ───────────────────────────────────────────────────── */
 
