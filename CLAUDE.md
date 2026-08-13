@@ -1043,7 +1043,8 @@ Before them, each page rolled its own bar and `stats.php` had no brand at all.
 **Identity plus travel at the top as far as the width allows; the overflow and the display
 preferences at the bottom.** `header.php` is brand, a top nav, and whatever is genuinely
 page-specific (search, count, play, filters). `footer.php` is GitHub plus the
-text-scale/skin/theme toggles, since those are the same on every page. `cuvinte` (index)
+text-scale/skin/theme toggles, since those are the same on every page — **it draws no nav
+entries at all any more**, see below. `cuvinte` (index)
 appears in neither — the brand mark already links home on every page, so a nav entry to the
 same place was pure redundancy. The split exists at all because the explorer's top bar was
 already carrying brand, search, count, play and filters, and a full five-entry nav plus
@@ -1058,14 +1059,41 @@ overview first. They stay in `NAV_ITEMS` so `$page` still marks them `aria-curre
 two partials name the keys they draw rather than diffing the const, or a diff would put
 them silently back.
 
-**`despre` is rendered by *both* partials, and app.css shows exactly
-one — the header from 901px up, the footer below it.** They carry `top-nav-item--wide` /
-`nav-item--wide` and there is no width at which they appear twice or vanish. The two
-statements this reconciles are both true and neither was negotiable: a phone bar cannot
-take four labelled nav entries (measured — that is what produced this split in the first
-place), and burying the two pages that *explain the project* in a footer under the display
-toggles hid them from the desktop reader who would actually follow them. `ghici` and `liste`
-stay in the header at every width; they are the two places people jump to mid-browse.
+**`despre` is in the header at every width — a labelled entry above 901px, the `?` chip
+below it. It is no longer in the footer at all** (2026-08-13). `ghici` and `liste` stay in
+the header at every width; they are the two places people jump to mid-browse.
+
+It used to be drawn by *both* partials with app.css picking one — header above 901px,
+footer below. **The footer half did not work.** Mobile readers did not press an ℹ️ parked
+at the end of a row of display toggles, so the page that explains what the marks mean went
+unread by exactly the readers with no other route to it — and „ce înseamnă *fav* / *lol* /
+*meh*" is a question only `despre` answers.
+
+The obvious fix is to promote it into the top nav at every width, and **it does not fit**:
+the top nav keeps its labels below 901px, so DESPRE with its icon and gap is ~69px of a
+390px bar that also carries the wordmark, a search toggle and the filter button. So it goes
+in as a glyph instead, in the slot `index.php`'s shortcuts `?` vacates at the same
+breakpoint:
+
+- **`.shortcuts-link--wide` / `--narrow` are one slot, one at a time.** The wide half is
+  the explorer's shortcuts/legend modal (index-only); the narrow half is header.php's link
+  to `despre`, drawn on every page. Same cap, same width, so the bar does not move at the
+  crossover on the page that has both. Measured over 4 pages × 6 skins × 9 widths: no
+  horizontal overflow anywhere, exactly one route to `despre` at every combination, never
+  two.
+- **The `?` is worth spending on `despre` because the modal is mostly keyboard
+  shortcuts** — unreachable on a phone — and the third of it that is the colour legend is
+  in `despre.html` verbatim. Nothing is lost below 901px; the marks are explained for the
+  first time.
+- **The chip is a 40×40 target with a 19×17 cap.** `min-width`/`min-height` plus `margin:
+  0 -4px`, so the box grows for the thumb and gives 8px back to the bar — the same trick
+  `.fp-close` uses, and the reason the 320px measurement still has no overflow. The `-4px`
+  bleed stops 1px short of `.brand-right`'s 6px gap, so it cannot swallow the search
+  toggle's clicks (pinned by measurement, not by eye).
+- **`ghici` hides the chip below 768px**, in its own style block beside the other things
+  that bar drops. It is ~26px with its gap, a third of the 70px deficit that block exists
+  to close. Nothing regresses: ghici hides the footer at that width too, so `despre` never
+  had a route from a phone-sized round — and between 769 and 900px the chip is there.
 
 That is about the `despre` *entry*, drawn on the pages that use the partials. **The despre
 page itself no longer draws either one** — it is static `despre.html` since 2026-08-12, with
@@ -1073,20 +1101,22 @@ the header nav inlined as a copy and no footer at all. `NAV_ITEMS` is still the 
 truth everywhere else; the copy in that one file is hand-maintained, and its own header
 comment says so.
 
-901px is reused deliberately: it is already the footer nav's label/icon breakpoint, so
-there is one crossover in `app.css` to keep in step rather than two that can drift.
+901px is reused deliberately: it was already the footer nav's label/icon breakpoint, so
+there is one crossover in `app.css` to keep in step rather than two that can drift. Both
+`--wide`/`--narrow` pairs sit on it.
 **`.top-nav-item--wide` must stay declared *after* `.top-nav-item`** — both are one class,
 so the cascade falls to source order, and above it the `display: none` silently loses and
-all four entries render on a phone.
+every entry renders on a phone.
 
-**Both partials now read `$page`**, so set it *before* requiring `header.php` (not only
-before `footer.php` as it used to be) — it marks the matching entry `aria-current="page"` in
-both the top nav and the footer nav. `lista.php` still deliberately leaves it unset: it is
-not `liste.php`, so nothing in either nav should render as current and stop being clickable.
+**`$page` marks the current entry in the top nav**, so set it *before* requiring
+`header.php`. `footer.php` still accepts it and no longer uses it — it has no nav entries
+left to mark. `lista.php` deliberately leaves it unset: it is not `liste.php`, so nothing
+in the nav should render as current and stop being clickable.
 
 `header.php` takes five optional slots, all raw HTML strings, so a caller can build one with
-`ob_start()` and keep writing ordinary markup: `$header_nav_extra` (appended inside the top
-nav, after ghici/liste — the explorer's `?` shortcuts/legend link, index-only), `$header_center`
+`ob_start()` and keep writing ordinary markup: `$header_nav_extra` (in the right cluster,
+after the `despre` chip — the explorer's `?` shortcuts/legend link, index-only and
+wide-only), `$header_center`
 (the explorer's collapsible search — a magnifier `.search-toggle-btn` that reveals `#search`
 inside `.search-wrap`, see `openSearch()`/`closeSearchIfEmpty()` in `app.js`), `$header_tools`
 (spinner + result count), `$header_after` (the filter button, which has
@@ -1101,18 +1131,26 @@ Five things to preserve:
 1. **`NAV_ITEMS` lives in `_lib.php`**, not in either partial — a `const` in an included
    file cannot be guarded against a second include, and it sits with `VERDICTS`/`TIERS`
    as the other list of user-facing strings drawn on every page. `header.php` loops the
-   four keys it draws with their width class; `footer.php` loops
-   an explicit `['despre']` list and tags it
-   `nav-item--wide`. Both read path/icon/label from `NAV_ITEMS` rather than restating them.
+   three keys it draws with their width class and reads `despre`'s path from it for the
+   chip too; `footer.php` draws none. Both read path/icon/label from `NAV_ITEMS` rather
+   than restating them.
 2. **The current page stays an `<a>`** with `aria-current="page"` and an accent underline.
    As a `<span>` it stopped matching every skin's `#status-bar a` rule and needed its own
    colour — and `var(--text)` is a *page*-ground token, which on beton's ink footer meant
    near-black on black. Never give this bar a colour of its own.
-3. **Every nav entry in either bar keeps an icon and a label.** Below 900px labels are
-   hidden and the icons carry the bar alone, so an entry without one would vanish — which
-   is also why the top nav is down to `ghici` + `liste` there rather than shrinking four
-   entries to fit. Above 901px all four keep icon *and* label; a bare glyph row beside the
-   wordmark is the one thing that bar has space to avoid.
+3. **A nav entry keeps at least one of its icon and its label, and which one is a
+   per-bar decision.** Below 768px the top nav is **labels only** — the two emoji buy
+   ~34px on a 320px bar and say nothing the words beside them do not. `ghici.php` does the
+   exact reverse for its own bar (icons only; its bar also carries a mode switch, a score
+   and a trophy), so **it re-declares `display` on `.top-nav .nav-icon`** — without that
+   the two rules meet and its nav renders empty. Touching either one means checking the
+   other. A bare glyph row beside the wordmark is still what the top bar avoids everywhere
+   else, and it is the constraint the `?` chip exists to route around.
+   **If a nav entry ever returns to the footer, its label-hiding rule must be scoped
+   `.site-nav .nav-label`** — the class is the same in both bars, and the unscoped version
+   once turned the header into a row of bare emoji. That rule went out of app.css with the
+   last footer entry, along with `.nav-item` and `nav-item--wide`; git history has all
+   three.
 4. **On a phone, an open definition hides both bars.** `app.js` puts `detail-open` on
    `<body>` when the sheet opens and takes it off in `closePanel()`; only the ≤768px block
    acts on it, so a desktop window narrowed with the panel up lands in the right state with
@@ -1135,6 +1173,50 @@ Five things to preserve:
 
 `lista.php` sets `$brand_tag` but deliberately no `$page`: it is not `liste.php`, so
 nothing in the nav should render as current and stop being clickable.
+
+### `.brand-bar` takes `min-height`, never `height`
+
+The bar wraps to two and three rows on a narrow phone — `.brand-right` has
+`flex-wrap: wrap` below 768px, by design, and at 320px there is no arrangement that does
+not. A hard `height` does not grow with that: the extra rows render **outside the painted
+box**, on the page ground. On the two skins whose masthead is black that means on-bar
+*white* text on a white page — the `?` chip and the filter button, invisible, and invisible
+only at the widths nobody develops at.
+
+app.css always had `height: auto` in its mobile block, so this looked handled. **`govuk.css`
+had `height: calc(var(--bar-h) + 10px)` at (0,2,0) and loads after app.css**, so it won and
+only that skin broke. Both are `min-height` now. This is the same rule `#status-bar` lives
+by at the other end of the page and for the same reason — see **`--statusbar-h` is measured,
+not declared**, whose point 1 is the identical trap. A skin may raise the bar; it may not
+pin it.
+
+**The fix is the bar, not the buttons.** The obvious patch is a background on whatever
+lands in row two, and it is wrong twice over: it treats one symptom of a container that
+cannot contain its contents, and it needs re-doing in every skin for every control ever
+added to that bar. With the bar growing, anything in it sits on the bar's own ground for
+free.
+
+Three width reductions landed with it, all in the ≤768px block, and together they take the
+bar back to **one row at 360px and up** (measured: 97px → 59px at 390px, every skin):
+
+- **The top nav's icons go** (see point 3 above).
+- **The wordmark drops to 1.125rem**, as `.brand-bar .brand-id .brand-name` — three deep
+  because brutal (1.5rem) and registru (1.25rem) size it at (0,2,0) and load later. It is a
+  width adaptation rather than a style choice, so it overrides them on purpose; a skin can
+  still take it back inside its own media query, which is what `brutal.css` already does at
+  560px and `ghici.php` now does for its own bar.
+- **The filter button loses its border and padding**, at `.brand-bar .brand-right
+  .filter-toggle-btn` for the same specificity reason. govuk and registru set `border-color`
+  only, so `border: 0` takes their border off without a fight. **Its hit box comes back as
+  a box, not as padding** — stripped it measured 16×30, narrower than the bare magnifier
+  beside it; it is 30×36 now, matching `.search-toggle-btn`. No negative margin, unlike the
+  `?` chip: the two are adjacent in `.brand-right` with a 6px gap, and two bleeds would
+  overlap and let the later one steal the other's clicks (hit-tested with
+  `elementFromPoint`, not eyeballed).
+
+Measured after, 4 pages × 6 skins × 9 widths from 240px up: nothing renders outside the
+bar's painted box, no nav entry renders empty, and every control in the bar receives its own
+clicks.
 
 ## Lists — „Colecții" in the UI
 

@@ -117,12 +117,23 @@ body.page-doc {
 /* ══════════════════════════════════════════
    BRAND BAR
 ══════════════════════════════════════════ */
+/* **`min-height`, never `height`.** The bar wraps to two and three rows on a
+   narrow phone (`.brand-right` has `flex-wrap: wrap` below 768px), and a hard
+   height does not grow with it — the extra rows spill out of the painted box and
+   land on the page ground. On the two skins whose masthead is black that means
+   on-bar *white* text over a white page: invisible, and invisible only on the
+   narrowest screens nobody develops at.
+
+   This is the same rule `#status-bar` already lives by at the other end of the
+   page, and for the same reason — see the `--statusbar-h` section in CLAUDE.md.
+   A skin may raise the bar (govuk adds its 10px rule) but must do it with
+   `min-height` too. */
 .brand-bar {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0 16px;
-  height: var(--bar-h);
+  min-height: var(--bar-h);
   flex-shrink: 0;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
@@ -185,12 +196,13 @@ body.page-doc {
 .landing-tagline strong { font-weight: 600; color: var(--text-2); }
 @media (max-width: 900px) { .landing-tagline { display: none; } }
 
-/* ── Top nav (header.php) — joc + liste at every width, statistici +
-   metodologie from 901px up, and index.php's `?` shortcuts link.
+/* ── Top nav (header.php) — quiz + colecții at every width, despre from 901px
+   up (and as the `?` chip below it), plus index.php's `?` shortcuts link.
    Icon + label always, with no breakpoint dropping the label: a bare glyph row
-   next to the wordmark is the one thing this bar has room to avoid. The two
-   wide-only entries are how that stays true — rather than shrinking four
-   entries to fit a phone, the phone keeps two and the footer keeps the rest. */
+   next to the wordmark is the one thing this bar has room to avoid. The
+   wide-only entry is how that stays true — rather than shrinking three labelled
+   entries to fit a phone, the phone keeps two and `despre` becomes a glyph that
+   costs nothing (see `.shortcuts-link--narrow`). */
 .top-nav { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 
 .top-nav-item {
@@ -200,13 +212,15 @@ body.page-doc {
   color: var(--text-2);
   text-decoration: none;
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: 1rem;
   white-space: nowrap;
   transition: color .12s;
 }
 .top-nav-item .nav-icon { font-size: 0.8125rem; line-height: 1; }
 .top-nav-item:hover { color: var(--accent); }
-/* Same "underline, no fill" mark as .nav-item.is-current in the footer. */
+/* Underline, no fill — the mark the footer nav used to share before it lost its
+   last entry. Colour stays `--text` because this bar is the *page* ground in
+   every skin bar govuk/registru, which re-ground it themselves. */
 .top-nav-item.is-current { color: var(--text); border-bottom: 1px solid var(--accent); padding-bottom: 1px; }
 
 /* Statistici + metodologie render in BOTH bars; exactly one is ever visible.
@@ -217,10 +231,8 @@ body.page-doc {
    selectors are one class, so the cascade falls to source order, and declared
    above it the hide silently lost and all four entries showed on a phone. */
 .top-nav-item--wide { display: none; }
-@media (min-width: 901px) {
-  .top-nav-item--wide { display: inline-flex; }
-  .site-nav .nav-item--wide { display: none; }
-}
+@media (min-width: 901px) { .top-nav-item--wide { display: inline-flex; } }
+
 .shortcuts-link {
   display: inline-flex;
   align-items: center;
@@ -231,6 +243,46 @@ body.page-doc {
   font-size: 0.75rem;
 }
 .shortcuts-link:hover { color: var(--accent); }
+
+/* ── The `?` slot holds two different links, one at a time ──────────────────
+   Above 901px it is `index.php`'s shortcuts/legend modal; below it, the link
+   to `despre` that header.php draws on every page. Same slot, same cap, same
+   width — so the bar does not move at the crossover on the one page that has
+   both, and the phone gains a `despre` link without spending a pixel on it.
+
+   Why the swap rather than a third top-nav entry: `despre` used to be a footer
+   ℹ️ on a phone and mobile readers did not press it, so they never found out
+   what the marks mean. Promoting it into the top nav at every width is the
+   obvious fix and does not fit — the top nav keeps its labels below 901px
+   (that is the whole point of `.site-nav .nav-label`'s scoping, two screens
+   down), so a third entry is ~69px the phone bar does not have. The `?` is
+   already there, already means "explain this", and the modal behind it is
+   mostly keyboard shortcuts.
+
+   901px, not 768px, is deliberate: it is the same crossover `.top-nav-item--wide`
+   uses, so `despre` is reachable at every width with no gap and no doubling —
+   as a labelled nav entry above, as this chip below. */
+.shortcuts-link--narrow { display: none; }
+@media (max-width: 900px) {
+  .shortcuts-link--wide { display: none; }
+  /* The `?` cap renders 19×17 — fine for a link you glance at, far too small for
+     the one route to `despre` a phone has. Grown to a real target the way
+     `.fp-close` is, and for the same reason.
+
+     The `-4px` inline margin is why this costs nothing: the box grows to 40px
+     but gives 8 of them back to the bar, so the footprint is ~32px against the
+     19 it replaced and the 320px measurement still has no overflow. It cannot
+     steal a neighbour's click either — `.brand-right`'s gap is 6px here, so the
+     bleed stops 1px short on each side. Vertical growth is free: the bar is
+     52px at this width (`--bar-h`). */
+  .shortcuts-link--narrow {
+    display: inline-flex;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    margin: 0 -4px;
+  }
+}
 
 /* Search — collapsed behind the magnifier button until opened (openSearch() /
    closeSearchIfEmpty() in app.js), so the bar starts out reading brand + tools
@@ -2160,13 +2212,14 @@ body.page-doc {
    on every page, so the footer (already the one shared bar) is where they live now. */
 .status-prefs { display: inline-flex; align-items: center; gap: 8px; }
 
-/* The `?` link's word-fallback. Never shown any more: it used to appear below
-   768px, where the blanket `kbd { display: none }` left the link a zero-width
-   tap target — but „legendă" is ~52px of the same phone bar the top nav needs
-   for its labels, and the `?` glyph says the same thing in 18px. The ≤768px
-   block exempts `.shortcuts-link kbd` from the hide instead, so the key cap
-   itself survives as the target. Kept in the markup (and in `title`) rather
-   than deleted, so the link still has a text accessible name. */
+/* Both `?` links' word-fallback („legendă" on index's modal opener, „despre" on
+   header.php's chip). Never shown: it used to appear below 768px, where the
+   blanket `kbd { display: none }` left the link a zero-width tap target — but
+   the word is ~52px of the same phone bar the top nav needs for its labels, and
+   the `?` glyph says the same thing in 18px. The ≤768px block exempts
+   `.shortcuts-link kbd` from the hide instead, so the key cap itself survives as
+   the target. Kept in the markup (and in `title`) rather than deleted, so each
+   link still has a text accessible name — „? despre" rather than „?". */
 .shortcuts-alt {
   position: absolute;
   width: 1px; height: 1px;
@@ -2177,40 +2230,20 @@ body.page-doc {
 }
 
 /* ── Site nav (footer.php) ──
-   The one navigation bar. Icon + label down to 900px, icon alone below that:
-   five destinations plus GitHub is ~300px of labels, which a phone bar does not
-   have once the counts are beside it. Every item keeps its label as `title`, so
-   nothing becomes an unexplained glyph. */
+   Down to GitHub alone. Every destination this used to carry is in the brand
+   bar now: `quiz`/`colecții` as labelled top-nav entries, `despre` as an entry
+   above 901px and as the `?` chip below it (see `.shortcuts-link--narrow`).
+   `.nav-item` and its ≤900px label/icon rules went with the last entry rather
+   than staying as dead weight — git history has them if one ever returns. */
 .site-nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.nav-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
+/* Still live: `.top-nav-item .nav-icon` overrides the size but inherits the
+   line-height, and despre.html's inlined copy of the top nav uses both. */
 .nav-icon { font-size: 0.75rem; line-height: 1; }
-/* The current page is marked with an accent underline and nothing else — no
-   colour of its own. `--text` here looked right on paper and came out near-black
-   on black in beton, whose footer is an ink ground: the text tokens describe the
-   *page* ground, not this bar. Leaving the colour to each skin's `#status-bar a`
-   rule is the only version that survives a skin nobody has written yet. */
-.nav-item.is-current .nav-label,
-.nav-item.is-current .nav-icon { border-bottom: 1px solid var(--accent); padding-bottom: 1px; }
-/* Below 900px the label is gone, so the underline has to ride the icon instead. */
-@media (min-width: 901px) { .nav-item.is-current .nav-icon { border-bottom: 0; } }
-
-/* Scoped to `.site-nav` on purpose. `.nav-label` is the same class in *both*
-   bars, so an unscoped rule here also stripped the labels off `.top-nav-item`
-   — the header ended up a row of bare emoji on a phone, which is exactly what
-   the "icon + label always" comment above says the top bar exists to avoid.
-   The room for those labels comes from the two controls flanking them: the `?`
-   link drops the word „legendă" for its own glyph, and the filter button drops
-   „filtre" for its icon. See `.shortcuts-alt` and `.filter-btn-label`. */
 @media (max-width: 900px) {
   .site-nav { gap: 14px; }
-  .site-nav .nav-label { display: none; }
-  .site-nav .nav-icon { font-size: 0.9375rem; }
-  /* GitHub has no icon of its own — the ↗ would read as a bare arrow. */
+  /* GitHub has no icon of its own — the ↗ would read as a bare arrow. With the
+     nav entries gone this empties the bar's nav on a phone, which is the
+     intent: the footer there is the display toggles and nothing else. */
   .site-nav a[target="_blank"] { display: none; }
 }
 /* stats.php's "← cuvinte" back-link — was a pile of inline styles plus
@@ -2463,16 +2496,23 @@ kbd {
 
   body { overflow: visible; height: auto; min-height: 100vh; padding-bottom: var(--statusbar-h); }
 
+  /* No `height` override needed any more — the base rule is `min-height`, so the
+     bar grows into its own wrap instead of spilling out of it. */
   .brand-bar {
     position: sticky;
     top: 0;
     z-index: 30;
     background: var(--bg);
     flex-wrap: wrap;
-    height: auto;
     padding: 10px 14px 8px;
     gap: 8px;
   }
+  /* Three deep so it clears the skins' own wordmark sizes (brutal 1.5rem,
+     registru 1.25rem, both (0,2,0) and both loaded after this file). This is a
+     width adaptation rather than a style choice — a skin that wants its own phone
+     size can still take it back with a matching rule inside its own media query,
+     which is what `brutal.css` already does at its 560px tier. */
+  .brand-bar .brand-id .brand-name { font-size: 1.125rem; }
   .brand-id { order: 0; }
   /* Collapsed (icon only) it sits in source order, next to brand-id — plenty of
      room now that scale/skin/theme have moved to the footer. Opened, it claims
@@ -2499,19 +2539,53 @@ kbd {
     min-width: 0;
   }
   .play-btn { padding: 0 7px; }
-  /* The icon alone; `aria-label="Filtre"` on the button already carries the
-     name, and the three bars are the one glyph in this bar nobody misreads.
-     ~40px back for the top nav's labels. */
-  .filter-toggle-btn { padding: 0 8px; }
+
+  /* ── The top nav is labels only down here ──────────────────────────────────
+     The general rule is icon *and* label at every width (see the `.top-nav`
+     comment near the top of this file), and this is the one exception: on a
+     320px bar the two emoji buy ~34px and say nothing the words next to them do
+     not already say. It is the reverse of `ghici.php`'s exception, which keeps
+     the icons and drops the labels because its bar also carries a mode switch
+     and a score — so ghici re-declares `display` for its own icons, and must
+     keep doing so if this rule is ever touched. */
+  .top-nav .nav-icon { display: none; }
+
+  /* ── The filter button loses its chrome ────────────────────────────────────
+     Border and padding off: ~22px, and in a bar that has already wrapped a
+     bordered box beside a bare magnifier reads as the louder of the two when it
+     is the same kind of control. The icon and `aria-label="Filtre"` carry it —
+     the three bars are the one glyph in this bar nobody misreads.
+
+     Three deep to clear `[data-skin] .filter-toggle-btn` (brutal's ink border is
+     (0,2,0) and loads later). govuk and registru set `border-color` only, so
+     `border: 0` here takes their border off without a fight — a longhand they
+     never set. `.filter-count-badge` keeps its own shape and still reads as the
+     one thing on the button that is not decoration.
+
+     Stripped of padding the button measured 16×30 — narrower than the bare
+     magnifier beside it and too small to hit. The chrome stays gone and the hit
+     box comes back as a box rather than as padding: 30×36, matching
+     `.search-toggle-btn`'s width so the two icon controls in this bar are one
+     size. No negative margin here, unlike the `?` chip — the two are adjacent in
+     `.brand-right` with a 6px gap between them, and two bleeds would overlap and
+     let the later one steal the other's clicks. */
+  .brand-bar .brand-right .filter-toggle-btn {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    justify-content: center;
+    min-width: 30px;
+    min-height: 36px;
+  }
   .filter-btn-label { display: none; }
   .result-count { display: none; }
   .brand-tag { display: none; }
   .view-toggle { display: none; }
 
-  /* Labels are back in the top nav at this width (see `.site-nav .nav-label`),
-     so the bar pays for them here: tighter gaps and a step down in type. */
+  /* The top nav is labels only at this width (the icons go, just above), so the
+     bar pays for them here: tighter gaps and a step down in type. */
   .top-nav { gap: 10px; }
-  .top-nav-item { font-size: 0.6875rem; gap: 3px; }
+  .top-nav-item { font-size: 0.85rem; gap: 3px; font-weight: bold; }
   .top-nav-item .nav-icon { font-size: 0.75rem; }
 
   /* Mobile word list. The desktop 10.5rem column needs 344px of content box for
@@ -2608,7 +2682,8 @@ kbd {
   .status-right { gap: 8px; }
   .status-right a { font-size: 0.6875rem; }
   /* Keyboard hints mean nothing on a phone — except the `?` cap, which is the
-     shortcuts/legend link's whole visible body here (see `.shortcuts-alt`). */
+     whole visible body of the link to `despre` here (see `.shortcuts-alt`, and
+     `.shortcuts-link--narrow` for why it is that link and not the modal). */
   kbd { display: none; }
   .shortcuts-link kbd { display: inline-block; }
 

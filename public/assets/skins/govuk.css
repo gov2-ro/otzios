@@ -135,10 +135,14 @@
 /* ── 1. Masthead ────────────────────────────────────────────────────────────
    Black bar, 10px blue rule under it. The bar grows by exactly the rule so
    nothing inside gets squashed — box-sizing is border-box globally. */
+/* `min-height`, not `height` — this rule is (0,2,0) and beat app.css's own
+   `min-height`, so on a phone the masthead stayed 62px while its contents wrapped
+   to 88px and the second row of white-on-black text spilled onto the white page.
+   The bar may only ever grow to its content; see app.css's `.brand-bar`. */
 [data-skin="govuk"] .brand-bar {
   background: var(--gv-bar);
   border-bottom: 10px solid #1d70b8;
-  height: calc(var(--bar-h) + 10px);
+  min-height: calc(var(--bar-h) + 10px);
 }
 [data-skin="govuk"] .brand-name {
   color: var(--gv-on-bar);

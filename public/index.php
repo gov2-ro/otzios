@@ -85,13 +85,15 @@ global $QUICK_TAGS, $POS_OPTIONS;
 
   ob_start(); ?>
     <!-- Opens the shortcuts/legend modal — explorer-only, so it rides along in
-         $header_nav_extra rather than living in header.php itself. `kbd` is
-         display:none below 768px (shortcuts mean nothing on a phone), which
-         left this a zero-width tap target — and the modal is where the colour
-         legend lives on narrow screens, since the footer legend hides below
-         1280px. So the label falls back to a word there rather than
-         disappearing. -->
-    <a href="#" class="shortcuts-link" onclick="showShortcuts();return false;"
+         $header_nav_extra rather than living in header.php itself.
+
+         **Wide-only, and header.php puts a link to /despre in this slot below
+         901px.** Two thirds of that modal is keyboard shortcuts, which a phone
+         has no way to press; the remaining third is the colour legend, and
+         `despre` carries the same table verbatim plus the one thing the modal
+         never explained — what the marks are for. So on a phone the `?` is
+         better spent on the page that answers both. -->
+    <a href="#" class="shortcuts-link shortcuts-link--wide" onclick="showShortcuts();return false;"
        title="Legendă și scurtături"><kbd>?</kbd><span class="shortcuts-alt">legendă</span></a>
   <?php $header_nav_extra = ob_get_clean();
 
@@ -572,7 +574,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
   <div id="shortcuts-overlay" style="display:none">
     <div id="shortcuts-modal">
       <div class="shortcuts-header">
-        <span>Legendă și scurtături</span>
+        <span>Legendă / shortcuts</span>
         <span class="shortcuts-esc">Esc pentru închidere</span>
       </div>
       <table class="shortcuts-table">

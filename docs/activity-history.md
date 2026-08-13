@@ -4,6 +4,102 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-13 — The brand bar contains its own wrap
+
+**The report** was that on very old phones the header breaks into two rows — fine in itself —
+but the filter button and the `?` end up "over the white background with white text over a
+transparent background".
+
+**One skin, one property.** `.brand-right` has `flex-wrap: wrap` below 768px by design; at
+320px there is no arrangement that fits one row. app.css's mobile block already set
+`height: auto` on `.brand-bar` so the bar grew into its wrap — but **`govuk.css` set
+`height: calc(var(--bar-h) + 10px)` at (0,2,0) and loads after app.css**, pinning the black
+masthead at 62px while its contents wrapped to 88px. The second row rendered outside the
+painted box, and govuk's on-bar white text landed on the white page. Measured before the
+fix: govuk spilled at every width from 240 to 390px; no other skin did.
+
+Both are `min-height` now, base and skin. This is the identical trap `#status-bar`
+documents at the other end of the page ("Nothing that sizes the bar may read the token…
+the bar sizes to its content"), which is why the base rule now says so in a comment rather
+than leaving it to the mobile override.
+
+**The suggested patch — a background on the buttons — was not taken**, and the reason is
+worth recording: it treats one symptom of a container that cannot contain its contents, and
+it needs redoing in every skin for every control ever added to that bar. With the bar
+growing, everything in it sits on the bar's own ground for free.
+
+**Three width reductions landed with it** (all ≤768px), which together take the bar back to
+a single row at 360px and up — 97px → 59px at 390px, on every skin:
+
+- Top-nav icons off: ~34px, and QUIZ / COLECȚII say it in words already. `ghici.php` does
+  the reverse for its own bar, so it now re-declares `display` on its icons — without that
+  the two rules meet and its nav renders empty.
+- Wordmark to 1.125rem, at `.brand-bar .brand-id .brand-name` — three deep because brutal
+  and registru size it at (0,2,0) and load later. ghici re-asserts its own 1.0625rem the
+  same way.
+- Filter button loses border and padding. **Its hit box came back as a box rather than as
+  padding**: stripped it measured 16×30, narrower than the bare magnifier beside it and too
+  small to hit. 30×36 now, matching `.search-toggle-btn`. No negative margin, unlike the `?`
+  chip — the two are adjacent with a 6px gap and two bleeds would overlap, so the later
+  element would steal the other's clicks.
+
+**Measured after, 4 pages × 6 skins × 9 widths from 240px up:** nothing renders outside the
+bar's painted box, no nav entry renders empty, every control receives its own clicks
+(`elementFromPoint`, not eyeballed). The five JS suites still pass.
+
+---
+
+## 2026-08-13 — `despre` moves to the phone's top bar; the footer ℹ️ goes
+
+**The report** was that mobile readers ignore the ℹ️ in the footer and consequently do not
+know what the *fav* / *lol* / *meh* marks mean. That is the one question only `despre`
+answers, and on a phone `despre` was reachable only from the footer — an emoji at the end of
+a row of display toggles, below the fold of attention.
+
+`despre` was drawn by **both** partials with app.css picking one: the header nav from 901px
+up (`top-nav-item--wide`), the footer nav below it (`nav-item--wide`). The desktop half was
+fine. The mobile half was where it died.
+
+**Promoting it into the top nav at every width does not fit.** The top nav keeps its labels
+below 901px — that pass exists because a bare glyph row beside the wordmark is unreadable —
+so a third labelled entry is ~69px of a 390px bar already carrying the wordmark, a search
+toggle and the filter button.
+
+**So it went in as a glyph, in a slot that was already there.** `index.php`'s `?` opens the
+shortcuts/legend modal, and below 901px that modal is mostly keystrokes a phone cannot press;
+the third of it that is the colour legend is in `despre.html` verbatim. The `?` is better
+spent on the page that answers both questions:
+
+- `.shortcuts-link--wide` — index's modal opener, 901px and up.
+- `.shortcuts-link--narrow` — a link to `/despre`, **drawn by `header.php` so it exists on
+  every page**, below 901px. Same cap, same slot, same width: the bar does not move at the
+  crossover on the one page that has both.
+
+The footer nav lost its last entry and is now GitHub plus the toggles. `.nav-item`,
+`nav-item--wide` and the ≤900px `.site-nav` label/icon rules went with it rather than
+rotting; the comment left behind names them for anyone re-adding an entry.
+
+**Two things measurement changed.**
+
+*The tap target.* The `?` cap renders 19×17 — acceptable for a link you glance at, wrong for
+the only route to `despre` a phone has, and the whole point of the change is that it gets
+pressed. Grown to 40×40 with `margin: 0 -4px`, so the box gives 8px back to the bar and the
+footprint is ~32px against the 19 it replaced. The bleed stops 1px short of
+`.brand-right`'s 6px gap — verified the search toggle still receives its own clicks via
+`elementFromPoint`, rather than by eye.
+
+*`ghici` is exempt below 768px.* Its bar is the documented tight one (measured at 390px it
+wanted ~460px, and its style block is that 70px clawback); the chip is ~26px with its gap, a
+third of it. Nothing regresses — ghici hides the footer at that width too, so `despre` never
+had a route from a phone-sized round. Between 769 and 900px the chip is there.
+
+**Measured, 4 pages × 6 skins × 9 widths (216 combinations):** no horizontal overflow in the
+brand bar, exactly one route to `despre` at every combination, never two. `test_footer_metrics`
+still passes all 90 of its own combinations with the footer an entry lighter, as do
+`test_search_scope`, `test_class_filters`, `test_editorial` and `test_share_meta`.
+
+---
+
 ## 2026-08-12 — The footer reserves what it measures
 
 **The report** was "have you tackled vertical padding for the footer on mobile" — and the

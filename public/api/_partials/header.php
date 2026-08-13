@@ -13,6 +13,14 @@
  * travel plus text-scale/skin/theme are the bottom bar's job — see `footer.php`
  * for why that split exists at all.
  *
+ * **`despre` is in this bar at every width — as a labelled nav entry from 901px
+ * up, and as the `?` chip below it.** It used to be a footer entry on a phone
+ * and that is where it died: measured against real traffic, mobile readers do
+ * not press the ℹ️ down there, so they never learn what the marks mean. The
+ * chip is drawn here rather than in `index.php` because it must exist on every
+ * page — the explorer's own `?` (the shortcuts modal) is index-only, and it is
+ * the wide half of the same slot. See `.shortcuts-link--wide/--narrow`.
+ *
  * Set before requiring (all optional):
  *
  *   $page              string  Key of the current page, from NAV_ITEMS in
@@ -20,9 +28,10 @@
  *                              `aria-current="page"` and unlinks it.
  *   $brand_tag         string  Tagline beside the wordmark. Defaults to the
  *                              site's.
- *   $header_nav_extra  string  HTML appended inside the top-nav, after joc/liste
- *                              — the explorer's `?` shortcuts/legend link, which
- *                              only exists on `index.php`.
+ *   $header_nav_extra  string  HTML in the right cluster, before $header_tools —
+ *                              the explorer's `?` shortcuts/legend link, which
+ *                              only exists on `index.php` and only shows from
+ *                              901px up.
  *   $header_center     string  HTML between the nav and the right cluster — the
  *                              explorer's search box. Rendered raw; escape at
  *                              source.
@@ -54,18 +63,20 @@ $header_after      = $header_after      ?? '';
   <nav class="top-nav" aria-label="Navigare principală">
     <?php
     /*
-     * `joc` and `liste` are here at every width. `stats` and `metod` are here
-     * only from 901px up, and in `footer.php` only below it — the same two
-     * destinations, one bar at a time, with the crossover at the width the
-     * footer nav already uses to drop its labels. Marked with
-     * `top-nav-item--wide` / `nav-item--wide`; app.css owns the swap, so there
-     * is no width where they render twice or not at all.
+     * `ghici` and `liste` are here at every width; `despre` only from 901px up,
+     * marked `top-nav-item--wide`. Below that it is the `?` chip in
+     * `.brand-right` — one destination, one bar, never both at once.
      *
-     * The bar cannot take four labelled entries on a phone — that is the
-     * measurement the header/footer split was built on and it has not changed.
-     * What changed is the ask: on a desktop the bar has the room, and burying
-     * statistici and metodologie in the footer was hiding the two pages that
-     * explain what the site is.
+     * **The bar cannot take three labelled entries on a phone**, which is the
+     * measurement the header/footer split was built on and it has not changed:
+     * DESPRE plus its icon and gap is ~69px of a 390px bar that also carries the
+     * wordmark, a search toggle and the filter button. The chip is how `despre`
+     * gets there anyway — it is a glyph, and it lands in a slot that is empty on
+     * four of the five pages and vacated by the shortcuts modal on the fifth.
+     *
+     * `stats` and `metod` are in `NAV_ITEMS` but in neither bar — they are
+     * linked from `despre` instead. Do not add them back without re-reading the
+     * paragraph above.
      */
     foreach (['ghici' => '', 'liste' => '', 'despre' => ' top-nav-item--wide'] as $key => $width_cls):
       $item = NAV_ITEMS[$key]; ?>
@@ -79,7 +90,24 @@ $header_after      = $header_after      ?? '';
 
   <?= $header_center ?>  <span class="landing-tagline">Cuvinte aproximativ căzute în uitare. <strong>Suveranism lexical</strong>.</span>
   <div class="brand-right">
-  <?= $header_nav_extra ?>   
+    <?php /*
+     * The phone's `despre` link. Below 901px the top-nav entry above is hidden
+     * and the footer no longer carries one, so this is it — and it sits in the
+     * slot `index.php`'s shortcuts `?` vacates at the same breakpoint, so the
+     * bar's width does not move on the one page that has both.
+     *
+     * It keeps the `?` cap and the `.shortcuts-link` class deliberately: the
+     * cap is the only thing `kbd { display: none }` is exempted for below
+     * 768px (see app.css), and govuk/registru re-ground `.brand-bar
+     * .shortcuts-link` for their ink masthead — a class of its own would come
+     * out near-black on black in both.
+     *
+     * `.shortcuts-alt` is the visually-hidden accessible name, so this reads
+     * „? despre" to a screen reader rather than „?".
+     */ ?>
+    <a class="shortcuts-link shortcuts-link--narrow" href="<?= BASE . NAV_ITEMS['despre']['path'] ?>"
+       title="Despre — legendă, marcaje și metodă"><kbd>?</kbd><span class="shortcuts-alt">despre</span></a>
+  <?= $header_nav_extra ?>
   <?= $header_tools ?>
     <?= $header_after ?>
   </div>

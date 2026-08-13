@@ -213,14 +213,28 @@ require_once __DIR__ . '/api/_lib.php';
          trophy's „clasament". */
       body.page-ghici { --bar-h: 46px; }
       body.page-ghici .brand-bar { gap:8px; padding:0 10px; }
-      body.page-ghici .brand-name { font-size:1.0625rem; }
+      /* Three deep to match app.css's own phone wordmark rule, which is
+         `.brand-bar .brand-id .brand-name` and would otherwise size this bar up
+         to 1.125rem. This block is inline in the head, after the app.css link,
+         so an equal-specificity rule wins on source order. */
+      body.page-ghici .brand-bar .brand-name { font-size:1.0625rem; }
       body.page-ghici .brand-tag,
       body.page-ghici .brand-sep { display:none; }
       body.page-ghici .top-nav { gap:12px; }
       body.page-ghici .top-nav .nav-label { display:none; }
-      body.page-ghici .top-nav .nav-icon { font-size:1rem; }
+      /* `display` as well as the size: app.css hides the top nav's icons at this
+         width (labels alone are cheaper there), and this page does the opposite —
+         so without the re-declare the two rules meet and the nav renders empty. */
+      body.page-ghici .top-nav .nav-icon { display:inline; font-size:1rem; }
       body.page-ghici .play-label { display:none; }
       body.page-ghici .play-btn { padding:0 8px; }
+      /* header.php's `?` → /despre chip goes too, for the same 70px. It is worth
+         ~26px with its gap, which is a third of the deficit above, and this is
+         the one bar that cannot pay it. Nothing becomes unreachable that was
+         reachable before: the footer is hidden at this width too, so `despre`
+         has never had a route from a phone-sized round — and between 769 and
+         900px, where this block does not apply, the chip is there. */
+      body.page-ghici .shortcuts-link--narrow { display:none; }
       .joc-tools { gap:8px; justify-content:flex-end; flex-wrap:nowrap; }
       .joc-modes { gap:4px; }
       .joc-mode { padding:4px 8px; font-size:0.6875rem; white-space:nowrap; }
