@@ -1,4 +1,5 @@
 /* ── Design Tokens ── */
+
 :root {
   --bg:        #FAF7F1;
   --surface:   #F4EFE5;
@@ -25,6 +26,7 @@
 
   --bar-h:     48px;
   --chip-h:    26px;
+
   /* Height reserved for the status bar, which is fixed to the bottom on mobile.
      Three things have to agree on it — the body's bottom padding, the detail
      sheet's offset and the toast's — so they read it from here instead of each
