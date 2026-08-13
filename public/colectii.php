@@ -151,17 +151,17 @@ $desc = $tab === 'respinse'
     <h1 class="liste-h1">Colecții</h1>
     <p class="liste-lede">
       <?php if ($n_marks > 0): ?>
-        Ce au marcat vizitatorii în timp ce răsfoiau:
-        <?= $ro_count($n_marks, 'marcaj', 'marcaje') ?>
-        de la <?= $ro_count($n_people, 'persoană', 'persoane') ?>.
+        
+        <?= $ro_count($n_marks, 'marcaj', 'cuvinte selectate') ?>
+        de la <?= $ro_count($n_people, 'persoană', 'utilizatori') ?>.
       <?php else: ?>
-        Ce au marcat vizitatorii în timp ce răsfoiau.
+        Ce au salvat vizitatorii în timp ce răsfoiau.
       <?php endif; ?>
-      Apasă <strong>f</strong>, <strong>l</strong> sau <strong>m</strong> pe un cuvânt în
-      explorator și intră și marcajul tău în socoteală.
+      <!-- Apasă <strong>f</strong>, <strong>l</strong> sau <strong>m</strong> pe un cuvânt în
+      explorator și intră și marcajul tău în socoteală. -->
     </p>
     <p class="agg-crosslink">
-      <a href="<?= BASE ?>/liste">Listele tale și cele publicate de alții →</a>
+    &rarr; vezi și <a href="<?= BASE ?>/liste">listele tale și cele publice</a>
     </p>
 
     <div class="agg-bar">

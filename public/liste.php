@@ -139,9 +139,9 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
     <p class="liste-lede">
       Cuvintele pe care le marchezi în timp ce explorezi se adună singure în trei colecții.
       Publică una și primești un link de trimis mai departe.
-      <a href="<?= BASE ?>/colectii">Vezi ce au marcat toți vizitatorii →</a>
+      <br/>–––––––––<br/>&rarr; vezi și <a href="<?= BASE ?>/colectii">lista comună de cuvinte</a>
     </p>
-
+<br/>
     <!-- ── Buckets ────────────────────────────────────────────────────────── -->
     <section class="liste-section">
       <h2>Colecțiile mele</h2>
