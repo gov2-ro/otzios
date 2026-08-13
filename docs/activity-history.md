@@ -4,6 +4,57 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-13 — „Colecții" becomes what everyone marked
+
+Marks went exactly two places before this: your own three buckets on `/liste`, and a damped
+nudge in the `populare` sort. **Nobody could see what anyone else had marked** — so the nav
+entry „colecții" opened, for every visitor who had not marked anything yet, three empty
+cards above a directory of other people's published lists. A page about publishing, on a
+site whose readers mostly browse.
+
+**New `public/colectii.php`** — two ranked tabs across all visitors: **îndrăgite** (★ or 🤣)
+and **respinse** (⛔️), `lista.php`-style rows with a mark-count chip, and „deschide toate în
+explorator" packing the whole tab into a `?w=` playlist. It takes the nav slot; `/liste`
+keeps everything it had, is retitled **Liste**, and is linked from the top of the new page.
+Server-rendered, and with **no `current_user()` call anywhere in the file** — a public read
+must not mint a device identity for every passing crawler.
+
+**`mark_counts_subquery()`** (`api/_appdb.php`) is the one new query, sibling to
+`vote_counts_subquery()` and cheap for the same reason (`idx_annotations_word`, migration
+v4). Two invariants it exists to hold:
+
+- **The ranking counts people, not marks.** The annotations PK is `(user_id, word)`, so
+  `n_up` is a distinct-person count and is *not* `n_fav + n_lol` — one person's ★+🤣 counts
+  once while showing in both breakdown chips. Ranking on the sum would let one person's two
+  keystrokes outrank two people.
+- **fav-beats-meh is a rule about a person, not about a word.** This was got wrong first
+  and the test caught it: the docs claimed the two tabs were disjoint, and they are not.
+  Within one row the ★ wins, as in the vote subquery — but `subdialect` is ★'d by 19 people
+  and ⛔️'d by 4 others, so it belongs on both tabs. Suppressing the second reading would
+  hide a real disagreement, so it stays and the chip names the opposing counts on the
+  respinse tab (`⛔️4 · ★19`) instead. Leading with „⛔️4" alone reports a word 19 people
+  liked as rejected.
+
+Counts are raw, with no `VOTE_BOOST_SQL` damping: damping guards a *mixed* score against
+stuffing, but here the count is the entire content of the row, so any monotone damping
+leaves the order byte-identical while hiding the number. The page only ever adds a surface —
+it removes nothing from the explorer, which is what makes a page driven by anonymous device
+tokens safe to publish.
+
+One measured bug fixed on the way: the tab counts came straight from app.db while the rows
+were INNER JOINed to `ui.db`, so the tab advertised 70 above a list of 67 — words that keep
+their marks after leaving `ui.db` in a rebuild. Both go through the same join now.
+
+Also: `.lista-item` and friends moved out of `lista.php`'s inline `<style>` into `app.css`
+(two pages draw them now, and three skins already styled `.lista-word`); new `.seg-link`
+anchor variant of the segmented control, with its live state at `.seg .seg-link.is-on` —
+three deep, so a skin's own `[data-skin="x"] .seg-link` cannot repaint the live tab to match
+the dead one, the same trap `.fp-btns .qt-btn.active` documents. `brutal.css` gained
+`.seg-link` alongside its `.seg-opt` rules; verified in brutal/light and registru/dark.
+
+`tests/test_colectii.js` — 16 checks, asserting *deltas* rather than absolute counts, since
+every run mints fresh anonymous users and leaves its annotations behind.
+
 ## 2026-08-13 — The brand bar contains its own wrap
 
 **The report** was that on very old phones the header breaks into two rows — fine in itself —

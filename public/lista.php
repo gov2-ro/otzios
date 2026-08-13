@@ -79,13 +79,8 @@ $desc  = $row && $row['description'] !== ''
     .lista-title { font-family: var(--serif); font-size: 1.75rem; font-weight: 600; color: var(--text); margin: 0 0 6px; }
     .lista-meta { font-family: var(--mono); font-size: 0.75rem; color: var(--text-3); }
     .lista-desc { margin: 10px 0 0; color: var(--text-2); font-size: 0.9375rem; }
-    .lista-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
-    .lista-word { font-family: var(--serif); font-size: 1.125rem; font-weight: 600; color: var(--text); text-decoration: none; }
-    .lista-word:hover { text-decoration: underline; }
-    .lista-tags { font-family: var(--mono); font-size: 0.6875rem; color: var(--text-3); margin-left: 8px; }
-    .lista-def { margin: 4px 0 0; color: var(--text-2); font-size: 0.9375rem; line-height: 1.5; }
-    .lista-nodef { color: var(--text-4); font-style: italic; }
-    .lista-empty { color: var(--text-3); padding: 30px 0; }
+    /* .lista-item / .lista-word / .lista-tags / .lista-def / .lista-nodef / .lista-empty
+       moved to app.css — colectii.php draws the same rows. */
     .lista-share { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
     .lista-share a.playlist-btn { text-decoration: none; display: inline-block; }
     /* Deliberately the quietest control on the page — a plain link in muted text,

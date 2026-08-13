@@ -7,9 +7,10 @@
  * `stats.php` had **nothing at all** — you landed on a bare filter strip with no
  * indication you were still in Oțios.
  *
- * **`joc` and `liste` live here; `statistici`, `metodologie` and the toggles are
- * in `footer.php`.** The two destinations people jump to mid-browse (play the
- * game, check a list) are one click from the brand, always visible; the rest of
+ * **`joc` and `colectii` live here; `statistici`, `metodologie`, `liste` and the
+ * toggles are in `footer.php` or nowhere.** The two destinations people jump to
+ * mid-browse (play the game, see what everyone marked) are one click from the
+ * brand, always visible; the rest of
  * travel plus text-scale/skin/theme are the bottom bar's job — see `footer.php`
  * for why that split exists at all.
  *
@@ -63,7 +64,7 @@ $header_after      = $header_after      ?? '';
   <nav class="top-nav" aria-label="Navigare principală">
     <?php
     /*
-     * `ghici` and `liste` are here at every width; `despre` only from 901px up,
+     * `ghici` and `colectii` are here at every width; `despre` only from 901px up,
      * marked `top-nav-item--wide`. Below that it is the `?` chip in
      * `.brand-right` — one destination, one bar, never both at once.
      *
@@ -74,11 +75,11 @@ $header_after      = $header_after      ?? '';
      * gets there anyway — it is a glyph, and it lands in a slot that is empty on
      * four of the five pages and vacated by the shortcuts modal on the fifth.
      *
-     * `stats` and `metod` are in `NAV_ITEMS` but in neither bar — they are
-     * linked from `despre` instead. Do not add them back without re-reading the
-     * paragraph above.
+     * `stats`, `metod` and `liste` are in `NAV_ITEMS` but in neither bar — the
+     * first two are linked from `despre`, `liste` from the top of `/colectii`.
+     * Do not add them back without re-reading the paragraph above.
      */
-    foreach (['ghici' => '', 'liste' => '', 'despre' => ' top-nav-item--wide'] as $key => $width_cls):
+    foreach (['ghici' => '', 'colectii' => '', 'despre' => ' top-nav-item--wide'] as $key => $width_cls):
       $item = NAV_ITEMS[$key]; ?>
       <a style="text-transform: uppercase;" class="top-nav-item<?= $width_cls ?><?= $key === $page ? ' is-current' : '' ?>"
          href="<?= BASE . $item['path'] ?>" title="<?= e($item['label']) ?>"

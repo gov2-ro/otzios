@@ -192,6 +192,46 @@ function vote_counts_subquery(): string {
 }
 
 /**
+ * Per-word mark counts across every visitor, as a joinable fragment. This is what
+ * `/colectii` ranks its two tabs on; vote_counts_subquery() above nets the same marks
+ * into one signed number for the `populare` sort, which cannot answer "how many people".
+ *
+ * Four things it would be natural to get wrong:
+ *
+ * 1. **`n_up` counts people, not marks — it is NOT `n_fav + n_lol`.** The annotations PK
+ *    is (user_id, word), so one row is one person, and someone who both ★'d and 🤣'd a
+ *    word contributes 1 to the ranking while showing up in both breakdown chips. Ranking
+ *    on the sum would let one person's two keystrokes outrank two people.
+ * 2. **`n_down` inherits vote_counts_subquery()'s precedence**: a positive mark beats meh
+ *    **on the same row** — one person cannot both love and reject a word, and the ★ is
+ *    the more deliberate of the two.
+ *    That is a rule about a person, not about a word: `subdialect` is ★'d by 19 people
+ *    and ⛔️'d by 4 others, so it has n_up = 19 *and* n_down = 4 and appears on both of
+ *    /colectii's tabs. Suppressing the second would be hiding a real disagreement, so the
+ *    page shows the opposing counts in the chip instead.
+ * 3. **`ascunde` is counted in neither direction.** It is "get this out of my way", not a
+ *    judgement about the word — the same reasoning that keeps it out of the vote.
+ * 4. **The key column is aliased `mark_word`**, for the reason `vote_word` is: joined
+ *    against `words`, a bare `word` makes every unqualified reference ambiguous.
+ *
+ * Cheap for the same reason the vote counts are: idx_annotations_word (migration v4)
+ * covers this GROUP BY.
+ */
+function mark_counts_subquery(): string {
+    return "SELECT word AS mark_word,
+                   SUM(CASE WHEN bookmarked = 1 THEN 1 ELSE 0 END)          AS n_fav,
+                   SUM(CASE WHEN tags LIKE '%\"lol\"%' THEN 1 ELSE 0 END)   AS n_lol,
+                   SUM(CASE WHEN bookmarked = 1 OR tags LIKE '%\"lol\"%'
+                            THEN 1 ELSE 0 END)                              AS n_up,
+                   SUM(CASE WHEN bookmarked = 1 OR tags LIKE '%\"lol\"%' THEN 0
+                            WHEN tags LIKE '%\"meh\"%'                   THEN 1
+                            ELSE 0 END)                                     AS n_down
+              FROM app.annotations
+             WHERE deleted = 0
+             GROUP BY word";
+}
+
+/**
  * Idempotent migrations keyed on PRAGMA user_version. Runs on connect because a
  * shared host may offer no usable CLI to run a setup script.
  */

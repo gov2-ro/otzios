@@ -2,7 +2,13 @@
 declare(strict_types=1);
 require_once __DIR__ . '/api/_auth.php';
 
-// The collections hub: /liste.php
+// The list hub: /liste.php — „Liste".
+//
+// Titled „Colecții" until 2026-08-13, when `/colectii` took that name and the nav slot
+// with it. Nothing here moved: this is still your three buckets, anything hand-assembled,
+// and the directory of published lists. What changed is that it is now one click in from
+// `/colectii` rather than a nav entry, because the page a visitor with no marks of their
+// own can actually read is the site-wide aggregate, not three empty cards.
 //
 // "Your collections" are the three buckets you already fill while browsing — fav, lol,
 // meh. They are not stored as lists; they are derived from your annotations on every
@@ -82,8 +88,8 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <?= otios_skin_boot() ?>
-  <title>Colecții — Voroave</title>
-  <meta name="description" content="Colecțiile tale de cuvinte uitate și cele publicate de alții.">
+  <title>Liste — Voroave</title>
+  <meta name="description" content="Colecțiile tale de cuvinte uitate și listele publicate de alții.">
   <!-- The public directory has no report/takedown path yet (see docs/BACKLOG.md,
        "Moderation for public lists"), so it stays out of search results until it does.
        In-app discovery is unaffected. -->
@@ -126,13 +132,14 @@ $n_words  = fn(int $n): string => $n . ' ' . ($n === 1 ? 'cuvânt' : 'cuvinte');
 
 </head>
 <body class="page-doc">
-  <?php $page = 'liste'; $brand_tag = 'colecții'; require __DIR__ . '/api/_partials/header.php'; ?>
+  <?php $page = 'liste'; $brand_tag = 'liste'; require __DIR__ . '/api/_partials/header.php'; ?>
 
   <div class="lista-wrap">
-    <h1 class="liste-h1">Colecții</h1>
+    <h1 class="liste-h1">Liste</h1>
     <p class="liste-lede">
       Cuvintele pe care le marchezi în timp ce explorezi se adună singure în trei colecții.
       Publică una și primești un link de trimis mai departe.
+      <a href="<?= BASE ?>/colectii">Vezi ce au marcat toți vizitatorii →</a>
     </p>
 
     <!-- ── Buckets ────────────────────────────────────────────────────────── -->

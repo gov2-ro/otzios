@@ -1031,7 +1031,8 @@ Three things to know before touching it:
 
 ## Page shell — header and footer partials
 
-All five pages (`index`, `stats`, `ghici`, `lista`, `liste`) draw the same two partials.
+All six pages (`index`, `stats`, `ghici`, `lista`, `liste`, `colectii`) draw the same two
+partials.
 Before them, each page rolled its own bar and `stats.php` had no brand at all.
 
 ```php
@@ -1059,9 +1060,14 @@ overview first. They stay in `NAV_ITEMS` so `$page` still marks them `aria-curre
 two partials name the keys they draw rather than diffing the const, or a diff would put
 them silently back.
 
+**`liste` is in `NAV_ITEMS` and in neither bar for the same reason** (2026-08-13): the
+second slot now points at `/colectii`, the site-wide aggregate, and `/liste` is linked
+from the top of it. That was a swap, not an addition — see the Lists section for why the
+aggregate is the one a first-time visitor can read.
+
 **`despre` is in the header at every width — a labelled entry above 901px, the `?` chip
-below it. It is no longer in the footer at all** (2026-08-13). `ghici` and `liste` stay in
-the header at every width; they are the two places people jump to mid-browse.
+below it. It is no longer in the footer at all** (2026-08-13). `ghici` and `colectii` stay
+in the header at every width; they are the two places people jump to mid-browse.
 
 It used to be drawn by *both* partials with app.css picking one — header above 901px,
 footer below. **The footer half did not work.** Mobile readers did not press an ℹ️ parked
@@ -1131,8 +1137,8 @@ Five things to preserve:
 1. **`NAV_ITEMS` lives in `_lib.php`**, not in either partial — a `const` in an included
    file cannot be guarded against a second include, and it sits with `VERDICTS`/`TIERS`
    as the other list of user-facing strings drawn on every page. `header.php` loops the
-   three keys it draws with their width class and reads `despre`'s path from it for the
-   chip too; `footer.php` draws none. Both read path/icon/label from `NAV_ITEMS` rather
+   three keys it draws (`ghici`, `colectii`, `despre`) with their width class and reads
+   `despre`'s path from it for the chip too; `footer.php` draws none. Both read path/icon/label from `NAV_ITEMS` rather
    than restating them.
 2. **The current page stays an `<a>`** with `aria-current="page"` and an accent underline.
    As a `<span>` it stopped matching every skin's `#status-bar a` rule and needed its own
@@ -1218,13 +1224,61 @@ Measured after, 4 pages × 6 skins × 9 widths from 240px up: nothing renders ou
 bar's painted box, no nav entry renders empty, and every control in the bar receives its own
 clicks.
 
-## Lists — „Colecții" in the UI
+## Lists — „Colecții" (`/colectii`) and „Liste" (`/liste`)
 
-**The page is called Colecții; the table, the endpoint and the URL are still `lists` /
-`lista` / `liste`.** The rename is user-facing wording only — `/liste` is a shared-link
-surface and `lists.source_tag` is stored data, so neither moved. The one place the old
-word survives on screen is despre's „Cele două liste", which is about the *seams* and is
-a different sense of the word.
+**Two pages, and the nav points at the aggregate one.** Since 2026-08-13:
+
+| URL | title | what it is |
+|---|---|---|
+| `/colectii` | Colecții | **site-wide**: what every visitor marked, two ranked tabs. In the top nav. |
+| `/liste` | Liste | **yours**: the three buckets, publishing, and the public directory. Linked from the top of `/colectii`. |
+
+The table, the endpoints and the slugs are still `lists` / `lista` / `liste` — `/liste` is
+a shared-link surface and `lists.source_tag` is stored data, so neither moved. The one
+other place the word survives on screen is despre's „Cele două liste", which is about the
+*seams* and is a different sense of it.
+
+**Which page owns the nav slot was the whole decision.** The bar takes exactly three
+labelled entries (see `header.php`'s docblock for the phone measurement), and `/liste`
+held it for a year. But a visitor who has marked nothing — which is every visitor on their
+first read — opened „colecții" and got three empty cards plus other people's published
+lists: a page about publishing, on a site whose readers mostly browse. The aggregate is
+what that reader can actually read, so it took the slot and `/liste` went one click in.
+Nothing on `/liste` changed but its title.
+
+### `/colectii` — the site-wide aggregate
+
+Two tabs over `mark_counts_subquery()` (`api/_appdb.php`): **îndrăgite** ranked on `n_up`
+(★ or 🤣) and **respinse** on `n_down` (⛔️). Server-rendered, no `current_user()` call
+anywhere in the file — a public read must not mint a device identity for every passing
+crawler, the guard `lista.php` already documents.
+
+Four things to keep:
+
+- **The ranking counts people, not marks.** The annotations PK is `(user_id, word)`, so
+  `n_up` is a distinct-person count and is **not** `n_fav + n_lol` — one person who both
+  ★'d and 🤣'd a word counts once, while showing in both breakdown chips. Ranking on the
+  sum lets one person's two keystrokes outrank two people.
+- **fav-beats-meh is a rule about a *person*, not about a word**, and the two readings
+  differ in what they hide. Within one row the ★ wins, as in `vote_counts_subquery()`. But
+  `subdialect` is ★'d by 19 people and ⛔️'d by 4 others, so it is on **both** tabs — which
+  is a real disagreement and not a bug. The chip therefore names the opposing counts on
+  the respinse tab too (`⛔️4 · ★19`); leading with „⛔️4" alone would report a word 19
+  people liked as rejected. Pinned by `tests/test_colectii.js` §3 and §5.
+- **The counts are raw, with no `VOTE_BOOST_SQL` damping, deliberately.** Damping exists so
+  stuffing cannot move a word far in a *mixed* score; here the count is the entire content
+  of the row, and any monotone damping leaves the order byte-identical while hiding the
+  number. The page still only ever *adds* a surface — it removes nothing from the explorer,
+  which is the invariant that makes a page driven by anonymous device tokens safe to
+  publish at all.
+- **The tab counts go through the same `words` JOIN as the rows.** A word can keep its
+  marks in app.db after leaving `ui.db` in a rebuild; counted without the join, the tab
+  advertised 70 above a list of 67.
+
+Unlike `/liste` it is **indexable**: every string on it comes from `ui.db` or is an
+integer, so the `noindex` protecting the public directory has nothing to do here.
+
+### `/liste` — your buckets and the directory
 
 **The three buckets are the collections.** `fav` / `lol` / `meh` (declared once in
 `LIST_BUCKETS`, `api/_appdb.php`) are derived from `app.db.annotations` on every request via

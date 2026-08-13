@@ -224,15 +224,22 @@ const NAV_ITEMS = [
     // the key is what `$page` and `aria-current` match on. `/joc` still resolves —
     // .htaccess 301s it here, since it was a shared link for months.
     'ghici'  => ['path' => '/ghici',        'icon' => '🎮', 'label' => 'quiz'],
-    'liste'  => ['path' => '/liste',        'icon' => '📋', 'label' => 'colecții'],
+    // „colecții" is the nav's third destination, and since 2026-08-13 it is the
+    // *site-wide* one: what every visitor marked, ranked. `/liste` — your own buckets and
+    // the directory of published ones — kept everything it had and lost the nav slot,
+    // because the aggregate is what a first-time visitor with no marks of their own can
+    // actually read. It is linked from the top of `/colectii`, one click further in.
+    'colectii' => ['path' => '/colectii',   'icon' => '📋', 'label' => 'colecții'],
     'despre' => ['path' => '/despre',       'icon' => 'ℹ️', 'label' => 'despre'],
     // Still real pages and still marked `aria-current` when you are on them — they are
-    // simply not in either nav any more. `despre` links to both, which is the shape the
-    // bar could actually afford: three labelled entries competing for a phone bar is the
-    // measurement that split this nav between header and footer in the first place, and
-    // a reader who wants the method has nearly always read the overview first.
+    // simply not in either nav any more. `despre` links to the first two and `colectii`
+    // to the third, which is the shape the bar could actually afford: three labelled
+    // entries competing for a phone bar is the measurement that split this nav between
+    // header and footer in the first place, and a reader who wants the method has nearly
+    // always read the overview first.
     'stats'  => ['path' => '/stats',        'icon' => '📊', 'label' => 'statistici'],
     'metod'  => ['path' => '/metodologie', 'icon' => '🧐', 'label' => 'metodologie'],
+    'liste'  => ['path' => '/liste',        'icon' => '📋', 'label' => 'liste'],
 ];
 
 /**

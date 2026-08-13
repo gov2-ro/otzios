@@ -2047,6 +2047,38 @@ body.page-doc {
 }
 .seg-sm .seg-opt { font-size: 0.6875rem; padding: 0 7px; }
 
+/* The anchor variant, for a server-rendered tab strip (colectii.php). Same box as
+   .seg-opt — links rather than radios, so each tab is a real URL that works with
+   JavaScript off and can be shared.
+
+   `.seg .seg-link.is-on` is three classes deep on purpose. At (0,2,0) it would tie with
+   a skin's own `[data-skin="x"] .seg-link`, which loads later and would therefore repaint
+   the live tab to match the dead ones — the failure the .fp-btns note below describes,
+   and the segmented control is exactly the component where the inverted block IS the
+   state (there is no tick and no swatch saying it a second time). */
+.seg-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-3);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .1s, color .1s;
+  white-space: nowrap;
+}
+.seg-link + .seg-link { border-left: 1px solid var(--border); }
+.seg-link:hover { background: var(--bg); color: var(--text-2); }
+.seg .seg-link.is-on {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+}
+.seg-link .seg-n { font-family: var(--mono); font-size: 0.625rem; opacity: .7; }
+
 /* ══════════════════════════════════════════
    STATS-PAGE FILTER STRIP
 
@@ -2771,6 +2803,39 @@ kbd {
   background: var(--accent-bg); color: var(--accent);
 }
 .list-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+/* ── Word rows on a document page (lista.php, colectii.php) ──────────────────────
+ *
+ * Not `.word-row` — that one is a dense single-line listbox option with htmx attributes
+ * and a `role="option"` that only means something inside `#word-list`. This is the prose
+ * version: headword, `POS · register`, a couple of lines of definition.
+ *
+ * These lived inline in lista.php until 2026-08-13, when colectii.php became the second
+ * page to draw them. They were already shared vocabulary in everything but location —
+ * brutal, govuk and registru all style `.lista-word` — and those skin rules are (0,2,0),
+ * so moving the base rules here (loaded before the skins rather than after) leaves the
+ * cascade exactly as it was. */
+
+.lista-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.lista-word {
+  font-family: var(--serif); font-size: 1.125rem; font-weight: 600;
+  color: var(--text); text-decoration: none;
+}
+.lista-word:hover { text-decoration: underline; }
+.lista-tags { font-family: var(--mono); font-size: 0.6875rem; color: var(--text-3); margin-left: 8px; }
+.lista-def { margin: 4px 0 0; color: var(--text-2); font-size: 0.9375rem; line-height: 1.5; }
+.lista-nodef { color: var(--text-4); font-style: italic; }
+.lista-empty { color: var(--text-3); padding: 30px 0; }
+
+/* The mark counts above a headword on colectii.php. Mono and tabular so the columns
+   line up down the page — the counts are the ranking, so they have to be scannable
+   as a column rather than read one row at a time. */
+.agg-marks {
+  font-family: var(--mono); font-size: 0.6875rem; color: var(--text-3);
+  font-variant-numeric: tabular-nums; letter-spacing: .02em;
+  display: block; margin-bottom: 2px;
+}
+.agg-marks .agg-n { color: var(--text-2); font-weight: 600; }
 
 /* ── Leaderboard (joc.php) ───────────────────────────────────────────────────── */
 

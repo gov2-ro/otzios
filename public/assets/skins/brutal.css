@@ -298,21 +298,28 @@
    (app.css hides the live option), and `+` still matches a display:none
    sibling — the survivor drew a left border against nothing. */
 [data-skin="brutal"] .scale-btn + .scale-btn,
-[data-skin="brutal"] .seg-opt + .seg-opt { border-left: var(--stroke) solid var(--ink); }
+[data-skin="brutal"] .seg-opt + .seg-opt,
+[data-skin="brutal"] .seg-link + .seg-link { border-left: var(--stroke) solid var(--ink); }
 
 [data-skin="brutal"] .vt-btn,
 [data-skin="brutal"] .tg-btn,
 [data-skin="brutal"] .scale-btn,
-[data-skin="brutal"] .seg-opt { color: var(--text-2); font-weight: 700; }
+[data-skin="brutal"] .seg-opt,
+[data-skin="brutal"] .seg-link { color: var(--text-2); font-weight: 700; }
 
 [data-skin="brutal"] .vt-btn:hover,
 [data-skin="brutal"] .tg-btn:hover,
 [data-skin="brutal"] .scale-btn:hover:not(:disabled),
-[data-skin="brutal"] .seg-opt:hover { background: var(--hl-soft); color: var(--text); }
+[data-skin="brutal"] .seg-opt:hover,
+[data-skin="brutal"] .seg-link:hover { background: var(--hl-soft); color: var(--text); }
 
 [data-skin="brutal"] .vt-btn.vt-active,
 [data-skin="brutal"] .tg-btn.tg-active,
-[data-skin="brutal"] .seg-opt:has(input:checked) { background: var(--ink); color: var(--on-ink); }
+[data-skin="brutal"] .seg-opt:has(input:checked),
+/* Three deep, matching app.css: the live tab is said by the inverted block alone —
+   there is no tick and no swatch repeating it — so the rule has to outrank this
+   file's own `.seg-link` above rather than tie with it. */
+[data-skin="brutal"] .seg .seg-link.is-on { background: var(--ink); color: var(--on-ink); }
 
 [data-skin="brutal"] .play-btn,
 [data-skin="brutal"] .filter-toggle-btn {
