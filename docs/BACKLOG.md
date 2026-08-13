@@ -930,13 +930,13 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   wrong as a card; fixed. See **The definition panel** in CLAUDE.md.
 
 - [ ] word sharer. 
-  - [ ] update .htaccess, turn `/?word={word}`  to `/def/{word}` — decided: **word slug,
+  - [x] update .htaccess, turn `/?word={word}`  to `/def/{word}` — decided: **word slug,
     dexonline-style, not `word_id`.** Safe as a rewrite for the reason `/joc → /ghici`
     was — no API endpoint answers under that prefix. Must be **additive**: `?word=` links
     keep resolving, with `rel=canonical` naming which spelling counts (despre/metodologie
     already do this). Note ~40% of headwords carry diacritics and percent-encode
     (`/def/%C8%9Beara`), so the pretty URL is only pretty for the rest.
-  - [ ] close the filter drawer
+  - [x] close the filter drawer
   - [x] add dynamic meta, title, description, og info — **Done 260812.** `share_meta()` in
     `api/_lib.php`; see **Share metadata for `?word=`** in CLAUDE.md. Done before the URL
     change on purpose: it needs no new URL, so it fixes every link already shared rather
@@ -945,11 +945,14 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     Note: this is a *display* of community marks, not a filter, so it stays on the right
     side of the rule that votes may only ever reorder — see `vote_counts_subquery()`.
 
-- [ ] can't find 'nebogat' anymore, in which list is it?
+
 
 ---
 
-- [ ] Colecții viewer atât comoact cât și cu detalii / meta, să vedem ce nu ne place 
+- [ ] Colecții viewer atât compact cât și cu detalii / meta, să vedem ce nu ne place 
+
+- [ ] explorer power user mode, shift + arrow marks as fav/meh/lol. 
+  - [ ] w power user version, overides other options/tags?
 
 - [x] check consistency, when a word is tagged by myself the tag is activated in the info box
 
