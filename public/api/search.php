@@ -88,6 +88,13 @@ $order_by = $SORT_OPTIONS[$sort] ?? $SORT_OPTIONS[FALLBACK_SORT];
 // removed from it. Prefixed to every sort, including the user's chosen one.
 $order_by = demote_order_sql($_GET) . $order_by;
 
+// A word arrived at from a share sits on top of whatever order is in force — ahead of the
+// demotion term too, so a curator-demoted word that someone shared still lands where the
+// reader can see it. See pin_order_sql(): the WHERE is untouched, so this only moves a row
+// that the filters already admit. Its params go between the WHERE's and LIMIT/OFFSET's.
+$pin_params = [];
+$order_by   = pin_order_sql($_GET, $pin_params) . $order_by;
+
 // Count total matching rows. Deliberately on `words` alone: the LEFT JOIN is 1:1 (the
 // subquery groups by word), so it cannot change the count, and keeping it out means the
 // count query is identical on every sort.
@@ -98,7 +105,7 @@ $total = (int)$count_stmt->fetchColumn();
 
 // Fetch page. `words.*` rather than `*` so the joined columns stay out of the row.
 $page_stmt = db()->prepare("SELECT words.* FROM $from $where ORDER BY $order_by LIMIT ? OFFSET ?");
-$page_stmt->execute(array_merge($params, [PAGE_SIZE, $offset]));
+$page_stmt->execute(array_merge($params, $pin_params, [PAGE_SIZE, $offset]));
 $words = $page_stmt->fetchAll();
 
 $next_url = null;

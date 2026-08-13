@@ -796,6 +796,12 @@ function closePanel() {
   var app = document.getElementById('app');
   if (app) app.classList.remove('has-panel');
   openWord = null;
+  // Retire the pin with the panel. Nothing re-fires here, so the word stays where it is
+  // in the list you are looking at; it stops being pinned from the next search onwards —
+  // which is the moment the URL stops naming it too. Left set, it would silently hold a
+  // word at the top of results the reader has since filtered for something else.
+  var pin = document.getElementById('share-word');
+  if (pin) pin.value = '';
   syncUrlFromForm();
 }
 
@@ -1263,9 +1269,48 @@ function applyUrlToForm() {
     if (el) el.checked = (val === '1');
   });
 
-  // Word profile param
+  // Word profile param, and the filters it has to relax to bring its own row with it.
+  //
+  // A share is one word arriving on top of the site, and until now it arrived *without*
+  // its row: 15,803 of the 18,270 words are outside the default view, so closing the
+  // panel on a shared `curiosity` word left the reader on a list that did not contain it,
+  // with the rail naming filters they never set as the reason. OTIOS_SHARE_RELAX is the
+  // server's answer to "which of these defaults is hiding this particular word" —
+  // share_relax_params() in _lib.php, computed from the same table build_word_filter()
+  // filters on, so the two cannot drift.
+  //
+  // **An explicit param in the URL always wins**, including a superseded spelling that
+  // already landed on the control above (the `alias_*` flags) — a link shared *with*
+  // filters on it shared the filters too, and quietly widening those would be the same
+  // class of bug in the other direction. This block therefore runs last of the three.
+  //
+  // Being in the list is only half of it: with the seam relaxed a `curiosity` word still
+  // ranks thousands of rows down, so it is also pinned to the top for this one request.
+  // That half is the hidden #share-word input and pin_order_sql() on the server.
   var wordParam = params.get('word');
-  if (wordParam) openWord = wordParam;
+  if (wordParam) {
+    openWord = wordParam;
+    var pin = document.getElementById('share-word');
+    if (pin) pin.value = wordParam;
+
+    var relax = (typeof OTIOS_SHARE_RELAX !== 'undefined' && OTIOS_SHARE_RELAX) || {};
+    Object.keys(relax).forEach(function(name) {
+      if (params.get(name) !== null || form.dataset['alias_' + name]) return;
+      if (name === 'seam') {
+        // A checkbox group: the word's seam is added beside `relevant`, never swapped
+        // for it. Arriving at one curiosity word is not a reason to take the default
+        // list away from the reader.
+        var want = relax[name].split(',');
+        form.querySelectorAll('input[name="seam[]"]').forEach(function(cb) {
+          if (want.indexOf(cb.value) !== -1) cb.checked = true;
+        });
+      } else {
+        form.querySelectorAll('input[name=' + name + ']').forEach(function(r) {
+          r.checked = (r.value === relax[name]);
+        });
+      }
+    });
+  }
 
   // Playlist param. Set synchronously — htmx fires the first search on load, and the
   // hidden input has to be populated before it does.
@@ -1380,6 +1425,8 @@ syncSearchMode();
                      : (performance.navigation && performance.navigation.type === 1);
   if (isReload) {
     openWord = null;              // stop syncUrlFromForm() from writing it back
+    var pin = document.getElementById('share-word');
+    if (pin) pin.value = '';      // and with it the pin, for the same reason as closePanel()
     syncUrlFromForm();            // drop ?word=… from the address bar
     return;
   }

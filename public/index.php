@@ -43,6 +43,12 @@ global $QUICK_TAGS, $POS_OPTIONS;
   // returns null for anything not in the table, which is also what makes `?word=<junk>`
   // fall back to the site's own titles rather than advertising a word we cannot show.
   $sm    = share_meta($_GET);
+  // The other half of a share, and the one below the fold: which filter-sheet controls
+  // have to relax for the shared word to be in the list *behind* the panel. Keyed off
+  // $sm['word'] rather than the raw param, so junk resolves to an empty map for the same
+  // reason it falls back to the site's own titles above. Applied by applyUrlToForm()
+  // before htmx fires the first search — see share_relax_params().
+  $relax = $sm ? share_relax_params($sm['word']) : [];
   $title = $sm ? $sm['title'] : 'Voroave neglijate';
   $desc  = $sm ? $sm['desc']
                 : 'Suveranism lexical. Cuvinte aproximativ căzute în uitare.';
@@ -453,6 +459,13 @@ global $QUICK_TAGS, $POS_OPTIONS;
          so links shared before the codec still load. -->
     <input type="hidden" id="playlist-w" name="w" value="">
     <input type="hidden" id="playlist-words" name="words" value="">
+
+    <!-- The shared word, when this page was opened from a `?word=` link. It rides inside
+         the form so htmx sends it with the first search *and* with every load-more (the
+         `next_url` is built from $_GET), which is what keeps the pin part of one global
+         order instead of putting the word at the top of every page. It is not a filter:
+         word_scope() never reads it, and pin_order_sql() only touches the ORDER BY. -->
+    <input type="hidden" id="share-word" name="word" value="">
   </form>
 
   <div class="word-area">
@@ -617,7 +630,11 @@ global $QUICK_TAGS, $POS_OPTIONS;
     </div>
   </div>
 
-  <script>var OTIOS_BASE = '<?= BASE ?>';</script>
+  <script>
+    var OTIOS_BASE = '<?= BASE ?>';
+    // Empty unless this request is a `?word=` share whose word the defaults would hide.
+    var OTIOS_SHARE_RELAX = <?= json_encode((object) $relax, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+  </script>
   <script src="<?= BASE ?>/assets/prefs.js"></script>
   <script src="<?= BASE ?>/assets/store.js"></script>
   <script src="<?= BASE ?>/assets/app.js"></script>

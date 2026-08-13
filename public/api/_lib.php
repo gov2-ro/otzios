@@ -132,6 +132,30 @@ function class_mode(array $p, string $param, string $default, array $aliases): s
     return $default;
 }
 
+/**
+ * The class controls, as `[param, [columns…], default, [alias => mode|null]]`.
+ *
+ * Lives here rather than inside build_word_filter() because share_relax_params() has to
+ * read the same table — it answers "which of these defaults is hiding this word", and a
+ * second copy of the mapping would go stale the day a class is added, silently: the
+ * shared word would just not be in the list, which is the bug the relax exists to fix.
+ * The prose for what each control means is at the point of use in build_word_filter().
+ */
+function class_modes(): array {
+    return [
+        ['regional',    ['regional_only'],   'hide', ['show_regional' => 'show']],
+        ['variants',    ['variant_like', 'archaic_spelling', 'dex_variant'], 'hide',
+                        ['spellings' => null, 'dexvar' => null,
+                         'show_variants' => 'show', 'show_spellings' => 'show']],
+        ['deverbal',    ['deverbal_like'],   'hide', []],
+        ['diminutives', ['diminutive_like'], 'hide', ['hide_diminutives' => 'hide']],
+        // `editorial` is the one class whose default does not subtract. Its states are
+        // `back` (sink to the end) / `show` (normal order) / `only`, and `back` is
+        // handled in the ORDER BY by demote_order_sql(), not in the WHERE.
+        ['editorial',   ['editor_demote'],   'back', []],
+    ];
+}
+
 $QUICK_TAGS = [
     ['ascunde', 'a'],
     ['lol',     'l'],
@@ -368,6 +392,91 @@ function share_meta(array $p): ?array {
         'canonical' => site_origin() . '/?word=' . urlenc($row['word']),
         'word'      => $row['word'],
     ];
+}
+
+/**
+ * The filter-sheet controls a `?word=` link has to relax for its own word to be in the
+ * list underneath it — `['seam' => 'relevant,curiosity', 'variants' => 'show', …]`, empty
+ * when the defaults already show the word (and when there is no such word).
+ *
+ * **A share must land on the word.** The panel itself was never at risk: `api/word.php`
+ * is a bare `WHERE word = ?` and no filter has ever reached it. What was at risk is
+ * everything around the panel — 15,803 of the 18,270 words are outside the default view,
+ * 11,193 of them on the seam alone, so closing the panel on a shared `curiosity` word
+ * left the reader on a list that did not contain the word they had come for, with the
+ * rail showing filters they never set as the reason.
+ *
+ * Relaxing the control rather than injecting the row is what keeps the site's own rule
+ * — every exclusion is a visible control, never silent. The reader arrives with
+ * „curiozități" ticked in the rail and `?seam=relevant,curiosity` written into the URL by
+ * syncUrlFromForm(), so the wider list is both explained and undoable in one click. A row
+ * quietly added to a list whose controls say it should not be there is the mirror image
+ * of the bug.
+ *
+ * Two things this deliberately does not do:
+ *
+ * - **It never narrows.** `seam` gains the word's seam alongside `relevant`; it does not
+ *   swap to it. A share is one word arriving on top of the site, not a different site.
+ * - **It leaves `editorial` alone**, because `back` does not subtract — a demoted word is
+ *   in the list already, at the end. Being *reachable* on the page is the pin's job
+ *   (pin_order_sql), not this one's; the two halves are separate because only this half
+ *   can be undone from the rail.
+ *
+ * An explicit param in the URL always wins over this — see applyUrlToForm() in app.js,
+ * which is where the map is applied. Someone who shared a link *with* filters on it
+ * shared the filters too.
+ */
+function share_relax_params(string $word): array {
+    $word = trim($word);
+    if ($word === '' || mb_strlen($word) > 64) return [];
+
+    $st = db()->prepare('SELECT * FROM words WHERE word = ? LIMIT 1');
+    $st->execute([$word]);
+    $row = $st->fetch();
+    if (!$row) return [];
+
+    $relax = [];
+    if (db_has_column('seam')
+        && ($row['seam'] ?? 'relevant') !== 'relevant') {
+        $relax['seam'] = 'relevant,' . $row['seam'];
+    }
+    foreach (class_modes() as [$param, $cols, $default, $_aliases]) {
+        if ($default !== 'hide') continue;          // `editorial` — demotes, never hides
+        foreach ($cols as $col) {
+            if (db_has_column($col) && (int) ($row[$col] ?? 0) === 1) {
+                $relax[$param] = 'show';
+                break;
+            }
+        }
+    }
+    return $relax;
+}
+
+/**
+ * Leading ORDER BY term that pins one word to the top of the first page.
+ *
+ * The companion to share_relax_params(): that one makes the shared word *eligible*, this
+ * one makes it *visible*. They are both needed and neither is enough. Measured on the
+ * current build, with the seam relaxed a `curiosity` word ranks between 2,468 and 13,660
+ * under the default `populare` sort — at 250 rows a page, never on the page the reader is
+ * looking at. Ticking the seam alone would have been a filter change nobody could see the
+ * point of.
+ *
+ * Pinning in the ORDER BY rather than the WHERE is what keeps this honest: the row is in
+ * the set on its own merits, this only decides where it sits. It also cannot duplicate
+ * across pages — the term is part of one global order that every page request repeats
+ * (the hidden `word` input is inside #filter-form, so htmx sends it with the initial
+ * search and `next_url` carries it into every load-more), so the pinned row is rank 1 and
+ * appears on page 1 only. A word that is not in the result set makes the term a no-op.
+ *
+ * Binds one param, which the caller must merge *after* the WHERE params and *before*
+ * LIMIT/OFFSET — placeholders are positional.
+ */
+function pin_order_sql(array $p, array &$params): string {
+    $word = trim((string) ($p['word'] ?? ''));
+    if ($word === '' || mb_strlen($word) > 64) return '';
+    $params[] = $word;
+    return '(words.word = ?) DESC, ';
 }
 
 function db(): PDO {
@@ -684,20 +793,8 @@ function build_word_filter(array $p): array {
     // old link renders as unfiltered while behaving as filtered — htmx searches from form
     // state on load, so a server-only mapping is half a mapping.
     //
-    $class_modes = [
-        // [param, [columns…], default, [alias param => mode or null for a 3-state alias]]
-        ['regional',    ['regional_only'],   'hide', ['show_regional' => 'show']],
-        ['variants',    ['variant_like', 'archaic_spelling', 'dex_variant'], 'hide',
-                        ['spellings' => null, 'dexvar' => null,
-                         'show_variants' => 'show', 'show_spellings' => 'show']],
-        ['deverbal',    ['deverbal_like'],   'hide', []],
-        ['diminutives', ['diminutive_like'], 'hide', ['hide_diminutives' => 'hide']],
-        // `editorial` is the one class whose default does not subtract. Its states are
-        // `back` (sink to the end) / `show` (normal order) / `only`, and `back` is
-        // handled in the ORDER BY by demote_order_sql(), not here. See that function.
-        ['editorial',   ['editor_demote'],   'back', []],
-    ];
-    $only_cols = [];
+    $class_modes = class_modes();
+    $only_cols   = [];
     foreach ($class_modes as [$param, $cols, $default, $aliases]) {
         $cols = array_values(array_filter($cols, 'db_has_column'));
         if ($cols === []) { continue; }

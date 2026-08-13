@@ -4,6 +4,48 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-13 — A shared word arrives with its row
+
+The question was whether `?word=` ignores the filter sheet, and half the answer was already
+yes: `api/word.php` is a bare `WHERE word = ?`, `build_word_filter()` has never been near
+it, and a `curiosity` word blocked twice over by the defaults (`dispozițiune` — curiosity
+seam *and* `archaic_spelling`) opens fine, head metadata and all.
+
+The other half was no. **15,803 of the 18,270 words are outside the default view, 11,193 of
+them on the seam alone**, so the panel opened over a list that did not contain its own word:
+close it and the reader was on a page whose rail named filters they never set as the reason
+the word had gone.
+
+Two halves, because measuring showed the first one alone does nothing visible:
+
+- **`share_relax_params()`** (`_lib.php`) reads the row and returns which of the sheet's own
+  defaults are hiding it — `{seam: 'relevant,curiosity', variants: 'show'}` — built from the
+  `class_modes()` table `build_word_filter()` itself filters on, so the two cannot drift.
+  `index.php` emits it as `OTIOS_SHARE_RELAX`; `applyUrlToForm()` ticks exactly those
+  controls before htmx fires the first search.
+- **`pin_order_sql()`** puts the word at the top for that one request. With the seam relaxed
+  a `curiosity` word still ranks **2,468–13,660** under the default `populare` sort against a
+  250-row page — relaxing alone would have been a filter change with nothing to show for it.
+  Prefixed ahead of `demote_order_sql()`, so a curator-demoted shared word arrives on top too.
+
+**Relaxing a control rather than injecting the row** is the whole design. `OR word = ?` in
+the WHERE was the shorter fix and it is the mirror image of the bug — a list holding a word
+its own controls say it should not, unexplainable from the page. As it stands the reader
+lands with „ambele liste" ticked in the rail, a removable chip in the chip bar, and
+`?seam=relevant,curiosity` written into the URL: visible, shareable, undone in one click.
+The seam is *added*, never swapped; an explicit param in the URL always wins; `editorial` is
+left alone because `back` demotes rather than hides.
+
+The pin rides in a hidden `word` input inside `#filter-form` so `next_url` carries it — one
+global order, hence page 1 only rather than the top of every page. `closePanel()` and the
+reload branch clear it, which is the moment the URL stops naming the word.
+
+New `tests/test_share_view.js` (8 sections, sample words read out of the API rather than
+hardcoded). Verified end to end in Chromium: rail state, chip bar, row 1, the URL rewrite,
+explicit-param precedence, and the pin retiring on close.
+
+---
+
 ## 2026-08-13 — „Colecții" becomes what everyone marked
 
 Marks went exactly two places before this: your own three buckets on `/liste`, and a damped

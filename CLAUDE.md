@@ -582,6 +582,12 @@ Two things to preserve when touching these:
    gives up — deliberately, since a `q` that means "everything" on one page and "these
    twenty" on another is a search box that cannot be trusted to answer the question.
 
+   **A single shared word (`?word=`) is not a third scope.** It goes through the filter
+   sheet like any other view — but a share must land on its word, so the controls hiding
+   that one word are relaxed and the row is pinned to the top. See **A share lands on the
+   word** under the share-metadata section; the difference from these two is that nothing
+   is overridden, so every control stays live and says what it is doing.
+
    The UI half is `setSearchMode()` / `setPlaylistMode()` in `app.js`, marking the form
    `data-search` / `data-playlist`. Both funnel through `applyScopeInert()`, which reads
    the two attributes together — neither may clear `inert` alone, or typing into the box
@@ -1523,6 +1529,56 @@ Playlists (`?w=`) deliberately still get the site default — a list has no one 
 inventing a title for it is a separate decision.
 
 Pinned by `tests/test_share_meta.js`.
+
+### A share lands on the word — the list behind the panel included
+
+**The panel was never filtered and must stay that way.** `api/word.php` is a bare
+`SELECT * FROM words WHERE word = ?` and `build_word_filter()` has never been anywhere
+near it, so no control in the sheet — seam included — can suppress a shared word.
+
+What *was* filtered is everything around it. 15,803 of the 18,270 words are outside the
+default view, **11,193 of them on the seam alone**, so a shared `curiosity` word opened
+over a list that did not contain it: close the panel and the reader was on a page whose
+rail named filters they never set as the reason the word had gone. Since 2026-08-13 two
+halves fix that, and **neither is sufficient alone**:
+
+- **`share_relax_params()`** (`_lib.php`) makes the word *eligible*. It reads the row and
+  returns which of the sheet's own defaults are hiding it —
+  `['seam' => 'relevant,curiosity', 'variants' => 'show']` — computed from `class_modes()`,
+  the same table `build_word_filter()` filters on. `index.php` emits it as
+  `OTIOS_SHARE_RELAX` and `applyUrlToForm()` ticks exactly those controls before htmx
+  fires the first search.
+- **`pin_order_sql()`** makes it *visible*. Measured on the current build, with the seam
+  relaxed a `curiosity` word ranks **2,468–13,660** under the default `populare` sort, and
+  `PAGE_SIZE` is 250 — relaxing alone moves the row into a result set nobody scrolls to.
+  The pin is prefixed ahead of `demote_order_sql()`, so a curator-demoted word someone
+  shared still arrives on top.
+
+Five things to keep:
+
+1. **Relax the control; never inject the row.** The obvious shortcut is `OR word = ?` in
+   the WHERE, and it is the mirror image of the bug: a list containing a word its own
+   controls say it should not, with nothing on the page to explain it. Relaxing puts
+   „ambele liste" / „cu variante" in the rail *and* a removable chip in the chip bar, so
+   the wider list is both explained and undone in one click. The pin stays in the ORDER BY
+   for the same reason — it moves a row the filters already admit, never admits one.
+2. **The seam is added, never swapped** (`relevant,curiosity`). Arriving at one curiosity
+   word is not a reason to take the default list away from a first-time visitor.
+3. **An explicit param in the URL wins**, including a superseded spelling that already
+   landed on the control (the `alias_*` flags in `applyUrlToForm()`). A link shared *with*
+   filters on it shared the filters too — and since `syncUrlFromForm()` writes the form
+   state back, that is what most shared links carry.
+4. **`editorial` is left alone**, because `back` demotes rather than hides — the word is in
+   the list already, and the pin is what makes it reachable.
+5. **The pin rides in a hidden `word` input inside `#filter-form`**, so htmx sends it with
+   the first search and `next_url` carries it into every load-more. That is what makes it
+   one global order — applied per page instead, the word would head page 2 and page 3 as
+   well. `closePanel()` and the reload branch both clear it, since that is the moment the
+   URL stops naming the word.
+
+`word_scope()` is not involved: it never reads `word`, so a share is not a third scope
+alongside `q` and `w=`. It is the ordinary filtered list with two of its own controls moved
+and one row lifted to the top. Pinned by `tests/test_share_view.js`.
 
 ## Clean URLs — `public/.htaccess`
 
