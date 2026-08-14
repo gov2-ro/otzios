@@ -995,9 +995,14 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] why don't se use the same set of filters pentru stats?
 
+- [ ] add interstitials
+
+- [ ] to manually revisit words that are "vezi și... " the 8: https://voroave.ro/?w=1.1f7.jkz.29y.4q6.509.5fq.66a.8da all 68: https://voroave.ro/?w=1.1f7.jkz.29y.4q6.509.5fq.66a.8da.14.3o.dx.jv.15w.17n.181.1en.1et.1f0.1f1.1f9.1fa.1fy.1gu.1gx.1h1.1i8.1iy.277.29w.2yc.4fk.5jx.84e.84u.856.juc.8by.8lj.8us.8v0.9i7.a1n.a1v.aal.bkq.bod.boo.bv3.bw3.c3p.efa.evl.eyb.k6e.h35.h37.h38.h39.h4a.hf9.hiq.hs3.hu1.huq.hvi.i6u.ii6.j6s
+
 
 ## Post launch
 
+- [ ] check [lexicro.com](https://api.lexicro.com/docs)
 - [ ] REBUS pentru masochiști
 - [ ] traffic analytics
 - [ ] SEO webmasters registrations
