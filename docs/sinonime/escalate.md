@@ -1,35 +1,43 @@
 # Sinonime — what to bring back to Opus
 
-*For whoever implements [`spec.md`](spec.md). Everything here is a decision the spec
-deliberately does not make. Stop and ask rather than pick a default — each of these was
-either reserved by the project owner or is a judgement the measurements do not settle.*
+*For whoever implements [`spec.md`](spec.md) and [`ui.md`](ui.md). Everything here is a
+decision those documents deliberately do not make. Stop and ask rather than pick a default
+— each was either reserved by the project owner or is a judgement the measurements do not
+settle.*
 
 The rule of thumb: **the spec tells you what to build and what the numbers should be. If
 a number comes out wrong, that is a finding, not a test to adjust.**
 
+The first two sections were released on 2026-08-14 and are kept here, settled, rather than
+deleted — so a reader who was told the UI was reserved can see that it no longer is, and
+where the decision went.
+
 ---
 
-## Reserved outright
+## Released — settled 2026-08-14
 
-### 1. The entire UI
+### 1. The entire UI — **settled, see [`ui.md`](ui.md)**
 
-Explicitly held back by the project owner for a separate session. Phase 3 stops at file
-structure — four filenames, which library each loads, and the search order.
+Was held back by the project owner for a separate session. That session happened on
+2026-08-14 and took every decision it named: layout (deterministic radial, graph and
+ranked list side by side), sense clusters (angular sectors, shown), dimming (size and
+opacity from `band`, never colour), the skins pass, the empty state, mobile, and the
+landing state.
 
-Not yours to decide: layout, how sense clusters are presented (or whether v1 shows them
-at all), how "dimmed" is rendered, chips versus lists, colour, the skins pass, empty
-states, mobile treatment, whether the page has a landing state or opens on a search box.
+**It is now the opposite of reserved: do not improvise here.** `ui.md` states the
+geometry as constants and formulas precisely so it can be executed without judgement, and
+a value that comes out looking wrong is a finding to report, not one to nudge. What it
+does leave open it collects under § Not in v1, and §6 below is the live one.
 
-Build the endpoint so it returns the data; leave the markup minimal and unstyled rather
-than inventing a design that then has to be argued with.
-
-### 2. Where the tool is linked from
+### 2. Where the tool is linked from — **settled**
 
 **Not the top nav.** CLAUDE.md's header/footer section records that the bar takes exactly
 three labelled entries and that a fourth broke it at phone widths — the `despre` chip
-exists precisely because a fourth label would not fit. Candidate routes are the
-explorer's `≡ sinonime` row in `api/_partials/detail.php:109-115` (whose chips currently
-point at `?q=`) and a link from `despre`. Part of the UI conversation.
+exists precisely because a fourth label would not fit.
+
+The routes are a `vezi în sinonime →` link added to the explorer's `≡ sinonime` row
+(`api/_partials/detail.php:104-115`, whose chips keep pointing at the explorer's own
+`?q=`), and a line in `despre`.
 
 ---
 
@@ -84,12 +92,23 @@ are shown by default, someone should review ~50 random pairs and decide whether 
 labelled ("din același cuib DEX"), ranked below type 1, or shown at all. That review is a
 judgement about Romanian, not a measurement.
 
+**Still open after the UI session.** `ui.md` § Not in v1 keeps them stored and unshown,
+and reserves a treatment (a dashed edge in `--syn-tree`, ranked below every type-1 node in
+the same sense) for the day the review happens. Having a treatment ready is not permission
+to switch them on.
+
 ### 7. Any schema change
 
 The size figures (~10–11 MB, ceiling 16 MB) were measured against exactly the DDL in
 `spec.md`, by building it in `:memory:` with the real data. Changing a column type,
 adding a string column, or dropping a `WITHOUT ROWID` invalidates them. If the schema
 needs to change, say so and re-measure rather than quietly shipping a different number.
+
+**One such change has already been made and its re-measure is outstanding.** The UI
+session added `edge.rank` plus `ix_edge_rank` (`spec.md` build rule 9) so the page's node
+ceiling holds by construction. Expect roughly +1.5–2 MB, which leaves room under the 16 MB
+ceiling — but that is an estimate, not a measurement. **Report the built size**; do not
+copy the ~10–11 MB figure forward.
 
 ### 8. Scaling the scrape
 
@@ -100,7 +119,9 @@ synonym product.
 
 This was raised with the project owner and **the 21,489-word gap run (Phase 4) is
 approved**. dexonline serves these publicly and attribution plus linking back is the
-normal mitigation; both should be in the page.
+normal mitigation; both should be in the page. `ui.md` § Attribution makes that a build
+requirement rather than a courtesy — a credit with a link, and a link to each word's own
+dexonline page from its view.
 
 **Going wider is a fresh decision.** `findings.md` §6 shows the scrape adds 59% new
 tokens even on words `Relation` already covers, so there is a real argument for scraping
@@ -122,3 +143,13 @@ reasoning is in `spec.md`:
 - Search is exact → prefix → substring, no FTS5.
 - The tool gets its own DB and its own lib file, and touches neither `app.db` nor auth.
 - `v. X` cross-references were measured (513 pure, 400 new words) and rejected.
+- **Pagefind was evaluated and rejected** — it indexes rendered HTML with BM25, which would
+  mean generating 63,049 static pages and then overriding its ranking with `band`. Reasoning
+  in `spec.md` § Search order, so it is not proposed again.
+- **No force-directed graph layout**, and no d3. The layout is arithmetic, in PHP, so the
+  drawing is deterministic and the page keeps its htmx-only load. `ui.md` § Layout.
+- **No depth slider.** Depth 3 is reached by clicking a node, which recentres. The measured
+  p90 at three hops is 1,809 words.
+- **The graph is server-rendered SVG and every node is a real `<a href>`**, so it works with
+  JavaScript off. The JSON island never re-lays-out the graph in the browser — that would
+  put the geometry in two languages.

@@ -797,6 +797,24 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   numeri 0" rămâne validă exact pentru cele **6.753** de cuvinte rămase neacoperite.
   Vezi `docs/sinonime/`.
 
+- [ ] **sinonime: revizuiește ~50 de perechi `t=5` (co-apartenență la același arbore DEX)**
+
+  Blocantul dinaintea afișării lor. Aduc 38.321 de perechi și dau primul sinonim pentru
+  25.554 de cuvinte (+5,4 puncte pe banda 1k+), dar eșantionul e amestecat — `pârpolatic`,
+  `astatic`, `îhî`, `părtie` — fiindcă tovarășii de arbore sunt uneori variante grafice, nu
+  sinonime. E o judecată despre limbă, nu o măsurătoare. `ui.md` le ține stocate și
+  neafișate și le rezervă tratamentul vizual (muchie punctată în `--syn-tree`, sub type-1,
+  etichetate „din același cuib DEX"); tratamentul pregătit **nu** e permisiunea de a le
+  aprinde. `escalate.md` §6.
+
+- [ ] **sinonime: re-măsoară dimensiunea lui `syn.db` după `edge.rank`**
+
+  Cifra de ~10–11 MB din `findings.md` §8 a fost măsurată pe DDL-ul *fără* coloana `rank`
+  și indexul `ix_edge_rank`, adăugate de sesiunea de UI ca plafonul de 37 de noduri să țină
+  prin construcție. Estimare +1,5–2 MB, sub plafonul de test de 16 MB — dar e o estimare.
+  Raportează dimensiunea reală la prima construcție; nu duce mai departe cifra veche.
+  `escalate.md` §7.
+
 - [ ] ascunde cuvinte care au în definiție 'vezi ...' + alt cuvânt care suna f similar?
 
 - [x] another data quality run? – use more input sources?

@@ -4,6 +4,65 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-14 — Sinonime: the engine and the page
+
+The UI session `escalate.md` §1 reserved. Two questions were open — what the search engine
+should be, with Pagefind as the candidate, and what the page looks like given a central
+search box and a synonym graph you can walk a step or two out. Both are now settled in a
+new `docs/sinonime/ui.md`, and nothing in that folder is reserved any more.
+
+**Pagefind was rejected, and the reason is that we do not have its problem.** It indexes
+*rendered HTML* and ranks it with BM25 over prose, so using it means generating 63,049
+static pages to feed its crawler, rsyncing them, then overriding its ranking with `band` —
+which is the entire product. Ours is a known-item lookup over ~107k keys that SQLite
+answers off `key(k, word_id)` in well under a millisecond. There was no search problem to
+solve. The one transferable idea, sharding a static index by prefix, is recorded against
+the autocomplete in case it is ever needed.
+
+**The real question was traversal, and four measurements decided the whole design.** Taken
+against the dump, on the symmetrised type-1 graph:
+
+| | |
+|---|---|
+| degree | median **2** · p90 12 · p99 40 · max **352**; 50.2% of words have ≤2 |
+| sense clusters/word | median 1, and **72.3% have exactly one** |
+| depth≤2 nodes | median 16 · p90 **167** · max **2,400**; 25.7% exceed 60 |
+| depth≤3 nodes | median 101 · p90 **1,809** · max 10,217 |
+| connectivity | 5,597 components, the largest holding **75.7%** of all words |
+
+Read together they say: uncapped depth-3 is a crawl into three quarters of the dictionary,
+uncapped depth-2 is not safe either, half of all lookups draw a graph of three dots, and
+the sense clustering that most justifies a graph pays on barely a quarter of words.
+
+So the graph is **capped at 37 nodes by construction** — top 6 per sense on ring 1, top 4
+per node on ring 2 — with the ranking precomputed into a new `edge.rank` column so the
+request path does no ordering. That cap is the only reason a graph is viable here, and it
+holds for the 352-degree hubs as surely as for the median word.
+
+**The layout is arithmetic, not physics.** Deterministic radial: radius is hop count, angle
+is sense cluster, and `band` is carried by node size and opacity rather than colour, since
+colour belongs to the six skins. No force simulation, so no jitter, no hairball, no d3 — it
+renders as plain SVG from PHP, is byte-stable enough to assert in a test, and every node is
+a real `<a href>`, which means the graph is fully navigable with JavaScript off. The JSON
+island that ships beside it does hover cards and cross-highlighting only; letting it
+re-lay-out the graph would put the geometry in two languages.
+
+**The list stays beside the graph permanently**, and not as a preference: an SVG is
+invisible to a screen reader, so a ranked list has to exist as its text alternative — and
+given it exists, it should be the thing you take a word from, which is what a writing aid
+is for. There is no depth slider; a second step out is a click that recentres, which keeps
+the screen bounded at every moment and the depth unlimited.
+
+Also settled: the empty state is a first-class screen rather than an afterthought, because
+one lookup in four in the band people actually search comes back with nothing (67.0%
+coverage at 1k+). `escalate.md` §2 is answered — the tool is linked from the explorer's
+`≡ sinonime` row and from `despre`, never the top nav, which takes exactly three labelled
+entries. Type-5 edges stay stored and unshown pending the 50-pair review, now with their
+treatment reserved but not enabled.
+
+Two backlog items opened: that review, and a re-measure of `syn.db` after `edge.rank`, since
+the ~10–11 MB figure was taken against the DDL without it.
+
 ## 2026-08-14 — Sinonime: the dump had the thesaurus all along
 
 Brainstorming a second tool — a writing aid that answers "what else could I say here",

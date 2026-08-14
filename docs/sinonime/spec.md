@@ -119,11 +119,13 @@ CREATE TABLE sense(           -- one row per DEX Meaning carrying a relation
 CREATE TABLE sense_word(sid INTEGER, word_id INTEGER,
   PRIMARY KEY(sid, word_id)) WITHOUT ROWID;      -- the sense's own word(s)
 CREATE TABLE edge(sid INTEGER, word_id INTEGER, t INTEGER, src INTEGER NOT NULL DEFAULT 0,
+  rank INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY(sid, word_id, t)) WITHOUT ROWID;   -- the related words
 CREATE TABLE meta(k TEXT PRIMARY KEY, v TEXT);   -- build date, source counts, band edges
 
 CREATE INDEX ix_word_form    ON word(form);
 CREATE INDEX ix_sense_word_w ON sense_word(word_id);
+CREATE INDEX ix_edge_rank    ON edge(sid, t, rank);
 ```
 
 `edge.t`: **1** synonym · **2** antonym · **3** diminutive · **4** augmentative ·
@@ -180,6 +182,23 @@ CREATE INDEX ix_sense_word_w ON sense_word(word_id);
 8. **Symmetrise.** Only 36% of stored `Relation` pairs are reciprocal. Every edge is
    written in both directions.
 
+9. **`edge.rank` is filled at build time, 0-based, ordered `band DESC, form ASC`** within
+   each `(sid, t)`. The page reads a bounded `rank < K` slice and does no ordering per
+   request — which is what makes the graph's node ceiling hold by construction rather than
+   by luck (`ui.md`). Two things about it:
+
+   - **Rank is per sense, not per word.** A sense's edges are shared by every word in its
+     `sense_word` set, so the ordering is computed once per sense. Ranking per source word
+     would store the same list once per member.
+   - **A separate `neighbor` table was considered and rejected** — it would be a
+     near-duplicate of `edge` with the same cardinality. One integer column plus one index
+     is the smaller version of the same thing.
+
+   **This invalidates the measured sizes below and they must be re-measured** — the ~10–11
+   MB figure was taken against the DDL *without* this column, and `escalate.md` §7 requires
+   a re-measure rather than a quiet reship. Expect roughly +1.5–2 MB; the 16 MB test
+   ceiling has room, but confirm it rather than assume it.
+
 ### Expected output
 
 | | |
@@ -194,16 +213,30 @@ CREATE INDEX ix_sense_word_w ON sense_word(word_id);
 
 ---
 
-## Phase 3 — the page (structure only)
+## Phase 3 — the page
 
-Four new files. Nothing here is a visual decision; **stop at structure**.
+**The visual design is settled and lives in [`ui.md`](ui.md)** — layout geometry, caps,
+tokens, accessibility, empty state, attribution. This section covers the files and the
+data path only; take every rendering decision from `ui.md` and do not re-derive one.
+
+Five files.
 
 | file | notes |
 |---|---|
-| `public/sinonime.php` | Served at `/sinonime` by the existing `.htaccess` `$uri.php` rewrite — **no new rewrite rule needed**. Head template: `stats.php` (164 lines). Loads `app.css` + `assets/lib/htmx-2.0.4.min.js` + `prefs.js` **only** — never `app.js` or `store.js`, which are explorer/quiz-specific. Sets `$brand_tag` and requires `api/_partials/header.php` and `footer.php`. Needs `class="page-doc"` on `<body>` only if the page is prose-shaped — see CLAUDE.md's `body.page-doc` note, and **check it at a wide viewport**, since the mobile block hides that bug. |
-| `public/api/_syn.php` | `syn_db()`: own PDO singleton over `public/data/syn.db`, `PRAGMA query_only = ON`, copying `_lib.php:488-498` exactly. Requires `_lib.php` for `BASE` / `e()` / skins. **Never requires `_appdb.php` or `_auth.php`** — a public read must not mint a device identity for every passing crawler, the guard `colectii.php` already documents. Also holds the lookup and search functions and the band/POS label tables. |
-| `public/api/syn.php` | htmx endpoint returning an **HTML fragment**, shaped like `api/search.php`. |
+| `public/sinonime.php` | Served at `/sinonime` by the existing `.htaccess` `$uri.php` rewrite — **no new rewrite rule needed**. Head template: `stats.php` (164 lines). Loads `app.css` + `assets/lib/htmx-2.0.4.min.js` + `prefs.js` + `assets/syn.js` **only** — never `app.js` or `store.js`, which are explorer/quiz-specific. Sets `$brand_tag` and requires `api/_partials/header.php` and `footer.php`. Reads `?q=` and **server-renders the whole result region**, so a shared link is complete, indexable, and works with JS off. `class="page-doc"` on `<body>` — it is a single scrolling result page, not the explorer's fixed shell; **check that at a wide viewport**, since the mobile block hides the bug. |
+| `public/api/_syn.php` | `syn_db()`: own PDO singleton over `public/data/syn.db`, `PRAGMA query_only = ON`, copying `_lib.php:488-498` exactly. Requires `_lib.php` for `BASE` / `e()` / `normalize_diacritics()` (`_lib.php:499`) / skins. **Never requires `_appdb.php` or `_auth.php`** — a public read must not mint a device identity for every passing crawler, the guard `colectii.php` already documents. Holds the lookup and search functions, the band/POS/register label tables, and the two emitters: `syn_layout()` (pure arithmetic → node and edge positions) and `syn_svg()`. |
+| `public/api/syn.php` | htmx endpoint returning an **HTML fragment**, shaped like `api/search.php`. `?q=` returns the result region; `?ac=` returns the autocomplete list only. |
+| `public/assets/syn.js` | ~80 lines, **progressive enhancement only** — hover cross-highlighting between node and list row, a hover card off the JSON island, and `mouseenter` prefetch of the target fragment. The page is complete without it. |
 | `public/data/syn.db` | Built by Phase 2. Covered by the existing `public/data/.htaccess` deny rule (Apache); nginx needs the `location ~ \.(db\|db-wal\|db-shm\|sqlite3?)$ { deny all; }` block the deploy section already requires. |
+
+**`syn_layout()` stays pure** — inputs are the capped node lists, output is coordinates. No
+database access, no HTML. That is what makes the geometry in `ui.md` testable and what
+keeps `syn_svg()` a formatter.
+
+**Layout is computed in PHP and nowhere else.** The JSON island exists for hover
+cross-highlighting and hover cards; it must not re-lay-out the graph in the browser, or the
+geometry lives in two languages and they drift. Recentring is an htmx swap with
+`hx-push-url`, made to feel immediate by the prefetch.
 
 ### Search order: exact → prefix → substring
 
@@ -213,10 +246,27 @@ this stays fast at ~107k keys. Fall through to substring only when the first two
 nothing. **No FTS5** — there is none in `ui.db` either, and prefix matching makes it
 unnecessary.
 
+**Pagefind was evaluated and rejected**, so it is not proposed again. It indexes *rendered
+HTML* and ranks it with BM25 over prose: using it means generating 63,049 static pages to
+feed its crawler and rsyncing them (only `public/` is deployed), then overriding its
+ranking with `band` — which is the entire product. It also puts a WASM runtime on a page
+this section restricts to htmx. The query here is a known-item lookup over ~107k keys, not
+a full-text search, and SQLite answers it off `key(k, word_id)` in well under a
+millisecond. The one transferable idea — sharding a static index by prefix so the client
+fetches only what it needs — is worth revisiting **only** if the autocomplete below is ever
+judged too slow.
+
+### Autocomplete
+
+Server-side and debounced: `hx-trigger="keyup changed delay:150ms"` against `?ac=`, prefix
+match on `key.k`, index-backed, capped at 8 suggestions ordered `band DESC, form ASC`. One
+code path with the real search, no second copy of the key table to keep in sync.
+
 ### Ranking
 
-Within a sense cluster, order by `band DESC`, then `form` alphabetically. Bands 0–1 are
-rendered as *available but dimmed* — never filtered out.
+Within a sense cluster, order by `band DESC`, then `form` alphabetically — precomputed into
+`edge.rank` by build rule 9, so the request path does no ordering. Bands 0–1 are rendered
+as *available but dimmed* — never filtered out.
 
 ### htmx notes
 
@@ -225,6 +275,14 @@ placed in the form is sent by every child element's own request too — the bug 
 records under the share-pin (`#word-list` rows picked up an empty `word=` from the form
 and every definition 400'd). Check any new form field's name against what the result rows
 themselves send.
+
+**Here that check is specifically against the graph's node links**, which are `?q=<word>`
+— the same param the search box uses. A node link that inherits the form's `q` gets two
+`q=` values, PHP keeps the last, and **every node navigates to whatever is in the search
+box instead of to itself**. The graph is inside the swapped region, so it is exactly the
+shape of the outage above. Either scope `hx-include` so it cannot reach the SVG, or make
+the node links plain navigations rather than htmx requests; `test_sinonime.js` asserts a
+node link's resolved URL with the form present.
 
 ---
 
@@ -280,6 +338,10 @@ Conventions in this repo are unusual and there is no runner:
 - `/sinonime` resolves through the rewrite (200, not 404)
 - the page opens no connection to `app.db` — assert no `Set-Cookie` for the device token
 
+**Plus the UI assertions in [`ui.md`](ui.md) § Acceptance** — the 37-node ceiling, layout
+byte-stability, every node being an `<a href>` that resolves to its own word with the form
+present, the empty state, and `văz` rendering more than one sense sector.
+
 ---
 
 ## Verification
@@ -301,7 +363,11 @@ OTIOS_TEST_URL=http://127.0.0.1:8011 node tests/test_sinonime.js
 `/sinonime` would 404 without it.
 
 Then look at `frumos`, `repede`, `mare`, `văz` and `celșag` by hand. `văz` is the one that
-tells you whether the sense clustering survived.
+tells you whether the sense clustering survived; `celșag` is the empty state.
+
+Finally screenshot `frumos` and `văz` across all six skins × both themes, per `ui.md`
+§ Skins. A skin flattening the active node state or losing the graph against its own
+surface fails invisibly while you are looking at any one skin.
 
 ---
 
