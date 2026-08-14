@@ -1715,3 +1715,81 @@ because they are content/data decisions, not styling.
   matrix. The hard `height` on `#status-bar` is gone with it, which also stopped it
   clipping controls silently. See **`--statusbar-h` is measured, not declared** in
   CLAUDE.md; pinned by `tests/test_footer_metrics.js`.
+
+- [x] **The row superscript should count historical attestation, not DEX frequency**
+  — Fixed 2026-08-14. Two findings, one of which was a live bug that stood on its own.
+
+  **(a) One tooltip still states the backwards reading.** `public/api/_partials/word_row.php:53`
+  renders, on every row: `title="Frecvență DEX: 96/100 — cu cât e mai mic, cu atât cuvântul
+  e mai rar"`. That is exactly the misreading the rest of the site was already corrected to
+  avoid — `index.php:604-606` even carries a code comment saying *„Not «cu cât e mai mic, cu
+  atât e mai rar», which is what this said"*, and `index.php:437` and `despre.html:375` both
+  word it correctly. The row tooltip was missed in that pass. `zapciu` (dispărut din uz) is
+  96 and `internet` is 88; the number is lexicographic prominence, not rarity. **Fix this
+  string regardless of whether (b) is done.**
+
+  **(b) The chip barely discriminates where people look.** Distribution of `dex_frequency`
+  on the current build:
+
+  | band | whole table | default view (`seam=relevant`) |
+  |---|---|---|
+  | 0.8–1.0 | 12,670 / 18,270 (69%) | 3,193 / 3,499 (91%) |
+
+  In the default view it is a superscript reading 82, 91, 88, 93, 87 down the column — a
+  number that costs a sentence of explanation to not be misread, and then says almost
+  nothing.
+
+  **What it is *not* replaced by: Zipf.** 38 of 18,270 words have a nonzero
+  `zipf_frequency`; wordfreq has no Romanian data for the rest. That is why the zipf range
+  filter was already removed from the sheet (see the entries above). It is not a candidate
+  and must not be proposed as one again.
+
+  **`newest_dict_year` is also not a candidate** as a row chip: in the relevant seam 2,727
+  rows say 2021 and 731 say 2010 — two values cover 99%. It is a curiosity-seam instrument,
+  as CLAUDE.md already states, and stays where it is (detail panel, `sort=attested`).
+
+  **Decision: swap the chip to `hist_occ`, demote `dex_frequency` to the detail panel.**
+  `hist_occ` is the signal `make_shortlist.score` already leans on hardest (`politeță` 143
+  vs `celșag` 4), it points the right way with no caveat, it is self-explaining in one
+  clause, and it has real spread in the default view:
+
+  | `hist_occ` | 3–4 | 5–9 | 10–24 | 25–99 | 100+ |
+  |---|---|---|---|---|---|
+  | relevant seam | 710 | 1,116 | 996 | 536 | 141 |
+
+  Its one weakness: across the whole table 5,367 words sit at `0`, so outside the default
+  view a third of rows would show a bare `0`. Decide between rendering nothing at 0 (like
+  `chip-dict`, which is already `if ($dict_count > 0)`) and rendering the `0` as a real
+  statement — prefer the former; a blank is honest and a `0` invites "rarest" again.
+
+  **No pipeline change is needed.** `hist_occ` is already a column in `ui.db` and is already
+  selected by the list query. This is a UI-copy change end to end.
+
+  **Every explainer has to move with it — this is the largest part of the task, not an
+  afterthought.** The DEX number is currently explained in five places and they must not be
+  left disagreeing (which is how (a) happened in the first place):
+
+  1. `public/api/_partials/word_row.php:53` — the chip and its `title`.
+  2. `public/index.php:550` — the footer legend strip (`<i class="lg-freq">42</i>frecvență DEX`).
+  3. `public/index.php:604-610` — the `?` shortcuts-modal legend row, including its link to
+     `metodologie#frecvente` and the code comment above it.
+  4. `public/despre.html:373-377` — the same legend row, hand-copied into the static page
+     (the file's own header comment says it is hand-maintained). It links `metodologie#frecvente`.
+  5. `public/metodologie.html:951-995` — the `#frecvente` section, „Cele două frecvențe: DEX
+     și Zipf". Needs the most work: its intro claims *„Amândouă se pot filtra în panoul
+     explore"*, which is **already stale** (the zipf filter is gone), and the „scara" row
+     says the DEX score is *„afișată 0–100 (exponentul mic de lângă cuvânt)"* — which stops
+     being true the moment the chip changes. The paragraph ending *„Oțios apare deci ca
+     **85**"* is keyed to the chip too and needs rewriting or moving.
+
+  Also check, but probably leave alone: `public/api/_partials/detail.php:169` (the `zipf ro`
+  chip — that is the separate open entry above), the `dex_freq` sort option
+  (`index.php:214`, `_lib.php:28`) and the `dexfreq_min`/`dexfreq_max` range filter
+  (`index.php:440-445`, `_lib.php:932-936`). Those stay: the filter sheet's own explainer at
+  `index.php:437` already words the caveat correctly, and „intervale numerice brute, pentru
+  cine vrea să sape" is the right home for a number that needs a caveat. The chip is not,
+  because it has no room for one.
+
+  **Do not add a second number.** The row already carries the verdict dot, the verdict
+  abbreviation, `chip-meta`, `chip-dict` and optionally `chip-pick`; `--word-col` is sized
+  against that chrome (see the comment at `app.css:39`). This is a swap, one slot.

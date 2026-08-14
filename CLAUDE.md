@@ -808,7 +808,7 @@ The four groups:
 
 | group | tokens | notes |
 |---|---|---|
-| surfaces / text | `--bg --surface --surface-2 --border --border-2 --text --text-2 --text-3 --text-4` | `--text-4` is real 9px text (the freq superscript), so it needs 4.5:1 — not a throwaway |
+| surfaces / text | `--bg --surface --surface-2 --border --border-2 --text --text-2 --text-3 --text-4` | `--text-4` is real 9px text (the hist_occ superscript), so it needs 4.5:1 — not a throwaway |
 | accent / status | `--accent --accent-bg --on-accent --badge-bg --star --success* --error*` | `--on-accent` must flip to ink in dark blocks, where accents are light |
 | verdicts | `--v-{ext,dec,hist,abs}` × `{"" ,-bg,-bd,-tx}`, plus optional `-word` | `-word` only if the skin colours the headword instead of the dot |
 | type / metrics | `--sans --serif --mono --radius --bar-h --chip-h --statusbar-h` | `govuk` points all three fonts at one Arial stack and sets `--radius: 0` |

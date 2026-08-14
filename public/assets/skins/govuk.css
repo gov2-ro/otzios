@@ -31,7 +31,7 @@
 
   /* GDS has two text greys, not four — black and #505a5f. The bottom two steps
      of the ramp collapse onto the lightest value that still clears 4.5:1 on
-     white (4.56), because the freq superscript is 9px and is real text. */
+     white (4.56), because the hist_occ superscript is 9px and is real text. */
   --text:   #0b0c0c;
   --text-2: #505a5f;
   --text-3: #6f777b;

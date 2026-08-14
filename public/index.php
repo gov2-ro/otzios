@@ -547,7 +547,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
       <span class="lg-sep"></span>
       <span class="lg"><i class="lg-mark lg-inv">învechit</i></span>
       <span class="lg"><i class="lg-mark lg-fav">favorit</i></span>
-      <span class="lg"><i class="lg-freq">42</i>frecvență DEX</span>
+      <span class="lg"><i class="lg-hist">12</i>atestări istorice</span>
     </span>
   <?php $footer_extra = ob_get_clean();
 
@@ -603,12 +603,10 @@ global $QUICK_TAGS, $POS_OPTIONS;
              the superscript number and (in the beton skin, which drops the
              verdict dot) the colour of the word itself. -->
         <tr><td colspan="2" class="shortcuts-group">Legendă</td></tr>
-        <!-- Not "cu cât e mai mic, cu atât e mai rar", which is what this said and is
-             the exact confusion the methodology page exists to clear up: the number is
-             lexicographic prominence, so zapciu (dispărut) sits at 96 and internet at 88. -->
-        <tr><td><span class="legend-freq">42</span></td>
-            <td>Frecvență DEX, <strong>0–100</strong> — cât de central e cuvântul în dicționar,
-                nu cât de des e folosit
+        <!-- hist_occ, not dex_frequency — see the comment in word_row.php for why. -->
+        <tr><td><span class="legend-hist">12</span></td>
+            <td>Atestări istorice, <strong>de câte ori apare cuvântul în corpusul istoric</strong> —
+                lipsește dacă e zero
                 (<a href="<?= BASE ?>/metodologie#frecvente">explicație</a>)</td></tr>
         <tr><td><span class="legend-sw" style="background:var(--v-ext-word,var(--v-ext))"></span></td>
             <td><em>dispărut din uz</em> — niciun semnal modern</td></tr>

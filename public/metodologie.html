@@ -948,10 +948,16 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
       <em>țarțam</em>, <em>sărciner</em> — rare, dar niciodată cu adevărat în circulație.
     </p>
 
-    <h3 id="frecvente">Cele două frecvențe: DEX și Zipf</h3>
+    <h3 id="frecvente">Exponentul de lângă cuvânt, și cele două frecvențe filtrabile</h3>
     <p>
-      Interfața arată două numere care sună la fel și nu măsoară nici pe departe același
-      lucru. Amândouă se pot filtra în panoul <em>explore</em>, deci merită citite corect.
+      Numărul mic de lângă fiecare cuvânt din listă e <code>hist_occ</code> — de câte ori apare
+      cuvântul, pe toată paradigma lui, în corpusul istoric. Nu apare deloc când e zero: un
+      cuvânt fără nicio atestare istorică n-are ce cifră să arate. E chiar semnalul pe care
+      <code>make_shortlist.score</code> se bazează cel mai mult (mai sus) și are răspândire reală
+      în lista implicită: 710 cuvinte stau la 3–4 atestări, 141 la 100 sau mai multe. Frecvența
+      DEX și Zipf sunt două numere separate care sună la fel și nu măsoară nici pe departe același
+      lucru — nu mai apar lângă cuvânt, dar rămân filtrabile ca interval numeric în panoul de
+      filtre, pentru cine vrea să sape mai adânc.
     </p>
     <table class="data-table">
       <thead><tr><th></th><th>frecvența DEX</th><th>Zipf</th></tr></thead>
@@ -968,7 +974,7 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
         </tr>
         <tr>
           <td>scara</td>
-          <td>0–1 în bază, afișată 0–100 (exponentul mic de lângă cuvânt)</td>
+          <td>0–1 în bază; panoul de filtre îl arată 0–100</td>
           <td>0–8, unde 3 = o apariție la un milion de cuvinte</td>
         </tr>
         <tr>
@@ -990,9 +996,10 @@ wikisource_ro     14.297.033 tokens  →  0,1 ppm = <span class="gold">1,43 apar
       cuvinte încă vii.
     </p>
     <p>
-      Numărul afișat ca exponent lângă fiecare cuvânt este acest scor înmulțit cu 100, ca să
-      încapă în două cifre. <em>Oțios</em> apare deci ca <strong>85</strong>: un cuvânt pe care
-      DEX îl consideră canonic, dar pe care niciunul dintre cele două corpusuri nu-l conține.
+      Acest scor nu mai e afișat ca exponent lângă cuvânt — locul acela arată acum
+      <code>hist_occ</code> (mai sus). <em>Oțios</em> însuși stă la <strong>0,85</strong>: un
+      cuvânt pe care DEX îl consideră canonic, dar pe care niciunul dintre cele două corpusuri
+      nu-l conține.
     </p>
 
     <h4>Zipf: cât de des apare cuvântul, de fapt</h4>

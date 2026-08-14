@@ -400,7 +400,7 @@
   box-shadow: 3px 3px 0 var(--hl);
 }
 [data-skin="brutal"] .word-row[data-selected] .word-text { color: var(--on-ink); }
-[data-skin="brutal"] .word-row[data-selected] .chip-freq { color: var(--on-ink); opacity: .6; }
+[data-skin="brutal"] .word-row[data-selected] .chip-hist { color: var(--on-ink); opacity: .6; }
 
 [data-skin="brutal"] .word-list-empty {
   font-family: var(--mono);
@@ -412,7 +412,7 @@
 }
 
 [data-skin="brutal"] .word-text { font-size: 1.4375rem; }
-[data-skin="brutal"] .chip-freq { font-weight: 600; }
+[data-skin="brutal"] .chip-hist { font-weight: 600; }
 
 /* ── Verdict as the word's own colour, in cloud view ──────────────────────────
    app.css now does the dot-hiding and the `.word-text` colouring itself (every

@@ -4,6 +4,43 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-14 — The row superscript now counts historical attestation, not DEX frequency
+
+Two findings, only one of which needed a decision. `word_row.php:53` still rendered the
+row's tooltip as *„cu cât e mai mic, cu atât cuvântul e mai rar"* — the exact backwards
+reading the rest of the site was already corrected to avoid (`index.php`, `despre.html` both
+word it right). That was a live bug regardless of what replaced it.
+
+The chip itself barely discriminated where people look: 91% of the default view's
+`dex_frequency` sits at 0.8–1.0, so the superscript read 82, 91, 88, 93, 87 down the column —
+a number that costs a sentence of caveat and then says almost nothing. `hist_occ` was the
+obvious swap: it's the signal `make_shortlist.score` leans on hardest (`politeță` 143 vs
+`celșag` 4), it points the right way with no caveat needed, and it has real spread in the
+default view (710 words at 3–4 attestations, 141 at 100+). Rendered only when non-zero, the
+same convention `chip-dict` already uses — a third of the whole table sits at `hist_occ = 0`,
+and a bare `0` would just invite "rarest" again.
+
+Renamed `chip-freq`/`data-freq`/`lg-freq`/`legend-freq` to `-hist` throughout (`app.css`, all
+five skins, `app.js`'s hover-box preview) rather than leave a class called "freq" holding an
+attestation count — the exact kind of drift that let the tooltip bug above go unnoticed.
+`dex_frequency` itself is untouched: still a pipeline column, still filterable by raw range
+in the sheet (`dexfreq_min`/`max`), still explained correctly there. Only the row chip moved.
+
+Five explainers had to move together or they'd disagree again the way the tooltip already
+had: the row chip and its title, the footer legend strip, the `?` shortcuts-modal legend row,
+its hand-copied twin in `despre.html`, and `metodologie.html`'s `#frecvente` section — whose
+intro claimed both DEX and Zipf were still filterable in the panel (already stale, the Zipf
+filter was cut earlier) and whose "scara" row and closing paragraph were both keyed to the
+old exponent. Rewrote `#frecvente` to lead with `hist_occ` as what's actually on screen and
+demote DEX/Zipf to the two raw filterable fields they now are; kept the DEX-isn't-usage
+explanation, since that's evergreen and still needed for the filter sheet's own caveat.
+
+No pipeline change: `hist_occ` was already a column in `ui.db` and already selected by the
+list query. Verified via `php -S` + curl against a live `ui.db` — chip, tooltip, footer
+legend and shortcuts-modal legend all render the new copy with no PHP errors, and a repo-wide
+grep confirms no `-freq` class name survives outside the pipeline's own `dex_frequency`
+field.
+
 ## 2026-08-13 — The pin input was named `word`, and no definition opened
 
 Reported as "select a word and the definition box doesn't open any more", introduced by the

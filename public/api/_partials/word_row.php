@@ -7,7 +7,10 @@ if (str_contains($w['dex_register'] ?? '', 'învechit')) $classes .= ' inv';
 
 $pos = explode('|', $w['dex_pos'] ?? '')[0];
 $reg = explode('|', $w['dex_register'] ?? '')[0];
-$freq = $w['dex_frequency'] !== null ? (int)round((float)$w['dex_frequency'] * 100) : null;
+// hist_occ, not dex_frequency: the DEX score barely discriminates where people look
+// (91% of the default view sits at 0.8-1.0) and reads backwards without a caveat.
+// hist_occ is the signal make_shortlist.score leans on hardest and has real spread.
+$hist_occ = ((int)($w['hist_occ'] ?? 0)) ?: null;
 $def_preview = mb_substr($w['definition'] ?? '', 0, 120);
 $inv_title = str_contains($w['dex_register'] ?? '', 'învechit') ? ' title="învechit"' : '';
 
@@ -41,7 +44,7 @@ $row_label = $w['word'] . ($verdict_lbl ? ', ' . $verdict_lbl : '') . ($is_pick 
      data-verdict="<?= e($w['verdict'] ?? 'unknown') ?>"
      data-vlabel="<?= e($verdict_lbl) ?>"
      data-pos="<?= e($pos) ?>"
-     data-freq="<?= $freq !== null ? $freq : '' ?>"
+     data-hist="<?= $hist_occ !== null ? $hist_occ : '' ?>"
      data-def="<?= e($def_preview) ?>"
      <?= $inv_title ?>
      hx-get="<?= BASE ?>/api/word.php?word=<?= urlenc($w['word']) ?>"
@@ -50,7 +53,7 @@ $row_label = $w['word'] . ($verdict_lbl ? ', ' . $verdict_lbl : '') . ($is_pick 
   <span class="verdict-dot" aria-hidden="true"></span>
   <span class="word-text"><?= e($w['word']) ?></span>
   <?php if ($is_pick): ?><span class="chip-pick" aria-hidden="true" title="Ales — pus deoparte pentru că merită">★</span><?php endif; ?>
-  <?php if ($freq !== null): ?><span class="chip-freq" aria-hidden="true" title="Frecvență DEX: <?= $freq ?>/100 — cu cât e mai mic, cu atât cuvântul e mai rar"><?= $freq ?></span><?php endif; ?>
+  <?php if ($hist_occ !== null): ?><span class="chip-hist" aria-hidden="true" title="Atestări istorice: <?= $hist_occ ?> — de câte ori apare cuvântul, pe toată paradigma lui, în corpusul istoric"><?= $hist_occ ?></span><?php endif; ?>
   <?php if ($meta_str): ?><span class="chip-meta" aria-hidden="true"><?= e($meta_str) ?></span><?php endif; ?>
   <span class="chip-vbadge" aria-hidden="true" title="<?= e($verdict_lbl) ?>"><?= e($verdict_abbr) ?></span>
   <?php if ($dict_count > 0): ?><span class="chip-dict" aria-hidden="true">📚<?= $dict_count ?></span><?php endif; ?>

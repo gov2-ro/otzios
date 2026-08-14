@@ -36,7 +36,7 @@
      a ragged wrap, so this is the whole rhythm: raise it for more air, lower it
      for more words per screen. Measured over all 25,305 headwords at 21px
      Source Serif 4, the text alone needs 4.6rem at the median and 8.3rem at
-     p99; the dot, gap and freq superscript add ~2.5rem of chrome. 10.5rem is
+     p99; the dot, gap and hist_occ superscript add ~2.5rem of chrome. 10.5rem is
      therefore p98 — and since the track is minmax(…, 1fr) the real column is
      usually wider, so in practice almost nothing clips. */
   --word-col:  10.5rem;
@@ -742,7 +742,7 @@ body.page-doc {
                           (drop grid-template-columns)
      2. .word-row       → drop `min-width: 0`
      3. .word-text      → drop min-width/overflow/text-overflow/white-space
-     4. .chip-freq      → drop `flex: none`
+     4. .chip-hist      → drop `flex: none`
      5. mobile @media   → drop the --word-col override, gap back to 10px 18px,
                           padding back to 16px 16px 80px
      6. :root           → drop --word-col (nothing else reads it; harmless left
@@ -768,7 +768,7 @@ body.page-doc {
 }
 
 /* Word chip. `justify-self: start` keeps the grid item itself hugging its
-   content (word + freq superscript) instead of stretching to fill the full
+   content (word + hist_occ superscript) instead of stretching to fill the full
    column track — a grid item stretches by default, so the hover/selected
    background, and the `.ann-overlay` emoji anchored to the row's own right
    edge, were both spanning/landing at the column boundary rather than the
@@ -811,7 +811,7 @@ body.page-doc {
    rather than another round of specificity arithmetic, because "selected
    always wins" is exactly the case that flag exists for. */
 #word-list .word-row[data-selected] .word-text { color: var(--bg) !important; }
-.word-row[data-selected] .chip-freq { color: rgba(250,247,241,.45); }
+.word-row[data-selected] .chip-hist { color: rgba(250,247,241,.45); }
 
 /* Row removal — word just tagged ascunde/meh, popping out of the list */
 .word-row.row-hiding {
@@ -868,8 +868,8 @@ body.page-doc {
   padding: 20px 24px;
 }
 
-/* Freq superscript */
-.chip-freq {
+/* hist_occ superscript — count of historical attestations, not DEX frequency */
+.chip-hist {
   font-family: var(--mono);
   font-size: 0.5625rem;
   color: var(--text-4);
@@ -892,7 +892,7 @@ body.page-doc {
    yours, one is the site's. And --star fails contrast in light mode: measured 2.22:1
    on paper and 1.98:1 on tezaur against the row, where --accent clears 4.5:1 in all
    six skins × both themes (worst case brutal light, 4.55:1). At 10px this is small
-   text, which is the bar CLAUDE.md already sets for the --text-4 freq superscript. */
+   text, which is the bar CLAUDE.md already sets for the --text-4 hist_occ superscript. */
 .chip-pick {
   font-size: 0.625rem;
   color: var(--accent);
@@ -1020,8 +1020,8 @@ body.page-doc {
 #word-list.word-list-table .word-row:hover { background: var(--surface); }
 #word-list.word-list-table .word-row[data-selected] { background: var(--text); }
 
-/* In table view, hide the freq superscript (the dot is already gone everywhere) */
-#word-list.word-list-table .chip-freq   { display: none; }
+/* In table view, hide the hist_occ superscript (the dot is already gone everywhere) */
+#word-list.word-list-table .chip-hist   { display: none; }
 
 /* Word text in table: smaller, left-anchored. Long headwords ellipsis rather
    than widen the column — the column edge is the point. */
@@ -2230,7 +2230,7 @@ body.page-doc {
   text-decoration-thickness: 1.5px;
   text-underline-offset: 2px;
 }
-.lg-freq { font-size: 0.5625rem; position: relative; top: -0.35em; }
+.lg-hist { font-size: 0.5625rem; position: relative; top: -0.35em; }
 
 /* The legend needs 576px and the rest of the bar 603px, so it only actually
    fits from 1280 up — at 1200 it was being clipped mid-word. Below this the ?
@@ -2446,7 +2446,7 @@ body.page-doc {
   vertical-align: -1px;
   margin-left: 3px;
 }
-.legend-freq {
+.legend-hist {
   font-family: var(--mono);
   font-size: 0.625rem;
   font-weight: 600;

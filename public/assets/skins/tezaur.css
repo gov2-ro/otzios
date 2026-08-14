@@ -31,7 +31,7 @@
   --text:   #12181F;
   --text-2: #46525E;
   --text-3: #5A6672;
-  /* 4.76:1 on --surface. The freq superscript is 9px real text and reads this
+  /* 4.76:1 on --surface. The hist_occ superscript is 9px real text and reads this
      token, so it cannot be the usual near-invisible fourth step. */
   --text-4: #646F7C;
 
@@ -129,7 +129,7 @@
 [data-skin="tezaur"] #word-list:not(.word-list-table) .word-text  { color: inherit; }
 /* 0.8 alpha of the -tx over its own tint: 4.80:1 at the worst of the four
    (extinct). Full strength competed with the headword. */
-[data-skin="tezaur"] #word-list:not(.word-list-table) .chip-freq  { color: currentColor; opacity: .8; }
+[data-skin="tezaur"] #word-list:not(.word-list-table) .chip-hist  { color: currentColor; opacity: .8; }
 
 /* app.css's :hover and [data-selected] rules are two-class selectors and lose
    to the four-class verdict rules above, so both are restated here. The

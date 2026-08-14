@@ -989,7 +989,7 @@ document.querySelectorAll('.tax-select').forEach(function(sel) {
     hbVerd.className   = 'verdict-badge vb-' + verdict.replace(/ /g, '_');
     const parts = [];
     if (row.dataset.pos)  parts.push(row.dataset.pos);
-    if (row.dataset.freq) parts.push('dex ' + row.dataset.freq);
+    if (row.dataset.hist) parts.push('ist ' + row.dataset.hist);
     hbMeta.textContent = parts.join(' · ');
     if (row.dataset.def) {
       hbDef.textContent  = row.dataset.def;

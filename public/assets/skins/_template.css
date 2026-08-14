@@ -79,7 +79,7 @@
   --text:      #F0EDE3;
   --text-2:    #BFB9A9;
   --text-3:    #8C8578;
-  --text-4:    #666055;   /* the 9px freq superscript reads this — keep it ≥4.5:1 */
+  --text-4:    #666055;   /* the 9px hist_occ superscript reads this — keep it ≥4.5:1 */
   --on-accent: #14130F;   /* ink, not white — see the light block */
 }
 
@@ -100,7 +100,7 @@
 
      .brand-bar          top bar
      #word-list          the cloud / table container
-     .word-row           one word (add .word-text, .chip-freq inside)
+     .word-row           one word (add .word-text, .chip-hist inside)
      .filter-sheet       the left rail / mobile drawer
      #detail-panel       the definition card, centred at the bottom over the list
      #status-bar         the footer strip

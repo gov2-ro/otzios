@@ -39,7 +39,7 @@
 
   /* The reference has two greys, #757575 and #9CA3AF, and black. #9CA3AF is
      2.6:1 on white — fine for the 11px annotations it carries there, not fine
-     for --text-4, which on this site is real 9px text (the freq superscript).
+     for --text-4, which on this site is real 9px text (the hist_occ superscript).
      So the bottom two steps collapse onto #757575 (4.6:1), the same compromise
      govuk.css makes for the same reason. */
   --text:   #000000;
