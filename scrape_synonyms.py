@@ -2,16 +2,25 @@
 """
 Scrape synonyms and antonyms for shortlist words from dexonline.ro.
 
-**Why this can't come from the dump.** The DEX dump carries `Definition.internalRep` in
-full only for the Academy dictionaries. The Litera Internațional titles — `Sinonime`
-(2002), `Sinonime82` (1982), `Antonime` (2002) — are redacted to 20 characters plus an
-ellipsis:
+**Why the *Litera dictionaries* can't come from the dump.** The DEX dump carries
+`Definition.internalRep` in full only for the Academy dictionaries. The Litera
+Internațional titles — `Sinonime` (2002), `Sinonime82` (1982), `Antonime` (2002) — are
+redacted to 20 characters plus an ellipsis:
 
     sourceId 1 (DEX '98)   max length 15,039   mean 201
     sourceId 6 (Sinonime)  max length     23   mean  23   →  "@AB'A@ s. dimie, păn..."
 
 So the words are known to be in those dictionaries (that is where `dict_count` comes
 from) but their contents are not distributed. The rendered page has them.
+
+**This heading used to read "why this can't come from the dump", and that overstatement
+is why the `Relation` table went unread for a year.** The dump *does* carry a complete
+synonym graph — dexonline's own community-curated one, 158,860 rows, unredacted — which
+yields 164,399 word-level synonym pairs over 63,049 words in ~15s with no HTTP. It is a
+different artefact by different authors, and the redaction above says nothing about it.
+The two sources are complementary: on the 1,542 words both cover, 59% of what this
+scraper returns is not in the graph, and 524 of its 2,066 words are absent from the graph
+entirely. Keep scraping — but for the gap, not for everything. See `docs/sinonime/`.
 
 One request per word, against the same URL `scrape_definitions.py` already uses. Be
 polite to dexonline.ro — it is community-run — and keep `--delay >= 1.2`.

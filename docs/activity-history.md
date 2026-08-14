@@ -4,6 +4,65 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-14 — Sinonime: the dump had the thesaurus all along
+
+Brainstorming a second tool — a writing aid that answers "what else could I say here",
+words only, no definitions — turned up that the premise blocking it was our own
+overstatement. `CLAUDE.md`, `BACKLOG:313` and `scrape_synonyms.py`'s docstring all said
+synonyms "can't come from the dump". True of `Definition.internalRep` for the three Litera
+titles, which are redacted to 23 characters because they are in copyright. Generalised, in
+three places, to the whole subject.
+
+The dump carries `Relation` — dexonline's own community-curated graph, 158,860 rows
+(152,023 synonym, 5,216 antonym, 1,547 diminutive, 74 augmentative), unredacted, and never
+read by anything in this repo. Resolved through `Meaning → Tree → TreeEntry →
+EntryLexeme → Lexeme` it gives **164,399 word-level synonym pairs over 63,049 words in
+~15 seconds**, against ~4 hours of scraping for 2,075.
+
+Four things were measured before writing any of it down.
+
+**The product is the ranking, not the coverage.** 41.7% of those 63,049 words are dead
+Romanian — 15.3% have zero CulturaX occurrences, another 26.4% under 100. dexonline lists
+synonyms alphabetically, so `frumos` offers `bididel`, `boghet` and `brudiu` beside
+`arătos`. This project already owns the corpus rollup that separates them, and nothing
+else in Romanian does.
+
+**Flattening the graph is what would have made it garbage.** Flat, `văz` gives `privire,
+vedere, văzut, concepție, orbi, captiva, myosotis, saxifraga, troglodytes` — three
+unrelated senses and three Latin binomials, because expanding a target `Tree` reaches
+every lexeme of every one of its entries and 10,091 trees hold more than one. Grouped by
+source `Meaning`, which is how the data is actually shaped, each sense reads correctly.
+The storage keeps senses even if the first UI renders flat; the reverse is not recoverable.
+
+**The scrape is complementary, not superseded** — this reversed the plan mid-investigation.
+On the 1,542 words in both sources, mean 6.2 synonyms from `Relation` against 6.8 from the
+scrape, and **59% of the scrape's tokens are new information**; on 353 of them the scrape
+adds more than `Relation` holds in total. 524 of its 2,066 words are absent from the graph
+entirely — `poronci`, `soluțiune`, `antereu`, `amploiat`, `celșag`. The community graph is
+strong on modern vocabulary and weak on the archaic layer; Seche is the reverse. So the
+scraper stays, pointed at the gap: 21,489 words at 100+ occurrences with no synonym from
+any free source, 17.9h at the 3s delay. That also unblocks the `syn_count` BACKLOG item,
+whose stated precondition was the scraping this removes.
+
+**Size was measured, not estimated**, by building each candidate schema in `:memory:` and
+reading `page_count × page_size`: 6.4 MB for a bare word-pair bag, 9.3 MB sense-clustered
+with metadata and labels, ~10–11 MB with the variant/fold lookup table. `ui.db` is 17 MB.
+The scalar metadata is 3 bytes a word — cost is strings and edges, so there is no
+lean-versus-rich tradeoff worth having.
+
+Also evaluated and rejected: `v. X` cross-references in `definitions.db` (513 pure ones,
+400 new words — not worth a build step), recorded with the number so it is not proposed
+again. Accepted with a caveat: multi-entry `Tree` co-membership, +38,321 pairs and 25,554
+words gaining a first synonym, stored as its own relation type because the sample is mixed
+(`pârpolatic`, `îhî`) and tree-mates are sometimes variants rather than synonyms.
+
+Shipped as documentation only, on branch `sinonime`: `docs/sinonime/findings.md`,
+`spec.md`, `escalate.md`. No code — the UI is a separate conversation, and `escalate.md`
+lists what the implementing model must not decide alone. The three overstated claims are
+corrected in place.
+
+---
+
 ## 2026-08-14 — The row superscript now counts historical attestation, not DEX frequency
 
 Two findings, only one of which needed a decision. `word_row.php:53` still rendered the

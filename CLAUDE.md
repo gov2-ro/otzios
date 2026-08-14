@@ -643,9 +643,10 @@ dictionary is unnamed or unmatched — it is not evidence that a word is old.
 
 ## Synonyms
 
-`words.synonyms` / `words.antonyms` come from `scrape_synonyms.py`, not from the dump.
-dexonline distributes `Definition.internalRep` in full only for the Academy dictionaries;
-the Litera titles are redacted to 23 characters:
+`words.synonyms` / `words.antonyms` come from `scrape_synonyms.py`. **The reason is
+narrower than it used to be stated here, and the overstatement cost a year.** What is
+redacted is `Definition.internalRep` for the three Litera titles, which are in copyright —
+dexonline distributes it in full only for the Academy dictionaries:
 
 ```
 sourceId 1 (DEX '98)   max 15,039 chars   mean 201
@@ -654,6 +655,17 @@ sourceId 6 (Sinonime)  max     23 chars   mean  23   "@AB'A@ s. dimie, păn..."
 
 So `dict_count` knows a word appears in `Sinonime`/`Sinonime82`/`Antonime`, but not what
 they say. The rendered page has it.
+
+**That says nothing about the `Relation` table, which is a different artefact and ships in
+full.** It is dexonline's own community-curated relation graph — 158,860 rows, 152,023 of
+them synonym, plus antonym/diminutive/augmentative — and resolving it through
+`Meaning → Tree → TreeEntry → EntryLexeme → Lexeme` yields 164,399 word-level synonym
+pairs over 63,049 words in ~15 seconds with no HTTP. Nothing in this repo read it until
+2026-08-14. The two sources are complementary rather than redundant: measured on the 1,542
+words both cover, **59% of the scrape's tokens are new information**, and `Relation` is
+strong on modern vocabulary exactly where Seche is weak, and vice versa.
+
+Full measurements, schema and build spec: `docs/sinonime/`.
 
 ```bash
 python scrape_synonyms.py --dry-run --seam relevant     # count + ETA, no requests
