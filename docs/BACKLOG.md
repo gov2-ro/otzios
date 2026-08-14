@@ -974,7 +974,11 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] in og:description reverse order, start with term definition, _then_ category.
 
+- [ ] start with light theme?
+
 ---
+
+- [ ] register_tags_shortlist more tags that we have in filters - use them!
 
 - [ ] Colecții viewer atât compact cât și cu detalii / meta, să vedem ce nu ne place 
 

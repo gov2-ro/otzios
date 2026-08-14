@@ -68,6 +68,8 @@ Sau cum a zics odată un robot: _A computational linguistics tool to identify "f
 
 Vezi și: [initial specs](docs/oțios-init-specs.docx.md) 
 
+![ce avem aici?](public/assets/despre/ce-este-aceasta.gif)
+
 ## Pipeline
 
 ### End-to-end flow
