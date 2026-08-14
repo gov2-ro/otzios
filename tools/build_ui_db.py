@@ -416,11 +416,32 @@ def mark_archaic_spellings(conn: sqlite3.Connection, freq_db: Path) -> None:
 #    word is simply not there. So they stay visible. `archaic_spelling` picks up the
 #    unambiguous half of that group anyway (`condițiune`, `advocat`) via the regex rules.
 #
+#    **One carve-out, and it is DEX contradicting itself rather than us second-guessing
+#    it: a word whose entire definition is „vezi X".** The justification above is that a
+#    self-heading form carries a sense of its own; an entry whose whole text is a pointer
+#    is the dictionary saying it does not. 175 words are in that state, all 175 linked by
+#    the relation, and 66 of them were kept visible by restriction 1 alone — `volintir`
+#    („vezi voluntar"), `țignal` („vezi semnal"), `contimporan`, `nuor`. A reader who
+#    opens one gets no definition, because there is none to get.
+#
+#    The pointer also **names the head**, which is better evidence than the edit-distance
+#    pick below: measured over the 47 pointer words the relation already flagged, the two
+#    agree on 46 and the one disagreement is DEX's („uiet" → *huiet*, not *vuiet*).
+#
 # 2. **The headword must clear TWIN_RATIO in the modern corpus**, exactly as the spelling
 #    rules must. Without it this hides the pairs where *both* forms are forgotten, which
 #    are the project's own material rather than noise: `antereu/anteriu`,
 #    `amploiat/amploaiat`, `zalhana/zahana`, `lighioaie/lighioană`, `pătlăgea/pătlăgică`
 #    — 53 in the default view.
+#
+#    **This one is not waived for the pointer definitions**, and it is what makes the
+#    carve-out above safe. „vezi X" says the word has no sense of its own; it does not say
+#    X is alive. Gated, the pointers split cleanly down the middle — 31 hidden, every one
+#    pointing at an ordinary modern word (`voluntar` 1.38M, `semnal` 2.59M, `nor` 261k),
+#    and 68 left standing, every one pointing at a word as dead as itself
+#    (`bejănar`→*băjenar* 138, `bălsămit`→*bălsămat* 52, `jălbar`→*jelbar* 24). Waiving it
+#    too would hide the second group, which is exactly the material the project is for —
+#    and it would hide it *because* the dictionary was terse about it.
 #
 # It is a separate flag from `archaic_spelling` rather than folded into it, and the two
 # are kept **disjoint**: a word the regex rules already claimed is not marked here. Each
@@ -432,6 +453,18 @@ _VARIANT_ENTRY_SQL = """
       JOIN Lexeme lx ON lx.id = el.lexemeId
      WHERE lx.formNoAccent IS NOT NULL AND lx.formNoAccent != ''
 """
+
+# Deliberately only „vezi X", and only when that is the *whole* definition: all 175
+# pointer rows in the build are exactly that shape, none is `v. X`, and none names two
+# targets or trails a gloss. A looser pattern would start reading the first line of an
+# ordinary definition that happens to cross-reference something.
+_POINTER_DEF = re.compile(r'^\s*vezi\s+([^\s,;.]+)\s*\.?\s*$', re.IGNORECASE)
+
+
+def pointer_target(definition: str | None) -> str | None:
+    """The word a „vezi X" definition points at, or None if it is a real definition."""
+    m = _POINTER_DEF.match(definition or '')
+    return normalize(m.group(1)) if m else None
 
 
 def _edit_distance(a: str, b: str) -> int:
@@ -521,8 +554,12 @@ def mark_dex_variants(
     print('Marking DEX variant forms…')
     conn.execute('UPDATE words SET dex_variant = 0, dex_variant_of = NULL')
 
+    # Both empty, not just `heads_of`: an entry table that yields heads but no variants
+    # is a legitimate (if odd) read, and the „vezi X" path does not need the relation at
+    # all. Only a table that produced nothing whatsoever means the db predates
+    # extract_taxonomy.py loading EntryLexeme, which is the case worth bailing on.
     heads_of, all_heads = load_dex_variants(lexemes_db)
-    if not heads_of:
+    if not heads_of and not all_heads:
         print(f'  (no EntryLexeme rows found, skipped: {lexemes_db})')
         return
     if not freq_db.exists():
@@ -558,26 +595,48 @@ def mark_dex_variants(
     # The head, by contrast, is a lemma, and a lemma's usage genuinely lives across its
     # paradigm — `lăcrima` is 0 as an infinitive and 16,393 as a verb.
     marked = []
-    for word, archaic in conn.execute(
-            'SELECT word, COALESCE(archaic_spelling, 0) FROM words').fetchall():
-        if archaic or word in all_heads:
+    pointers = 0
+    for word, archaic, definition in conn.execute(
+            'SELECT word, COALESCE(archaic_spelling, 0), definition FROM words'
+            ).fetchall():
+        if archaic:
             continue
-        heads = heads_of.get(word)
-        if not heads:
+        # A definition that is only „vezi X" is DEX naming the head itself, and is the
+        # one thing that overrides restriction 1 — see the carve-out above. It stands on
+        # its own: the relation need not link the pair, because the prose already did.
+        pointer = pointer_target(definition)
+        if not pointer and word in all_heads:
             continue
-        # Which head this is a variant *of* is settled first, and by spelling alone.
-        # Letting the gate shortlist the candidates instead put `lăcrăma` under
-        # `reclama` — its entry's other headword, and the only one whose citation form
-        # the corpus could count. Nearest spelling, then the count as the tie-break.
-        head = min(heads, key=lambda h: (_edit_distance(word, h), -head_count(h), h))
-        if head_count(head) >= TWIN_RATIO * max(modern.get(word, 0), 1):
-            marked.append((head, word))
+        floor = TWIN_RATIO * max(modern.get(word, 0), 1)
+
+        head = None
+        if pointer and pointer != word and head_count(pointer) >= floor:
+            head = pointer
+        else:
+            # Fallback, and also the whole of the ordinary path. A pointer whose target
+            # is as dead as the word usually means the pair really is two dead forms and
+            # nothing is hidden — but not always: „uiet · vezi huiet" names a twin nobody
+            # writes either, while the entry's own head is the living `vuiet`. Reading
+            # only the prose there would lose a variant the relation had right.
+            heads = heads_of.get(word)
+            if not heads:
+                continue
+            # Which head this is a variant *of* is settled first, and by spelling alone.
+            # Letting the gate shortlist the candidates instead put `lăcrăma` under
+            # `reclama` — its entry's other headword, and the only one whose citation
+            # form the corpus could count. Nearest spelling, count as the tie-break.
+            head = min(heads, key=lambda h: (_edit_distance(word, h), -head_count(h), h))
+            if head_count(head) < floor:
+                continue
+        marked.append((head, word))
+        pointers += bool(pointer)
 
     conn.executemany(
         'UPDATE words SET dex_variant = 1, dex_variant_of = ? WHERE word = ?', marked)
     print(f'  {len(marked):,} DEX variant forms '
           f'(headword ≥{TWIN_RATIO}× in the modern corpus over its whole paradigm, '
-          f'and not a headword itself)')
+          f'and not a headword itself) — {pointers:,} of them named by a '
+          f'„vezi X" definition')
 
 
 # ── Deverbal nouns whose verb is already on the list ─────────────────────────────

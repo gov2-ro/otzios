@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from build_ui_db import mark_dex_variants
+from build_ui_db import mark_deverbal_nouns, mark_dex_variants
 
 LEXEMES_PATH   = Path('data/processed/lexemes.db')
 FREQ_PATH      = Path('data/processed/corpus_frequencies.db')
@@ -45,6 +45,18 @@ except sqlite3.OperationalError:
     print('Added column: archaic_spelling (was absent; left 0)')
 
 mark_dex_variants(conn, LEXEMES_PATH, FREQ_PATH, INFLECTED_PATH)
+
+# mark_deverbal_nouns reads every other flag to check a noun's base verb is still
+# visible before hiding the noun behind it, so a run that changes dex_variant leaves it
+# stale — a noun kept visible for a verb this pass has just hidden. Cheap and idempotent
+# (one pass over the definitions), so it is re-run rather than reasoned about. It is
+# skipped on a db built before the deverbal columns landed.
+try:
+    conn.execute('SELECT deverbal_like FROM words LIMIT 1').fetchone()
+    mark_deverbal_nouns(conn)
+except sqlite3.OperationalError:
+    print('Skipping mark_deverbal_nouns: column deverbal_like is absent')
+
 conn.commit()
 conn.close()
 print('Done.')
