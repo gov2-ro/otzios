@@ -22,7 +22,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script>(function () { try { var d = document.documentElement; var t = localStorage.getItem("otios.theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); d.setAttribute("data-theme", t); var ok = ["paper", "brutal", "govuk", "registru", "tezaur", "velin"], s = localStorage.getItem("otios.skin"); d.setAttribute("data-skin", ok.indexOf(s) >= 0 ? s : "govuk"); var z = localStorage.getItem("otios.textscale") || "100"; d.style.fontSize = z + "%"; } catch (e) { } })();</script>
+  <script>(function () { try { var d = document.documentElement; var t = localStorage.getItem("otios.theme") || "light"; // before 2026-08-14: || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") d.setAttribute("data-theme", t); var ok = ["paper", "brutal", "govuk", "registru", "tezaur", "velin"], s = localStorage.getItem("otios.skin"); d.setAttribute("data-skin", ok.indexOf(s) >= 0 ? s : "govuk"); var z = localStorage.getItem("otios.textscale") || "100"; d.style.fontSize = z + "%"; } catch (e) { } })();</script>
   <title>Despre — Voroave</title>
   <meta name="description"
     content="Cum sunt găsite cuvintele uitate ale limbii române: două corpusuri, dicționarul DEX, și marcajele cititorilor. 18.270 de cuvinte.">
@@ -293,13 +293,15 @@ Retrieved 2026-08-12, License - CC BY-SA 4.0
   <div class="despre-wrap doc-layout">
 
     <div class="doc-body">
-<figure style="margin-top: -1.2em; display: block;" > <img src="assets/despre/ce-este-aceasta.gif" style="max-width: 680px;" alt="Ce este aceasta?" loading="lazy"> </figure>
+<figure style="margin-top: -1.6em; display: block;" > <img src="assets/despre/ce-este-aceasta.gif" style="max-width: 820px;" alt="Ce este aceasta?" loading="lazy"> </figure>
+
 <h3 style="font-weight: bold; margin-left: .8em; font-size: 2.25em; position: relative; top: -2.5em; margin-bottom: -1.25em; color: white; text-shadow: -2px 3px 2px rgba(0,0,0,.6);">Ce este aceasta?</h3>
-        <h3 style="font-weight: normal; font-size: 1em; margin-bottom: .5ex;">Hello fellow language nerds and/or procrastinators.</h3>
-        <p class="despre-lede">
+<figure class="despre-shot is-portrait"> <a href="/?word=voroavă" target="_blank" rel="noopener" title="voroavă - definiție"><img src="assets/despre/voroava-def.png" alt="Panoul de detalii al unui cuvânt, cu definiția și butoanele de marcare" loading="lazy"></a> </figure>
+<h3 style="font-weight: normal; font-size: 1.25em; margin-bottom: .5ex; opacity: .9;">Hello fellow language nerds and/or procrastinators.</h3>
+<p class="despre-lede">
         Am încercat să găsesc o metodă de a descoperi cuvintele apărute în dicționare, dar care sunt uitate / neglijate, relativ ieșite din
-        uz, intersectând termenii din colecția <a href="http://dexonline.ro/" target="_blank" rel="nofollow">dexonline</a> cu câteva corpusuri de texte relativ contemporane, și am selectat ce-a rămas rar/deloc întâlnit, evitând însă termenii foarte vechi, care și-au pierdut de tot relevanța. Mult mai pe larg e descris în <a href="metodologie">metodologie</a> (dar nu recomand, n-a fost încă atinsă de mâna omului).</p>
-      <p><strong>Suveranism lexical</strong>. Use it or lose it.
+        uz, intersectând termenii din colecția <a href="http://dexonline.ro/" target="_blank" rel="nofollow">dexonline</a> cu câteva corpusuri de texte relativ contemporane, și am selectat ce-a rămas rar/deloc întâlnit, evitând însă termenii foarte vechi, care și-au pierdut de tot relevanța. Mult mai pe larg e descris în <a href="metodologie">metodologie</a> <small>(dar nu recomand, n-a fost atinsă încă de mâna omului)</small>.</p>
+      <p><strong>Suveranism lexical</strong>. Use it or lose it. Gen.
 
       </p>
       
@@ -312,7 +314,7 @@ Retrieved 2026-08-12, License - CC BY-SA 4.0
       </p>
       <p>
         <mark>Termenii marcați pot fi partajați în <a href="/liste/"><b>colecții</b> publice</a>, <strong>ceea ce vă și rog</strong></mark>, întru
-        rafinarea listei de cuvinte: <kbd>★FAV</kbd> sau <kbd>LOL</kbd> sunt prioritizate, <kbd>MEH</kbd>, dimpotrivă.
+        rafinarea listei de cuvinte: <em>★FAV</em> &amp; <em>LOL</em> sunt prioritizate, <em>MEH</em>, dimpotrivă. Împreună putem pescui cuvintele cele mai drăgălașe!
       </p>
 
       <p>Există 2 liste de cuvinte, <em>relevante</em> și <em>curiozități</em>.</p>
@@ -323,7 +325,7 @@ Retrieved 2026-08-12, License - CC BY-SA 4.0
         <dt>Curiozități</dt>
         <dd>restul candidaților — cuvinte rămase doar în dicționare vechi sau specializate <small>(14.082 cuvinte)</small></dd>
       </dl>
-      <p>‼️Atenție, implicit doar lista 'relevante' e activă, 'curiozități' poate fi activată din lista de filtre.</p>
+      <p><small><mark>‼️</mark></small>Atenție, implicit doar lista '<i>relevante</i>' e activă, '<i>curiozități</i>' poate fi activată din lista de filtre.</p>
       <style>
         dl {
           border-left: 2px solid #DDD; padding-left: .75em; margin-left: 1em; font-size: 13px;

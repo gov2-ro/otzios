@@ -357,7 +357,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - **Resolved (pipeline side)**: `validate_with_wordfreq.py` now emits a `tier` column (`forgotten` / `rare_in_use` / `common`) alongside the existing `is_forgotten` bool. Default thresholds: `--threshold 3.0` (lower, forgotten floor) / `--upper-threshold 4.5` (upper, common cutoff). Rare-in-use words (3.0 ≤ zipf < 4.5) are written to a separate `data/processed/rare_words_wordfreq.csv` so they don't contaminate the forgotten list. Note: `oțios` itself has zero corpus signal (zipf=0.000) so it lands in `forgotten`, not `rare_in_use`.
   - **Still open (UI side)**: add a global switch in the web UI to toggle between the forgotten-words list and the rare-in-use list.
 
-- [ ] maybe we should also look in the dictionaries themselves. Are we including really old dictionaries? We could make a page with per dictionary `diff`? Does dexonline dump cover all dictionaries listed here: https://clre.solirom.ro/  https://clre.solirom.ro/content/ro/list-of-lexicographical-works.html https://clre.solirom.ro/content/ro/statistics.html 
+- [x] maybe we should also look in the dictionaries themselves. Are we including really old dictionaries? We could make a page with per dictionary `diff`? Does dexonline dump cover all dictionaries listed here: https://clre.solirom.ro/  https://clre.solirom.ro/content/ro/list-of-lexicographical-works.html https://clre.solirom.ro/content/ro/statistics.html 
 
 - [x] handle in browser curration - choices saved in browser memory and can be exported as json — **partly done**: annotations now sync to `private/app.db` via `api/sync.php`, so curation survives a browser wipe and follows the user across devices on the same account. localStorage remains the offline-first cache. A JSON *export* button is still missing; the data is reachable at `api/sync.php` with `{"since":0}`.
 
@@ -390,7 +390,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] track synonyms. count synonyms
 
-- [ ] also filter by: masculin, feminin, neutru.
+- [ ] also filter by: masculin, feminin, neutru?
 
 - [ ] Meta: suggest versions, note in both activity log, chronology and readme.
 

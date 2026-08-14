@@ -4,6 +4,18 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-14 — Light theme is the default; dark is opt-in
+
+The pre-paint boot scripts used to fall back to the OS preference when no theme was
+stored (`matchMedia("(prefers-color-scheme: dark)")`), so a dark-OS visitor arrived in
+dark. That is gone: the fallback is now `"light"` everywhere, and dark only applies after
+an explicit switch (which `setTheme` stores under `otios.theme` as before). Three boot
+scripts hold the line: `api/_skins.php` (all PHP pages), `despre.html` and
+`metodologie.html` (static docs). Each keeps the removed system-preference expression as a
+comment.
+
+---
+
 ## 2026-08-14 — „vezi X" definitions now count as DEX naming a variant
 
 `volintir`'s entire definition is „vezi voluntar", and it was sitting in the default view
