@@ -4,6 +4,16 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-14 — despre: tema implicită light și invitația la pescuit (from sinonime)
+
+Copiat `public/despre.html` din ramura `sinonime` (commitul „words and memes", încă
+nepublicat pe origin). Două schimbări:
+
+- Scriptul de boot pre-paint nu mai cade pe `prefers-color-scheme`: vizitatorul fără temă
+  salvată primește acum `light`. Expresia veche rămâne ca comentariu, cu data.
+- Paragraful cu marcajele îndeamnă la participare: `<kbd>★FAV / LOL / MEH</kbd>` devin
+  `<em>` și capătă propoziția „Împreună putem pescui cuvintele cele mai drăgălașe!".
+
 ## 2026-08-14 — The row superscript now counts historical attestation, not DEX frequency
 
 Two findings, only one of which needed a decision. `word_row.php:53` still rendered the
