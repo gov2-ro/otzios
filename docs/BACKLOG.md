@@ -1793,3 +1793,5 @@ because they are content/data decisions, not styling.
   **Do not add a second number.** The row already carries the verdict dot, the verdict
   abbreviation, `chip-meta`, `chip-dict` and optionally `chip-pick`; `--word-col` is sized
   against that chrome (see the comment at `app.css:39`). This is a swap, one slot.
+
+- [ ] **Remote app.db has three `pax1` users** (ids 1, 360, 373 — one person, three device tokens, 67/126/390 marks). `export_editorial.py --user N` must pick one; marks split across users also inflate `/colectii` distinct-person counts. Worth consolidating into one user (careful: that changes n_up counts site-wide) or at least deciding which id is canonical.

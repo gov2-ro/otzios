@@ -4,6 +4,18 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-14 — Merge local marks into remote app.db
+
+Added `tools/merge_annotations.php`: copies one user's annotations from a source
+app.db into a destination app.db — final state only (tombstones and empty rows
+skipped, optionally dropping words absent from the current `ui.db`), `seq`
+re-allocated from the destination user's own MAX so the sync cursor stays
+monotonic, conflicts resolved by the app's own last-write-wins on `updated_at`.
+`--src-id`/`--dst-id` pin either side when nicknames collide. Ran it to merge
+local pax1's marks into the remote db under the active remote pax1 (id 373 —
+the remote holds three `pax1` device-users, see BACKLOG): 251 inserted, 13 left
+alone (remote newer), 1 tombstone and 18 words that left the shortlist dropped.
+
 ## 2026-08-14 — despre: tema implicită light și invitația la pescuit (from sinonime)
 
 Copiat `public/despre.html` din ramura `sinonime` (commitul „words and memes", încă
@@ -3652,3 +3664,4 @@ Also added initial `docs/` (database analysis, results summary, scripts guide, s
 ## 2025-10-26 — Project initialized
 
 Repository created. Empty initial commit.
+---
