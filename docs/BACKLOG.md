@@ -310,7 +310,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] **Diacritic-insensitive search** — searching `otios` should find `oțios`; `stramosesc` should find `strămoșesc`. Normalize both the query and the indexed word by stripping diacritics before matching (ț→t, ș→s, ă→a, â→a, î→i). Implement in the SQL WHERE clause using a pre-computed `word_normalized` column in the `words` table (populated at build time), or a SQLite custom function. Both PHP and Flask search endpoints need updating.
 
-- [x] **synonyms data** — done 2026-08-08. `scrape_synonyms.py` → `synonyms.db` → `words.synonyms`/`words.antonyms`, rendered as linked chips in the detail panel. Not available from the dump: the Litera dictionaries (`Sinonime`, `Sinonime82`, `Antonime`) are redacted to 23 characters in `Definition.internalRep`, so `dict_count` knows a word is in them but not what they say.
+- [x] **synonyms data** — done 2026-08-08. `scrape_synonyms.py` → `synonyms.db` → `words.synonyms`/`words.antonyms`, rendered as linked chips in the detail panel. The Litera dictionaries (`Sinonime`, `Sinonime82`, `Antonime`) are redacted to 23 characters in `Definition.internalRep`, so `dict_count` knows a word is in them but not what they say. **Corrected 2026-08-14: that is true of the Litera *definition text* only, and was wrongly generalised to "not available from the dump".** The `Relation` table ships in full — 158,860 rows, 164,399 word-level synonym pairs over 63,049 words, ~15s to build, no HTTP. See `docs/sinonime/`.
 
 - [ ] **UI redesign** — fresh-identity, mobile-first redesign spec written for a designer in `docs/design-brief.md` (covers table view, filter-bar redesign, calmer verdict palette, play modes, shared-word landing). Hand off when ready.
 
@@ -788,6 +788,15 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   ~4.5h la podeaua de 1.2s, cu lock pe host) rămâne condiția ca filtrul să însemne ceva pe
   `curiosity`.
 
+  **Deblocat 260814 — condiția de mai sus s-a schimbat mult.** Tabela `Relation` din dump
+  acoperă **10.233 din cele 18.270** de cuvinte din `ui.db` (56,0%), față de 2.066 (11,3%)
+  de la scraping, și se construiește în ~15s fără nicio cerere HTTP. Cu perechile din
+  arborii DEX cu mai multe intrări (`t=5`) urcă la 11.027 (60,4%), iar cu scrapingul
+  existent la **11.517 (63,0%)** — inclusiv în seamul `curiosity`, unde până acum era zero.
+  Deci `syn_count` se poate calcula pe date reale acum, iar regula „exclude în loc să
+  numeri 0" rămâne validă exact pentru cele **6.753** de cuvinte rămase neacoperite.
+  Vezi `docs/sinonime/`.
+
 - [ ] ascunde cuvinte care au în definiție 'vezi ...' + alt cuvânt care suna f similar?
 
 - [x] another data quality run? – use more input sources?
@@ -945,7 +954,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     Note: this is a *display* of community marks, not a filter, so it stays on the right
     side of the rule that votes may only ever reorder — see `vote_counts_subquery()`.
 
-
+- [ ] in og:description reverse order, start with term definition, _then_ category.
 
 ---
 
