@@ -4,6 +4,88 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-14 — „vezi X" definitions now count as DEX naming a variant
+
+`volintir`'s entire definition is „vezi voluntar", and it was sitting in the default view
+with nothing to read. 20 more like it: `țignal` („vezi semnal"), `contimporan`, `nuor`,
+`zădar`, `jecui`.
+
+CLAUDE.md said this was already handled — "168 of the 175 words whose definition is only a
+pointer are already linked here, do not add a second rule on the definition text". That was
+measuring **linkage**, and linkage is not the flag. All 175 are indeed linked by
+`EntryLexeme`, but `mark_dex_variants()`'s two restrictions then dropped 103 of them: 66 to
+restriction 1 (the word heads an entry of its own) and 37 to the twin ratio.
+
+**Restriction 1 is the one that was wrong here, and only here.** Its justification is that
+a self-heading form carries a sense DEX files separately — `momiță` is a variant of
+`maimuță` *and* a sweetbread. An entry whose whole text is a pointer is the dictionary
+saying it does not. So `pointer_target()` reads „vezi X" and, where it fires, waives
+restriction 1 and names the head from the prose rather than from the edit-distance pick.
+That last part is a small independent improvement: over the 47 pointer words the flag
+already caught, prose and relation agree on 46, and the one disagreement is DEX's
+(„uiet" → *huiet*, not *vuiet*).
+
+**Restriction 2 is not waived, and that is what makes the carve-out safe.** „vezi X" says
+the word has no sense of its own; it does not say X is alive. Gated, the 99 unclaimed
+pointers split cleanly:
+
+| | |
+|---|---|
+| hidden (31, 13 in the default view) | target is an ordinary modern word — `voluntar` 1.38M, `semnal` 2.59M, `nor` 261k, `contemporan` 517k |
+| left standing (68, 8 in the default view) | target is as forgotten as the word — `bejănar`→*băjenar* 138, `bălsămit`→*bălsămat* 52, `jălbar`→*jelbar* 24 |
+
+The second group still reads „vezi X" in the list and should: `desag`/`desagă`,
+`flăcăuaș`/`flăcăiaș` are two finds each, not a dead end, and hiding them would be hiding
+the project's own material *because* DEX was terse about it.
+
+All eight of those that remain in the default view, since they are the whole of what this
+change deliberately does not fix:
+
+| cuvânt | → ținta | ținta azi | el azi | hist | dicț |
+|---|---|---:|---:|---:|---:|
+| `bejănar` | băjenar | 138 | 8 | 5 | 7 |
+| `betegi` | beteji | 166 | 819 | 6 | 10 |
+| `bălsămit` | bălsămat | 52 | 3 | 3 | 8 |
+| `desag` | desagă | 4,867 | 330 | 11 | 6 |
+| `deșela` | deșeua | 26 | 65 | 4 | 13 |
+| `dârlog` | dârloagă | 193 | 110 | 13 | 12 |
+| `flăcăuaș` | flăcăiaș | 312 | 66 | 9 | 5 |
+| `jălbar` | jelbar | 24 | 46 | 4 | 12 |
+
+Three of them — `betegi`, `deșela`, `jălbar` — are *more* written today than the form DEX
+files them under, which is the gate reading the situation correctly: these are not dead
+words beside living ones, they are two dead spellings where DEX happened to pick the other
+one as its headword. `desag` is the loosest of the eight at 15× (just under `TWIN_RATIO`)
+and the first place to look if this is ever tightened.
+
+The other 60 are already outside the default view: 4 behind `regional_only` (`beșică`,
+`bernevici`, `jerui`, `nadișancă`) and 56 in `curiosity` — `eleșteu`→*heleșteu*,
+`jeratic`→*jăratic*, `pierire`→*pieire*, `molatec`→*molatic*, `plezni`→*plesni*, most of
+which would be hidden outright if the gate ever loosened, since their targets are ordinary
+modern words.
+
+The pointer is **preferred, not exclusive** — where the named target fails the ratio the
+code falls back to the relation's nearest head, which is the only thing that keeps `uiet`
+under the living `vuiet`. Without the fallback the first cut lost it.
+
+Net on `ui.db`: `dex_variant` 1,893 → 1,926, default view 2,467 → 2,454, nothing
+un-flagged, nothing re-headed. Applied in place with
+`tools/migrate_ui_db_dex_variants.py`, which now also re-runs `mark_deverbal_nouns()` —
+that step reads every other flag to check a noun's base verb is still visible, so a
+migration that moves `dex_variant` leaves it stale. (No noun was affected this time; the
+script should not depend on that.) `data/word_ids.tsv` unchanged.
+
+One guard had to move: the early bail was `if not heads_of`, and the pointer path needs no
+relation row at all, so it now bails only when the entry table yielded *nothing whatsoever*
+— which is the real "this db predates `extract_taxonomy.py`" case it was written for.
+
+Nine new tests in `tests/test_dex_variants.py`, including the parse table for
+`pointer_target` (a bare „vezi X" only — „vezi voluntar, ostaș" and „Faptul de a vezi" are
+not pointers) and a guard that nothing in the default view has a pointer definition whose
+target is alive.
+
+---
+
 ## 2026-08-14 — Merge local marks into remote app.db
 
 Added `tools/merge_annotations.php`: copies one user's annotations from a source

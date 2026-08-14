@@ -236,7 +236,7 @@ project is chasing two different things:
 
 - **`relevant`** (3,499) — strong evidence of a word that was used and faded: historically
   attested, near-absent today, broadly covered by dictionaries, still in one published
-  from 2005 on. **The default view is this seam minus the hide-flags below** (2,685).
+  from 2005 on. **The default view is this seam minus the hide-flags below** (2,454).
 - **`curiosity`** (14,771) — everything else that still qualifies as a candidate.
 
 The split is a weighted score (`make_shortlist.score`), not a ladder of thresholds. The
@@ -300,7 +300,7 @@ distinction the panel needs; keeping three *rows* asked the reader to learn our 
   says which of them the entry is filed under; `main = 0` is a form dexonline lists as a
   variant of that headword. 53,618 rows say so, 4,773 of them shortlist words.
   `dex_variant_of` holds the headword and the detail panel names it („Variantă a lui
-  *sufragerie*, după DEX"). Catches 1,893 words, 200 of them in the default view.
+  *sufragerie*, după DEX"). Catches 1,926 words, 214 of them in the default view.
   `tools/migrate_ui_db_dex_variants.py` back-fills an existing `ui.db`; the build reads
   `lexemes.db` **and** `inflected_forms.db`, which no other `mark_*` step does.
 
@@ -318,10 +318,31 @@ distinction the panel needs; keeping three *rows* asked the reader to learn our 
      also a sweetbread, `partită` of `partidă` and also the musical form, `băcălie` of
      `băcănie` and also the grocer's wife. Admitting them adds ~1,000 words at an
      inspected error rate near 5%, against zero questionable rows in the 200 this admits.
+
+     **One carve-out: a word whose entire definition is „vezi X".** The justification
+     above is that a self-heading form carries a sense DEX files separately; an entry
+     whose whole text is a pointer is the dictionary saying it does not. 66 words were
+     kept visible by this restriction alone with nothing to read when opened —
+     `volintir` („vezi voluntar"), `țignal` („vezi semnal"), `contimporan`, `nuor`. The
+     pointer also **names the head**, better evidence than the edit-distance pick in
+     rule 3: over the 47 pointer words the relation already flagged the two agree on 46,
+     and the one disagreement is DEX's („uiet" → *huiet*, not *vuiet*). It is preferred
+     rather than exclusive — where the named target is as dead as the word, the
+     relation's head is used instead, which is what keeps `uiet` under the living
+     `vuiet`. See `pointer_target()` in `tools/build_ui_db.py`.
   2. **The headword must clear the same `TWIN_RATIO` as the spelling rules.** Without it
      the flag hides the pairs where *both* forms are dead, which is the project's own
      material rather than noise: `antereu`/`anteriu`, `amploiat`/`amploaiat`,
      `zalhana`/`zahana`, `lighioaie`/`lighioană` — 53 in the default view.
+
+     **It is not waived for the pointer definitions either, and that is what makes the
+     carve-out safe.** „vezi X" says the word has no sense of its own; it does not say X
+     is alive. Gated, the 99 pointers the flag had not claimed split 31/68 — every one
+     hidden points at an ordinary modern word (`voluntar` 1.38M, `semnal` 2.59M, `nor`
+     261k), and every one left standing points at a word as dead as itself
+     (`bejănar`→*băjenar* 138, `bălsămit`→*bălsămat* 52, `jălbar`→*jelbar* 24). Those
+     eight still read „vezi X" in the default view and should: each is two finds rather
+     than a dead end. Waiving the ratio would hide them *because* DEX was terse.
   3. **The two sides of that ratio are measured differently and it is not an oversight.**
      The variant is judged by its **surface** count, because what is being judged is a
      *spelling* and a spelling is one surface form: `tinereță` is written 381 times
@@ -345,10 +366,16 @@ distinction the panel needs; keeping three *rows* asked the reader to learn our 
   headword and not the word. Without the line the panel reads as an ordinary find whose
   examples inexplicably spell it differently.
 
-  This also subsumes the „vezi X" definitions as a signal: 168 of the 175 words whose
-  definition is only a pointer are already linked here. Do not add a second rule on the
-  definition text for the other 7 — the text is what the sinteză merge destroys, which is
-  why it finds a tenth of what the relation does.
+  **The „vezi X" definitions are read here rather than by a rule of their own**, and the
+  earlier note saying they needed no rule at all was measuring the wrong thing. All 175
+  of them are *linked* by the relation, which is true and was the argument — but linkage
+  is not the flag: restrictions 1 and 2 then dropped 103 of them, and 21 were sitting in
+  the default view with a pointer where a definition should be. The carve-out under
+  restriction 1 is the fix; it catches 13 of those 21 and leaves the 8 whose target is
+  equally forgotten. Do **not** promote this to a flag of its own — the pointer is one
+  more way of saying „this is another spelling of a living word", which is the „variante"
+  control, and the detail panel already names the twin. Catches 1,926 words (up from
+  1,893), 80 of them named by their definition.
 - `deverbal_like` — a noun defined as "Faptul de a X" / "Acțiunea de a X" **whose verb X
   is on the list and visible**. `zăhăială` is defined, in full, as "Faptul de a (se)
   zăhăi", and `zăhăi` is a few rows away: the noun is the same find twice.
@@ -410,8 +437,11 @@ being propped up by its relatives.
   reasoning that keeps auto-hide-after-N-reports out of list moderation. Pinned by
   `tests/test_editorial.js`.
 
-`diminutive_like` is a fourth flag but not one of these three: it is **off by default**, so
-it never subtracts from what you see until you ask. `mark_diminutives()`
+`diminutive_like` is a fourth flag but not one of these three. **It defaults to `hide`
+like the others** — `class_modes()` has always said so — and this line used to read "off by
+default, so it never subtracts from what you see until you ask", which is the opposite of
+what the code does and is worth a sentence because it makes every hand-written count of the
+default view wrong by 123. `mark_diminutives()`
 (`tools/build_ui_db.py`) sets it from the DEX definition saying "Diminutiv al lui X" (as of the last build, 458 words in total) plus nine unambiguous suffixes whose stripped stem is a real lexeme.
 `-iță` is deliberately excluded: as often a feminine agent (`păstoriță`, `vorniciță`) as a
 diminutive. `tools/migrate_ui_db_diminutives.py` back-fills an existing `ui.db`.

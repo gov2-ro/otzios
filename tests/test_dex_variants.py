@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'tools'))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from build_ui_db import (  # noqa: E402
     TWIN_RATIO, _edit_distance, load_dex_variants, load_paradigm_modern,
-    mark_dex_variants,
+    mark_dex_variants, pointer_target,
 )
 
 UI_DB = Path(__file__).parent.parent / 'public' / 'data' / 'ui.db'
@@ -114,11 +114,13 @@ def test_the_head_is_measured_over_its_whole_paradigm(tmp_path):
 
 
 def _ui(tmp_path, words):
+    """words: [(word, archaic_spelling)] or [(word, archaic_spelling, definition)]."""
     p = tmp_path / 'ui.db'
     c = sqlite3.connect(str(p))
     c.execute('CREATE TABLE words (word TEXT PRIMARY KEY, archaic_spelling INT, '
-              'dex_variant INT, dex_variant_of TEXT)')
-    c.executemany('INSERT INTO words (word, archaic_spelling) VALUES (?,?)', words)
+              'definition TEXT, dex_variant INT, dex_variant_of TEXT)')
+    c.executemany('INSERT INTO words (word, archaic_spelling, definition) VALUES (?,?,?)',
+                  [(w + (None,))[:3] for w in words])
     c.commit()
     return c
 
@@ -174,6 +176,81 @@ def test_a_head_that_is_also_forgotten_does_not_hide_the_variant(tmp_path):
     assert conn.execute('SELECT dex_variant FROM words').fetchone()[0] == 0
 
 
+# ── „vezi X" — the one thing that overrides restriction 1 ─────────────────────
+
+@pytest.mark.parametrize('text,target', [
+    ('vezi voluntar',    'voluntar'),
+    ('vezi băjenar.',    'băjenar'),
+    ('Vezi Nor',         'nor'),          # normalized, like every other form here
+    ('vezi bălsămat',    'bălsămat'),
+    ('Faptul de a vezi', None),           # not at the start
+    ('vezi voluntar, ostaș', None),       # two targets is not a bare pointer
+    ('vezi voluntar. Soldat înrolat.', None),
+    ('', None),
+    (None, None),
+])
+def test_pointer_target_reads_only_a_bare_pointer(text, target):
+    """All 175 pointer rows in the build are exactly „vezi X" with an optional full
+    stop. A looser pattern starts reading the first line of definitions that merely
+    cross-reference something, and those are real definitions."""
+    assert pointer_target(text) == target
+
+
+def test_a_pointer_definition_beats_restriction_one(tmp_path):
+    """`volintir` heads an entry of its own, so restriction 1 keeps it visible — and its
+    entire definition is „vezi voluntar". A self-heading form is left alone because it
+    carries a sense DEX files separately; an entry whose whole text is a pointer is the
+    dictionary saying it does not. 66 words were in that state."""
+    lex = _fake_lexemes(tmp_path, [(1, 'volintir', 1)])          # heads its own entry
+    conn = _ui(tmp_path, [('volintir', 0, 'vezi voluntar')])
+    freq = _freqs(tmp_path, {'volintir': 398, 'voluntar': 1384416})
+    mark_dex_variants(conn, lex, freq, _empty_inflected(tmp_path))
+    assert conn.execute('SELECT dex_variant, dex_variant_of FROM words').fetchone() \
+        == (1, 'voluntar')
+
+
+def test_a_pointer_needs_no_relation_row_at_all(tmp_path):
+    """The prose names the head, so the pair does not have to be linked by EntryLexeme
+    for the flag to fire — `țignal · vezi semnal` shares no spelling rule either."""
+    lex = _fake_lexemes(tmp_path, [(1, 'țignal', 1), (2, 'semnal', 1)])
+    conn = _ui(tmp_path, [('țignal', 0, 'vezi semnal.')])
+    freq = _freqs(tmp_path, {'țignal': 347, 'semnal': 2594728})
+    mark_dex_variants(conn, lex, freq, _empty_inflected(tmp_path))
+    assert conn.execute('SELECT dex_variant_of FROM words').fetchone()[0] == 'semnal'
+
+
+def test_a_pointer_does_not_waive_the_twin_ratio(tmp_path):
+    """The carve-out above is what makes restriction 2 load-bearing rather than
+    redundant. „vezi X" says the word has no sense of its own; it does not say X is
+    alive. Gated, the 99 unflagged pointers split 31/68, and the 68 all point at a word
+    as dead as themselves — `bejănar → băjenar` is 138 occurrences against 8."""
+    lex = _fake_lexemes(tmp_path, [(1, 'bejănar', 1), (2, 'băjenar', 1)])
+    conn = _ui(tmp_path, [('bejănar', 0, 'vezi băjenar.')])
+    freq = _freqs(tmp_path, {'bejănar': 8, 'băjenar': 138})
+    mark_dex_variants(conn, lex, freq, _empty_inflected(tmp_path))
+    assert conn.execute('SELECT dex_variant FROM words').fetchone()[0] == 0
+
+
+def test_a_dead_pointer_target_falls_back_to_the_relation(tmp_path):
+    """`uiet · vezi huiet` names a twin nobody writes either — but its entry's own head
+    is the living `vuiet`. Reading only the prose loses a variant the relation had
+    right, which is why the pointer is preferred rather than exclusive."""
+    lex = _fake_lexemes(tmp_path, [(1, 'vuiet', 1), (1, 'uiet', 0)])
+    conn = _ui(tmp_path, [('uiet', 0, 'vezi huiet')])
+    freq = _freqs(tmp_path, {'uiet': 30, 'huiet': 40, 'vuiet': 60000})
+    mark_dex_variants(conn, lex, freq, _empty_inflected(tmp_path))
+    assert conn.execute('SELECT dex_variant, dex_variant_of FROM words').fetchone() \
+        == (1, 'vuiet')
+
+
+def test_a_pointer_to_itself_is_ignored(tmp_path):
+    lex = _fake_lexemes(tmp_path, [(1, 'nor', 1)])
+    conn = _ui(tmp_path, [('nor', 0, 'vezi nor')])
+    freq = _freqs(tmp_path, {'nor': 261196})
+    mark_dex_variants(conn, lex, freq, _empty_inflected(tmp_path))
+    assert conn.execute('SELECT dex_variant FROM words').fetchone()[0] == 0
+
+
 def test_archaic_spelling_gets_first_claim_on_the_overlap(tmp_path):
     """The two flags are separate controls, so they must be disjoint: otherwise
     „grafii vechi: cu" uncovers 127 words that the other row is still hiding."""
@@ -213,8 +290,38 @@ def test_known_variants_are_flagged_and_named(db, w, head):
     assert row['dex_variant_of'] == head
 
 
+@pytest.mark.parametrize('w,head', [
+    ('volintir',    'voluntar'),    # heads its own entry; „vezi voluntar" overrides that
+    ('țignal',      'semnal'),      # no spelling rule and no relation row links these
+    ('contimporan', 'contemporan'),
+    ('nuor',        'nor'),
+    ('acoperemânt', 'acoperământ'),
+])
+def test_pointer_definitions_are_flagged_and_named(db, w, head):
+    row = word(db, w)
+    if row is None:
+        return
+    assert row['dex_variant'] == 1, f'{w} is not flagged — its definition is only a pointer'
+    assert row['dex_variant_of'] == head
+
+
+def test_no_pointer_definition_survives_with_a_living_target(db):
+    """The reader-facing property this is all for: nothing in the default view has „vezi
+    X" for a definition while X is an ordinary modern word. What may survive is a pointer
+    to a word as forgotten as itself — `desag → desagă`, `flăcăuaș → flăcăiaș` — which is
+    two finds, not a dead end. Measured at 8 on the 2026-08-14 build."""
+    rows = db.execute(
+        "SELECT word FROM words"
+        "  WHERE LOWER(TRIM(definition)) GLOB 'vezi *' AND seam = 'relevant'"
+        "    AND COALESCE(regional_only, 0) = 0 AND COALESCE(variant_like, 0) = 0"
+        "    AND COALESCE(archaic_spelling, 0) = 0 AND COALESCE(dex_variant, 0) = 0"
+        "    AND COALESCE(deverbal_like, 0) = 0").fetchall()
+    assert len(rows) <= 12, [r['word'] for r in rows]
+
+
 @pytest.mark.parametrize('w', [
     'antereu', 'amploiat', 'zalhana', 'lighioaie', 'pătlăgea', 'stacan', 'malacof',
+    'bejănar', 'jălbar', 'flăcăuaș',   # pointer definitions whose target is dead too
 ])
 def test_variants_of_a_dead_head_stay_visible(db, w):
     row = word(db, w)
@@ -231,7 +338,7 @@ def test_the_two_flags_never_both_fire(db):
 
 
 def test_it_flags_a_lot_but_not_the_whole_list(db):
-    """Sanity band. It found 1,893 of 18,270 at TWIN_RATIO=20; an order of magnitude
+    """Sanity band. It found 1,926 of 18,270 at TWIN_RATIO=20; an order of magnitude
     either way means the relation or the gate broke, not that DEX changed its mind."""
     flagged, total = db.execute(
         'SELECT SUM(COALESCE(dex_variant, 0)), COUNT(*) FROM words').fetchone()
