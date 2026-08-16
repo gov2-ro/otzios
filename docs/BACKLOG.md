@@ -945,6 +945,10 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     Note: this is a *display* of community marks, not a filter, so it stays on the right
     side of the rule that votes may only ever reorder — see `vote_counts_subquery()`.
 
+- [ ] maybe split _meh_ into _comun_ & _irelevant_?
+
+- [ ] also demote words that have a single word definition? if it sounds familiar. or just give them to me in a sharable list first
+
 
 
 ---
@@ -968,6 +972,9 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] why don't se use the same set of filters pentru stats?
 
+- [ ] definition box - add a tint of background, for contrast. 
+
+- [ ] word definitions, sometimes we're showing the secondary definition, see `zădărî`
 
 ## Post launch
 
@@ -976,6 +983,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] SEO webmasters registrations
 - [ ] write scientific paper(s). 1. method, 2. conclusions – co-publish with academic?
 - [ ] write articles, scena9 or such
+- [ ] romo video: explain very fast in robot voice everything we did. cât de ușor e treaba cu un robot. metodologie într-un minut. turuială. facem șî versuri, hip-hop?
 
 ### Extend
 
