@@ -10,17 +10,22 @@ def _q(s):
     return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
-def _make_sql(tmp_path, def_simples=()):
-    """Write a minimal SQL file containing only DefinitionSimple INSERTs.
+def _make_sql(tmp_path, def_simples=(), definitions=()):
+    """Write a minimal SQL file with DefinitionSimple and/or Definition INSERTs.
 
-    The current extractor reads `lexicon` from DefinitionSimple as the
-    headword key and ignores the Lexeme / EntryLexeme / EntryDefinition
-    tables, so only `def_simples` matters here.
+    `definitions` rows are (id, userId, sourceId, lexicon, internalRep) tuples
+    for the `Definition` table (the DEX '98/'96 top-up path).
     """
     lines = []
     if def_simples:
         vals = ','.join(f"({did},{_q(defn)},{_q(lex)})" for did, defn, lex in def_simples)
         lines.append(f"INSERT INTO `DefinitionSimple` VALUES {vals};")
+    if definitions:
+        vals = ','.join(
+            f"({did},{uid},{sid},{_q(lex)},{_q(rep)})"
+            for did, uid, sid, lex, rep in definitions
+        )
+        lines.append(f"INSERT INTO `Definition` VALUES {vals};")
     sql = tmp_path / 'test.sql'
     sql.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return sql
@@ -102,3 +107,124 @@ def test_extract_handles_diacritics(tmp_path):
     out = tmp_path / 'defs.db'
     extract_definitions.extract(sql, out)
     assert _read_db(out) == {'acătării': 'Vânzătoare.'}
+
+
+# --- _clean_markup ---------------------------------------------------------
+
+def test_clean_markup_unwraps_typographic_delimiters():
+    rep = r"@ODAG'ACI@ #s. m.# @1.@ Plantă erbacee $(Saponaria officinalis).$"
+    got = extract_definitions._clean_markup(rep)
+    assert '@' not in got and '#' not in got and '$' not in got
+    assert "ODAG'ACI" in got
+    assert 'Plantă erbacee' in got
+
+
+def test_clean_markup_strips_foreign_cognate_percent_wrapper():
+    rep = r"@ABIT'IR@ #adv.# - #Cf.# #tc.# %beter% \"mai rău\"."
+    got = extract_definitions._clean_markup(rep)
+    assert '%' not in got
+    assert 'beter' in got
+
+
+def test_clean_markup_drops_homograph_number():
+    got = extract_definitions._clean_markup(r"@A^1@ #s. m.# #invar.# Prima literă.")
+    assert '^1' not in got and '^' not in got
+
+
+def test_clean_markup_drops_editor_note_entirely():
+    rep = r"@ADAPT'OR,@ $adaptoare,${{Am corectat forma de #pl.# (în DEX apare $adaptare$)./3}} #s. n.# Circuit."
+    got = extract_definitions._clean_markup(rep)
+    assert 'corectat' not in got
+    assert 'Circuit' in got
+
+
+def test_clean_markup_returns_none_for_null_after_cleaning():
+    assert extract_definitions._clean_markup('NULL') is None
+
+
+# --- _extract_dex9896_topup -------------------------------------------------
+
+def test_topup_uses_only_dex98_and_dex96(tmp_path):
+    sql = _make_sql(
+        tmp_path,
+        definitions=[
+            (1, 2, 1, 'oaspăt', "@O'ASPĂT@ #s. m.# #v.# @oaspete.@"),
+            (2, 2, 2, 'igliță', "@'IGLIȚĂ,@ #s. f.# Croșetă."),
+            # sourceId 6 = Sinonime, truncated to a ~23-char stub in the real
+            # dump — must never be picked up by the top-up.
+            (3, 2, 6, 'oaspăt', 'stub, dimie, păn...'),
+        ],
+    )
+    out = extract_definitions._extract_dex9896_topup(sql)
+    assert set(out) == {'oaspăt', 'igliță'}
+    assert 'dimie' not in out['oaspăt']
+
+
+def test_topup_prefers_dex98_over_dex96_for_same_headword(tmp_path):
+    sql = _make_sql(
+        tmp_path,
+        definitions=[
+            (1, 2, 2, 'mers', "@MERS@ #s. n.# Din DEX 96."),
+            (2, 2, 1, 'mers', "@MERS@ #s. n.# Din DEX 98."),
+        ],
+    )
+    out = extract_definitions._extract_dex9896_topup(sql)
+    assert 'DEX 98' in out['mers']
+
+
+def test_topup_skips_empty_lexicon_or_internalrep(tmp_path):
+    sql = _make_sql(
+        tmp_path,
+        definitions=[
+            (1, 2, 1, '', "@X@ text"),
+            (2, 2, 1, 'gol', 'NULL'),
+        ],
+    )
+    out = extract_definitions._extract_dex9896_topup(sql)
+    assert out == {}
+
+
+# --- extract() end-to-end with the DEX '98/'96 top-up ----------------------
+
+def test_extract_topup_fills_gap_not_in_definitionsimple(tmp_path):
+    sql = _make_sql(
+        tmp_path,
+        def_simples=[(100, 'Deja acoperit.', 'acoperit')],
+        definitions=[
+            (1, 2, 1, 'nou', "@N'OU@ #adj.# Recent apărut."),
+        ],
+    )
+    out = tmp_path / 'defs.db'
+    extract_definitions.extract(sql, out)
+    rows = _read_db(out)
+    assert rows['acoperit'] == 'Deja acoperit.'
+    assert 'Recent apărut' in rows['nou']
+
+
+def test_extract_topup_never_overrides_definitionsimple(tmp_path):
+    # DefinitionSimple already has 'mers'; Definition's DEX '98 text for the
+    # same headword must not replace it — DefinitionSimple stays authoritative
+    # for anything it already covers.
+    sql = _make_sql(
+        tmp_path,
+        def_simples=[(100, 'Text din DefinitionSimple.', 'mers')],
+        definitions=[
+            (1, 2, 1, 'mers', "@MERS@ #s. n.# Text din Definition."),
+        ],
+    )
+    out = tmp_path / 'defs.db'
+    extract_definitions.extract(sql, out)
+    assert _read_db(out)['mers'] == 'Text din DefinitionSimple.'
+
+
+def test_extract_topup_ignores_truncated_non_academy_sources(tmp_path):
+    # Only sourceId 1/2 carry real text in the dump; anything else (here 17 =
+    # a stand-in for one of the ~100 truncated sources) must not surface even
+    # when it's the only entry for a headword.
+    sql = _make_sql(
+        tmp_path,
+        definitions=[(1, 2, 17, 'trunchiat', 'stub only, no re')],
+    )
+    out = tmp_path / 'defs.db'
+    extract_definitions.extract(sql, out)
+    assert _read_db(out) == {}

@@ -2,13 +2,16 @@
 """
 Scrape synonyms and antonyms for shortlist words from dexonline.ro.
 
-**Why this can't come from the dump.** The DEX dump carries `Definition.internalRep` in
-full only for the Academy dictionaries. The Litera Internațional titles — `Sinonime`
-(2002), `Sinonime82` (1982), `Antonime` (2002) — are redacted to 20 characters plus an
-ellipsis:
+**Why the *Litera dictionaries* can't come from the dump.** The DEX dump carries
+`Definition.internalRep` in full only for sourceId 1 (DEX '98) and 2 (DEX '96) — not "the
+Academy dictionaries" as a class, corrected 2026-08-17 (see CLAUDE.md's Synonyms section
+and docs/DEFINITIONS_ANALYSIS.md): other Academy titles like DEX '84/'75/DEX-S are
+truncated too. The Litera Internațional titles — `Sinonime` (2002), `Sinonime82` (1982),
+`Antonime` (2002) — are redacted the same way as everything else outside DEX '98/'96, to
+~23 characters plus an ellipsis:
 
-    sourceId 1 (DEX '98)   max length 15,039   mean 201
-    sourceId 6 (Sinonime)  max length     23   mean  23   →  "@AB'A@ s. dimie, păn..."
+    sourceId 1 (DEX '98)   max length 15,873   mean 192.0
+    sourceId 6 (Sinonime)  max length     23   mean  23.0   →  "@AB'A@ s. dimie, păn..."
 
 So the words are known to be in those dictionaries (that is where `dict_count` comes
 from) but their contents are not distributed. The rendered page has them.

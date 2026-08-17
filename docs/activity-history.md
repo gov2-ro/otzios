@@ -4,6 +4,53 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-17 — Retracted the "94.8% dangling definitions" finding; fixed extract_definitions.py
+
+While answering a question about whether the DEX dump has synonym data, re-verified the
+`docs/BACKLOG.md` item drafted to report `DefinitionSimple` truncation to dexonline's
+maintainers. It was wrong: the 94.8%-dangling-references comparison checked
+`EntryDefinition.definitionId` against `DefinitionSimple.id` (a small, unrelated 61,041-row
+table), not `Definition.id`, the actual per-source definitions table. Re-verified directly
+against the current dump: `EntryDefinition` → `Definition` resolves at **0.00% gap**
+(1,186,450/1,186,450). The dump is not corrupted; retracted the upstream-report item and
+corrected `docs/DEFINITIONS_ANALYSIS.md` with a top-of-file correction rather than deleting
+the (still-useful, just wrongly-concluded) original investigation.
+
+Follow-up measurement found only sourceId 1 (DEX '98) and 2 (DEX '96) of ~100 sources ship
+untruncated `internalRep` in this dump — not "the three Litera titles" as CLAUDE.md's
+synonyms section framed it; other Academy dictionaries (DEX '84/'75, DEX-S) are truncated
+to a ~23-char stub too. Corrected CLAUDE.md's Synonyms section (same wrong claim had
+already been "fixed" once before, from "can't come from the dump at all" to "Litera titles
+vs Academy dictionaries" — this is the second correction of the same paragraph) and the
+identical claim duplicated in `scrape_synonyms.py`'s module docstring. Propagated to the
+two public-facing docs that had the same numbers baked in: `readme.md` (Phase 2.5 section
++ the "Join Definition and DefinitionSimple tables" TODO, now checked off) and
+`public/metodologie.html` (§02's "Lacuna DefinitionSimple" callout and §06's "Definiții"
+section both stated the retracted 94.8%/~4.6k figures to site visitors — replaced with the
+corrected join and current counts).
+
+Rebuilt `extract_definitions.py` with a second pass, `_extract_dex9896_topup()`
+(`Definition` restricted to sourceId 1/2, sourceId checked before the row's `lexicon`/
+`internalRep` are parsed so ~94% of rows skip text allocation), and `_clean_markup()` to
+render dexonline's internal markup (`@bold@ #italic# $underline$ %foreign%`, `{{editor
+note}}`, `^N` homograph number) to plain text — all four bracket wrappers are pure
+typography, so unwrapping is deleting the delimiter characters. 17 new tests in
+`tests/test_extract_definitions.py`.
+
+**Measured impact**, re-run against the live dump: of 18,270 shortlist words, 1,786 had no
+definition after `DefinitionSimple` + the existing scrape checkpoint (most of the original
+~12.8k gap this item cited was already closed by `scrape_definitions.py --merge` since that
+number was written — a stale estimate, not this fix's baseline). The topup adds 34,190 new
+headwords dump-wide and closes 660 of the 1,786 (37%); the rest still need scraping or, like
+`mofluzită`, genuinely have no headword entry of their own. `definitions.db`: 70,472 →
+92,739 rows (re-ran `scrape_definitions.py --merge-only` after, to restore the scraped rows
+`extract()`'s `DROP TABLE` would otherwise have wiped). `ui.db` rebuilt:
+`has_definition=1` 16,484 → 17,144/18,270. Full suite: 203 passed. `data/word_ids.tsv`
+unchanged (git diff empty), as expected — no words added or removed, only definitions
+filled in.
+
+---
+
 ## 2026-08-14 — „vezi X" definitions now count as DEX naming a variant
 
 `volintir`'s entire definition is „vezi voluntar", and it was sitting in the default view

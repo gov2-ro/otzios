@@ -715,7 +715,9 @@
     <ul>
       <li>Tabela <code>Lexeme</code> — 315.247 intrări cu <code>form</code>, <code>frequency</code>, <code>description</code>, <code>modelType</code></li>
       <li>Tabelele <code>Tag</code> / <code>ObjectTag</code> / <code>EntryLexeme</code> / <code>TreeEntry</code> / <code>MeaningTree</code> — taxonomia editorială</li>
-      <li>Tabela <code>DefinitionSimple</code> — ~61.000 de definiții (nu acoperă toate intrările)</li>
+      <li>Tabela <code>DefinitionSimple</code> — ~61.000 de definiții scurte (nu acoperă toate intrările)</li>
+      <li>Tabela <code>Definition</code> — 1,23 milioane de definiții pe surse (<code>sourceId</code>);
+      doar DEX '98 și DEX '96 au text necenzurat în acest export, restul sunt trunchiate la ~23 caractere</li>
     </ul>
     <p>
       Câmpul-cheie din <code>Lexeme</code> este <code>frequency</code>: un scor 0.0–1.0 care
@@ -726,11 +728,20 @@
       înseamnă că valoarea lipsea din dump — nu că termenul este cel mai rar.
     </p>
     <div class="callout">
-      <p><strong>Lacuna DefinitionSimple:</strong> tabela acoperă doar ~61.000 din cele 1.37 milioane
-      de intrări referite în <code>EntryDefinition</code> — 94.8% sunt referințe fără corespondent în
-      export. Aceasta nu este o regresie între versiuni, ci o omisiune structurală a exportului public
-      (constatată și pe dump-ul din octombrie 2025, și pe cel din mai 2026). Diferența este completată
-      prin scraping la cerere din dexonline.ro.</p>
+      <p><strong>Corectat 2026-08-17:</strong> o versiune anterioară a acestei secțiuni susținea că
+      94,8% din cele 1,37 milioane de referințe din <code>EntryDefinition</code> nu au corespondent
+      în export ("omisiune structurală a exportului public"). Comparația era greșită: verifica
+      <code>EntryDefinition.definitionId</code> față de <code>DefinitionSimple.id</code> — un tabel
+      separat, de doar 61.000 de rânduri, fără coloană <code>sourceId</code> — în loc de
+      <code>Definition.id</code>, tabelul real de definiții pe surse. Verificat direct pe dump:
+      fiecare referință din <code>EntryDefinition</code> se rezolvă în <code>Definition</code>
+      (1.186.450/1.186.450) — 0 referințe fără corespondent. Dumpul nu e corupt. Problema reală e
+      alta: din cele ~100 de surse din <code>Definition</code>, doar DEX '98 și DEX '96 au text
+      necenzurat în acest export; restul — inclusiv alte dicționare academice precum DEX '84/'75,
+      nu doar titlurile Litera aflate sub drept de autor — sunt trunchiate la ~23 caractere.
+      Pipeline-ul citește acum și acest tabel (<code>extract_definitions.py</code>, pasul
+      <code>_extract_dex9896_topup</code>), iar diferența rămasă este completată prin scraping la
+      cerere din dexonline.ro.</p>
     </div>
   </section>
 
@@ -1124,10 +1135,12 @@ Lexeme
 
     <h3>Definiții</h3>
     <p>
-      <code>DefinitionSimple</code> acoperă ~4.600 din cei 17.577 candidați de pe <em>lista restrânsă</em>.
-      Restul de ~18.500 sunt completați prin <code>scrape_definitions.py</code>, care extrage
-      blocul de sinteză de la <code>dexonline.ro/definitie/{cuvant}</code> la 3s/request
-      (respectând serverul comunitar, care este întreținut de voluntari).
+      <code>DefinitionSimple</code> plus completarea din <code>Definition</code> (sourceId 1/2 —
+      singurele necenzurate, vezi secțiunea 02) acoperă ~92.700 de intrări, dintre care 17.144 din
+      cei 18.270 de candidați de pe <em>lista restrânsă</em>. Restul de 1.126 sunt completați prin
+      <code>scrape_definitions.py</code>, care extrage blocul de sinteză de la
+      <code>dexonline.ro/definitie/{cuvant}</code> la 3s/request (respectând serverul comunitar,
+      care este întreținut de voluntari).
     </p>
   </section>
 
