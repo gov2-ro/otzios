@@ -2,6 +2,42 @@
 
 Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short Title`.
 
+## 2026-08-18 — Found CLRE, the Romanian Academy's other dictionary digitization project
+
+Started from the user pointing at `dexonline.ro/surse`, `wiki.dexonline.ro`, and
+`clre.solirom.ro` and asking what to make of them, plus whether `corola.racai.ro` changed
+anything (it didn't — already excluded from the modern panel and still is, see the CoRoLa
+gotcha). `/surse` turned out to confirm and quantify what `extract_definitions.py` had
+already found from the `internalRep`-truncation angle: DEX '84, DEX '75, all 19 `DLR`
+volumes, DCR3, MDA, DEXI and others sit at <5% ingested on dexonline itself.
+
+CLRE (Iași's "Alexandru Philippide" institute, Academy project since 2014) turned out to
+be a second, independent digitization effort covering exactly those gaps, hosted as static
+JSON+HTML on GitLab Pages — reverse-engineered by reading each site's own JS
+(`<solirom-editions data-url>`, `js/index.js`) rather than guessing paths. First pass wrote
+off DCR2/DCR3 as GitLab-login-gated after a 302 on `texts/dcr2/` (no trailing segment);
+that was wrong — the real app is one level deeper at `texts/dcr2/site/`, fully public,
+caught only because the user asked "you can't access X?" and it was worth re-testing the
+exact URL instead of trusting the earlier generalization. Full audit in `docs/BACKLOG.md`.
+
+Net finding: of nine live CLRE dictionaries, most (`dex1`, `dl`, `dm`, `dlr1`/DA-DLR, most
+of `nv`) are scanned facsimile images with a headword→page index, not transcribed text —
+not usable without OCR. Three are real transcribed text: `dcr3` (9,424 entries, the gap
+CLAUDE.md documents as empty on dexonline.ro itself, now filled), `dcr2` (5,770, likely
+redundant with what `extract_dcr.py` already has from the dump), and `tdrg`/TDRG3 (33,322,
+genuinely new, but its citations carry no embedded date so need an author→year table
+before they help the diachronic pipeline — same unsolved problem the dump's own
+`GALAN,`/`CARAGIALE` citations already have).
+
+Built and tested `scrape_clre_dcr.py` for DCR2+DCR3 (both, per explicit ask, despite DCR2
+likely being redundant) — same shape as `scrape_dcr.py` (resumable CSV checkpoint, `--merge`
+into its own `.db`, host lock) but with a much smaller default delay and no dexonline-style
+minimum, since this is Fastly/Cloudflare-backed static Pages hosting, not a community
+server, and copying the 1.2s floor over would have been superstition. Verified end-to-end
+on a small live sample (fetch → parse → checkpoint → resume → merge) before handing off;
+user is running the full ~15,194-entry pull themselves. Output deliberately kept out of
+`dcr_definitions.db` — different source, not yet wired into `definitions.db` or scoring.
+
 ## 2026-08-17 — DCR export: dump-first (extract_dcr.py), scrape only what the dump lacks
 
 Started building `scrape_dcr.py` to export every definition in the DCR dictionaries

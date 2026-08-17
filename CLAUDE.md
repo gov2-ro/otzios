@@ -150,19 +150,54 @@ The DCR family (Dicționar de cuvinte recente) splits across the two data source
   (`aburi` has 15, `accept` has 19). `scrape_dcr.py` remains the faithful per-source copy
   if exact attribution is ever wanted.
 - **DCR3 (2013)** — zero rows in the dump (`DCR3` appears once: its `Source` row); only
-  ~183 entries are digitized on the site so far, mostly abbreviations and symbols, and as
-  of 2026-08-17 they carry **no visible definition text anywhere** — the per-source search
-  finds them, but no word page renders a DCR3 definition (checked on `biot`, `a deux`,
-  `a due`: no `/sursa/dcr3` wrapper, no DCR3 badge in the meaning tree). Nothing to scrape
-  yet. `scrape_dcr.py` enumerates them from `/definitie-dcr3/<letter>/definitii` (31
-  requests, cached to `data/processed/dcr3_words.txt`; re-run with `--refresh-words` when
-  digitization progresses) and scrapes each word page for the `.defWrapper` whose
-  `.defDetails` carries the `sursa:` link — matched on the link, never the headword,
-  because a page renders every related entry. Its other remaining use: filling the 9 DCR2
-  words whose meaning trees are empty in the dump (done 2026-08-17, in
-  `data/processed/dcr_definitions.csv`).
+  ~183 entries are digitized on dexonline.ro so far, mostly abbreviations and symbols, and
+  as of 2026-08-17 they carry **no visible definition text anywhere on that site** — the
+  per-source search finds them, but no word page renders a DCR3 definition (checked on
+  `biot`, `a deux`, `a due`: no `/sursa/dcr3` wrapper, no DCR3 badge in the meaning tree).
+  Nothing to scrape from dexonline.ro. `scrape_dcr.py` enumerates them from
+  `/definitie-dcr3/<letter>/definitii` (31 requests, cached to
+  `data/processed/dcr3_words.txt`; re-run with `--refresh-words` when digitization
+  progresses) and scrapes each word page for the `.defWrapper` whose `.defDetails` carries
+  the `sursa:` link — matched on the link, never the headword, because a page renders every
+  related entry. Its other remaining use: filling the 9 DCR2 words whose meaning trees are
+  empty in the dump (done 2026-08-17, in `data/processed/dcr_definitions.csv`).
+  **A full DCR3 text does exist elsewhere — see `scrape_clre_dcr.py` below.**
 - **DCR (1982)** — not a source on dexonline.ro at all; only an abbreviation cited inside
   DCR2's own entries.
+
+**A third DCR2/DCR3 source — `scrape_clre_dcr.py`, CLRE (clre.solirom.ro), not
+dexonline.ro.** The Romanian Academy's Iași institute ("Alexandru Philippide") runs a
+separate digitization project, CLRE, publishing both editions as static JSON+HTML on
+GitLab Pages — public, no auth, no rate limit observed (this is Fastly/Cloudflare-backed
+Pages hosting, not a community server, so the delay reasoning is different from every
+other scraper here; see the script's docstring). **DCR3 there has 9,424 entries with real
+definition text and dated press citations** (`AH1N1` cites `R.l. 9 X 09`, `G. 29 X 09`) —
+the gap the paragraph above says is empty on dexonline.ro itself is filled here. DCR2 there
+has 5,770 entries, same shape, but is close to (and likely redundant with) the 5,807
+`extract_dcr.py` already recovers from the dump — kept anyway as a second, faithful
+per-source copy, same reasoning `scrape_dcr.py` already has for its own DCR2 pass. Word
+lists need no enumeration here — each edition publishes its whole headword→id index as one
+`indexes/text/cross-references.json`, unlike dexonline.ro which has no bulk listing.
+
+```bash
+python scrape_clre_dcr.py --dry-run              # plan only, no HTTP
+python scrape_clre_dcr.py --merge                # full run, ~15,194 entries
+python scrape_clre_dcr.py --editions dcr3 --merge  # DCR3 only
+```
+
+Output: `data/processed/clre_dcr_definitions.csv` (`word, edition, entry_id, definition,
+source_url, scraped_at, status`) and, with `--merge`,
+`data/processed/clre_dcr_definitions.db` (`clre_dcr_definitions(word, edition, entry_id,
+definition, PRIMARY KEY(word, edition, entry_id))`). **Deliberately a separate file/table
+from `dcr_definitions.db`, not merged into it** — different source, and the DCR3 rows here
+are real text where that table's are effectively none. Keyed on `(word, edition,
+entry_id)` rather than `(word, edition)` because CLRE gives homonyms (`ATM|1|`, `ATM|2|`)
+distinct entry ids sharing one normalized word; collapsing them would mean guessing which
+id wins. Not yet wired into `definitions.db` or the shortlist pipeline — this is a raw
+scrape artifact, same status `dcr_definitions.csv` had before anyone decided how to use it.
+Full investigation and the false start (I first tested `texts/dcr2/` without the `/site/`
+suffix, got a GitLab auth redirect, and wrongly concluded the whole project was
+login-gated) is in `docs/BACKLOG.md`.
 
 ```bash
 python extract_dcr.py                     # DCR2 from the dump, ~15 min, no HTTP

@@ -17,6 +17,97 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
   in-repo citation corpus), or CoRoLa. The citation route is cheapest and worth costing
   first.
 
+- [ ] **CLRE (`clre.solirom.ro`) — DCR3 (9,424 entries, real text+citations) and TDRG3
+  (33,322) are usable public sources; DCR2 is redundant; the rest of the ecosystem is
+  facsimile-only.** Checked 2026-08-17–18, both `dexonline.ro/surse` (confirms DEX '84,
+  DEX '75, all 19 `DLR` volumes, DCR3, MDA, DEXI etc. sit at <5% ingested there — stub
+  text, matching the `internalRep`-truncation finding) and the live CLRE sites directly, by
+  reading each site's JS (`js/index.js`, the `<solirom-editions>` tag) for its backend URL
+  and fetching `indexes/text/cross-references.json` + a sample entry with `curl`. Nine
+  dictionaries are actually live (not just catalogued): `dex1`, `dl`, `dm`, `dlr1`, `nv`
+  (=Negulici's 1848 vocabulary) at `<name>.solirom.ro`, plus `tdrg` (=TDRG3), `dcr2`, `dcr3`
+  at `solirom-clre.gitlab.io/texts/<name>/site/`.
+
+  **My first pass wrongly wrote off DCR2/DCR3 as GitLab-login-gated — correct the record.**
+  I'd tested `texts/dcr2/` (no trailing segment) and gotten a 302 to a GitLab OAuth check,
+  and assumed the whole project needed a login. The real published app is one level
+  deeper, at `texts/dcr2/site/` / `texts/dcr3/site/` — genuinely public, no auth, no
+  session, confirmed with cold `curl`. The 302 on the bare path is the same "unmatched path
+  falls through to the domain's gated default project" behavior seen elsewhere on this
+  host, not a property of the dcr2/dcr3 projects themselves. Lesson: a 302 to
+  `projects.gitlab.io/auth` on a *directory* path doesn't prove the content is gated —
+  check the site's own `<solirom-editions data-url>` for the real backend root before
+  concluding that.
+
+  **Two backend shapes, and they are not equivalent:**
+  - `dex1` (65,758 entries), `dl` (37,248), `dm` (48,691), `dlr1`/DA-DLR (144,081), and `nv`
+    (6,552, mixed) mostly resolve a headword to a **scanned facsimile page image** (`<img>`
+    of a `.webp`/`.png`), not transcribed text — the "digitization" is a headword→page
+    index, nothing OCR'd (e.g. `dm`'s `abager` → `texts/dm/facsimiles/f0007.webp`). Not
+    usable as a text corpus without running OCR ourselves, and even then it's 1913–1948
+    typography, or for `nv` 1848 Romanian-Cyrillic.
+  - `dcr2`, `dcr3`, `tdrg` (and some `nv` entries) are the opposite: real transcribed text
+    per entry, `curl`-able as `solirom-clre.gitlab.io/texts/<name>/text/{id}.html`, where
+    `{id}` comes from that dictionary's own `indexes/text/cross-references.json`
+    (`[[headword, id], ...]`).
+    - **`dcr3`: 9,424 entries**, full text with dated press citations —
+      `AH1N1` cites `R.l. 9 X 09` (România liberă) and `G. 29 X 09` (Gândul) — versus the
+      **~183 CLAUDE.md documents as visible on dexonline.ro itself**, where "no word page
+      renders a DCR3 definition." This is a real, previously-undocumented gap-filler for
+      exactly the source this project's own docs currently call "nothing to scrape yet."
+    - **`dcr2`: 5,770 entries**, same shape (`ADN` cites `R.l. 12 V 83`, `Cont. 9 XII 83`).
+      Close to but not identical to the 5,807 `extract_dcr.py` already recovers from the
+      DEX dump's `Meaning` tree — **likely redundant** with what the project already has,
+      though never cross-checked; could be useful as a faithful-per-source second opinion
+      where the dump's merged sinteză text is suspected of mixing sources (the same reason
+      `scrape_dcr.py` exists).
+    - `tdrg` (TDRG3, Tiktin's Romanian-German dictionary, ed. Miron/Lueder): TEI-XML with
+      `<sense>`, gloss, etymology, and a literary citation with bibliography
+      (`Agatanghel` cites `AL. OP. I, 1231` — Alecsandri, volume+page). Genuinely new
+      source, nothing comparable in the current pipeline — but **not dated in the
+      citation itself** (no day/month/year token, unlike DCR), so using it for the
+      diachronic pipeline needs an author/work→year table first — the same unsolved
+      problem the `GALAN,`/`CARAGIALE`-style dump citations already have, not a new one.
+      No sigla/bibliography legend page found on `tdrg.solirom.ro` (`about.html` and
+      `word-lists.html` are both literally "Pagină în lucru").
+
+  **DCR2/DCR3 citations parse cleanly — checked against the real legend, not guessed.**
+  `dcr3/site/static/peritexts/front/bibliography.pdf` ("SURSE") is a ~200-entry siglum
+  legend, e.g. `R.l. – „România liberă", ziar, București, înainte și după 1990` — the
+  "before/after 1990" note is exactly what resolves the 2-digit year's century. Sampled 8
+  random `dcr3` entries beyond the two above and the citation shape holds, with three
+  variants a parser needs to handle: `{siglum} {D} {roman-month} {YY}` (newspapers,
+  `R.l. 3 X 07 p. 10`), `{siglum} {issue}/{YY}` (magazines, `Atac 48 / 98 p. 15`,
+  `L. Mag. 12 / 94 p. 42`), and bare cross-references with no siglum at all
+  (`v. și show (show-business) 1994`). Web-only sources use their domain as the siglum
+  (`wall-street.ro 20 V 06`), also listed in the same legend. `abbreviations.pdf` at the
+  same path is grammatical (adj., adv., …), not the source sigla — don't confuse the two.
+
+  **This is CDN-served static content, not a community server — the dexonline politeness
+  norm doesn't map over as-is.** 8 sequential fetches across random `dcr3` ids took 6.4s
+  total (~0.8s/req) with no throttling observed; GitLab Pages is Fastly/Cloudflare-backed
+  and built for burst traffic. Still worth a modest delay and a lock file out of general
+  courtesy on a real run, but there's no dexonline-style "community-run, be gentle"
+  reasoning to import wholesale — say so explicitly if `scrape_clre.py` ever gets written,
+  so nobody copies the 3s dexonline delay here for the wrong reason.
+
+  - **Done (2026-08-18): `scrape_clre_dcr.py` written and tested, both editions** — see
+    `CLAUDE.md`'s DCR section for the run commands and output shape
+    (`data/processed/clre_dcr_definitions.csv`/`.db`, kept separate from
+    `dcr_definitions.db` on purpose). `dcr2` was included despite the "probably redundant"
+    call above, per explicit ask — it's cheap to pull alongside `dcr3` and stands as the
+    faithful-per-source second opinion either way. Not yet done: parsing the citations into
+    `(source, year)` pairs and deciding how (or whether) this feeds `definitions.db` /
+    `make_shortlist.py` — right now it's a raw scrape artifact, same stage
+    `dcr_definitions.csv` was at before anyone wired it further in. `tdrg` (bigger, but
+    needs an author→year table before its citations are usable for dating) is still just
+    scoped, not built. `robots.txt` on both gitlab.io hosts just 302s to the same GitLab
+    auth check as everything unmatched at their root (no explicit policy either way);
+    `tdrg.solirom.ro` itself serves an empty allow-all `robots.txt`. No terms-of-use page
+    found anywhere in this ecosystem. Still unchecked: how (or whether) `dcr2`/`dcr3`'s
+    `A0000xx`-style ids map to the dump's own entry ids — probably moot, since matching by
+    normalized headword is sufficient and both sources give one.
+
 - [ ] **`modelType 'V'` is missing from the corpus lookup allow-list** (găsit 260810).
   `load_dex_words()` — în `process_wikisource.py`, `process_culturax.py` și acum și în
   `process_lumro.py`, copiat verbatim — acceptă `modelType IN ('A','F','M','N','VT','VI',
