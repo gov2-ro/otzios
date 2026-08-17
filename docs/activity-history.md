@@ -4,6 +4,65 @@ Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short
 
 ---
 
+## 2026-08-17 — Sinonime v1 built: extractor, syn.db, and the /sinonime page
+
+Executed `docs/sinonime/spec.md` and `ui.md` end to end: `extract_relations.py` (Phase 1),
+`tools/build_syn_db.py` (Phase 2), and the page (Phase 3) — `sinonime.php`, `api/_syn.php`,
+`api/syn.php`, `assets/syn.js`, plus the `vezi în sinonime →` link in `detail.php` and a
+`despre` line. Phase 4 (the 21,489-word gap scrape) is deliberately not started — spec.md
+scopes it to "after v1 ships".
+
+**`ObjectTag.objectType=3 → Meaning` verified before building on it**, per
+`escalate.md` §3: 193,466/193,466 objectType=3 rows are exact `Meaning` ids (100.0%); the
+87.5%/59.4% cross-hit rates against the other table are id-range coincidence, not a real
+join. Register bitmasks were safe to build.
+
+**Symmetrisation turned out to be a query-time join, not a build-time storage pass.** The
+first working version stored `sense_word = SW ∪ TW` (or separately injected the missing
+reverse of every non-reciprocal pair) so a single forward query was already symmetric —
+correct, and it passed every acceptance test, but it also produced a 21-23 MB database
+against the 16 MB ceiling `spec.md`'s Acceptance tests set. Splitting symmetry between
+build time (`sense_word` = source only, `edge` = target only, exactly as the schema
+comments say) and query time (`lookup_related()`/`syn_lookup_senses()` unions the forward
+and backward query) keeps both the size (15.6 MB) and the semantics literal to the schema.
+
+**A related display bug, found via `văz`:** the backward half of that same query surfaces
+one fragmented extra "sense" per synonym that independently lists the word back — văz's own
+rich cluster (`privire, vedea, vedere, văzut, vază, ...`) was joined by three more sense
+groups labelled "privire", "vedere", "văzut", each containing only that one word again.
+Fixed by a dedup pass in `syn_lookup_senses()` that lets the richer (more-members) cluster
+claim a shared word first, before applying `ui.md`'s own (max band DESC, sense id ASC)
+display order to what survives.
+
+**One spec number didn't hold, and it's a good-news miss, not a bug.** `ui.md`'s landing
+copy names `celșag` as the empty-state example — true against the Relation graph alone
+(`findings.md` §6 lists it by name among 524 scrape-only words absent from `Relation`
+entirely), false once the scrape is merged: `celșag` genuinely means "trickery" and has 11
+scraped synonyms (`amăgire, înșelare, înșelăciune, ...`). Swapped the empty-state test word
+to `acardiac` (a real word with a `word` row and zero edges — a byproduct of type-5's tree
+traversal touching words no relation ever reaches). `ui.md`'s copy still names `celșag` as
+the empty-state example and needs a different word if the doc is revised.
+
+**Measured against `spec.md`'s acceptance table**, all within its explicit "report what you
+get, don't force a match" latitude (`escalate.md` §4, §7):
+- coverage @1k+ occurrences: 72.5% (spec floor 70%, findings.md estimate 72.4%)
+- file size: 15.6 MB (ceiling 16 MB)
+- `văz`: 4 sense clusters after dedup, `concepție` never shares one with `privire`
+- type-5 (Tree co-membership): 9,158 cliques / 16,276 pairs / 8,863 words gaining a first
+  synonym — well under findings.md's ~38,321/~25,554 estimate, because that estimate
+  predates `spec.md`'s "only where no type-1 edge already exists" refinement
+
+Also fixed one data-quality bug the acceptance tests caught: `merge_scrape()` was creating
+a first-class `word` row for every scraped headword unconditionally, including `nalt` —
+which the graph's own entry structure already knows is a non-main variant filed under
+`înalt`. `resolve_or_create_word()` now checks the graph's key index first.
+
+Not done: Phase 4 (gap scrape), the `docs/sinonime/ui.md` §6 type-5 review (still stored,
+still unshown), and a full six-skin × two-theme screenshot pass (spot-checked tokens only).
+See `docs/BACKLOG.md`.
+
+---
+
 ## 2026-08-14 — Light theme is the default; dark is opt-in
 
 The pre-paint boot scripts used to fall back to the OS preference when no theme was

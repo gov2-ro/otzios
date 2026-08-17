@@ -807,13 +807,35 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   etichetate „din același cuib DEX"); tratamentul pregătit **nu** e permisiunea de a le
   aprinde. `escalate.md` §6.
 
-- [ ] **sinonime: re-măsoară dimensiunea lui `syn.db` după `edge.rank`**
+- [x] **sinonime: re-măsoară dimensiunea lui `syn.db` după `edge.rank`** — măsurat 2026-08-17.
 
-  Cifra de ~10–11 MB din `findings.md` §8 a fost măsurată pe DDL-ul *fără* coloana `rank`
-  și indexul `ix_edge_rank`, adăugate de sesiunea de UI ca plafonul de 37 de noduri să țină
-  prin construcție. Estimare +1,5–2 MB, sub plafonul de test de 16 MB — dar e o estimare.
-  Raportează dimensiunea reală la prima construcție; nu duce mai departe cifra veche.
-  `escalate.md` §7.
+  Cifra de ~10–11 MB din `findings.md` §8 a fost măsurată pe DDL-ul *fără* coloana `rank`,
+  fără `merge_scrape()`, fără type-5 — adăugate ulterior de `spec.md`'s build rules 6-7.
+  Construită literal (simetrizare ca al doilea pas de scriere, `sense_word` = SW ∪ TW),
+  baza a ieșit la **21–23 MB**, peste plafonul de 16 MB. Simetrizarea mutată la interogare
+  (`lookup_related()` unește sensul direct cu cel invers, în loc să dubleze rândurile la
+  construcție) a adus-o la **15,6 MB** — sub plafon, cu `sense_word`/`edge` exact cum le
+  descrie schema (o singură direcție pe rând). Vezi `tools/build_syn_db.py`'s
+  `build_relation_graph()` pentru explicația completă.
+
+- [ ] **sinonime: exemplul de "empty state" din `ui.md` (`celșag`) nu mai e gol**
+
+  `ui.md`'s landing/empty-state copy numește `celșag` ca exemplu de cuvânt fără sinonime —
+  adevărat față de graful `Relation` singur (`findings.md` §6 îl listează explicit printre
+  cele 524 de cuvinte doar-scrapate, absente din `Relation`), fals după ce scrapingul e
+  contopit: `celșag` chiar înseamnă „înșelăciune" și are 11 sinonime scrapate (`amăgire,
+  înșelare, înșelăciune, ...`). `tests/test_sinonime.js` folosește `acardiac` în loc
+  (cuvânt real, zero muchii). Dacă `ui.md` e revizuit, exemplul din text ar trebui înlocuit.
+
+- [ ] **sinonime: trecere prin cele 6 skin-uri × 2 teme, cu screenshot-uri**
+
+  Construit 2026-08-17, verificat doar programatic (noduri, texte, structura HTML) și cu
+  token-urile `--syn-node`/`--syn-edge`/`--syn-ant`/`--syn-tree` declarate o singură dată pe
+  `:root` (moștenesc tema automat prin indirecție `var()`, fără redeclarare în blocul dark).
+  Nu s-a făcut trecerea vizuală cu screenshot-uri pe care `ui.md` § Skins o cere explicit —
+  în special `govuk` (`--radius: 0`, masthead negru) și `registru` (`--accent` e cerneala
+  paginii, deci orice umplut cu `--accent` într-o zonă întunecată dispare, ca bug-ul
+  `.joc-mode.active`). Verifică și starea `.is-active` la (0,3,0) în toate cele 6.
 
 - [ ] ascunde cuvinte care au în definiție 'vezi ...' + alt cuvânt care suna f similar?
 
