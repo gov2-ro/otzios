@@ -44,20 +44,6 @@ OUT_PATH        = Path('public/data/ui.db')
 _ETYM_JUNK = {'vezi', 'cf.', 'după', 'după unii', 'probabil', 'cuvânt',
               'necunoscută', 'de la', 'sau'}
 
-# DEX register tags that describe usage style rather than archaic/rare status.
-# Excluded from the register filter dropdown so it only shows meaningful archaic markers.
-_REGISTER_USAGE_NOTES = {
-    'figurat', 'adesea figurat', 'metaforic', 'popular', 'familiar', 'poetic',
-    'literar', 'ironic', 'glumeț', 'depreciativ', 'peiorativ', 'neobișnuit',
-    'în comparații / la comparativ', 'în superstiții', 'prin exagerare',
-    'prin metonimie', 'eliptic', 'repetat', 'personificat', 'pleonastic',
-    'impropriu', 'argou', 'argotic', 'eufemistic', 'hiperbolic', 'emfatic',
-    'alegoric', 'augmentativ', 'corelativ', 'vulgar', 'jargon',
-    'cu pronunțare regională', 'la vocativ', 'sens curent', 'personal',
-    'cu valoare de singular', 'cu valoare verbală',
-    'cu valoare de numeral cardinal', 'cu valoare de numeral distributiv',
-}
-
 
 def _float(v):
     try:
@@ -283,6 +269,47 @@ def _diminutive_by_suffix(word: str, forms: set[str]) -> bool:
             if base != word and base in forms:
                 return True
     return False
+
+
+def build_vocab_table(conn: sqlite3.Connection, kinds: set[str] | None = None) -> None:
+    """(Re)populate the `vocab` table that drives the filter-sheet dropdowns.
+
+    `kinds` restricts the rebuild to a subset (e.g. {'register'}) so a migration can
+    refresh one dropdown's options on an existing ui.db without touching the others.
+    Idempotent either way: each kind's rows are cleared before being recomputed, so
+    re-running never duplicates or leaves stale values behind.
+    """
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS vocab (
+            kind  TEXT,
+            value TEXT,
+            count INTEGER
+        )
+    """)
+
+    for kind, col, exclude in [
+        ('register',  'dex_register',  None),
+        ('domain',    'dex_domain',    None),
+        ('etymology', 'dex_etymology', _ETYM_JUNK),
+        ('pos',       'dex_pos',       None),
+    ]:
+        if kinds is not None and kind not in kinds:
+            continue
+        conn.execute('DELETE FROM vocab WHERE kind = ?', (kind,))
+        rows = conn.execute(
+            f'SELECT {col} FROM words WHERE {col} IS NOT NULL'
+        ).fetchall()
+        counts: Counter = Counter()
+        for (v,) in rows:
+            for part in v.split('|'):
+                p = part.strip()
+                if p and (exclude is None or p not in exclude):
+                    counts[p] += 1
+        for value, count in counts.most_common():
+            conn.execute(
+                'INSERT INTO vocab (kind, value, count) VALUES (?,?,?)',
+                (kind, value, count),
+            )
 
 
 def mark_diminutives(conn: sqlite3.Connection, lexemes_db: Path) -> None:
@@ -998,36 +1025,8 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
         print(f'  {updated:,} words given a model-derived POS '
               f'({covered:,}/{total:,} now carry one)')
 
-    # Build vocab table for dropdown options
     print('Building vocab table…')
-    conn.execute("""
-        CREATE TABLE vocab (
-            kind  TEXT,
-            value TEXT,
-            count INTEGER
-        )
-    """)
-
-    for kind, col, exclude in [
-        ('register',  'dex_register',  _REGISTER_USAGE_NOTES),
-        ('domain',    'dex_domain',    None),
-        ('etymology', 'dex_etymology', _ETYM_JUNK),
-        ('pos',       'dex_pos',       None),
-    ]:
-        rows = conn.execute(
-            f'SELECT {col} FROM words WHERE {col} IS NOT NULL'
-        ).fetchall()
-        counts: Counter = Counter()
-        for (v,) in rows:
-            for part in v.split('|'):
-                p = part.strip()
-                if p and (exclude is None or p not in exclude):
-                    counts[p] += 1
-        for value, count in counts.most_common():
-            conn.execute(
-                'INSERT INTO vocab (kind, value, count) VALUES (?,?,?)',
-                (kind, value, count),
-            )
+    build_vocab_table(conn)
 
     conn.create_function('strip_diacritics', 1, _strip_diacritics)
     conn.execute('UPDATE words SET word_normalized = strip_diacritics(word)')

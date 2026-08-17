@@ -3,7 +3,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/api/_lib.php';
 
 $total      = (int)db()->query("SELECT COUNT(*) FROM words WHERE word_tier='forgotten'")->fetchColumn();
-$registers  = vocab('register');
+$registers  = vocab_counts('register');
 $domains    = vocab('domain');
 $etyms      = vocab('etymology');
 
@@ -290,8 +290,8 @@ global $QUICK_TAGS, $POS_OPTIONS;
         <?= fs_label('filtru', 'Filtre după ce spune DEX-ul despre cuvânt: registrul, domeniul, etimologia, în câte dicționare apare, când a fost tipărit ultima oară, și cât se mai folosește azi.') ?>
         <select name="register" class="fs-select tax-select" data-default="" title="Filtru după registru DEX">
           <option value="">registru: orice</option>
-          <?php foreach ($registers as $r): ?>
-          <option value="<?= e($r) ?>"><?= e($r) ?></option>
+          <?php foreach ($registers as $r => $cnt): ?>
+          <option value="<?= e($r) ?>"><?= e($r) ?> (<?= number_format($cnt) ?>)</option>
           <?php endforeach; ?>
         </select>
         <select name="domain" class="fs-select tax-select" data-default="" title="Filtru după domeniu tehnic">
