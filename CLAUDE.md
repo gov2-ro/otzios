@@ -674,17 +674,27 @@ dictionary is unnamed or unmatched — it is not evidence that a word is old.
 ## Synonyms
 
 `words.synonyms` / `words.antonyms` come from `scrape_synonyms.py`. **The reason is
-narrower than it used to be stated here, and the overstatement cost a year.** What is
-redacted is `Definition.internalRep` for the three Litera titles, which are in copyright —
-dexonline distributes it in full only for the Academy dictionaries:
+narrower than it used to be stated here, and the overstatement cost a year — twice, now.**
+What's redacted is `Definition.internalRep`, and the previous fix to this paragraph still
+got the scope wrong: it isn't "the three Litera titles" against "the Academy dictionaries"
+as a class. Measured across all ~100 `Source` rows while fixing `extract_definitions.py`
+(2026-08-17, see `docs/DEFINITIONS_ANALYSIS.md`): only sourceId 1 (DEX '98) and 2 (DEX '96)
+ship untruncated text. Every other source is capped at ~23 characters — including *other*
+Academy-published dictionaries (DEX '84, DEX '75, DEX-S all say "Academia Română" in their
+own `Source.author`), not only the copyright-driven Litera titles:
 
 ```
-sourceId 1 (DEX '98)   max 15,039 chars   mean 201
-sourceId 6 (Sinonime)  max     23 chars   mean  23   "@AB'A@ s. dimie, păn..."
+sourceId 1 (DEX '98)    66,185 rows   mean 192.0   max 15,873
+sourceId 2 (DEX '96)     4,898 rows   mean 178.4   max  6,785
+sourceId 3 (DEX '84)       114 rows   mean  21.1   max     23
+sourceId 6 (Sinonime)   49,269 rows   mean  23.0   max     23   "@AB'A@ s. dimie, păn..."
+— every other sourceId (~95 of them): mean 17–23, max ≤23
 ```
 
-So `dict_count` knows a word appears in `Sinonime`/`Sinonime82`/`Antonime`, but not what
-they say. The rendered page has it.
+So `dict_count` knows a word appears in any of ~100 dictionaries, but DEX '98 and DEX '96
+are the only two whose text is actually usable from the dump — everything else, Litera or
+Academy, is a stub. `extract_definitions.py`'s `_extract_dex9896_topup()` reads exactly
+those two ids for this reason. The rendered page has the rest.
 
 **That says nothing about the `Relation` table, which is a different artefact and ships in
 full.** It is dexonline's own community-curated relation graph — 158,860 rows, 152,023 of

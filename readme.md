@@ -266,7 +266,16 @@ link ever shared. `tests/test_rescore.py` asserts it too.
 
 ### Phase 2.5: Fill definition gaps from dexonline.ro
 
-The DEX MySQL dump's `DefinitionSimple` table only covers ~4.6k of the 17.4k shortlist words. `scrape_definitions.py` fills the remaining gaps by extracting the synthesis (definition) from dexonline.ro for each missing word.
+`extract_definitions.py` pulls definitions from two dump tables: `DefinitionSimple`
+(61k rows, headword in `lexicon`) and, as of 2026-08-17, a top-up pass over `Definition`
+restricted to sourceId 1 (DEX '98) / 2 (DEX '96) — the only two of ~100 sources that ship
+untruncated text in this dump (see CLAUDE.md's Synonyms section and
+`docs/DEFINITIONS_ANALYSIS.md`; an earlier draft of this pipeline compared
+`EntryDefinition` against the wrong table and concluded the dump itself was corrupted —
+it isn't). Together the two passes cover ~92.7k headwords. Measured against the current
+18,270-word shortlist, only 1,126 still have no definition after both passes;
+`scrape_definitions.py` fills that remaining gap by extracting the synthesis (definition)
+from dexonline.ro's rendered page for each missing word.
 
 ```bash
 # Smoke test (5 words, no HTTP)
@@ -672,12 +681,20 @@ DEX-tagged archaic words with no corpus signal at all (Tier B — "dark matter")
 **Output**: `forgotten_words_diachronic.csv` (130k rows) → `forgotten_words_shortlist.csv` (23k rows)
 
 ### Phase 3: Enhanced Metadata
-- [ ] Extract full definitions from DEX database
-- [ ] Join Definition and DefinitionSimple tables
+- [x] Extract full definitions from DEX database — `extract_definitions.py` reads
+  `DefinitionSimple` plus a `Definition` top-up (sourceId 1/2 = DEX '98/'96, the only
+  untruncated sources in the dump); `scrape_definitions.py` covers the rest from
+  dexonline.ro. See Phase 2.5 above.
+- [x] Join Definition and DefinitionSimple tables — done 2026-08-17 via
+  `_extract_dex9896_topup()` in `extract_definitions.py`. Keyed on `Definition.lexicon`
+  directly rather than the `Entry`/`EntryLexeme`/`EntryDefinition` join chain, which was
+  tried first and produced systematically misaligned pairings (see the module docstring).
 - [x] Identify archaic markers (înv., arh., reg., dial.) — `dex_register` column via Tag taxonomy
 - [x] Extract etymology information — `dex_etymology` column (grecism, latinism, turcism…)
 - [x] Add part-of-speech tagging — `dex_pos` column (substantiv neutru, adjectiv, verb…)
-- [ ] Flag words with no definition body ("Fără definiție." entries like *nombrilist*)
+- [x] Flag words with no definition body ("Fără definiție." entries like *nombrilist*) —
+  `is_placeholder_definition()` in `validate_diachronic.py`, mirrored in the UI's
+  `has_definition` reconciliation in `tools/build_ui_db.py`
 - [ ] Parse first attestation dates
 - [ ] Temporal analysis (when words fell out of use)
 - [ ] Link to word families and cognates
