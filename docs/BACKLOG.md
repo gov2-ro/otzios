@@ -1096,14 +1096,38 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] start with light theme?
 
----
+### Next
 
-- [ ] register_tags_shortlist more tags that we have in filters - use them!
+- [ ] filters: add dictionaries (w published year)
+
+- [x] register_tags_shortlist more tags that we have in filters - use them! —
+  **Done 2026-08-18.** The `registru` filter dropdown only listed 17 of 51 distinct
+  `dex_register` values; `build_ui_db.py` excluded 34 usage-style tags (`figurat`,
+  `popular`, `argou`, `vulgar`, ...) via `_REGISTER_USAGE_NOTES`, on the theory that they
+  describe rhetorical style rather than archaic/rare status. The info box already showed
+  all of them unfiltered (`detail.php` reads raw `dex_register`, no exclusion) — only the
+  filter dropdown was narrower than the data. Removed the exclusion; the vocab-population
+  loop is now `build_vocab_table()` in `build_ui_db.py`, callable per-kind so
+  `tools/migrate_ui_db_register_vocab.py` could backfill the existing `ui.db` without a
+  full rebuild. No query-side change needed — `build_word_filter()`'s LIKE match already
+  covered any `dex_register` value.
+
+  **Follow-up, same day:** each register option now shows its word count in brackets
+  (`vocab_counts()` in `_lib.php`, used only by `index.php`'s register select) — a static
+  global count, not recalculated per filter selection. Live per-selection counts were
+  asked about and declined: `facet_counts()`/`applyFacetCounts()` already did this once
+  (2026-08-11) and were reverted the next day for being wired to only a handful of
+  boolean toggles (never the taxonomy dropdowns) and for costing a row via wrapping — see
+  **"There are no per-option counts"** above. Redoing it now, for register alone, would
+  repeat exactly the piecemeal pattern that got it cut. If live counts come back, it's
+  still all groups or none, wrapping solved first.
+
+- [ ] are we properly citing sources? corola, lumro etc?
 
 - [ ] Colecții viewer atât compact cât și cu detalii / meta, să vedem ce nu ne place 
 
 - [ ] explorer power user mode, shift + arrow marks as fav/meh/lol. 
-  - [ ] w power user version, overides other options/tags?
+  - [ ] smart search input, including gmail like search parameters
 
 - [x] check consistency, when a word is tagged by myself the tag is activated in the info box
 
@@ -1129,6 +1153,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 ## Post launch
 
+- [ ] extra: DCR explorer – see how words appeared and drifted. anything from DCR made it to any other dict?
 - [ ] check [lexicro.com](https://api.lexicro.com/docs)
 - [ ] REBUS pentru masochiști
 - [ ] traffic analytics

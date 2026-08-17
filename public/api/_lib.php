@@ -520,6 +520,13 @@ function vocab(string $kind): array {
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
 }
 
+/** Same as vocab(), keyed by value => word count. For options that display their count. */
+function vocab_counts(string $kind): array {
+    $stmt = db()->prepare('SELECT value, count FROM vocab WHERE kind = ? ORDER BY count DESC');
+    $stmt->execute([$kind]);
+    return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
 function render(string $partial, array $vars = []): void {
     extract($vars, EXTR_SKIP);
     include __DIR__ . '/_partials/' . $partial;

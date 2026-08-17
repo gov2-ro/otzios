@@ -2,6 +2,18 @@
 
 Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short Title`.
 
+## 2026-08-18 — Register filter dropdown now shows all 51 dex_register tags, not 17
+
+Closed a stale backlog item. `build_ui_db.py` excluded 34 usage-style `dex_register`
+values (`figurat`, `popular`, `argou`, `vulgar`, ...) from the `registru` filter dropdown
+via `_REGISTER_USAGE_NOTES`, keeping only archaic/geographic markers. The detail panel
+was never subject to that exclusion — it already showed every tag a word carried — so the
+gap was filter-only. Removed the exclusion, factored the vocab-population loop into
+`build_vocab_table()` (per-kind, idempotent) so `tools/migrate_ui_db_register_vocab.py`
+could backfill the deployed `ui.db` without a full pipeline rebuild. No PHP change
+needed: `build_word_filter()`'s LIKE match already worked for any `dex_register` value,
+only the dropdown's option list was narrower than the data.
+
 ## 2026-08-18 — Found CLRE, the Romanian Academy's other dictionary digitization project
 
 Started from the user pointing at `dexonline.ro/surse`, `wiki.dexonline.ro`, and
