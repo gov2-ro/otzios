@@ -296,6 +296,34 @@ python scrape_definitions.py --merge-only
 
 **Output**: `data/processed/scraped_definitions.csv` (checkpoint with columns: `word, definition, source_url, scraped_at, status`). With `--merge`, all `status=ok` rows are upserted into `definitions.db` immediately. Resume is safe — each row is flushed instantly; Ctrl+C stops cleanly.
 
+### DCR export — Dicționar de cuvinte recente
+
+The three DCR editions (Dimitrescu's dictionary of *recent* words — the neologisms of
+1982, 1997 and 2013) split across the two data sources:
+
+- **DCR2 (1997) — in the dump in full.** `Definition` holds only 23-char stubs, but DCR2
+  was digitized *structured* and the full text lives in the `Meaning` table:
+  `extract_dcr.py` walks `Definition(sourceId=30) → EntryDefinition → TreeEntry → Meaning`
+  and renders each entry (senses, sub-senses, citations with attestations) in one offline
+  pass. 5,798 of 5,807 words extracted; the 9 whose trees are empty were fetched from the
+  site individually.
+- **DCR3 (2013)** — zero rows in the dump, and as of 2026-08-17 its ~183 digitized
+  entries carry **no visible text on dexonline.ro yet** (searchable, but no word page
+  renders a DCR3 definition). `scrape_dcr.py` enumerates its word list and will scrape
+  the entries once they render.
+- **DCR (1982)** — not a source on dexonline.ro.
+
+```bash
+python extract_dcr.py               # DCR2 from the dump, ~15 min, no HTTP
+python scrape_dcr.py --dry-run      # plan only (reads the cached word lists)
+```
+
+**Output**: `data/processed/dcr_definitions_dump.csv` (`word, edition, definition,
+n_sources, source_ids, status`) plus `data/processed/dcr_definitions.csv` (the 9 scraped
+words). Caveat: the dump text is the site's *sinteză* — entry trees that merge every
+dictionary defining a word. `n_sources = 1` (1,862 words) is pure DCR2; for shared words
+`source_ids` lists the other sources whose senses may be mixed in.
+
 ### Phase 3: Web validation — retired
 
 `search_wild.py` (DuckDuckGo / Google CSE) moved to `archive/` in August 2026. It had

@@ -131,6 +131,52 @@ python scrape_definitions.py --merge-only                # just upsert checkpoin
 
 Output: `data/processed/scraped_definitions.csv` (columns: `word, definition, source_url, scraped_at, status`). `status ∈ {ok, not_found, error}`. With `--merge`, ok rows are `INSERT OR REPLACE`'d into `data/processed/definitions.db`. Resume is automatic: re-running skips words already in the checkpoint or in the definitions DB. Ctrl+C is safe — each row is flushed immediately. Be polite to dexonline.ro (community-run): keep `--delay ≥ 3`.
 
+**Exporting the DCR dictionaries — `extract_dcr.py` + `scrape_dcr.py`:**
+
+The DCR family (Dicționar de cuvinte recente) splits across the two data sources:
+
+- **DCR2 (1997)** — 5,807 words, and it **is in the dump in full**, just not in
+  `Definition` (whose `internalRep` is a 23-char stub for every source except DEX '98/'96).
+  DCR2 was digitized *structured* (`Definition.structured = 1` on all its rows), and the
+  structured text — senses, sub-senses and citations with their attestations — ships in the
+  `Meaning` table. `extract_dcr.py` walks `Definition(sourceId=30).id →
+  EntryDefinition.definitionId → entryId → TreeEntry.entryId → treeId → Meaning` and
+  renders each tree (breadcrumbs kept, citations as `◊`, cross-tree `[id]` pointers
+  dropped). Output: `data/processed/dcr_definitions_dump.csv` (`word, edition, definition,
+  n_sources, source_ids, status`).
+  **Caveat: the trees are the entry trees (the site's sinteză), which merge every
+  dictionary that defines a word.** For a word only DCR2 defines, the text IS DCR2's
+  entry; for shared words `source_ids` lists the other sources and the text may mix them
+  (`aburi` has 15, `accept` has 19). `scrape_dcr.py` remains the faithful per-source copy
+  if exact attribution is ever wanted.
+- **DCR3 (2013)** — zero rows in the dump (`DCR3` appears once: its `Source` row); only
+  ~183 entries are digitized on the site so far, mostly abbreviations and symbols, and as
+  of 2026-08-17 they carry **no visible definition text anywhere** — the per-source search
+  finds them, but no word page renders a DCR3 definition (checked on `biot`, `a deux`,
+  `a due`: no `/sursa/dcr3` wrapper, no DCR3 badge in the meaning tree). Nothing to scrape
+  yet. `scrape_dcr.py` enumerates them from `/definitie-dcr3/<letter>/definitii` (31
+  requests, cached to `data/processed/dcr3_words.txt`; re-run with `--refresh-words` when
+  digitization progresses) and scrapes each word page for the `.defWrapper` whose
+  `.defDetails` carries the `sursa:` link — matched on the link, never the headword,
+  because a page renders every related entry. Its other remaining use: filling the 9 DCR2
+  words whose meaning trees are empty in the dump (done 2026-08-17, in
+  `data/processed/dcr_definitions.csv`).
+- **DCR (1982)** — not a source on dexonline.ro at all; only an abbreviation cited inside
+  DCR2's own entries.
+
+```bash
+python extract_dcr.py                     # DCR2 from the dump, ~15 min, no HTTP
+python scrape_dcr.py --dry-run            # plan only (DCR2+DCR3 word lists)
+python scrape_dcr.py --limit 20           # small live run (DCR3)
+```
+
+Scrape output: `data/processed/dcr_definitions.csv` (`word, edition, definition,
+source_url, scraped_at, status`) and, with `--merge`, `data/processed/dcr_definitions.db`
+(`dcr_definitions(word, edition, definition, PRIMARY KEY(word, edition))`). Both artifacts
+are separate from `definitions.db` on purpose — that table is the UI's
+one-definition-per-word contract, and DCR is a dictionary-copy artifact. Resume is
+automatic; `--delay < 1.2` is refused.
+
 ## Key data contracts
 
 ### `lexemes.db` — `Lexeme` table (`extract_lexemes.py:124-150`)

@@ -2,6 +2,38 @@
 
 Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short Title`.
 
+## 2026-08-17 — DCR export: dump-first (extract_dcr.py), scrape only what the dump lacks
+
+Started building `scrape_dcr.py` to export every definition in the DCR dictionaries
+(Dicționar de cuvinte recente), then corrected course: **DCR2's full text was in the dump
+all along**. `Definition.internalRep` is a 23-char stub for every source except DEX
+'98/'96, but DCR2 was digitized *structured* (`Definition.structured = 1` on all 5,807
+rows) and the structured text ships in full in the `Meaning` table — senses, sub-senses
+and citations with their attestations (`R.l. 12 X 77 p. 5.`). `extract_dcr.py` walks
+`Definition(sourceId=30).id → EntryDefinition.definitionId → entryId → TreeEntry.entryId →
+treeId → Meaning` and renders each tree: breadcrumbs kept, citations as `◊`, cross-tree
+`[id]` pointers dropped, all offline. Caveat: the trees are the *entry* trees (the site's
+sinteză), which merge every dictionary that defines a word — for DCR2-only words the text
+IS DCR2; for shared words the output flags the other sources (`aburi` has 15).
+
+DCR3 (2013) is genuinely absent from the dump — the string `DCR3` appears exactly once
+(its `Source` row) — and its ~183 digitized entries turn out to carry **no visible text on
+the site at all yet**: the per-source search finds them, but no word page renders a DCR3
+definition (checked on `biot`, `a deux`, `a due` — no `/sursa/dcr3` wrapper, no
+meaning-tree badge). So `scrape_dcr.py`'s enumeration + parser stay in place, but there is
+nothing to scrape until digitization progresses (backlogged). DCR (1982) is not a source
+on dexonline.ro at all.
+
+Final numbers: **5,798 words extracted from the dump + 9 tree-less words scraped
+individually (1 request each) = 5,807/5,807 DCR2 definitions**. The 9 misses
+(`afrikaner`, `hiporeal`, `kaldex`, …) have empty meaning trees and their raw entries
+were fetched from the site. The extractor also writes the canonical
+`data/processed/dcr2_words.txt` after a first version of the scrape-side scan turned out
+to over-collect 159 stray lexicons. Outputs: `data/processed/dcr_definitions_dump.csv`
+(`word, edition, definition, n_sources, source_ids, status` — 1,862 DCR2-only words, the
+rest flagged as shared) and `dcr_definitions.csv` (the 9 scraped). Pinned by
+`tests/test_extract_dcr.py` (renderer) and `tests/test_scrape_dcr.py` (parser).
+
 ---
 
 ## 2026-08-17 — Retracted the "94.8% dangling definitions" finding; fixed extract_definitions.py

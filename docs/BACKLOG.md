@@ -351,6 +351,9 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 ## Misc
 
+- [ ] **DCR export: re-run `scrape_dcr.py --refresh-words` every few months.** DCR3 (2013) is only partially digitized on dexonline.ro — ~183 entries as of 2026-08-17, mostly abbreviations/symbols, and as of that date they carry **no visible definition text anywhere on the site** (no `/sursa/dcr3` wrapper, no meaning-tree badge). The cached `data/processed/dcr3_words.txt` goes stale as new entries land; `--refresh-words` re-enumerates it in 31 requests. Nothing to scrape until the definitions actually render.
+- [ ] **DCR (1982, Dimitrescu's first edition) has no digital copy on dexonline.ro.** Only DCR2 (1997) and DCR3 (2013) exist there. If the 1982 word list is ever wanted (e.g. to extend the diachronic window), it needs a source elsewhere.
+
 - [x] create methodology, including activity log, look at activity log and commit history
 
 - [x] tune parameters until it includes `oțios` – maybe use a flag to hide these other, second tier words (new words beyond  current list/limits). What we would also like to surface would be words that are rarely used, but worth attention. The sweet spot might not be totally forgotten words, but let's see which are the rare words but still in use. For the UI we could use a global switch flag. Which corpus to browse, forgotten or rarely used terms?
@@ -1000,7 +1003,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] in og:description reverse order, start with term definition, _then_ category.
 
-- [ ] start with light theme?
+- [x] start with light theme?
 
 ---
 
@@ -1021,11 +1024,14 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [ ] add contact, gform sau tally.so 
 
-- [ ] can I git pull/sync just the `/public/` subfolder? 
+- [x] can I git pull/sync just the `/public/` subfolder? 
 
 - [ ] why don't se use the same set of filters pentru stats?
 
 - [ ] add interstitials
+
+- [ ] check [surse](https://dexonline.ro/surse) and [dexonline wiki](https://wiki.dexonline.ro/)
+  - [ ] scrape [DC3](https://solirom-clre.gitlab.io/texts/dcr3/site/)
 
 - [ ] to manually revisit words that are "vezi și... " the 8: https://voroave.ro/?w=1.1f7.jkz.29y.4q6.509.5fq.66a.8da all 68: https://voroave.ro/?w=1.1f7.jkz.29y.4q6.509.5fq.66a.8da.14.3o.dx.jv.15w.17n.181.1en.1et.1f0.1f1.1f9.1fa.1fy.1gu.1gx.1h1.1i8.1iy.277.29w.2yc.4fk.5jx.84e.84u.856.juc.8by.8lj.8us.8v0.9i7.a1n.a1v.aal.bkq.bod.boo.bv3.bw3.c3p.efa.evl.eyb.k6e.h35.h37.h38.h39.h4a.hf9.hiq.hs3.hu1.huq.hvi.i6u.ii6.j6s
 
