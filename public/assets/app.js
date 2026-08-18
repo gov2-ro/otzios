@@ -578,6 +578,17 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
     if (countEl && mainCount) countEl.textContent = mainCount.textContent;
   }
   if (target.id === 'detail-panel') {
+    // The dict-name tooltip (store.js) gets reparented to <body> when opened, to
+    // escape #detail-panel's `transform` (its containing block for position:fixed
+    // otherwise — see the comment at store.js's dictToggle handler). htmx's
+    // `innerHTML` swap only replaces what's still inside #detail-panel, so a
+    // tooltip left open on the *previous* word survives the swap as an orphan
+    // sitting directly under <body>; every word switch would otherwise leave one
+    // more behind. It's already superseded by the fresh `.dict-tooltip` the new
+    // HTML just brought in, so this is a plain removal, not a hide.
+    var staleTip = document.body.querySelector(':scope > .dict-tooltip');
+    if (staleTip) staleTip.remove();
+
     target.classList.add('panel-open');
     // Mobile reclaims the brand bar and the status bar while a definition is up —
     // on a 375×812 phone those two are ~186px, 23% of the screen, and neither is
@@ -790,6 +801,10 @@ function showShortcuts() { document.getElementById('shortcuts-overlay').style.di
 function hideShortcuts() { document.getElementById('shortcuts-overlay').style.display = 'none'; }
 function closePanel() {
   var panel = document.getElementById('detail-panel');
+  // An open dict-name tooltip is reparented to <body> (store.js) and no longer sits
+  // inside #detail-panel's own collapsing box — it would otherwise keep floating over
+  // the page after the panel itself is gone.
+  if (typeof closeDictTooltips === 'function') closeDictTooltips();
   panel.classList.remove('panel-open');
   panel.classList.remove('share-focus');
   document.body.classList.remove('detail-open');

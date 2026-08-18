@@ -2,6 +2,49 @@
 
 Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short Title`.
 
+## 2026-08-18 — Dict-tooltip off-canvas: a transformed ancestor breaks `position: fixed`
+
+Reported via screenshot: `.dict-tooltip` (the "în N dicționare" popover in the detail
+panel) opened but rendered far off in the bottom-right corner of the screen, overlapping
+unrelated list rows. Confirmed with Playwright: the tooltip's computed `top`/`left`
+(store.js positions it from `dictToggle.getBoundingClientRect()`, correct viewport
+coordinates) didn't match its actual on-screen position — off by exactly the on-screen
+offset of `#detail-panel` itself.
+
+Root cause: `#detail-panel` carries `transform: translateX(-50%)` on desktop (≥769px) to
+centre itself over the list. Any ancestor with a `transform` becomes the *containing
+block* for a `position: fixed` descendant — so `.dict-tooltip`, nested inside
+`#detail-panel` → `.fp-body` → `.fp-dicts`, was never actually fixed to the viewport; it
+was fixed to the panel's own (transformed) box instead, which is why the mismatch varied
+with viewport width and rail state ("sometimes" off-canvas). Audited every other
+`position: fixed` element in `app.css` (`.filter-sheet`, `.toast`, `#feed-overlay`,
+`#shortcuts-overlay`, `#status-bar`, `#board-overlay`) — all sit as direct children of
+`<body>` or `.layout-row`, so `.dict-tooltip` was the only one affected.
+
+Fixed in `store.js`'s `.fp-dicts-toggle` click handler: reparent the tooltip to
+`document.body` (untransformed) before computing its position, and look it up via
+`document.querySelector('.dict-tooltip')` instead of `dictToggle.parentElement.
+querySelector(...)` — there's only ever one live in the document at a time, and after
+the first reparent it's no longer a sibling of the toggle. Two follow-on fixes the
+reparenting itself required: `app.js`'s `htmx:afterSwap` handler for `#detail-panel` now
+removes any stray `.dict-tooltip` sitting directly under `<body>` before hydrating the
+newly-swapped word (htmx's `innerHTML` swap only replaces what's still inside the panel,
+so a tooltip left open on the *previous* word would otherwise survive as an orphan and
+accumulate one more per word switch over a session); `closePanel()` now calls
+`closeDictTooltips()` so an open, reparented tooltip doesn't keep floating over the page
+after the panel itself collapses.
+
+New test: `tests/test_dict_tooltip.js` — position match across 4 viewport widths, no
+orphan accumulation across a word switch, hidden after `closePanel()`.
+
+Also investigated while reproducing this: a *separate*, pre-existing issue where a long
+multi-sense entry's `.fp-dicts` can sit below `.fp-body`'s scrollable fold at a given
+panel height, making the toggle only partially (or not at all) clickable without
+scrolling first. Not touched here — it predates both this fix and the senses feature,
+and isn't what the reported screenshot showed (`bidinea` is short; its toggle was fully
+visible in the report, just rendered in the wrong place). Worth a `docs/BACKLOG.md` entry
+if it turns out to bother readers in practice.
+
 ## 2026-08-18 — Per-sense synonym fallback: the sense tree's missing senses
 
 Follow-up to the entry directly below, same day. Reported bug: `zăticni` opened showing

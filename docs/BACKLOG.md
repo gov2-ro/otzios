@@ -6,6 +6,23 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 ## Bugs / Known Issues
 
+- [ ] **`.fp-dicts` (the "în N dicționare" row) can sit below `.fp-body`'s scrollable
+  fold, out of reach without scrolling first.** Found 2026-08-18 while reproducing the
+  `.dict-tooltip` off-canvas bug (fixed the same day — see `docs/activity-history.md`).
+  `.fp-body` has a fixed clip height (44vh on desktop, 60vh on a phone); `.fp-dicts`
+  renders last, after the sense tree, synonyms and tags, so a long multi-sense entry can
+  push it partly or fully past the visible/clickable area — `getBoundingClientRect()`
+  still reports its true layout position, so a click aimed at "where the button should
+  be" can land on whatever's actually painted there instead (measured: the page footer,
+  or the next section down), while a click on the sliver that IS visible still works.
+  Not new — predates both the senses feature and the transform fix — and not what the
+  reported screenshot showed (`bidinea` is short, the toggle was fully visible, just
+  mispositioned). Getting worse now that entries commonly carry 2+ senses with citations
+  and synonym chips. No fix attempted yet; candidates are unclear (taller default panel
+  height fights the "don't cover more of the list than needed" reasoning already
+  documented for 44vh/60vh; scrolling `.fp-dicts` into view on open is plausible but
+  would need to not fight a reader who scrolled somewhere else on purpose).
+
 - [ ] **Historical corpus is thin — 19.4M tokens against the modern panel's 17.0B, a
   876× asymmetry** (re-measured 2026-08-18: `wikisource_ro` 14,297,033 + `lumro_ro`
   5,072,239 vs `culturax_ro` 16,969,999,321). This is the project's **most load-bearing

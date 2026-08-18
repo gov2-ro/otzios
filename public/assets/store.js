@@ -234,11 +234,25 @@ if (typeof document !== 'undefined' && document.body) {
     var dictToggle = e.target.closest('.fp-dicts-toggle');
     if (dictToggle) {
       e.preventDefault();
-      var dictTip = dictToggle.parentElement.querySelector('.dict-tooltip');
+      // document.querySelector, not dictToggle.parentElement.querySelector: the first
+      // open reparents the tooltip to <body> (see below), so it stops being a sibling
+      // of the toggle from then on. There is only ever one .dict-tooltip live in the
+      // document at a time, so a global lookup is unambiguous either way.
+      var dictTip = document.querySelector('.dict-tooltip');
       if (!dictTip) return;
       var willOpen = dictTip.hasAttribute('hidden');
       closeDictTooltips();
       if (willOpen) {
+        // #detail-panel carries `transform: translateX(-50%)` on desktop to centre
+        // itself (see app.css) — and a transformed ancestor becomes the *containing
+        // block* for a `position: fixed` descendant, so .dict-tooltip's fixed
+        // positioning was being resolved against the panel's own box instead of the
+        // true viewport. The top/left computed below are correct viewport
+        // coordinates either way; only the containing block was wrong. Moving the
+        // tooltip out to <body> (untransformed) before positioning it is the fix —
+        // recomputing the panel's own layout to avoid the transform would still leave
+        // any *other* transformed ancestor able to reintroduce this later.
+        if (dictTip.parentElement !== document.body) document.body.appendChild(dictTip);
         dictTip.removeAttribute('hidden');
         dictToggle.setAttribute('aria-expanded', 'true');
         // Fixed positioning has nothing to anchor to on its own — place it
