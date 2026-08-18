@@ -2,6 +2,190 @@
 
 Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short Title`.
 
+## 2026-08-18 — Per-sense synonym fallback: the sense tree's missing senses
+
+Follow-up to the entry directly below, same day. Reported bug: `zăticni` opened showing
+only one sense, numbered "2." with no "1." above it — looked like a numbering bug, wasn't.
+Sense `1.` has genuinely empty `internalRep` in the dump; `merge_senses()`'s own documented
+rule ("a sense with empty text is dropped") was working exactly as designed, just against
+a case the plan hadn't measured: 3,627 of the 18,459 `type=0` rows are like this, and
+dexonline doesn't leave them blank — it composes a "definition" from the sense's synonym
+set instead. Traced the mechanism against the raw dump: `Relation.type=1` rows
+(`meaningId → treeId`) resolved through `Tree.description` gave exactly the 9 words
+dexonline shows for `zăticni` sense `1.` (`deranja, incomoda, jena, stânjeni, stingheri,
+supăra, tulbura, împiedica, încurca`), settling the `Relation.type` question
+`docs/senses-plan.md` §"Out" had left open as "unverified".
+
+`extract_meanings.py` grew two more passes (`Relation`, then a second `Tree` scan for the
+synonym targets — almost never shortlist words, so pass 1's restricted map can't resolve
+them) and a `meaning_synonyms(meaning_id, ord, word)` table. Of the 3,627 empty-text
+senses, 3,626 now resolve a synonym set; exactly 1 has neither text nor synonyms and stays
+dropped. `merge_senses()` keeps a sense alive if it has either text or synonyms (both
+`resolve_target()`'s reattachment check and the `senses`/`extras` filters), and `senses`
+gained a `synonyms` column (pipe-delimited, independent of `text` — a sense can have both,
+`zăticni` sense `2.` does). `detail.php` renders it with a `render_sense_synonyms()`
+helper that reuses the existing word-level `.fp-syn`/`.syn-chip` look, so a reader doesn't
+learn a second visual language for the same idea at a different scope. 10,798 words now
+end up with a renderable sense/compound/expression, up from 9,177 in the first pass —
+1,621 words that had a `Tree`/`Meaning` structure with nothing but empty placeholder
+senses in it, previously falling back to the flat `definition` with no indication a fuller
+entry existed.
+
+Also investigated in the same report: the dict-tooltip (`.fp-dicts-toggle`) reportedly not
+opening. Could not reproduce for `zăticni` itself across viewports, skins, direct load and
+htmx-search-click (Playwright, both synthetic and real mouse-coordinate clicks) — it opens
+correctly there before and after this fix. Did find a real, separate issue while testing
+other words: a long multi-sense entry can now push `.fp-dicts` below the fold of the
+panel's scrollable `.fp-body`, so the toggle needs a scroll to reach on those words. Not
+something this fix changes (the scrollable-body cap on `#detail-panel` predates the senses
+feature) — flagged for the user rather than guessed at, since the reported case doesn't
+exhibit it.
+
+Verified: `tools/migrate_ui_db_senses.py` run twice produces a byte-identical `senses`
+table (`.dump` diff); `git diff --numstat data/word_ids.tsv` empty after both the migration
+and a full `tools/build_ui_db.py` rebuild; `tests/test_senses.js` (4 sections, including
+320px-overflow across all 6 skins with the new synonym chips) and `tests/test_extract_meanings.py`
+(9 tests, 3 new — `zăticni`'s real `Relation` rows as a fixture) both green;
+`test_share_view.js`, `test_share_meta.js`, `test_class_filters.js` unaffected.
+
+## 2026-08-18 — Full sense tree shipped: `extract_meanings.py` + `senses`/`sense_citations`
+
+Built `docs/senses-plan.md` end to end, the same day it was written. `bidinea` used to
+ship sense 1 of 2 and none of its three citations; it now ships both, with the citations
+collapsed behind a "3 citate" disclosure that keeps the trailing attribution (`PAS, L. I
+97.`).
+
+`extract_meanings.py` streams `Tree`/`Meaning` from the 1.65 GB dump (no HTTP, ~9s on
+this machine — the plan estimated ~3 min) and writes `data/processed/meanings.db`:
+13,712 trees for 13,324 of the 18,270 shortlist words, 48,135 meanings kept, 9,177 words
+end up with a renderable sense/compound/expression, 14,413 citations, 10,024 etymons.
+Every number matched the plan's own §2 dump measurements on the first run — the useful
+kind of boring. `merge_senses()` (`tools/build_ui_db.py`) turns the raw tree into what
+the UI shows: senses ordered by parsing the breadcrumb as a tuple (`'10.'` sorts after
+`'9.'`, which a text sort gets wrong), empty-text placeholder senses dropped with their
+citations re-attached to the nearest non-empty ancestor (3,627 of 18,459 `type=0` rows
+are exactly this), and the two words with meanings in more than one `Tree` row (`naft`,
+`țicui`) merged tree-by-tree rather than by a global breadcrumb sort, which would have
+interleaved them wrong. `tools/migrate_ui_db_senses.py` back-fills an existing `ui.db`;
+run twice, its output was byte-for-byte identical at the row level (`.dump` diff), which
+is what "idempotent" is supposed to mean here.
+
+`volintir` turned out to be the best unplanned proof this was worth doing: its flat
+`definition` is just "vezi voluntar" — DEX pointing at another headword — but its sinteză
+tree carries a real sense ("Soldat din cetele lui Ipsilante care au luptat în 1821…") plus
+a sub-sense and five citations, none of which the flat definition ever surfaced. This is
+also the case `docs/senses-plan.md` §7's invariant 3 is about: the tree is dexonline's
+*entry* tree, which can carry another headword's text, so the "Variantă a lui X" note now
+renders **above** the senses rather than after them — moved there as part of this change,
+since the old flat-definition-first layout would have buried the disclaimer under exactly
+the content it exists to explain.
+
+Screenshotted via Playwright (already vendored in the project venv) rather than
+claude-in-chrome, which wasn't available this session — 6 skins × 2 themes at desktop and
+390px, plus 320px overflow checks in all 6, all clean. `ui.db` grew from 16.5 MB to
+20.5 MB (+3.9 MB), within the plan's 4–6 MB estimate. `git diff --numstat
+data/word_ids.tsv` was empty after a full rebuild, confirming the row set didn't move.
+209 Python tests plus the JS regression suites relevant to the detail panel
+(`test_share_meta.js`, `test_share_view.js`, `test_class_filters.js`,
+`test_search_scope.js`, `test_footer_metrics.js`, `test_editorial.js`, `test_colectii.js`)
+all pass unchanged. New tests: `tests/test_extract_meanings.py` (offline, fixture-driven
+off the real `bidinea`/`zapciu` rows) and `tests/test_senses.js` (against a running
+server — the "no senses table" check swaps `ui.db` for a stripped copy via an atomic
+rename for one request, always restored in a `finally`).
+
+Deliberately not built in this pass, now logged separately in `docs/BACKLOG.md`:
+per-sense synonyms (the `Relation` table, whose `type` codes are unverified) and
+per-source attribution (`MeaningSource`).
+
+## 2026-08-18 — wROdfreq spin-off spec written (`docs/wrodfreq-spec.md`)
+
+Follow-on from the wordfreq measurement below. Wrote a full build spec for a standalone
+Romanian frequency-table project, to be implemented in its own repo by another model.
+607 lines: corpus panel, SQLite schema, merge algorithm, package API, validation plan,
+repo layout, seven milestones.
+
+**Reading the processors to write it turned up two traps that would have silently wrecked
+the table had the oțios ingesters been reused as-is.** Both are correct decisions *for
+oțios* and wrong for a frequency table:
+
+1. **The vocabulary is closed.** `process_culturax.py:294-297` counts a token only
+   `if tok in dex_words` (~315k DEX forms). Right for oțios — it only ever asks about DEX
+   headwords, and it keeps the counter dict bounded over 40M docs. For a frequency table it
+   caps the vocabulary at what a dictionary already knows: no `laptop`, no `covid`, no
+   proper nouns, no unlisted inflections.
+2. **The denominator is incomplete.** `tokenize()` ends `if len(t) > 2`, so
+   `processing_stats.tokens_processed` (16.97B for CulturaX) counts **≥3-character tokens
+   only** — dropping `de`, `la`, `cu`, `o`, `un`, `nu`, `se`, `pe`, `ca`, `să`. Oțios never
+   notices because it compares occurrence counts and never ppm across corpora. A Zipf value
+   *is* a rate, so this would inflate every published figure by an unknown factor. The spec
+   makes "`de` must land in Zipf 6.0–7.5" the first CI check, because it catches exactly
+   this.
+
+Consequence recorded in the spec: **the existing `corpus_frequencies.db` counts cannot be
+reused** — the corpora must be re-processed. The *code* transfers (normalizer, tokenizer,
+the per-parquet checkpointing that works around the HF `ds.skip()` cycling bug, the schema
+shape, `aggregate_by_family`), and so does one genuinely valuable artifact:
+`inflected_forms.db` (317,721 lexemes / 2,269,003 inflected forms / 1,633,231 form→lemma
+rows, 200,601 ambiguous), which needs no rebuilding and is what lets the table publish
+per-lemma frequencies no other frequency resource can compute.
+
+Design decisions worth noting: sources **abstain** rather than report zero below a
+per-source floor (a small corpus that never saw a word is usually just small); the trimmed
+mean is **only used at ≥5 reliable sources**, since trimming 3 leaves one value and is
+strictly worse than a plain mean; sources carry a `period` field so a 1945+ or 19th-century
+corpus can never be silently averaged into a "contemporary" figure. The table publishes
+`n_reliable` and `spread` alongside `zipf` — the first is the corroboration count oțios
+should eventually consume, the second is the register/diachrony signal no other frequency
+resource ships.
+
+Recommended name: brand **wROdfreq**, ship as `wrodfreq` (PyPI lowercases anyway), with a
+`wordfreq`-compatible API so `zipf_frequency(word, 'ro')` is a one-line import swap.
+
+## 2026-08-18 — Measured the wordfreq question: copy the method, or not?
+
+Answering "how do we finally calculate our sorting index, and have we replicated
+wordfreq?" turned into a measurement worth keeping. Written up as a new closing section
+in `docs/wordfreq-recipe.md` (§1–8), whose 2021-era body — *adopt wordfreq instead of a
+corpus pipeline* — is now flagged as superseded in the status banner with a pointer down.
+
+Three findings:
+
+1. **The trimmed mean is the wrong tool for this project**, not merely unavailable.
+   wordfreq drops each word's highest and lowest per-corpus estimate to find the
+   *typical* frequency. A forgotten word is precisely one whose corpora disagree
+   violently — high in Wikisource, zero in CulturaX — and that disagreement is what
+   `validate_diachronic.log_ratio` measures. wordfreq removes as noise the exact quantity
+   we report as the finding. Three further reasons in §3: with three sources trimming
+   leaves one (not an average, a median pick); our 1,283× size spread makes per-source
+   averaging give a 13M-token corpus equal weight to a 17B one; averaging low counts
+   creates no resolution, so we would inherit the Zipf-3 floor that 99.6% of our
+   candidates already sit below.
+2. **What extra corpora actually buy is corroboration, not an average** — "absent from
+   four independent modern corpora" is a count of agreeing sources. It is robust to the
+   size spread precisely because absence is binary: a 13M-token corpus can honestly say
+   "never saw it", but not "0.3 per million".
+3. **The thin panel is the historical one, by 876×.** Measured from
+   `processing_stats`: modern 16,969,999,321 tokens (`culturax_ro`) against historical
+   19,369,272 (`wikisource_ro` 14,297,033 + `lumro_ro` 5,072,239). `SCORE_HIST` is worth
+   up to 25 points — tied with `SCORE_MODERN` as the largest band — so the ranking's most
+   load-bearing signal rests on its thinnest data. Consequence: another modern web corpus
+   improves nothing, while historical newspaper text moves the ranking directly. Newspapers
+   over novels, for the reason LUMRO's `document_count` already counts authors.
+
+Also answered "could we build a Romanian wordfreq?" — yes, and it would beat wordfreq's
+own Romanian (three sources, small list only; we could reach six registers, and we have a
+paradigm rollup wordfreq has no equivalent for). Recommended **not** as part of this
+project: it does not improve the list, it is a different deliverable, and it competes for
+the same ingestion effort the historical panel needs. Good second output, bad first one.
+
+No code changed. `docs/BACKLOG.md`'s "Historical corpus is thin" entry was updated from
+its stale 14.3M figure to the measured 19.4M/876× framing and cross-referenced to the new
+section. The blockers on the two loaded-but-unused corpora were re-verified and are
+unchanged — `subtitle_ro` is ~1/6th folk-music TV (444 of 2,446 attested shortlist words
+appear only in those clips) and CoRoLa spans 1945+ with no dates in its frequency lists;
+both are already explained in plain Romanian in `metodologie.html` under „Două corpusuri
+încărcate, dar nefolosite", so nothing needed adding there.
+
 ## 2026-08-18 — Register filter dropdown now shows all 51 dex_register tags, not 17
 
 Closed a stale backlog item. `build_ui_db.py` excluded 34 usage-style `dex_register`

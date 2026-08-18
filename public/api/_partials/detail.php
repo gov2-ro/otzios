@@ -1,5 +1,10 @@
 <?php
-// $w = array with word row data
+// $w = array with word row data. $senses / $cites_by_sense come from api/word.php and
+// are [] on a ui.db built before docs/senses-plan.md landed — default them so this
+// partial still renders standalone if that ever changes.
+$senses          = $senses ?? [];
+$cites_by_sense  = $cites_by_sense ?? [];
+
 $verdict      = $w['verdict'] ?? 'unknown';
 $verdict_cls  = str_replace(' ', '_', $verdict);
 $pos_parts    = array_filter(array_map('trim', explode('|', $w['dex_pos'] ?? '')));
@@ -7,6 +12,41 @@ $reg_parts    = array_filter(array_map('trim', explode('|', $w['dex_register'] ?
 $dom_parts    = array_filter(array_map('trim', explode('|', $w['dex_domain'] ?? '')));
 $etym_parts   = array_filter(array_map('trim', explode('|', $w['dex_etymology'] ?? '')));
 $etym_parts   = array_map(fn($e) => str_replace('limba ', '', $e), $etym_parts);
+// The etymon itself (`badana` for `bidinea`), from Meaning.type=1 via merge_senses() —
+// gives the chip above something to say beyond the language name.
+$etymon_parts = array_filter(array_map('trim', explode('|', $w['dex_etymon'] ?? '')));
+
+/** Render one node's citations: a single quote inline, several collapsed behind a
+ *  <details> so a long list of citations doesn't dominate the sense it belongs to. The
+ *  trailing attribution ("PAS, L. I 97.") is kept — it's what makes a quote evidence
+ *  rather than decoration, unlike share_excerpt()'s 160-char preview which strips it. */
+function render_sense_cites(array $cites): string {
+    if (!$cites) return '';
+    if (count($cites) === 1) {
+        return '<p class="sense-cite">' . e($cites[0]['text']) . '</p>';
+    }
+    $out = '<details class="sense-cites"><summary>' . count($cites) . ' citate</summary>';
+    foreach ($cites as $c) {
+        $out .= '<p class="sense-cite">' . e($c['text']) . '</p>';
+    }
+    return $out . '</details>';
+}
+
+/** Render one sense's synonyms (Relation.type=1, via extract_meanings.py's
+ *  meaning_synonyms — see merge_senses() in tools/build_ui_db.py). Reuses the
+ *  word-level `.fp-syn`/`.syn-chip` look further down this file, so a reader doesn't
+ *  have to learn a second visual language for the same idea at a different scope.
+ *  Called whether or not the sense has its own text — a sense can have both (dexonline
+ *  shows synonyms under a sense that also has prose), and when text is empty this is
+ *  the sense's ONLY content, not decoration on top of it. */
+function render_sense_synonyms(array $synonyms): string {
+    if (!$synonyms) return '';
+    $out = '<div class="fp-syn sense-syn"><span class="fp-extra-label">≡ sinonime</span>';
+    foreach ($synonyms as $syn) {
+        $out .= '<a class="syn-chip" href="' . BASE . '/?q=' . urlenc($syn) . '">' . e($syn) . '</a>';
+    }
+    return $out . '</div>';
+}
 
 $sources = split_pipe($w['sources'] ?? '');
 $dict_count = count($sources);
@@ -46,36 +86,17 @@ $meta_parts = array_filter([
 <!-- Scrollable body -->
 <div class="fp-body">
 
-  <?php if ($w['definition']): ?>
-  <div class="definition-text"><?= e($w['definition']) ?></div>
-  <?php else: ?>
-  <span class="fp-nodef">fără definiție locală</span>
-  <?php endif; ?>
-
-  <!-- Tag chips -->
-  <?php $all_tags = array_merge(
-      array_slice($pos_parts, 1),
-      $reg_parts,
-      $dom_parts,
-      $etym_parts
-  ); ?>
-  <?php $tier_lbl = tier_label($w['confidence_tier'] ?? null); ?>
-  <?php if ($all_tags || $tier_lbl): ?>
-  <div class="fp-chips">
-    <?php if (count($pos_parts) > 1): ?>
-      <?php foreach (array_slice($pos_parts, 1) as $p): ?><span class="detail-tag"><?= e($p) ?></span><?php endforeach; ?>
-    <?php endif; ?>
-    <?php foreach ($reg_parts as $r): ?><span class="detail-tag"><?= e($r) ?></span><?php endforeach; ?>
-    <?php foreach ($dom_parts as $d): ?><span class="detail-tag" style="opacity:.85"><?= e($d) ?></span><?php endforeach; ?>
-    <?php foreach ($etym_parts as $et): ?><span class="detail-tag" style="opacity:.7"><?= e($et) ?></span><?php endforeach; ?>
-    <?php if ($tier_lbl): ?><span class="detail-tag" style="opacity:.5;font-size:0.5625rem;" title="<?= e(TIERS[$w['confidence_tier']]['tip'] ?? '') ?>"><?= e($tier_lbl) ?></span><?php endif; ?>
-  </div>
-  <?php endif; ?>
-
   <!-- Obsolete spelling: name the living twin rather than leaving the reader to guess
        why a word that looks ordinary is on a list of forgotten ones. Only ever set when
        the modern form is >=20x more frequent in the modern corpus — see
-       mark_archaic_spellings() in tools/build_ui_db.py. -->
+       mark_archaic_spellings() in tools/build_ui_db.py.
+
+       These three notes render ABOVE the definition/senses block below, not after it —
+       docs/senses-plan.md §7 invariant 3: the sense tree is DEX's *entry* tree, which
+       merges every dictionary that defines a word, so a variant's senses routinely
+       carry its headword's own text (`sofragerie` arrives holding `sufragerie`'s DLRLC
+       entry). More senses makes that bleed more visible, not less, so the line naming
+       the living twin has to be read first. -->
   <?php if (!empty($w['archaic_spelling']) && !empty($w['spelling_of'])): ?>
   <p class="fp-spelling">Grafie veche pentru <strong><?= e($w['spelling_of']) ?></strong>.</p>
   <?php endif; ?>
@@ -99,6 +120,66 @@ $meta_parts = array_filter([
   <p class="fp-spelling">Numele acțiunii de a
     <a href="?word=<?= urlencode($w['deverbal_of']) ?>"><strong><?= e($w['deverbal_of']) ?></strong></a>,
     care e și el în listă.</p>
+  <?php endif; ?>
+
+  <!-- Full sense tree (docs/senses-plan.md) when the dump's Meaning table has one for
+       this word; the flat one-sentence definition otherwise. **Not a degraded path when
+       it fires — 7,470 of 18,270 shortlist words have no Tree/Meaning structure at all,
+       so the fallback is half the site, not an edge case.** -->
+  <?php $tree_senses = array_values(array_filter($senses, fn($s) => $s['kind'] === 'sense')); ?>
+  <?php $extras       = array_values(array_filter($senses, fn($s) => $s['kind'] !== 'sense')); ?>
+  <?php if ($tree_senses): ?>
+  <ol class="fp-senses">
+    <?php foreach ($tree_senses as $s): ?>
+    <li class="fp-sense" style="--sense-depth:<?= (int) $s['depth'] ?>">
+      <span class="sense-num"><?= e($s['breadcrumb']) ?></span>
+      <?php foreach (split_pipe($s['tags']) as $st): ?><span class="detail-tag sense-tag"><?= e($st) ?></span><?php endforeach; ?>
+      <?php if ($s['text'] !== ''): ?><span class="sense-text"><?= e($s['text']) ?></span><?php endif; ?>
+      <?= render_sense_synonyms(split_pipe($s['synonyms'] ?? '')) ?>
+      <?= render_sense_cites($cites_by_sense[(int) $s['ord']] ?? []) ?>
+    </li>
+    <?php endforeach; ?>
+  </ol>
+  <?php if ($extras): ?>
+  <!-- Compounds / expressions: phrases built on the headword rather than meanings of it
+       alone, so they get a visually distinct block after the senses rather than being
+       numbered alongside them — their breadcrumb is always empty in the dump, dexonline
+       never numbers them either. -->
+  <div class="fp-extras">
+    <?php foreach ($extras as $s): ?>
+    <div class="fp-extra">
+      <span class="fp-extra-label"><?= $s['kind'] === 'compound' ? 'cuvânt compus' : 'expresie' ?></span>
+      <?php if ($s['text'] !== ''): ?><span class="sense-text"><?= e($s['text']) ?></span><?php endif; ?>
+      <?= render_sense_synonyms(split_pipe($s['synonyms'] ?? '')) ?>
+      <?= render_sense_cites($cites_by_sense[(int) $s['ord']] ?? []) ?>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
+  <?php elseif ($w['definition']): ?>
+  <div class="definition-text"><?= e($w['definition']) ?></div>
+  <?php else: ?>
+  <span class="fp-nodef">fără definiție locală</span>
+  <?php endif; ?>
+
+  <!-- Tag chips -->
+  <?php $all_tags = array_merge(
+      array_slice($pos_parts, 1),
+      $reg_parts,
+      $dom_parts,
+      $etym_parts
+  ); ?>
+  <?php $tier_lbl = tier_label($w['confidence_tier'] ?? null); ?>
+  <?php if ($all_tags || $tier_lbl): ?>
+  <div class="fp-chips">
+    <?php if (count($pos_parts) > 1): ?>
+      <?php foreach (array_slice($pos_parts, 1) as $p): ?><span class="detail-tag"><?= e($p) ?></span><?php endforeach; ?>
+    <?php endif; ?>
+    <?php foreach ($reg_parts as $r): ?><span class="detail-tag"><?= e($r) ?></span><?php endforeach; ?>
+    <?php foreach ($dom_parts as $d): ?><span class="detail-tag" style="opacity:.85"><?= e($d) ?></span><?php endforeach; ?>
+    <?php foreach ($etym_parts as $et): ?><span class="detail-tag" style="opacity:.7"><?= e($etymon_parts ? $et . ' (' . implode(', ', $etymon_parts) . ')' : $et) ?></span><?php endforeach; ?>
+    <?php if ($tier_lbl): ?><span class="detail-tag" style="opacity:.5;font-size:0.5625rem;" title="<?= e(TIERS[$w['confidence_tier']]['tip'] ?? '') ?>"><?= e($tier_lbl) ?></span><?php endif; ?>
+  </div>
   <?php endif; ?>
 
   <!-- Synonyms / antonyms (scrape_synonyms.py; absent until a word has been scraped) -->

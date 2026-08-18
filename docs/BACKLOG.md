@@ -6,7 +6,20 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 
 ## Bugs / Known Issues
 
-- [ ] **Historical corpus is thin — 14.3M tokens.** Wikisource gives one occurrence =
+- [ ] **Historical corpus is thin — 19.4M tokens against the modern panel's 17.0B, a
+  876× asymmetry** (re-measured 2026-08-18: `wikisource_ro` 14,297,033 + `lumro_ro`
+  5,072,239 vs `culturax_ro` 16,969,999,321). This is the project's **most load-bearing
+  signal measured on its thinnest data** — `SCORE_HIST` is worth up to 25 points, tying
+  `SCORE_MODERN` for the largest band, and `make_shortlist.py` says why in its own
+  comment: without it the top of the list fills with words that were never in
+  circulation. Corollary worth acting on: **more modern web text buys nothing** (CulturaX
+  at 17B already resolves far below wordfreq's floor — that is how `modern_band` separates
+  `zapciu`'s 1,322 from `celșag`'s 0), while any historical text moves the ranking
+  directly. Prefer **newspapers over novels**: a novel is one writer's vocabulary, which
+  is the same reason LUMRO's `document_count` is authors and not novels. See
+  `docs/wordfreq-recipe.md` §5–6 for the corpus shortlist (DigiBuc, BCU Cluj, Gutenberg RO)
+  and §3–4 for why the additions should feed **corroboration counts, not a wordfreq-style
+  trimmed mean**. Wikisource gives one occurrence =
   0.07 ppm, so the whole historical side rests on very few hits: 9,996 shortlist words
   (40%) sat on ≤2 occurrences before the 2026-08-08 rescore added `HIST_MIN_OCC`/
   `HIST_MIN_DOCS` floors. Those floors make the signal honest but they cannot create
@@ -251,6 +264,56 @@ Open bugs, debt, and enhancements. Add new entries with `- [ ]` and enough conte
 ---
 
 ## Enhancements
+
+- [x] **Show the full `sinteză` — every sense, not just the first.** Specced in
+  `docs/senses-plan.md` (2026-08-18), built the same day. `extract_meanings.py` →
+  `data/processed/meanings.db` (13,712 trees, 48,135 meanings, 14,413 citations, 10,024
+  etymons); `merge_senses()` in `tools/build_ui_db.py` fills
+  `senses`/`sense_citations`/`words.dex_etymon` in `ui.db` (`tools/migrate_ui_db_senses.py`
+  back-fills an existing one). `api/word.php` + `detail.php` render the numbered tree with
+  collapsible citations, falling back to the flat `definition` for the 41% of the shortlist
+  with no Tree/Meaning structure. `bidinea` now ships both senses and all three citations;
+  `volintir` (defined only "vezi voluntar") turned out to be the best real-world proof the
+  feature was worth building — its sinteză carries a full sense ("Soldat din cetele lui
+  Ipsilante…") the flat definition never showed at all. Per-source attribution
+  (`MeaningSource`, 924,628 rows) is still deliberately not done — see the idea below.
+
+  **Per-sense synonyms landed the same day, in a second pass** (below `zăticni`'s bug
+  report): the first pass dropped every sense whose `internalRep` was empty, which for
+  `zăticni` sense `1.` — 9 synonyms, no free text — meant it vanished entirely and the
+  surviving sense rendered numbered `2.` with no `1.` above it. `10,798` words now end up
+  with a renderable sense/compound/expression, up from `9,177` before the synonym pass.
+
+- [ ] **The DLR/DLRLC citation corpus is structured, not just embedded in prose.** The
+  historical-corpus entry under **Bugs** proposes mining dated literary citations out of
+  the definition text (`SADOVEANU, P. S. 136.`) as a free in-repo corpus. They do not
+  need mining: `Meaning.type = 2` rows *are* those citations, one per row, with the
+  attribution intact — 16,843 of them for shortlist words alone, and the full table is
+  much larger. `extract_meanings.py` (`docs/senses-plan.md`) extracts them as a side
+  effect. Two caveats before treating them as a corpus: they are **selected because they
+  attest the headword**, so a raw occurrence count is circular for the word being
+  defined — they are evidence for *other* words in the quote; and the attribution is an
+  abbreviation (`PAS, L. I 97.`) needing a lookup table to become a date. The senses have
+  landed (2026-08-18) — `data/processed/meanings.db` already holds 16,843 citations for
+  shortlist words, `type=2`, attribution intact — so the extraction this needed is now
+  free; only the two caveats above remain to be costed.
+
+- [x] **Per-sense synonyms, from the `Relation` table.** Done 2026-08-18, same day as the
+  entry above, folded into it. `Relation.type = 1` is confirmed to mean "synonym" —
+  `zăticni` sense `1.` has 9 `type=1` rows resolving to exactly the 9 words dexonline
+  shows under that sense. Landed as a third column on `senses` (`synonyms`,
+  pipe-delimited) rather than a separate `sense_relations` table: only `type=1` is read,
+  so the extra table the original note considered ("a sense can plausibly have several
+  relation types") wasn't needed. Other `Relation.type` values are still unverified and
+  unread.
+
+- [ ] **Per-source attribution for senses, from `MeaningSource`.** 924,628 rows, one per
+  `(meaningId, sourceId)` pair — could label each sense in the tree with which of the ~100
+  dictionaries actually wrote it, the way `sources_meta` already does at the word level via
+  `dict_sources.db`. Not needed to render the tree (dexonline's own sinteză doesn't show
+  this either), but would let a reader tell a DEX '98 sense from a DLRLC one instead of
+  reading them as one merged voice — relevant given how often the entry-tree bleed
+  (`docs/senses-plan.md` §7 invariant 3) makes a variant's tree carry its headword's text.
 
 Ranked by impact-per-effort. Effort: XS / S / M / L.
 
@@ -539,15 +602,12 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     *vorniciță*) cât diminutiv (*clăiță*, *cuconiță*). Ar cere fie o listă manuală, fie
     genul bazei din `lexemes.db` — ~90 de cuvinte în joc.
   - [ ] hide by default
-
 - [x] when showing words lists, filters should be disabled - or 'toate' — un playlist
   (`?w=`) ocolește complet `build_word_filter()` în `search.php`/`random.php`/`feed.php`;
   panoul de filtre devine `inert` și își spune motivul. `q` și `marks` rămân active.
-
 - [x] explain zipf and dex frequency in metodologie — secțiunea 05, `#frecvente`: tabel
   comparativ, scara Zipf și faptul că 16.178 din 16.203 de cuvinte stau la Zipf 0 (sub
   podeaua wordfreq pentru română), deci filtrul Zipf prinde intrușii, nu gradele de uitare.
-
 - [x] optimize UI 'deschide in dexonline', make small, inline with the tags — `.dex-link`
   este acum un chip la capătul rândului de dicționare (`.fp-dicts`), modelat după
   `.dict-chip`, nu un buton plin pe toată lățimea în `.fp-foot`. Toate cele patru skinuri îl
@@ -557,7 +617,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   `.fp-dicts` se randează acum și fără `sources`: altfel linkul ar fi dispărut exact la
   cuvintele cu cea mai slabă acoperire în dicționare. Contrast verificat ≥4.5:1 în 5 skinuri
   × 2 teme (minimul e 4.52, govuk/dark).
-
 - [x] move Statistici & Metodologie in header — **doar pe desktop** (≥901px). Cele două
   intrări se randează în ambele partiale și app.css afișează exact una: header de la 901px în
   sus, footer sub. `top-nav-item--wide` / `nav-item--wide`; nu există lățime la care apar de
@@ -567,7 +626,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - Capcană prinsă la verificare, nu la scriere: `.top-nav-item--wide` trebuie declarat
     **după** `.top-nav-item`. Ambele au o singură clasă, deci decide ordinea din fișier —
     declarat înainte, `display:none` pierde tăcut și apar toate patru pe telefon.
-
 - [ ] mobile
 
   - [x] mobile, make more room for word list when definition is shown — header **și** footer
@@ -627,7 +685,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
       glife goale e ilizibil, dar asta e singura bară care duce în plus un comutator de
       mod, un scor și un buton de clasament. Pe orice altă pagină etichetele rămân.
     - Cardul: `.joc-main` 14→8px, `.joc-card` 20/16→14/12px, `.joc-choices` gap 8→6px.
-
 - [x] jocuri
     - [x] rename nav menu idem from 'Joc' to 'Quiz' -> joc.php -> ghici.php — **trei nume
       diferite, intenționat:** eticheta din meniu e `quiz`, URL-ul e `/ghici`, iar cheia din
@@ -704,21 +761,18 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
       niciodată un card; și ramura „răspuns corect" nu se poate atinge la comandă (care
       variantă e bună e secretul serverului, sigilat în `qid`), deci testul joacă runde până
       câștigă una, cu ambele ramuri verificate pe măsură ce apar.
-
 - [x] make tagging buttons a bit larger, both on desktop, but even more on mobile, easy thumb
   targets. — `.qt-btn` 22→30px pe desktop (font 0.625→0.75rem), **40px pe telefon**, la fel
   `#bookmark-btn` (24→30/40px). Erau cel mai mic lucru interactiv din pagină fiind totodată
   cel mai apăsat: marcarea *e* verbul sitului, iar publicarea unei colecții e un buton după
   ea. Pe telefon înălțimea vine din capsulele de tastă, care oricum se ascund acolo — nu e
   nicio tastatură la care să facă aluzie.
-
 - [x] make default / initial theme for new visitors: gov.uk — `DEFAULT_SKIN` în
   `api/_skins.php`, `brutal` → `govuk`. Un vizitator cu un skin deja ales în localStorage nu
   simte nimic; se schimbă doar ce primește cineva care ajunge prima oară.
   - Al doilea loc, ușor de ratat: `despre.html` e static din 260812 și are **o copie de mână**
     a scriptului de boot pre-paint, cu lista de skinuri și defaultul înăuntru. Nesincronizat,
     pagina „despre" ar fi fost singura din sit care se deschide în beton.
-
 - [x] naming: `voroave` – site will be hosted on `voroave.ro` – let's make the necessary
   amendments. — titluri, `og:`/`twitter:` și mărcile vizibile: `stats`, `joc`, `liste`,
   `lista`, `admin`, `despre`, `metodologie`, plus `title=` de pe marca din `header.php`
@@ -734,7 +788,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     varianta minim adevărată (Voroave acum, Oțios înainte, cu povestea lui *oțios* păstrată
     întreagă) și pe cea din timeline am lăsat-o cum era, fiind consemnare istorică. Merită
     recitit de autor.
-
 - [x] center `header.brand-bar span.landing-tagline`. hide on mobile — `flex: 1` +
   `text-align: center`, nu poziționare absolută: centrează în golul lăsat de cele două
   grupuri, ceea ce *citește* ca centrat și — spre deosebire de `absolute` — nu poate ajunge
@@ -745,7 +798,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     ieșit aproape-negru pe negru. Re-ancorat în ambele skinuri (`--gv-on-bar-2` /
     `--rg-on-bar-2`), exact lista pe care CLAUDE.md o ține pentru orice locuiește în bara aia.
     Contează mai mult acum: `govuk` e skinul implicit de mai sus.
-
 - [x] theme toggler (.status-prefs .theme-toggle) - only show the available option, hide the
   currently active theme (so always only one icon). Same goes for #view-toggle — un grup de
   două butoane din care unul e permanent aprins cheltuie două glife ca să spună un bit.
@@ -761,7 +813,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     și încă o dată la (1,3,0) sub `#status-bar`, ambele încărcate după `app.css`. Cu un
     singur buton vizibil per grup separatorul e cod mort, deci a plecat și din `brutal.css`.
     `.scale-btn` și-l păstrează — grupul ăla chiar are două butoane.
-
 - [x] download add to repo external resources, google fonts and htmx. anything else? —
   `assets/lib/htmx-2.0.4.min.js` + `assets/fonts/{app,doc}-fonts.css` și 20 de fișiere woff2
   (796 KB). Zero cereri către terți la încărcarea oricărei pagini.
@@ -779,7 +830,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     e scopul, decizia e să plece de tot, nu să se mute; e o alegere de produs, nu de build.
   - Scriptul care le-a adus: `tools/fetch_fonts.sh` (UA de browser, altfel API-ul css2 dă ttf
     în loc de woff2). De rerulat doar când se schimbă un font.
-
 - [x] select[name="marks"] instead of anotate / neanotate - have marcate / nemarcate —
   etichetele sunt acum `nemarcate` / `marcate` („annotate" era și scris greșit). *Valorile*
   rămân `unmarked`/`marked`: sunt stare de URL, citită de `markedWordsForFilter()`.
@@ -788,7 +838,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     singură direcție" pe care îl numește regula de filtre din CLAUDE.md, pe partea de chip.
   - [ ] Rămâne deschis: un flag care să distingă etichetele publice de cele proprii. E o
     funcționalitate separată și deocamdată nu există nimic public de care să le deosebești.
-
 - [x] After one word is marked, move to next — **la toate patru marcajele**: fav, lol, meh,
   ascunde. Marcarea e o buclă de triaj, iar o buclă în care trei taste te duc mai departe și
   una nu e o buclă la care trebuie să te gândești; un marcaj per cuvânt e interacțiunea
@@ -813,9 +862,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     avansează la `fav`, `store.js:187` la `lol`/`meh`/`ascunde`, iar părintele bifat de mai sus
     descrie exact același comportament. Era un copil nebifat sub un părinte bifat care spunea
     același lucru (verificat 260810).
-
 - [x] create 'Despre' page - put in header instead of 'Statistici' & 'Metodologie' which will be linked from 'Despre'. 
-
 - [x] Publish top faves list, hide/demote meh words for everyone else. Use the manual annotations for ordering the list.
 
   **Livrat 260811.** Obiecția de mai jos n-a fost anulată, ci ocolită prin construcție:
@@ -873,7 +920,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   când există trafic; e un item post-launch depus înainte de launch.
 
   </details>
-
 - [ ] also count synonyms! - filter by the number of synonyms?
 
   **Decis cum, nu încă făcut (260810): se livrează pe date parțiale, dar cinstit.** Acoperirea
@@ -885,16 +931,13 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   în loc să le numere ca 0, cu eticheta spunând asta. Scrapingul complet (~14.2k cuvinte,
   ~4.5h la podeaua de 1.2s, cu lock pe host) rămâne condiția ca filtrul să însemne ceva pe
   `curiosity`.
-
 - [ ] ascunde cuvinte care au în definiție 'vezi ...' + alt cuvânt care suna f similar?
-
 - [x] another data quality run? – use more input sources?
 
   Prea vag ca să fie un task: e un proiect. Reclamațiile concrete există deja, scrise, în
   secțiunea **260519 Data Audit** de mai jos (definiții lipsă la formele feminine, grafii
   variante care poluează explorarea, `fost` / `văr` / `nepot`). De spart în verificări cu
   nume, plecând de acolo — nu e un blocant de soft-launch în forma asta.
-
 - [x] use other corpuses? [romanian-nlp-datasets](https://github.com/AndyTheFactory/romanian-nlp-datasets), [LUMRO](https://github.com/upb-nlp/LUMRO), [RELATE](https://relate.racai.ro/) - Romanian Portal of Language Technologies, [Romanian text corpora](https://www.sketchengine.eu/corpora-and-languages/romanian-text-corpora/), [A Culturally-Rich Romanian NLP Dataset from "Who Wants to Be a Millionaire?" Videos](https://arxiv.org/html/2506.05991), [Statistics of a Large-Scale Romanian Corpus for Language Modelling](https://rjp.nipne.ro/2025_70_7-8/RomJPhys.70.111.pdf), [Resources and Tools for Computational Linguistics](https://nlp.unibuc.ro/resources.html), [Natural Language Processing Tools for Romanian – Going Beyond a Low-Resource Language](https://ixdea.org/wp-content/uploads/IxDEA_art/60/60_SP_1.pdf) etc?
   
   - [ ] see: [260810 Grok - extend corpuses analysis](/docs/reference/260810%20Grok%20-%20extend%20corpuses%20analysis.md), [Gemini - Romanian NLP Corpora and Tools](docs/reference/260810%20Gemini%20-%20Romanian%20NLP%20Corpora%20and%20Tools.md)
@@ -974,7 +1017,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
     Nerecomandate acum: FuLG / OSCAR / CC-100 (tot Common Crawl, nu un eșantion independent);
     MARCELL și corpusuri de domeniu (utile ca *control* care produce `specialist_alive`, nu ca
     dovadă generală); datasetul „Who Wants to Be a Millionaire?" (prea mic pentru frecvențe).
-
 - [x] **`hist_docs` e 0 pentru lemele care nu domină nicio formă** (găsit și rezolvat 260810,
   defect anterior). În `aggregate_by_family` (`validate_diachronic.py:376-388`) ocurențele se împart
   proporțional între pretendenți, dar documentele sunt totul-sau-nimic: `if share >=
@@ -998,15 +1040,12 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   Două cuvinte au mers invers — `arestui` și `barbetă`, docs 2→1 la `hist_occ` 3 — pentru că
   erau exact pe pragul de zgomot și scalarea proporțională taie în ambele sensuri. E
   comportamentul corect, nu un defect nou.
-
 - [x] explain how to use the site, how it works, how tagging / lists work.
-
 - [ ] **`tests/test_store_sync.js` pică la „sync watermark stored"** (observat 260810, nu
   introdus atunci — reprodus și cu `store.js` din HEAD, deci e anterior). Verificarea e
   `!!JSON.parse(ls['otios.sync']).since`, deci un `since` întors ca `0` sau lipsă o pică, iar
   pasul următor moare pe `JSON.parse(undefined)`. De văzut dacă e starea `app.db` de dev sau
   chiar `api/sync.php`. Celelalte trei suite JS trec.
-
 - [x] quizz/ghici.php sensuri still shows diminutive. sfințișor - diminutiv al lui sfânt —
   **Fixed 260812.** `is_pointer_sense()` in `api/quiz.php` now rejects „Diminutiv/Augmentativ
   al lui X" the way it already rejected „vezi X". `reveals_word()` was supposed to catch it
@@ -1017,7 +1056,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   definition is their headword's, so `sofragerie` was asking the player to produce a dead
   spelling from a living word's definition with the real answer among the distractors.
   Pinned by §5 of `tests/test_game_api.js`.
-
 - [x] info / definition box, even on desktop move it to the bottom - as on low res, but make it not full width, with some transparent margin to the sides, horizontally centered. so it's closer to the eyes. maybe even a tiny bit / soft shadow. —
   **Done 260812.** `#detail-panel` is the bottom sheet at every width now, capped at
   `min(60rem, …)` and centred, with `--panel-shadow` as a token in both theme blocks.
@@ -1026,7 +1064,6 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   width. `scroll-padding-bottom` keeps the last rows and `j`/`k` clear of the overlay.
   `brutal` and `registru` had rules written for the old right-hand column and both were
   wrong as a card; fixed. See **The definition panel** in CLAUDE.md.
-
 - [ ] word sharer. 
   - [x] update .htaccess, turn `/?word={word}`  to `/def/{word}` — decided: **word slug,
     dexonline-style, not `word_id`.** Safe as a rewrite for the reason `/joc → /ghici`
@@ -1042,18 +1079,13 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - [ ] later: could we show related words? or just top public favorite and loled words – though they shouldn't repeat too often, add  randomness factor?
     Note: this is a *display* of community marks, not a filter, so it stays on the right
     side of the rule that votes may only ever reorder — see `vote_counts_subquery()`.
-
 - [ ] maybe split _meh_ into _comun_ & _irelevant_?
-
 - [ ] also demote words that have a single word definition? if it sounds familiar. or just give them to me in a sharable list first
-
 
 - [x] start with light theme?
 
 ### Next
-
 - [ ] filters: add dictionaries (w published year)
-
 - [x] register_tags_shortlist more tags that we have in filters - use them! —
   **Done 2026-08-18.** The `registru` filter dropdown only listed 17 of 51 distinct
   `dex_register` values; `build_ui_db.py` excluded 34 usage-style tags (`figurat`,
@@ -1075,38 +1107,26 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   **"There are no per-option counts"** above. Redoing it now, for register alone, would
   repeat exactly the piecemeal pattern that got it cut. If live counts come back, it's
   still all groups or none, wrapping solved first.
-
 - [ ] are we properly citing sources? corola, lumro etc?
-
 - [ ] Colecții viewer atât compact cât și cu detalii / meta, să vedem ce nu ne place 
-
 - [ ] explorer power user mode, shift + arrow marks as fav/meh/lol. 
   - [ ] smart search input, including gmail like search parameters
-
 - [x] check consistency, when a word is tagged by myself the tag is activated in the info box
-
 - [ ] build an even more straightforward quick tagging UI? annotation optimized ui.
-
 - [ ] add straturi as per [straturi.mariuscomper.uk](https://straturi.mariuscomper.uk/)
-
 - [ ] rescriu metodologie după înțelegerea mea – then create a llm/human version tool, that shows the selected version in context - same page section
-
 - [ ] add contact, gform sau tally.so 
-
 - [x] can I git pull/sync just the `/public/` subfolder? 
-
 - [ ] why don't se use the same set of filters pentru stats?
-
 - [ ] definition box - add a tint of background, for contrast. 
-
 - [ ] add interstitials
-
 - [ ] check [surse](https://dexonline.ro/surse) and [dexonline wiki](https://wiki.dexonline.ro/)
   - [ ] scrape [DC3](https://solirom-clre.gitlab.io/texts/dcr3/site/)
-
 - [ ] to manually revisit words that are "vezi și... " the 8: https://voroave.ro/?w=1.1f7.jkz.29y.4q6.509.5fq.66a.8da all 68: https://voroave.ro/?w=1.1f7.jkz.29y.4q6.509.5fq.66a.8da.14.3o.dx.jv.15w.17n.181.1en.1et.1f0.1f1.1f9.1fa.1fy.1gu.1gx.1h1.1i8.1iy.277.29w.2yc.4fk.5jx.84e.84u.856.juc.8by.8lj.8us.8v0.9i7.a1n.a1v.aal.bkq.bod.boo.bv3.bw3.c3p.efa.evl.eyb.k6e.h35.h37.h38.h39.h4a.hf9.hiq.hs3.hu1.huq.hvi.i6u.ii6.j6s
-
-- [ ] word definitions, sometimes we're showing the secondary definition, see `zădărî`
+- [ ] we're not showing the full definitions. should we scrape the others/initial too?
+- [ ] word definitions, sometimes we're showing the secondary definition, see `zăticni`
+- [ ] ux: wordlist should be the next tabindex after search box (when showing results)
+- [ ] are we ignoring DCRs? we should be
 
 ## Post launch
 

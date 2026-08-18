@@ -1278,6 +1278,76 @@ body.page-doc {
   line-height: 1.65;
 }
 
+/* Full sense tree (docs/senses-plan.md). A flat list with a visual indent driven by
+   `--sense-depth`, not a nested <ol> per level — simpler, and robust against a
+   breadcrumb of any depth without a matching level of markup. Every colour below is an
+   existing token (--text/--text-2/--text-3/--border), so both themes and every skin
+   inherit it for free without a component rule. */
+.fp-senses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fp-sense {
+  margin-left: calc((var(--sense-depth, 1) - 1) * 14px);
+}
+.sense-num {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-3);
+  margin-right: 6px;
+}
+.sense-tag { margin-right: 4px; }
+.sense-text {
+  font-family: var(--serif);
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.65;
+}
+.sense-cite {
+  margin: 4px 0 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.75rem;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+.sense-cites { margin-top: 4px; }
+/* Per-sense synonyms reuse .fp-syn/.syn-chip (below) at the same size — only the
+   spacing changes, to match the tighter rhythm of .sense-cite/.sense-cites beside it
+   rather than the 6px a word-level .fp-syn uses lower in the panel. Two classes deep
+   so this outranks the later `.fp-syn { margin-top: 6px }` rule regardless of source
+   order, rather than relying on being declared after it. */
+.fp-syn.sense-syn { margin-top: 4px; }
+.sense-cites summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  color: var(--text-3);
+}
+/* The disclosure's open/closed appearance is a *state*, not decoration, so it is skinned
+   at (0,3,1) — above `[data-skin="x"] summary`'s (0,1,1) — or a skin's own `summary`
+   rule silently repaints it without ever naming `[open]`. Fourth instance of the pattern
+   CLAUDE.md documents at `.fp-btns .qt-btn.active`; read that section before changing
+   this selector's shape. */
+.fp-senses .sense-cites[open] > summary,
+.fp-extras .sense-cites[open] > summary {
+  color: var(--text-2);
+}
+
+/* Compounds / expressions: a distinct block after the senses, since they are phrases
+   built on the headword rather than meanings of the headword alone. */
+.fp-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
 /* Tag chips */
 .fp-chips {
   display: flex;

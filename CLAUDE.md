@@ -100,6 +100,7 @@ python process_culturax.py         # modern      → corpus_frequencies.db
 python validate_diachronic.py      # → forgotten_words_diachronic.csv
 python make_shortlist.py           # → forgotten_words_shortlist.csv (both seams)
 python make_shortlist.py --stats   # dry run: seam and tier counts only
+python extract_meanings.py         # → meanings.db (full sense trees; needs the shortlist above, no HTTP)
 python tools/export_editorial.py --user N   # app.db marks → data/editorial.tsv (optional)
 python tools/build_ui_db.py        # → public/data/ui.db
 ```
@@ -309,6 +310,101 @@ per-surface-form, so it must never go through `aggregate_by_family`. See the CoR
 below. Words are lowercased and
 NFC-normalized. Sizes are wildly asymmetric — 14.3M vs 17.0B tokens — which is why nothing
 downstream compares them in ppm.
+
+### `meanings.db` (`extract_meanings.py`) — the dump's own sense tree
+
+Full spec: `docs/senses-plan.md`. The chain is `Tree.description --normalize()--> the
+headword`, `Tree.id -> Meaning.treeId` — no `Entry`/`EntryDefinition` hop, unlike
+`extract_dcr.py`. Four passes over the dump, restricted to the 18,270 shortlist words:
+
+```
+meanings(meaning_id PK, word, tree_id, parent_id, type, breadcrumb, display_order, text)
+meaning_tags(meaning_id, tag)         -- from lexemes.db's ObjectTag(objectType=3)
+meaning_synonyms(meaning_id, ord, word)  -- Relation.type=1 targets, sense (type=0) only
+```
+
+`type ∈ {0 sense, 1 etymology, 2 citation, 3 comment, 4 compound, 5 expression}`. A
+faithful raw copy — empty-text rows, comments and all — because deciding what to drop is
+`merge_senses()`'s job (below), not the extractor's; throwing rows away here would make
+that decision un-revisitable without another dump scan. **41% of the shortlist (7,470
+words) has no Tree/Meaning structure at all** and keeps the flat `definition` column —
+that is the normal case, not degraded coverage.
+
+**`meaning_synonyms` fills the case a first pass missed: a sense whose `internalRep` is
+empty in the dump but isn't actually contentless.** `zăticni` sense `1.` has no free text
+at all, yet dexonline's own page renders "Deranja, incomoda, jena, stânjeni, stingheri,
+supăra, tulbura, împiedica, încurca." as that sense's definition — composed from its 9
+`Relation` rows, verified id-for-id against dexonline's rendering. Passes 3–4 (`Relation`
+then a second restricted `Tree` scan, since a synonym target is almost never a shortlist
+word itself) resolve every sense's synonym set, not only the empty ones — a sense with
+its own prose can carry synonyms too (`zăticni` sense `2.` has both). Of the 3,627
+empty-text `type=0` rows across the shortlist, 3,626 have a synonym relation; only one
+does not. `Relation.type = 1` is the only value read here (verified against the `zăticni`
+case above); other values are unverified and out of scope — see `docs/BACKLOG.md`'s
+"per-sense synonyms" entry for what settling them would take.
+
+### `senses` / `sense_citations` (`tools/build_ui_db.py:merge_senses()`)
+
+```sql
+senses(word, ord, breadcrumb, depth, kind, text, tags, synonyms, PRIMARY KEY(word, ord))
+sense_citations(word, sense_ord, ord, text, PRIMARY KEY(word, sense_ord, ord))
+```
+
+`kind ∈ {sense, compound, expression}`; `words.dex_etymon` (pipe-delimited) is filled from
+the same pass — the actual etymon word (`badana` for `bidinea`), distinct from
+`dex_etymology`'s language name. `synonyms` (pipe-delimited, from `meaning_synonyms`) is
+set whenever DEX gives that meaning a `Relation.type=1` list — independent of whether
+`text` is also set, since a sense can have both (`zăticni` sense `2.`). Three rules
+`merge_senses()` enforces, all measured against the real dump rather than assumed:
+
+- **Senses order by parsing the breadcrumb (`bc_key()`), never by sorting it as text** —
+  `'10.'` sorts before `'2.'` as a string. Every `type=0` row has a non-empty, all-numeric
+  breadcrumb, so `parentId` is not needed for ordering at all.
+- **A sense with empty text is dropped only if it also has no synonyms, not its
+  sub-senses.** Its own citations re-attach to the nearest non-empty-*or*-synonym-bearing
+  ancestor by climbing `parentId`; an orphaned quote (no such ancestor anywhere up the
+  chain) is dropped rather than attached to the word as a whole, which would read as
+  evidence for the wrong meaning. 3,627 of 18,459 `type=0` rows have empty text; 3,626 of
+  those carry a synonym relation and are kept (numbered, with a "≡ sinonime" line standing
+  in for the missing prose — see `render_sense_synonyms()` in `detail.php`), leaving only
+  1 row that is a genuine placeholder with nothing to show. Before the synonym pass landed
+  (2026-08-18, same day as the rest of this feature — see `docs/BACKLOG.md`), all 3,627
+  were dropped outright; `zăticni` sense `1.` is the case that surfaced the gap, because
+  dropping it left the surviving sense numbered `2.` with no `1.` above it, which reads as
+  broken rather than as "nothing to show here".
+- **A word with two `Tree` rows merges both, ordered by `tree_id`, each processed and
+  numbered independently before being concatenated** — sorting the union by breadcrumb
+  would interleave one tree's `1., 1.1., 2.` with the other's `1., 2.` by numeric value,
+  which is not what either tree meant. Breadcrumbs can legitimately repeat (`naft` shows
+  `1.` twice — one tree's chemistry sense, the other's regional one with a `1.1.`
+  sub-sense). Only 2 shortlist words currently have meanings in more than one tree; most of
+  the 388 words with a second `Tree` row have an empty one (an unstructured duplicate
+  entry), which contributes nothing and is silently absent from `senses`.
+
+**Five invariants, all pinned by design rather than by a test that would need the dump to
+check them:**
+
+1. **`words.definition` is never touched, reformatted, or replaced.** `mark_diminutives`,
+   `pointer_target` and `mark_deverbal_nouns` all pattern-match on it, and `share_meta()` /
+   `share_excerpt()` build every link preview from it. Senses are additive only.
+2. **`share_excerpt()` keeps reading `definition`** — a 160-character preview has no room
+   for a three-sense entry.
+3. **The tree is the *entry* tree — dexonline's sinteză, which merges every dictionary
+   that defines a word.** A flagged variant's senses routinely carry its headword's own
+   text (`sofragerie`'s tree holds `sufragerie`'s DLRLC entry) — more senses makes that
+   bleed more visible, not less, so the panel's "Variantă a lui X" line renders *above*
+   the senses, not below them.
+4. **Meaning-level tags (`vulgar`, `figurat`, `regional`, …) stay attached to their own
+   sense** — never rolled up onto `words.dex_register`. See the `dex_pos` gotcha for why a
+   word-level rollup of a sense-level signal bleeds across variants.
+5. **A rebuild does not touch the `words` row set**, so `data/word_ids.tsv` stays
+   additions-only exactly as before — check with `git diff --numstat data/word_ids.tsv`
+   anyway, per the rule at the top of this file.
+
+`api/word.php` queries both tables in a `try`/`catch`, so a deployed `ui.db` built before
+this feature landed (neither table exists) still opens the panel — flat `definition`
+fallback, no error. `tools/migrate_ui_db_senses.py` back-fills an existing `ui.db` without a
+full rebuild, following `tools/migrate_ui_db_dex_variants.py`'s shape.
 
 ## Seams
 

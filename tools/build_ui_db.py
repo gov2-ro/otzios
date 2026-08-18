@@ -39,6 +39,7 @@ WEB_PATH        = Path('data/processed/diachronic_shortlist_web_validated.csv')
 DEFINITIONS_PATH = Path('data/processed/definitions.db')
 DICT_SOURCES_PATH = Path('data/processed/dict_sources.db')
 SYNONYMS_PATH     = Path('data/processed/synonyms.db')
+MEANINGS_PATH     = Path('data/processed/meanings.db')
 OUT_PATH        = Path('public/data/ui.db')
 
 _ETYM_JUNK = {'vezi', 'cf.', 'după', 'după unii', 'probabil', 'cuvânt',
@@ -213,6 +214,210 @@ def merge_synonyms(conn: sqlite3.Connection, syn_db: Path) -> None:
             (syns or None, ants or None, word))
         n += cur.rowcount
     print(f'  {n:,} words given synonyms/antonyms')
+
+
+# ── Senses ───────────────────────────────────────────────────────────────────────
+#
+# extract_meanings.py writes a faithful copy of every `Meaning` row belonging to a
+# shortlist word's Tree(s) — senses, sub-senses, citations, etymology, comments,
+# compounds and expressions, empty text included. merge_senses() below is the one place
+# that turns that raw tree into what the UI renders: it drops empty-text senses (keeping
+# their sub-senses and re-attaching their citations to the nearest non-empty ancestor),
+# orders senses by breadcrumb rather than by id, and merges the rare word with two Tree
+# rows into one numbering. See docs/senses-plan.md §5 for the full derivation.
+
+def bc_key(bc: str) -> tuple[int, ...]:
+    """Parse a breadcrumb ('1.', '1.1.', '10.') into a sortable tuple of ints.
+
+    Sorting the breadcrumb as text puts '10.' between '1.' and '2.' — this is the one
+    case a string sort gets wrong, and every `type=0` row in the dump has a non-empty,
+    all-numeric breadcrumb (verified, 0 exceptions), so `parentId` is not needed for
+    ordering senses at all.
+    """
+    return tuple(int(p) for p in bc.strip('.').split('.') if p.isdigit())
+
+
+def _process_sense_tree(rows: list[tuple],
+                         synonyms_by_meaning: dict[int, list[str]] | None = None) -> list[dict]:
+    """Turn one Tree's raw Meaning rows into ordered sense/compound/expression units.
+
+    `rows` are (meaning_id, word, tree_id, parent_id, type, breadcrumb, display_order,
+    text) tuples, all sharing one tree_id. Returns units in display order: senses
+    (type=0) first, sorted by bc_key(breadcrumb); compounds/expressions (type=4/5) after,
+    sorted by display_order — their breadcrumb is always empty, so bc_key cannot order
+    them and dexonline's own display_order is what is left.
+
+    `synonyms_by_meaning` is `extract_meanings.py`'s `meaning_synonyms` table (a
+    `Relation.type=1` fallback — see its module docstring): a sense DEX gives no free
+    text keeps its own numbered slot if it has synonyms, rather than being dropped like
+    a genuinely empty placeholder. `zăticni` sense '1.' is the case that motivated this
+    — empty `internalRep`, 9 synonym relations, and dexonline's own page renders that
+    exact list as the sense's "definition". Citations reattach through the same
+    mechanism: a sense kept alive only by its synonyms is still a valid reattachment
+    target for `resolve_target()`.
+    """
+    synonyms_by_meaning = synonyms_by_meaning or {}
+    by_id = {r[0]: r for r in rows}
+
+    citations_by_parent: dict[int, list[str]] = {}
+    for r in rows:
+        if r[4] == 2 and r[7]:
+            citations_by_parent.setdefault(r[3], []).append(r[7])
+
+    def has_content(node: tuple) -> bool:
+        return bool(node[7]) or bool(synonyms_by_meaning.get(node[0]))
+
+    def resolve_target(parent_id: int) -> int | None:
+        # Climbs the parentId chain from a citation's immediate parent until it finds a
+        # node this pass will actually emit (a non-empty sense/compound/expression), or
+        # runs out of tree to climb — an orphaned quote is dropped rather than attached
+        # to the word as a whole, which would read as evidence for the wrong meaning.
+        cur = parent_id
+        seen: set[int] = set()
+        while cur != 0 and cur not in seen and cur in by_id:
+            seen.add(cur)
+            node = by_id[cur]
+            if node[4] in (0, 4, 5) and has_content(node):
+                return cur
+            cur = node[3]
+        return None
+
+    resolved_citations: dict[int, list[str]] = {}
+    for parent_id, texts in citations_by_parent.items():
+        target = resolve_target(parent_id)
+        if target is not None:
+            resolved_citations.setdefault(target, []).extend(texts)
+
+    senses = sorted((r for r in rows if r[4] == 0 and has_content(r)), key=lambda r: bc_key(r[5]))
+    extras = sorted((r for r in rows if r[4] in (4, 5) and has_content(r)),
+                     key=lambda r: (r[6], r[0]))
+
+    units: list[dict] = []
+    for r in senses:
+        units.append({
+            'meaning_id': r[0], 'kind': 'sense', 'breadcrumb': r[5],
+            'depth': len(bc_key(r[5])), 'text': r[7],
+            'citations': resolved_citations.get(r[0], []),
+            'synonyms': synonyms_by_meaning.get(r[0], []),
+        })
+    for r in extras:
+        units.append({
+            'meaning_id': r[0], 'kind': 'compound' if r[4] == 4 else 'expression',
+            'breadcrumb': '', 'depth': 1, 'text': r[7],
+            'citations': resolved_citations.get(r[0], []),
+            'synonyms': synonyms_by_meaning.get(r[0], []),
+        })
+    return units
+
+
+def merge_senses(conn: sqlite3.Connection, meanings_db: Path) -> None:
+    """Populate senses / sense_citations / words.dex_etymon from meanings.db.
+
+    Idempotent — clears both tables (and dex_etymon) before repopulating, so a second
+    run of a migration produces a byte-identical file. Optional, like every other merge
+    in this file: a build must succeed without meanings.db, since not every checkout has
+    run extract_meanings.py.
+    """
+    if not meanings_db.exists():
+        print(f'  (meanings DB not found, skipping: {meanings_db})')
+        return
+    print(f'Merging senses from {meanings_db}…')
+
+    mconn = sqlite3.connect(f'file:{meanings_db}?mode=ro', uri=True)
+    try:
+        meaning_rows = mconn.execute(
+            'SELECT meaning_id, word, tree_id, parent_id, type, breadcrumb, '
+            '       display_order, text '
+            'FROM meanings ORDER BY word, tree_id, display_order, meaning_id').fetchall()
+        tag_rows = mconn.execute('SELECT meaning_id, tag FROM meaning_tags').fetchall()
+    except sqlite3.OperationalError:
+        print('  (meanings DB missing expected tables, skipping)')
+        mconn.close()
+        return
+    # Separate try/except: meaning_synonyms is newer than meanings/meaning_tags, so a
+    # meanings.db built before extract_meanings.py grew the Relation pass still merges
+    # senses fine — just without the empty-text synonym fallback, same as before.
+    try:
+        synonym_rows = mconn.execute(
+            'SELECT meaning_id, ord, word FROM meaning_synonyms').fetchall()
+    except sqlite3.OperationalError:
+        synonym_rows = []
+    mconn.close()
+
+    tags_by_meaning: dict[int, list[str]] = {}
+    for mid, tag in tag_rows:
+        tags_by_meaning.setdefault(mid, []).append(tag)
+
+    synonyms_by_meaning: dict[int, list[str]] = {}
+    for mid, ord_, word in sorted(synonym_rows, key=lambda r: (r[0], r[1])):
+        synonyms_by_meaning.setdefault(mid, []).append(word)
+
+    by_word: dict[str, list[tuple]] = {}
+    for row in meaning_rows:
+        by_word.setdefault(row[1], []).append(row)
+
+    conn.execute('DELETE FROM senses')
+    conn.execute('DELETE FROM sense_citations')
+    conn.execute('UPDATE words SET dex_etymon = NULL')
+
+    sense_rows: list[tuple] = []
+    citation_rows: list[tuple] = []
+    etymon_updates: list[tuple] = []
+    homonym_words = 0
+    depth2plus = 0
+    text_empty_synonym_only = 0
+
+    for word, rows in by_word.items():
+        tree_ids = sorted({r[2] for r in rows})
+
+        word_units: list[dict] = []
+        trees_with_units = 0
+        for tid in tree_ids:
+            units = _process_sense_tree([r for r in rows if r[2] == tid], synonyms_by_meaning)
+            if units:
+                trees_with_units += 1
+            word_units.extend(units)
+        if trees_with_units > 1:
+            homonym_words += 1
+
+        # Etymology is word-level, not sense-level, and collected across every tree —
+        # `type=1` rows hang off the tree root. Order of first appearance, deduplicated:
+        # a word rarely has more than one, but a homonym's second tree could repeat it.
+        etymons: list[str] = []
+        for r in rows:
+            if r[4] == 1 and r[7] and r[7] not in etymons:
+                etymons.append(r[7])
+        if etymons:
+            etymon_updates.append(('|'.join(etymons), word))
+
+        for ord_, u in enumerate(word_units):
+            if u['depth'] >= 2:
+                depth2plus += 1
+            if not u['text'] and u['synonyms']:
+                text_empty_synonym_only += 1
+            tag_list = sorted(set(tags_by_meaning.get(u['meaning_id'], [])))
+            sense_rows.append((
+                word, ord_, u['breadcrumb'], u['depth'], u['kind'], u['text'],
+                '|'.join(tag_list) if tag_list else None,
+                '|'.join(u['synonyms']) if u['synonyms'] else None,
+            ))
+            for cord, ctext in enumerate(u['citations']):
+                citation_rows.append((word, ord_, cord, ctext))
+
+    conn.executemany(
+        'INSERT INTO senses (word, ord, breadcrumb, depth, kind, text, tags, synonyms) '
+        'VALUES (?,?,?,?,?,?,?,?)', sense_rows)
+    conn.executemany(
+        'INSERT INTO sense_citations (word, sense_ord, ord, text) VALUES (?,?,?,?)',
+        citation_rows)
+    conn.executemany('UPDATE words SET dex_etymon = ? WHERE word = ?', etymon_updates)
+
+    words_with_senses = len({r[0] for r in sense_rows})
+    print(f'  {len(sense_rows):,} sense/compound/expression rows '
+          f'({words_with_senses:,} words), {len(citation_rows):,} citations, '
+          f'{len(etymon_updates):,} etymons — {homonym_words} words merged two trees '
+          f'({depth2plus:,} sub-senses at depth ≥2, {text_empty_synonym_only:,} '
+          f'kept text-empty via the synonym fallback)')
 
 
 # ── Diminutives ──────────────────────────────────────────────────────────────────
@@ -889,7 +1094,43 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
             -- threshold: occurrence counts only mean something relative to how much
             -- modern text was read, so the edges are rescaled at build time from the
             -- pipeline's own MODERN_RARE_OCC / MODERN_ALIVE_OCC.
-            modern_band      INTEGER
+            modern_band      INTEGER,
+            -- Set by merge_senses(), from extract_meanings.py's meanings.db. The
+            -- `Meaning.type=1` rows (the etymon itself, e.g. `badana` for `bidinea`) —
+            -- `dex_etymology` above already holds the *language* name from taxonomy
+            -- tags; this gives the etymology chip something to say beyond it.
+            dex_etymon       TEXT
+        )
+    """)
+    # Full sense trees (docs/senses-plan.md). Two tables rather than a `\n`-joined
+    # column on `words`: citations are the bulk of the payload and the panel collapses
+    # them, so the query that renders the numbered senses should not have to carry them.
+    conn.execute("""
+        CREATE TABLE senses (
+            word        TEXT    NOT NULL,
+            ord         INTEGER NOT NULL,   -- 0-based display order
+            breadcrumb  TEXT    NOT NULL,   -- '1.', '1.1.', '' for compound/expression
+            depth       INTEGER NOT NULL,   -- 1 for '1.', 2 for '1.1.'; 1 for kind != 'sense'
+            kind        TEXT    NOT NULL,   -- 'sense' | 'compound' | 'expression'
+            text        TEXT    NOT NULL,
+            tags        TEXT,               -- pipe-delimited meaning-level taxonomy tags
+            -- Pipe-delimited `Relation.type=1` targets (extract_meanings.py's
+            -- meaning_synonyms). Set whenever DEX has one, even when `text` is
+            -- non-empty (a sense can have both, and dexonline shows both — see
+            -- zăticni sense '2.'). When `text` is empty, this is the sense's ONLY
+            -- content and the reason it wasn't dropped by merge_senses(); see
+            -- _process_sense_tree()'s docstring.
+            synonyms    TEXT,
+            PRIMARY KEY (word, ord)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE sense_citations (
+            word       TEXT    NOT NULL,
+            sense_ord  INTEGER NOT NULL,
+            ord        INTEGER NOT NULL,
+            text       TEXT    NOT NULL,
+            PRIMARY KEY (word, sense_ord, ord)
         )
     """)
 
@@ -991,6 +1232,10 @@ def build(shortlist: Path, rare: Path, web: Path, defs: Path, out: Path) -> None
 
     merge_dict_sources(conn, DICT_SOURCES_PATH)
     merge_synonyms(conn, SYNONYMS_PATH)
+    # Before every mark_* step below: they read words.definition, which this pass never
+    # touches, so strictly it does not matter — but merges land before marks throughout
+    # this file, and mark_deverbal_nouns() still has to run last regardless.
+    merge_senses(conn, MEANINGS_PATH)
 
     # After the definitions merge, not before — half the signal is the definition text.
     mark_diminutives(conn, Path('data/processed/lexemes.db'))
