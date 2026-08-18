@@ -4,6 +4,11 @@
 // partial still renders standalone if that ever changes.
 $senses          = $senses ?? [];
 $cites_by_sense  = $cites_by_sense ?? [];
+// Set only by index.php's server-render of a `?word=` hit — api/word.php never passes
+// this, so its output stays byte-identical. A real <h1> there is what gives a `?word=`
+// page indexable body content instead of an empty div app.js fills in after load.
+$ssr       = $ssr ?? false;
+$title_tag = $ssr ? 'h1' : 'div';
 
 $verdict      = $w['verdict'] ?? 'unknown';
 $verdict_cls  = str_replace(' ', '_', $verdict);
@@ -64,17 +69,17 @@ $meta_parts = array_filter([
     $etym_parts  ? e($etym_parts[0])  : null,
 ]);
 ?>
-<!-- One button, two glyphs: a ✕ top-right on desktop, a back arrow top-left on a
+<?php /* One button, two glyphs: a ✕ top-right on desktop, a back arrow top-left on a
      phone, where the sheet fills the screen and the header is hidden behind it —
      "back" is what a full-screen sheet dismisses to, and top-left is where a
      thumb looks for it. Both are in the markup and app.css shows one; a CSS
      `content` swap would have made the visible glyph invisible to assistive
-     tech, which reads the accessible name below either way. -->
+     tech, which reads the accessible name below either way. */ ?>
 <button class="fp-close" onclick="closePanel()" aria-label="Închide definiția"><span class="fp-close-x" aria-hidden="true">✕</span><span class="fp-close-back" aria-hidden="true">←</span></button>
 
-<!-- Head: word + verdict + meta -->
+<?php /* Head: word + verdict + meta */ ?>
 <div class="fp-head">
-  <div class="fp-title"><?= e($w['word']) ?></div>
+  <<?= $title_tag ?> class="fp-title"><?= e($w['word']) ?></<?= $title_tag ?>>
   <div class="fp-subtitle">
     <span class="verdict-badge vb-<?= e($verdict_cls) ?>" title="<?= e(VERDICTS[$verdict]['tip'] ?? '') ?>"><?= e(verdict_label($verdict)) ?></span>
     <?php if ($meta_parts): ?>
@@ -83,10 +88,10 @@ $meta_parts = array_filter([
   </div>
 </div>
 
-<!-- Scrollable body -->
+<?php /* Scrollable body */ ?>
 <div class="fp-body">
 
-  <!-- Obsolete spelling: name the living twin rather than leaving the reader to guess
+  <?php /* Obsolete spelling: name the living twin rather than leaving the reader to guess
        why a word that looks ordinary is on a list of forgotten ones. Only ever set when
        the modern form is >=20x more frequent in the modern corpus — see
        mark_archaic_spellings() in tools/build_ui_db.py.
@@ -96,36 +101,36 @@ $meta_parts = array_filter([
        merges every dictionary that defines a word, so a variant's senses routinely
        carry its headword's own text (`sofragerie` arrives holding `sufragerie`'s DLRLC
        entry). More senses makes that bleed more visible, not less, so the line naming
-       the living twin has to be read first. -->
+       the living twin has to be read first. */ ?>
   <?php if (!empty($w['archaic_spelling']) && !empty($w['spelling_of'])): ?>
   <p class="fp-spelling">Grafie veche pentru <strong><?= e($w['spelling_of']) ?></strong>.</p>
   <?php endif; ?>
 
-  <!-- Same job, DEX's own relation instead of a spelling rule (mark_dex_variants()).
+  <?php /* Same job, DEX's own relation instead of a spelling rule (mark_dex_variants()).
        Worth saying out loud here even more than for `archaic_spelling`, because the
        definition will not give it away: scrape_definitions.py reads dexonline's sinteză,
        which merges a variant into its headword, so `sofragerie` arrives carrying
        `sufragerie`'s full entry — Sadoveanu quote, twin's spelling and all. Without this
        line the panel reads as an ordinary find whose examples inexplicably spell the
        headword differently. The two flags are disjoint by construction, so this never
-       doubles up with the line above. -->
+       doubles up with the line above. */ ?>
   <?php if (!empty($w['dex_variant']) && !empty($w['dex_variant_of'])): ?>
   <p class="fp-spelling">Variantă a lui <strong><?= e($w['dex_variant_of']) ?></strong>, după DEX.</p>
   <?php endif; ?>
 
-  <!-- Deverbal noun whose verb is on the list too (mark_deverbal_nouns()). Named for
+  <?php /* Deverbal noun whose verb is on the list too (mark_deverbal_nouns()). Named for
        the same reason as the two above, and with one addition: the verb is *here*, so
-       the line is a link rather than a dead end. -->
+       the line is a link rather than a dead end. */ ?>
   <?php if (!empty($w['deverbal_like']) && !empty($w['deverbal_of'])): ?>
   <p class="fp-spelling">Numele acțiunii de a
     <a href="?word=<?= urlencode($w['deverbal_of']) ?>"><strong><?= e($w['deverbal_of']) ?></strong></a>,
     care e și el în listă.</p>
   <?php endif; ?>
 
-  <!-- Full sense tree (docs/senses-plan.md) when the dump's Meaning table has one for
+  <?php /* Full sense tree (docs/senses-plan.md) when the dump's Meaning table has one for
        this word; the flat one-sentence definition otherwise. **Not a degraded path when
        it fires — 7,470 of 18,270 shortlist words have no Tree/Meaning structure at all,
-       so the fallback is half the site, not an edge case.** -->
+       so the fallback is half the site, not an edge case.** */ ?>
   <?php $tree_senses = array_values(array_filter($senses, fn($s) => $s['kind'] === 'sense')); ?>
   <?php $extras       = array_values(array_filter($senses, fn($s) => $s['kind'] !== 'sense')); ?>
   <?php if ($tree_senses): ?>
@@ -141,10 +146,10 @@ $meta_parts = array_filter([
     <?php endforeach; ?>
   </ol>
   <?php if ($extras): ?>
-  <!-- Compounds / expressions: phrases built on the headword rather than meanings of it
+  <?php /* Compounds / expressions: phrases built on the headword rather than meanings of it
        alone, so they get a visually distinct block after the senses rather than being
        numbered alongside them — their breadcrumb is always empty in the dump, dexonline
-       never numbers them either. -->
+       never numbers them either. */ ?>
   <div class="fp-extras">
     <?php foreach ($extras as $s): ?>
     <div class="fp-extra">
@@ -162,7 +167,7 @@ $meta_parts = array_filter([
   <span class="fp-nodef">fără definiție locală</span>
   <?php endif; ?>
 
-  <!-- Tag chips -->
+  <?php /* Tag chips */ ?>
   <?php $all_tags = array_merge(
       array_slice($pos_parts, 1),
       $reg_parts,
@@ -182,7 +187,7 @@ $meta_parts = array_filter([
   </div>
   <?php endif; ?>
 
-  <!-- Synonyms / antonyms (scrape_synonyms.py; absent until a word has been scraped) -->
+  <?php /* Synonyms / antonyms (scrape_synonyms.py; absent until a word has been scraped) */ ?>
   <?php
     $syns = array_slice($synonyms, 0, 12);
     $ants = array_slice($antonyms, 0, 8);
@@ -201,7 +206,7 @@ $meta_parts = array_filter([
   </div>
   <?php endif; ?>
 
-  <!-- Dictionaries. Names are listed in a click-open tooltip rather than inline —
+  <?php /* Dictionaries. Names are listed in a click-open tooltip rather than inline —
        a word in ~20 dictionaries used to print ~20 chips into the body every time,
        which is more chrome than the definition above it.
 
@@ -211,7 +216,7 @@ $meta_parts = array_filter([
        button was the loudest thing in the panel — louder than the definition —
        and four skins each amplified it independently (beton a red slab, govuk a
        green GDS button). Wrapping the row in `if ($sources)` would have made the
-       link vanish for exactly the words whose dictionary coverage is thinnest. -->
+       link vanish for exactly the words whose dictionary coverage is thinnest. */ ?>
   <div class="fp-dicts">
     <?php if ($sources): ?>
     <button type="button" class="fp-extra-label fp-dicts-toggle"
@@ -242,8 +247,8 @@ $meta_parts = array_filter([
 
 </div>
 
-<!-- Footer: corpus stats + marking actions. The dexonline link used to end this
-     block as a full-width button; it is a chip in the dictionary row above now. -->
+<?php /* Footer: corpus stats + marking actions. The dexonline link used to end this
+     block as a full-width button; it is a chip in the dictionary row above now. */ ?>
 <div class="fp-foot">
 
   <div class="fp-stats">
@@ -262,7 +267,7 @@ $meta_parts = array_filter([
     <button id="bookmark-btn" aria-pressed="false" data-word="<?= e($w['word']) ?>" title="fav (f) — păstrează, cuvânt de care ești mândru"><span class="qt-key">f</span><span class="fav-star">★</span> fav</button>
     <div id="tags-row" data-word="<?= e($w['word']) ?>">
       <div class="quick-tags">
-        <!-- <button type="button" class="qt-btn" aria-pressed="false" data-qtkey="a" title="ascunde (a) — neinteresant, prea cunoscut. Dispare din listă, îl regăsești în settings"><span class="qt-key">a</span>ascunde</button> -->
+        <?php /* <button type="button" class="qt-btn" aria-pressed="false" data-qtkey="a" title="ascunde (a) — neinteresant, prea cunoscut. Dispare din listă, îl regăsești în settings"><span class="qt-key">a</span>ascunde</button> */ ?>
         <button type="button" class="qt-btn" aria-pressed="false" data-qtkey="l" title="lol (l) — amuzant, de păstrat"><span class="qt-key">l</span>lol</button>
         <button type="button" class="qt-btn" aria-pressed="false" data-qtkey="m" title="meh (m) — la fel ca ascunde, doar zis altfel. Dispare din listă, îl regăsești în settings"><span class="qt-key">m</span>meh</button>
       </div>

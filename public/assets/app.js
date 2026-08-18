@@ -577,46 +577,56 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
     var mainCount = document.getElementById('result-count');
     if (countEl && mainCount) countEl.textContent = mainCount.textContent;
   }
-  if (target.id === 'detail-panel') {
-    // The dict-name tooltip (store.js) gets reparented to <body> when opened, to
-    // escape #detail-panel's `transform` (its containing block for position:fixed
-    // otherwise — see the comment at store.js's dictToggle handler). htmx's
-    // `innerHTML` swap only replaces what's still inside #detail-panel, so a
-    // tooltip left open on the *previous* word survives the swap as an orphan
-    // sitting directly under <body>; every word switch would otherwise leave one
-    // more behind. It's already superseded by the fresh `.dict-tooltip` the new
-    // HTML just brought in, so this is a plain removal, not a hide.
-    var staleTip = document.body.querySelector(':scope > .dict-tooltip');
-    if (staleTip) staleTip.remove();
-
-    target.classList.add('panel-open');
-    // Mobile reclaims the brand bar and the status bar while a definition is up —
-    // on a 375×812 phone those two are ~186px, 23% of the screen, and neither is
-    // doing anything you can act on while reading. The class is set at every width
-    // and the hiding is scoped to the mobile media query, so a desktop window
-    // narrowed with the panel open lands in the right state without a resize
-    // listener. `.fp-close` becomes the back arrow there — see app.css.
-    document.body.classList.add('detail-open');
-    // On desktop, switch #app to side-by-side row layout
-    if (window.innerWidth >= 769) {
-      var app = document.getElementById('app');
-      if (app) app.classList.add('has-panel');
-    }
-    // Definition-as-hero when arriving from a shared link; normal height otherwise.
-    if (arrivedViaShare) {
-      target.classList.add('share-focus');
-      arrivedViaShare = false;
-      setTimeout(function() { target.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60);
-    } else {
-      target.classList.remove('share-focus');
-    }
-    const hb = document.getElementById('hover-box');
-    if (hb) hb.classList.remove('visible');
-    hydrateDetail(target);
-    var wordEl = target.querySelector('[data-word]');
-    if (wordEl) { openWord = wordEl.dataset.word; syncUrlFromForm(); }
-  }
+  if (target.id === 'detail-panel') activateDetailPanel(target);
 });
+
+// Everything a freshly-filled #detail-panel needs before it reads as "open" — pulled out
+// of the htmx:afterSwap handler above so the SSR arrival path (bottom of this file) can
+// call it directly on the panel index.php already rendered, instead of re-fetching
+// api/word.php and replacing that content wholesale. Without this split, arriving at a
+// share link fired an ajax call that swapped the server-rendered <h1> for api/word.php's
+// plain <div> within milliseconds of load — invisible to a quick glance at the page, but
+// it is what a headless renderer (Google's included) sees once it runs this same JS, so
+// the whole point of server-rendering the <h1> would have been lost the moment JS ran.
+function activateDetailPanel(target) {
+  // The dict-name tooltip (store.js) gets reparented to <body> when opened, to
+  // escape #detail-panel's `transform` (its containing block for position:fixed
+  // otherwise — see the comment at store.js's dictToggle handler). htmx's
+  // `innerHTML` swap only replaces what's still inside #detail-panel, so a
+  // tooltip left open on the *previous* word survives the swap as an orphan
+  // sitting directly under <body>; every word switch would otherwise leave one
+  // more behind. It's already superseded by the fresh `.dict-tooltip` the new
+  // HTML just brought in, so this is a plain removal, not a hide.
+  var staleTip = document.body.querySelector(':scope > .dict-tooltip');
+  if (staleTip) staleTip.remove();
+
+  target.classList.add('panel-open');
+  // Mobile reclaims the brand bar and the status bar while a definition is up —
+  // on a 375×812 phone those two are ~186px, 23% of the screen, and neither is
+  // doing anything you can act on while reading. The class is set at every width
+  // and the hiding is scoped to the mobile media query, so a desktop window
+  // narrowed with the panel open lands in the right state without a resize
+  // listener. `.fp-close` becomes the back arrow there — see app.css.
+  document.body.classList.add('detail-open');
+  // On desktop, switch #app to side-by-side row layout
+  if (window.innerWidth >= 769) {
+    var app = document.getElementById('app');
+    if (app) app.classList.add('has-panel');
+  }
+  // Definition-as-hero when arriving from a shared link; normal height otherwise.
+  if (arrivedViaShare) {
+    target.classList.add('share-focus');
+    arrivedViaShare = false;
+    setTimeout(function() { target.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60);
+  } else {
+    target.classList.remove('share-focus');
+  }
+  const hb = document.getElementById('hover-box');
+  if (hb) hb.classList.remove('visible');
+  hydrateDetail(target);
+  var wordEl = target.querySelector('[data-word]');
+  if (wordEl) { openWord = wordEl.dataset.word; syncUrlFromForm(); }
+}
 
 // Also hydrate OOB-swapped load-more results
 document.body.addEventListener('htmx:oobAfterSwap', function() {
@@ -1449,6 +1459,23 @@ syncSearchMode();
   }
 
   arrivedViaShare = true;
+
+  // index.php already server-rendered this word into #detail-panel (panel-open plus a
+  // real <h1>) when the request itself was a `?word=` hit — the ordinary case for
+  // following a share link. Activate that in place rather than re-fetching
+  // api/word.php and replacing it: that endpoint always renders the <div> fragment
+  // (api/word.php never sets detail.php's $ssr flag), so re-swapping here would erase
+  // the SSR'd <h1> the instant this script runs, including in Google's own renderer,
+  // which executes page JS before indexing the DOM. `wordEl` is the same
+  // `[data-word]` lookup activateDetailPanel() itself uses to confirm the rendered
+  // panel is actually this word, not a stale one from a different `?word=` request.
+  var panel = document.getElementById('detail-panel');
+  var wordEl = panel && panel.classList.contains('panel-open') && panel.querySelector('[data-word]');
+  if (wordEl && wordEl.dataset.word === w) {
+    activateDetailPanel(panel);
+    return;
+  }
+
   var base = (typeof OTIOS_BASE !== 'undefined' ? OTIOS_BASE : '');
   htmx.ajax('GET', base + '/api/word.php?word=' + encodeURIComponent(w), { target: '#detail-panel', swap: 'innerHTML' });
 })();

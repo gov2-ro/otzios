@@ -2,6 +2,110 @@
 
 Chronological log of meaningful work. Add entries under `## YYYY-MM-DD — Short Title`.
 
+## 2026-08-18 — Detail panel: blur the list behind it, tint `.fp-head`
+
+Two small `public/assets/app.css` additions, on request, both pure CSS with no new JS:
+
+- `body.detail-open #word-list-container { filter: blur(1px); }` — blurs the word list
+  while the definition panel is open, on every width (halved from an initial `2px` on
+  request: `2px` blurred the headwords past reading, and the goal was a soft focus cue,
+  not hiding the list). Keyed off `body.detail-open` rather
+  than `#detail-panel.panel-open` because that class is already set at every width by
+  `activateDetailPanel()` (app.js) the instant the panel opens — mobile bottom sheet and
+  desktop floating card alike — so no width-specific gating or new JS was needed.
+- `.fp-head { background: var(--accent-bg); }` — a light accent tint on the head band
+  (word + verdict + meta), for contrast against the body below it. `#detail-panel` keeps
+  `overflow: hidden` at every width, so the flush-edged fill clips to the panel's own
+  rounded corners on desktop for free.
+
+Verified with Playwright screenshots (light govuk — the default skin, dark govuk, the
+unskinned `paper` skin, and a 390×812 mobile viewport): the tint reads correctly in every
+skin without any skin-specific work, because `--accent-bg` is already a token every skin
+redeclares (govuk's is blue, paper's is the default peach/terracotta) — this is the token
+system in `CLAUDE.md`'s "Visual skins" section working as designed. Screenshots at
+`scratchpad/panel-{light,dark,paper,mobile}.png` (session-local, not committed). Full test
+suite re-run clean (pure CSS, no server-side assertions affected).
+
+## 2026-08-18 — SEO for individual word pages (`?word={word}`)
+
+Implemented `docs/reference/llm/plans-archive/let-s-talk-a-bit-polymorphic-pine.md` in
+full. Before this, Google had almost no chance of indexing any of the 18,270 word pages:
+no `sitemap.xml`/`robots.txt` (no discovery path), every word row rendered as a bare
+`<div hx-get="...">` (no crawlable link into the list), and `#detail-panel` shipped as an
+empty div filled only by an async `htmx.ajax()` call after load (no indexable body
+content on the first response).
+
+- `public/api/_partials/word_row.php` — root element is now `<a href="…?word=…">` instead
+  of `<div>`, every existing attribute kept verbatim. htmx's own click listener still
+  intercepts and prevents default navigation on left-click (`hx-get` progressive
+  enhancement, tag-agnostic), so the ajax path is unchanged; Cmd/Ctrl/middle-click now
+  correctly open the word's real URL in a new tab. `app.css`'s `.word-row` gained
+  `color: inherit; text-decoration: none;` so the browser's default link styling doesn't
+  fight the two verdict states (`.inv`, `.bookmarked`) that already draw their own
+  underline on `.word-text`.
+- `tools/export_sitemap_words.py` (new) — exports one curator's ★fav/🤣lol marks from
+  `app.db` into `data/sitemap_words.tsv`, mirroring `export_editorial.py`'s shape
+  (`--user` required, no default; `--list-users`; `--dry-run`).
+- `tools/build_sitemap.py` (new) — generic word-list-in/sitemap-out builder, kept
+  separate so a bigger word list can be pointed at it later with no code change.
+  Validates every word still exists in `ui.db`s and skips/warns otherwise. No
+  `<lastmod>` — there's no honest per-word timestamp for a hand-curated list.
+- `public/robots.txt` (new) — `Disallow: /api/` so the ajax fragment endpoint
+  (`api/word.php?word=X`) isn't indexed as a near-duplicate of the real `/?word=X` page.
+- `public/index.php` — a `?word=` hit now does one extra indexed `SELECT * FROM words`
+  (mirroring `share_relax_params()`'s own separate lookup) and, when it resolves,
+  server-renders `detail.php` into `#detail-panel` with `panel-open` already set, plus a
+  `schema.org` `DefinedTerm`/`DefinedTermSet` JSON-LD block in `<head>`.
+- `public/api/_partials/detail.php` — takes an `$ssr` flag (default `false`) that swaps
+  the headword's wrapper from `<div class="fp-title">` to a real `<h1 class="fp-title">`.
+  `api/word.php` never passes it, so the ajax fragment's output is byte-identical to
+  before. `app.css`'s `.fp-title` got an explicit `margin: 0 0 8px` (was
+  `margin-bottom: 8px` only) so the `<h1>` case doesn't inherit the browser's default
+  top margin.
+- **`app.js`'s `arrivedViaShare` re-fetch was *not* left untouched, on user report.** The
+  plan's own text called re-fetching `api/word.php` over the SSR'd panel "harmless" — it
+  is not: that endpoint never sets `$ssr`, so it always renders `<div class="fp-title">`,
+  and the `htmx:afterSwap` handler's `innerHTML` swap replaced the server-rendered `<h1>`
+  with that `<div>` within milliseconds of load, on every direct `?word=` navigation.
+  Confirmed live (reported via a DevTools Elements screenshot showing `<div
+  class="fp-title">` on a `?word=` page): the raw HTTP response had the `<h1>` — `curl`
+  can't run JS and never saw the problem — but the *rendered* DOM did not, which is what a
+  human eye and Google's own headless-Chrome indexing pass both see. Fixed by pulling the
+  `htmx:afterSwap` panel handler's body into a named `activateDetailPanel(target)` and
+  calling it directly, in place, when `#detail-panel` already carries `panel-open` and a
+  matching `data-word` at IIFE time — skipping the ajax re-fetch/swap entirely for that
+  case, while keeping `hydrateDetail()` (client-side localStorage bookmark/tag state) and
+  every other side effect (`detail-open`, `has-panel`, `share-focus`, `syncUrlFromForm()`)
+  running exactly as before. Verified with Playwright (available locally; reproduced the
+  bug pre-fix, confirmed the `<h1>` now survives post-fix, and re-checked hydration,
+  `.fp-close`, plain click, middle-click-opens-new-tab, and keyboard Tab+Enter on a
+  focused row — none of which regressed from the row's `<div>`→`<a>` change).
+
+Separately, on report (a screenshot of `.fp-body`'s long `<!-- -->` blocks in DevTools):
+every HTML comment in `public/api/_partials/detail.php` — explanatory ones and the one
+disabled `<button>` kept commented-out for future restoration — moved to `<?php /* … */
+?>`. HTML comments ship over the wire and show up in view-source; PHP comments are
+stripped server-side, so the reasoning stays in the file for the next reader without
+adding to every `?word=` page's payload. Confirmed `php -l` still passes, no `<!--`
+remains in the file, and neither `api/word.php`'s fragment nor the SSR page emits one.
+
+New test `tests/test_share_seo.js`: the `<h1>`/JSON-LD/`panel-open` on a `?word=` hit (raw
+HTTP response), the bare explorer shipping neither, `api/word.php` staying byte-identical,
+and a word row rendering as a real `<a href>`. It does not catch the JS re-swap bug above
+(fetch-only, no JS execution) — that class of bug needs a real renderer, which is why the
+Playwright pass mattered here; no jsdom-based regression test was added for it (no
+`node_modules`/jsdom in this project — `test_ghici.js`/`test_footer_metrics.js` skip
+without it). `tests/test_share_view.js` and `tests/test_share_meta.js` re-run clean as a
+regression baseline; `test_class_filters.js`, `test_search_scope.js`, `test_dict_tooltip.js`
+and `test_senses.js` also re-run clean since they touch `search.php`/`detail.php` output.
+
+Ran for real against the dev `app.db`/`ui.db`: `data/sitemap_words.tsv` (58 words: 15 fav,
+43 lol, user 1) and `public/sitemap.xml` (55 of 58 — 3 dropped, no longer in `ui.db`) are
+both regenerated but not committed by this session; deploying needs
+`export_sitemap_words.py --user N` re-run against the *production* `app.db` (per curator,
+same reasoning `export_editorial.py` already documents), then `build_sitemap.py`, then
+submitting the sitemap in Search Console (plan's §5, not done here — no deploy in scope).
+
 ## 2026-08-18 — Dict-tooltip off-canvas: a transformed ancestor breaks `position: fixed`
 
 Reported via screenshot: `.dict-tooltip` (the "în N dicționare" popover in the detail

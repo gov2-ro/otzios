@@ -35,21 +35,22 @@ $meta_str = implode(' · ', $meta_parts);
 $is_pick   = !empty($w['editor_pick']);
 $row_label = $w['word'] . ($verdict_lbl ? ', ' . $verdict_lbl : '') . ($is_pick ? ', ales' : '');
 ?>
-<div class="<?= e($classes) ?>"
-     role="option"
-     aria-selected="false"
-     aria-label="<?= e($row_label) ?>"
-     tabindex="-1"
-     data-word="<?= e($w['word']) ?>"
-     data-verdict="<?= e($w['verdict'] ?? 'unknown') ?>"
-     data-vlabel="<?= e($verdict_lbl) ?>"
-     data-pos="<?= e($pos) ?>"
-     data-hist="<?= $hist_occ !== null ? $hist_occ : '' ?>"
-     data-def="<?= e($def_preview) ?>"
-     <?= $inv_title ?>
-     hx-get="<?= BASE ?>/api/word.php?word=<?= urlenc($w['word']) ?>"
-     hx-target="#detail-panel"
-     hx-swap="innerHTML">
+<a class="<?= e($classes) ?>"
+   href="<?= BASE ?>/?word=<?= urlenc($w['word']) ?>"
+   role="option"
+   aria-selected="false"
+   aria-label="<?= e($row_label) ?>"
+   tabindex="-1"
+   data-word="<?= e($w['word']) ?>"
+   data-verdict="<?= e($w['verdict'] ?? 'unknown') ?>"
+   data-vlabel="<?= e($verdict_lbl) ?>"
+   data-pos="<?= e($pos) ?>"
+   data-hist="<?= $hist_occ !== null ? $hist_occ : '' ?>"
+   data-def="<?= e($def_preview) ?>"
+   <?= $inv_title ?>
+   hx-get="<?= BASE ?>/api/word.php?word=<?= urlenc($w['word']) ?>"
+   hx-target="#detail-panel"
+   hx-swap="innerHTML">
   <span class="verdict-dot" aria-hidden="true"></span>
   <span class="word-text"><?= e($w['word']) ?></span>
   <?php if ($is_pick): ?><span class="chip-pick" aria-hidden="true" title="Ales — pus deoparte pentru că merită">★</span><?php endif; ?>
@@ -57,4 +58,4 @@ $row_label = $w['word'] . ($verdict_lbl ? ', ' . $verdict_lbl : '') . ($is_pick 
   <?php if ($meta_str): ?><span class="chip-meta" aria-hidden="true"><?= e($meta_str) ?></span><?php endif; ?>
   <span class="chip-vbadge" aria-hidden="true" title="<?= e($verdict_lbl) ?>"><?= e($verdict_abbr) ?></span>
   <?php if ($dict_count > 0): ?><span class="chip-dict" aria-hidden="true">📚<?= $dict_count ?></span><?php endif; ?>
-</div>
+</a>

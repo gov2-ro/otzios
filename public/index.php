@@ -53,6 +53,17 @@ global $QUICK_TAGS, $POS_OPTIONS;
   $desc  = $sm ? $sm['desc']
                 : 'Suveranism lexical. Cuvinte aproximativ căzute în uitare.';
   $canon = $sm ? $sm['canonical'] : site_origin() . '/';
+
+  // Server-rendered word body, so a `?word=` hit ships real content instead of the
+  // empty #detail-panel div app.js used to fill client-side only. Mirrors
+  // share_relax_params()'s own separate `SELECT *` for the same hit — a third small
+  // indexed lookup here is consistent with that, not new duplication.
+  $w = null;
+  if ($sm) {
+      $st = db()->prepare('SELECT * FROM words WHERE word = ? LIMIT 1');
+      $st->execute([$sm['word']]);
+      $w = $st->fetch() ?: null;
+  }
   ?>
   <title><?= e($title) ?></title>
   <meta name="description" content="<?= e($desc) ?>">
@@ -66,6 +77,21 @@ global $QUICK_TAGS, $POS_OPTIONS;
   <meta property="og:type" content="<?= $sm ? 'article' : 'website' ?>">
   <meta property="og:site_name" content="Voroave neglijate">
   <meta name="twitter:card" content="summary_large_image">
+  <?php if ($w): ?>
+  <script type="application/ld+json"><?= json_encode([
+      '@context' => 'https://schema.org',
+      '@type' => 'DefinedTerm',
+      'name' => $w['word'],
+      'description' => $sm['desc'],
+      'url' => $sm['canonical'],
+      'inLanguage' => 'ro',
+      'inDefinedTermSet' => [
+          '@type' => 'DefinedTermSet',
+          'name' => 'Voroave neglijate',
+          'url' => site_origin() . '/',
+      ],
+  ], JSON_UNESCAPED_UNICODE) ?></script>
+  <?php endif; ?>
   <link rel="stylesheet" href="<?= BASE ?>/assets/fonts/app-fonts.css">
   <script src="<?= BASE ?>/assets/lib/htmx-2.0.4.min.js"></script>
   <link rel="stylesheet" href="<?= BASE ?>/assets/app.css">
@@ -521,7 +547,7 @@ global $QUICK_TAGS, $POS_OPTIONS;
           <span class="htmx-indicator">loading…</span>
         </div>
       </div>
-      <div id="detail-panel" class="word-detail-panel"></div>
+      <div id="detail-panel" class="word-detail-panel<?= $w ? ' panel-open' : '' ?>"><?php if ($w) render('detail.php', ['w' => $w, 'ssr' => true]); ?></div>
     </div>
 
   </div><!-- .word-area -->

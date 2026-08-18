@@ -787,6 +787,12 @@ body.page-doc {
   position: relative;
   min-width: 0;
   justify-self: start;
+  /* .word-row became a real <a href> for crawlability (§SEO, 2026-08-18). Two verdict
+     states (.inv, .bookmarked) already draw their own intentional underline on
+     .word-text; the browser's default link colour/underline on the row itself would
+     clash with those. */
+  color: inherit;
+  text-decoration: none;
 }
 .word-row:hover { background: var(--accent-bg); }
 .word-row:active { transform: translateY(1px); }
@@ -1140,6 +1146,15 @@ body.page-doc {
   display: flex;
   flex-direction: column;
 }
+/* Blur the list behind the definition panel while it's open — a soft focus cue that
+   frames the panel as the thing being read. Keyed off `body.detail-open` rather than
+   `#detail-panel.panel-open` itself: that class is already set at every width by
+   activateDetailPanel() (see app.js) the instant the panel opens, mobile sheet and
+   desktop card alike, so this needs no width-specific gating or new JS of its own. */
+body.detail-open #word-list-container {
+  filter: blur(1px);
+  transition: filter 200ms ease;
+}
 #detail-panel.panel-open {
   height: 260px;
   position: relative;
@@ -1233,6 +1248,11 @@ body.page-doc {
 .fp-head {
   padding: 16px 40px 12px 16px;
   border-bottom: 1px solid var(--border);
+  /* A light accent tint, so the head reads as the panel's own focal band rather than
+     blending into the same flat surface as the body below it. #detail-panel keeps
+     `overflow: hidden` at every width, which clips this flush-edged fill to the
+     panel's own rounded corners on desktop with no border-radius of its own needed. */
+  background: var(--accent-bg);
   flex-shrink: 0;
 }
 .fp-title {
@@ -1242,7 +1262,11 @@ body.page-doc {
   line-height: 1.05;
   letter-spacing: -0.02em;
   color: var(--text);
-  margin-bottom: 8px;
+  /* Explicit top reset: this renders as a real <h1> on a server-rendered `?word=` hit
+     (see detail.php's $title_tag), and a bare <h1> carries the browser's own margin,
+     which .fp-head's padding was not written to absorb. No visible effect on the
+     ordinary <div> case, which had no top margin to reset. */
+  margin: 0 0 8px;
   overflow-wrap: break-word;
   word-break: break-word;
 }
