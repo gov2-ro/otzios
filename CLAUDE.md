@@ -873,6 +873,17 @@ are the only two whose text is actually usable from the dump — everything else
 Academy, is a stub. `extract_definitions.py`'s `_extract_dex9896_topup()` reads exactly
 those two ids for this reason. The rendered page has the rest.
 
+**That says nothing about the `Relation` table, which is a different artefact and ships in
+full.** It is dexonline's own community-curated relation graph — 158,860 rows, 152,023 of
+them synonym, plus antonym/diminutive/augmentative — and resolving it through
+`Meaning → Tree → TreeEntry → EntryLexeme → Lexeme` yields 164,399 word-level synonym
+pairs over 63,049 words in ~15 seconds with no HTTP. Nothing in this repo read it until
+2026-08-14. The two sources are complementary rather than redundant: measured on the 1,542
+words both cover, **59% of the scrape's tokens are new information**, and `Relation` is
+strong on modern vocabulary exactly where Seche is weak, and vice versa.
+
+Full measurements, schema and build spec: `docs/sinonime/`.
+
 ```bash
 python scrape_synonyms.py --dry-run --seam relevant     # count + ETA, no requests
 python scrape_synonyms.py --seam relevant --merge       # the default-view words

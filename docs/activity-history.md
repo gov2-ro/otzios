@@ -462,6 +462,77 @@ filled in.
 
 ---
 
+## 2026-08-17 — Sinonime v1 built: extractor, syn.db, and the /sinonime page
+
+Executed `docs/sinonime/spec.md` and `ui.md` end to end: `extract_relations.py` (Phase 1),
+`tools/build_syn_db.py` (Phase 2), and the page (Phase 3) — `sinonime.php`, `api/_syn.php`,
+`api/syn.php`, `assets/syn.js`, plus the `vezi în sinonime →` link in `detail.php` and a
+`despre` line. Phase 4 (the 21,489-word gap scrape) is deliberately not started — spec.md
+scopes it to "after v1 ships".
+
+**`ObjectTag.objectType=3 → Meaning` verified before building on it**, per
+`escalate.md` §3: 193,466/193,466 objectType=3 rows are exact `Meaning` ids (100.0%); the
+87.5%/59.4% cross-hit rates against the other table are id-range coincidence, not a real
+join. Register bitmasks were safe to build.
+
+**Symmetrisation turned out to be a query-time join, not a build-time storage pass.** The
+first working version stored `sense_word = SW ∪ TW` (or separately injected the missing
+reverse of every non-reciprocal pair) so a single forward query was already symmetric —
+correct, and it passed every acceptance test, but it also produced a 21-23 MB database
+against the 16 MB ceiling `spec.md`'s Acceptance tests set. Splitting symmetry between
+build time (`sense_word` = source only, `edge` = target only, exactly as the schema
+comments say) and query time (`lookup_related()`/`syn_lookup_senses()` unions the forward
+and backward query) keeps both the size (15.6 MB) and the semantics literal to the schema.
+
+**A related display bug, found via `văz`:** the backward half of that same query surfaces
+one fragmented extra "sense" per synonym that independently lists the word back — văz's own
+rich cluster (`privire, vedea, vedere, văzut, vază, ...`) was joined by three more sense
+groups labelled "privire", "vedere", "văzut", each containing only that one word again.
+Fixed by a dedup pass in `syn_lookup_senses()` that lets the richer (more-members) cluster
+claim a shared word first, before applying `ui.md`'s own (max band DESC, sense id ASC)
+display order to what survives.
+
+**One spec number didn't hold, and it's a good-news miss, not a bug.** `ui.md`'s landing
+copy names `celșag` as the empty-state example — true against the Relation graph alone
+(`findings.md` §6 lists it by name among 524 scrape-only words absent from `Relation`
+entirely), false once the scrape is merged: `celșag` genuinely means "trickery" and has 11
+scraped synonyms (`amăgire, înșelare, înșelăciune, ...`). Swapped the empty-state test word
+to `acardiac` (a real word with a `word` row and zero edges — a byproduct of type-5's tree
+traversal touching words no relation ever reaches). `ui.md`'s copy still names `celșag` as
+the empty-state example and needs a different word if the doc is revised.
+
+**Measured against `spec.md`'s acceptance table**, all within its explicit "report what you
+get, don't force a match" latitude (`escalate.md` §4, §7):
+- coverage @1k+ occurrences: 72.5% (spec floor 70%, findings.md estimate 72.4%)
+- file size: 15.6 MB (ceiling 16 MB)
+- `văz`: 4 sense clusters after dedup, `concepție` never shares one with `privire`
+- type-5 (Tree co-membership): 9,158 cliques / 16,276 pairs / 8,863 words gaining a first
+  synonym — well under findings.md's ~38,321/~25,554 estimate, because that estimate
+  predates `spec.md`'s "only where no type-1 edge already exists" refinement
+
+Also fixed one data-quality bug the acceptance tests caught: `merge_scrape()` was creating
+a first-class `word` row for every scraped headword unconditionally, including `nalt` —
+which the graph's own entry structure already knows is a non-main variant filed under
+`înalt`. `resolve_or_create_word()` now checks the graph's key index first.
+
+Not done: Phase 4 (gap scrape), the `docs/sinonime/ui.md` §6 type-5 review (still stored,
+still unshown), and a full six-skin × two-theme screenshot pass (spot-checked tokens only).
+See `docs/BACKLOG.md`.
+
+---
+
+## 2026-08-14 — Light theme is the default; dark is opt-in
+
+The pre-paint boot scripts used to fall back to the OS preference when no theme was
+stored (`matchMedia("(prefers-color-scheme: dark)")`), so a dark-OS visitor arrived in
+dark. That is gone: the fallback is now `"light"` everywhere, and dark only applies after
+an explicit switch (which `setTheme` stores under `otios.theme` as before). Three boot
+scripts hold the line: `api/_skins.php` (all PHP pages), `despre.html` and
+`metodologie.html` (static docs). Each keeps the removed system-preference expression as a
+comment.
+
+---
+
 ## 2026-08-14 — „vezi X" definitions now count as DEX naming a variant
 
 `volintir`'s entire definition is „vezi voluntar", and it was sitting in the default view
@@ -565,6 +636,124 @@ nepublicat pe origin). Două schimbări:
   salvată primește acum `light`. Expresia veche rămâne ca comentariu, cu data.
 - Paragraful cu marcajele îndeamnă la participare: `<kbd>★FAV / LOL / MEH</kbd>` devin
   `<em>` și capătă propoziția „Împreună putem pescui cuvintele cele mai drăgălașe!".
+
+## 2026-08-14 — Sinonime: the engine and the page
+
+The UI session `escalate.md` §1 reserved. Two questions were open — what the search engine
+should be, with Pagefind as the candidate, and what the page looks like given a central
+search box and a synonym graph you can walk a step or two out. Both are now settled in a
+new `docs/sinonime/ui.md`, and nothing in that folder is reserved any more.
+
+**Pagefind was rejected, and the reason is that we do not have its problem.** It indexes
+*rendered HTML* and ranks it with BM25 over prose, so using it means generating 63,049
+static pages to feed its crawler, rsyncing them, then overriding its ranking with `band` —
+which is the entire product. Ours is a known-item lookup over ~107k keys that SQLite
+answers off `key(k, word_id)` in well under a millisecond. There was no search problem to
+solve. The one transferable idea, sharding a static index by prefix, is recorded against
+the autocomplete in case it is ever needed.
+
+**The real question was traversal, and four measurements decided the whole design.** Taken
+against the dump, on the symmetrised type-1 graph:
+
+| | |
+|---|---|
+| degree | median **2** · p90 12 · p99 40 · max **352**; 50.2% of words have ≤2 |
+| sense clusters/word | median 1, and **72.3% have exactly one** |
+| depth≤2 nodes | median 16 · p90 **167** · max **2,400**; 25.7% exceed 60 |
+| depth≤3 nodes | median 101 · p90 **1,809** · max 10,217 |
+| connectivity | 5,597 components, the largest holding **75.7%** of all words |
+
+Read together they say: uncapped depth-3 is a crawl into three quarters of the dictionary,
+uncapped depth-2 is not safe either, half of all lookups draw a graph of three dots, and
+the sense clustering that most justifies a graph pays on barely a quarter of words.
+
+So the graph is **capped at 37 nodes by construction** — top 6 per sense on ring 1, top 4
+per node on ring 2 — with the ranking precomputed into a new `edge.rank` column so the
+request path does no ordering. That cap is the only reason a graph is viable here, and it
+holds for the 352-degree hubs as surely as for the median word.
+
+**The layout is arithmetic, not physics.** Deterministic radial: radius is hop count, angle
+is sense cluster, and `band` is carried by node size and opacity rather than colour, since
+colour belongs to the six skins. No force simulation, so no jitter, no hairball, no d3 — it
+renders as plain SVG from PHP, is byte-stable enough to assert in a test, and every node is
+a real `<a href>`, which means the graph is fully navigable with JavaScript off. The JSON
+island that ships beside it does hover cards and cross-highlighting only; letting it
+re-lay-out the graph would put the geometry in two languages.
+
+**The list stays beside the graph permanently**, and not as a preference: an SVG is
+invisible to a screen reader, so a ranked list has to exist as its text alternative — and
+given it exists, it should be the thing you take a word from, which is what a writing aid
+is for. There is no depth slider; a second step out is a click that recentres, which keeps
+the screen bounded at every moment and the depth unlimited.
+
+Also settled: the empty state is a first-class screen rather than an afterthought, because
+one lookup in four in the band people actually search comes back with nothing (67.0%
+coverage at 1k+). `escalate.md` §2 is answered — the tool is linked from the explorer's
+`≡ sinonime` row and from `despre`, never the top nav, which takes exactly three labelled
+entries. Type-5 edges stay stored and unshown pending the 50-pair review, now with their
+treatment reserved but not enabled.
+
+Two backlog items opened: that review, and a re-measure of `syn.db` after `edge.rank`, since
+the ~10–11 MB figure was taken against the DDL without it.
+
+## 2026-08-14 — Sinonime: the dump had the thesaurus all along
+
+Brainstorming a second tool — a writing aid that answers "what else could I say here",
+words only, no definitions — turned up that the premise blocking it was our own
+overstatement. `CLAUDE.md`, `BACKLOG:313` and `scrape_synonyms.py`'s docstring all said
+synonyms "can't come from the dump". True of `Definition.internalRep` for the three Litera
+titles, which are redacted to 23 characters because they are in copyright. Generalised, in
+three places, to the whole subject.
+
+The dump carries `Relation` — dexonline's own community-curated graph, 158,860 rows
+(152,023 synonym, 5,216 antonym, 1,547 diminutive, 74 augmentative), unredacted, and never
+read by anything in this repo. Resolved through `Meaning → Tree → TreeEntry →
+EntryLexeme → Lexeme` it gives **164,399 word-level synonym pairs over 63,049 words in
+~15 seconds**, against ~4 hours of scraping for 2,075.
+
+Four things were measured before writing any of it down.
+
+**The product is the ranking, not the coverage.** 41.7% of those 63,049 words are dead
+Romanian — 15.3% have zero CulturaX occurrences, another 26.4% under 100. dexonline lists
+synonyms alphabetically, so `frumos` offers `bididel`, `boghet` and `brudiu` beside
+`arătos`. This project already owns the corpus rollup that separates them, and nothing
+else in Romanian does.
+
+**Flattening the graph is what would have made it garbage.** Flat, `văz` gives `privire,
+vedere, văzut, concepție, orbi, captiva, myosotis, saxifraga, troglodytes` — three
+unrelated senses and three Latin binomials, because expanding a target `Tree` reaches
+every lexeme of every one of its entries and 10,091 trees hold more than one. Grouped by
+source `Meaning`, which is how the data is actually shaped, each sense reads correctly.
+The storage keeps senses even if the first UI renders flat; the reverse is not recoverable.
+
+**The scrape is complementary, not superseded** — this reversed the plan mid-investigation.
+On the 1,542 words in both sources, mean 6.2 synonyms from `Relation` against 6.8 from the
+scrape, and **59% of the scrape's tokens are new information**; on 353 of them the scrape
+adds more than `Relation` holds in total. 524 of its 2,066 words are absent from the graph
+entirely — `poronci`, `soluțiune`, `antereu`, `amploiat`, `celșag`. The community graph is
+strong on modern vocabulary and weak on the archaic layer; Seche is the reverse. So the
+scraper stays, pointed at the gap: 21,489 words at 100+ occurrences with no synonym from
+any free source, 17.9h at the 3s delay. That also unblocks the `syn_count` BACKLOG item,
+whose stated precondition was the scraping this removes.
+
+**Size was measured, not estimated**, by building each candidate schema in `:memory:` and
+reading `page_count × page_size`: 6.4 MB for a bare word-pair bag, 9.3 MB sense-clustered
+with metadata and labels, ~10–11 MB with the variant/fold lookup table. `ui.db` is 17 MB.
+The scalar metadata is 3 bytes a word — cost is strings and edges, so there is no
+lean-versus-rich tradeoff worth having.
+
+Also evaluated and rejected: `v. X` cross-references in `definitions.db` (513 pure ones,
+400 new words — not worth a build step), recorded with the number so it is not proposed
+again. Accepted with a caveat: multi-entry `Tree` co-membership, +38,321 pairs and 25,554
+words gaining a first synonym, stored as its own relation type because the sample is mixed
+(`pârpolatic`, `îhî`) and tree-mates are sometimes variants rather than synonyms.
+
+Shipped as documentation only, on branch `sinonime`: `docs/sinonime/findings.md`,
+`spec.md`, `escalate.md`. No code — the UI is a separate conversation, and `escalate.md`
+lists what the implementing model must not decide alone. The three overstated claims are
+corrected in place.
+
+---
 
 ## 2026-08-14 — The row superscript now counts historical attestation, not DEX frequency
 

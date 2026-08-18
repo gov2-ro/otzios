@@ -481,7 +481,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] **Diacritic-insensitive search** — searching `otios` should find `oțios`; `stramosesc` should find `strămoșesc`. Normalize both the query and the indexed word by stripping diacritics before matching (ț→t, ș→s, ă→a, â→a, î→i). Implement in the SQL WHERE clause using a pre-computed `word_normalized` column in the `words` table (populated at build time), or a SQLite custom function. Both PHP and Flask search endpoints need updating.
 
-- [x] **synonyms data** — done 2026-08-08. `scrape_synonyms.py` → `synonyms.db` → `words.synonyms`/`words.antonyms`, rendered as linked chips in the detail panel. Not available from the dump: the Litera dictionaries (`Sinonime`, `Sinonime82`, `Antonime`) are redacted to 23 characters in `Definition.internalRep`, so `dict_count` knows a word is in them but not what they say.
+- [x] **synonyms data** — done 2026-08-08. `scrape_synonyms.py` → `synonyms.db` → `words.synonyms`/`words.antonyms`, rendered as linked chips in the detail panel. The Litera dictionaries (`Sinonime`, `Sinonime82`, `Antonime`) are redacted to 23 characters in `Definition.internalRep`, so `dict_count` knows a word is in them but not what they say. **Corrected 2026-08-14: that is true of the Litera *definition text* only, and was wrongly generalised to "not available from the dump".** The `Relation` table ships in full — 158,860 rows, 164,399 word-level synonym pairs over 63,049 words, ~15s to build, no HTTP. See `docs/sinonime/`.
 
 - [ ] **UI redesign** — fresh-identity, mobile-first redesign spec written for a designer in `docs/design-brief.md` (covers table view, filter-bar redesign, calmer verdict palette, play modes, shared-word landing). Hand off when ready.
 
@@ -531,7 +531,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   - **Resolved (pipeline side)**: `validate_with_wordfreq.py` now emits a `tier` column (`forgotten` / `rare_in_use` / `common`) alongside the existing `is_forgotten` bool. Default thresholds: `--threshold 3.0` (lower, forgotten floor) / `--upper-threshold 4.5` (upper, common cutoff). Rare-in-use words (3.0 ≤ zipf < 4.5) are written to a separate `data/processed/rare_words_wordfreq.csv` so they don't contaminate the forgotten list. Note: `oțios` itself has zero corpus signal (zipf=0.000) so it lands in `forgotten`, not `rare_in_use`.
   - **Still open (UI side)**: add a global switch in the web UI to toggle between the forgotten-words list and the rare-in-use list.
 
-- [ ] maybe we should also look in the dictionaries themselves. Are we including really old dictionaries? We could make a page with per dictionary `diff`? Does dexonline dump cover all dictionaries listed here: https://clre.solirom.ro/  https://clre.solirom.ro/content/ro/list-of-lexicographical-works.html https://clre.solirom.ro/content/ro/statistics.html 
+- [x] maybe we should also look in the dictionaries themselves. Are we including really old dictionaries? We could make a page with per dictionary `diff`? Does dexonline dump cover all dictionaries listed here: https://clre.solirom.ro/  https://clre.solirom.ro/content/ro/list-of-lexicographical-works.html https://clre.solirom.ro/content/ro/statistics.html 
 
 - [x] handle in browser curration - choices saved in browser memory and can be exported as json — **partly done**: annotations now sync to `private/app.db` via `api/sync.php`, so curation survives a browser wipe and follows the user across devices on the same account. localStorage remains the offline-first cache. A JSON *export* button is still missing; the data is reachable at `api/sync.php` with `{"since":0}`.
 
@@ -568,7 +568,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 
 - [x] track synonyms. count synonyms
 
-- [ ] also filter by: masculin, feminin, neutru.
+- [ ] also filter by: masculin, feminin, neutru?
 
 - [ ] Meta: suggest versions, note in both activity log, chronology and readme.
 
@@ -948,6 +948,56 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
   în loc să le numere ca 0, cu eticheta spunând asta. Scrapingul complet (~14.2k cuvinte,
   ~4.5h la podeaua de 1.2s, cu lock pe host) rămâne condiția ca filtrul să însemne ceva pe
   `curiosity`.
+
+  **Deblocat 260814 — condiția de mai sus s-a schimbat mult.** Tabela `Relation` din dump
+  acoperă **10.233 din cele 18.270** de cuvinte din `ui.db` (56,0%), față de 2.066 (11,3%)
+  de la scraping, și se construiește în ~15s fără nicio cerere HTTP. Cu perechile din
+  arborii DEX cu mai multe intrări (`t=5`) urcă la 11.027 (60,4%), iar cu scrapingul
+  existent la **11.517 (63,0%)** — inclusiv în seamul `curiosity`, unde până acum era zero.
+  Deci `syn_count` se poate calcula pe date reale acum, iar regula „exclude în loc să
+  numeri 0" rămâne validă exact pentru cele **6.753** de cuvinte rămase neacoperite.
+  Vezi `docs/sinonime/`.
+
+- [ ] **sinonime: revizuiește ~50 de perechi `t=5` (co-apartenență la același arbore DEX)**
+
+  Blocantul dinaintea afișării lor. Aduc 38.321 de perechi și dau primul sinonim pentru
+  25.554 de cuvinte (+5,4 puncte pe banda 1k+), dar eșantionul e amestecat — `pârpolatic`,
+  `astatic`, `îhî`, `părtie` — fiindcă tovarășii de arbore sunt uneori variante grafice, nu
+  sinonime. E o judecată despre limbă, nu o măsurătoare. `ui.md` le ține stocate și
+  neafișate și le rezervă tratamentul vizual (muchie punctată în `--syn-tree`, sub type-1,
+  etichetate „din același cuib DEX"); tratamentul pregătit **nu** e permisiunea de a le
+  aprinde. `escalate.md` §6.
+
+- [x] **sinonime: re-măsoară dimensiunea lui `syn.db` după `edge.rank`** — măsurat 2026-08-17.
+
+  Cifra de ~10–11 MB din `findings.md` §8 a fost măsurată pe DDL-ul *fără* coloana `rank`,
+  fără `merge_scrape()`, fără type-5 — adăugate ulterior de `spec.md`'s build rules 6-7.
+  Construită literal (simetrizare ca al doilea pas de scriere, `sense_word` = SW ∪ TW),
+  baza a ieșit la **21–23 MB**, peste plafonul de 16 MB. Simetrizarea mutată la interogare
+  (`lookup_related()` unește sensul direct cu cel invers, în loc să dubleze rândurile la
+  construcție) a adus-o la **15,6 MB** — sub plafon, cu `sense_word`/`edge` exact cum le
+  descrie schema (o singură direcție pe rând). Vezi `tools/build_syn_db.py`'s
+  `build_relation_graph()` pentru explicația completă.
+
+- [ ] **sinonime: exemplul de "empty state" din `ui.md` (`celșag`) nu mai e gol**
+
+  `ui.md`'s landing/empty-state copy numește `celșag` ca exemplu de cuvânt fără sinonime —
+  adevărat față de graful `Relation` singur (`findings.md` §6 îl listează explicit printre
+  cele 524 de cuvinte doar-scrapate, absente din `Relation`), fals după ce scrapingul e
+  contopit: `celșag` chiar înseamnă „înșelăciune" și are 11 sinonime scrapate (`amăgire,
+  înșelare, înșelăciune, ...`). `tests/test_sinonime.js` folosește `acardiac` în loc
+  (cuvânt real, zero muchii). Dacă `ui.md` e revizuit, exemplul din text ar trebui înlocuit.
+
+- [ ] **sinonime: trecere prin cele 6 skin-uri × 2 teme, cu screenshot-uri**
+
+  Construit 2026-08-17, verificat doar programatic (noduri, texte, structura HTML) și cu
+  token-urile `--syn-node`/`--syn-edge`/`--syn-ant`/`--syn-tree` declarate o singură dată pe
+  `:root` (moștenesc tema automat prin indirecție `var()`, fără redeclarare în blocul dark).
+  Nu s-a făcut trecerea vizuală cu screenshot-uri pe care `ui.md` § Skins o cere explicit —
+  în special `govuk` (`--radius: 0`, masthead negru) și `registru` (`--accent` e cerneala
+  paginii, deci orice umplut cu `--accent` într-o zonă întunecată dispare, ca bug-ul
+  `.joc-mode.active`). Verifică și starea `.is-active` la (0,3,0) în toate cele 6.
+
 - [ ] ascunde cuvinte care au în definiție 'vezi ...' + alt cuvânt care suna f similar?
 - [x] another data quality run? – use more input sources?
 
@@ -1099,6 +1149,7 @@ Ranked by impact-per-effort. Effort: XS / S / M / L.
 - [ ] maybe split _meh_ into _comun_ & _irelevant_?
 - [ ] also demote words that have a single word definition? if it sounds familiar. or just give them to me in a sharable list first
 
+- [ ] in og:description reverse order, start with term definition, _then_ category.
 - [x] start with light theme?
 
 ### Next

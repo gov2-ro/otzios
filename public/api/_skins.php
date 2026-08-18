@@ -108,7 +108,10 @@ function otios_skin_boot(): string
 
     return '<script>(function(){try{'
          . 'var d=document.documentElement;'
-         . 'var t=localStorage.getItem("otios.theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");'
+         // Light is the default; dark only after an explicit switch. Removed
+         // 2026-08-14 — previous fallback followed the OS preference:
+         //   ||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")
+         . 'var t=localStorage.getItem("otios.theme")||"light";'
          . 'd.setAttribute("data-theme",t);'
          . 'var ok=' . $ids . ',s=localStorage.getItem("otios.skin");'
          . 'd.setAttribute("data-skin",ok.indexOf(s)>=0?s:' . $default . ');'
